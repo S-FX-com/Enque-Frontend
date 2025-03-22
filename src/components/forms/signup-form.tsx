@@ -22,8 +22,8 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
 		<div className={cn("flex flex-col gap-6", className)} {...props}>
 			<Card className="">
 				<CardHeader>
-					<CardTitle className="text-2xl">Regístrese</CardTitle>
-					<CardDescription>Introduzca su información a continuación para crear su cuenta</CardDescription>
+					<CardTitle className="text-2xl">Create your account</CardTitle>
+					<CardDescription>Enter your information below to create your account</CardDescription>
 				</CardHeader>
 				<CardContent>
 					<form action={formAction} className="grid gap-4">
@@ -33,40 +33,37 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
 							</Alert>
 						)}
 						<div className="grid gap-2">
-							<Label htmlFor="name">Nombre completo</Label>
+							<Label htmlFor="name">Full name</Label>
 							<Input id="name" name="name" type="text" required />
 							{state.errors?.name && <p className="text-sm text-destructive">{state.errors.name[0]}</p>}
 						</div>
 						<div className="grid gap-2">
-							<Label htmlFor="email">Correo electrónico</Label>
-							<Input id="email" name="email" type="email" placeholder="alex@ejemplo.com" required />
+							<Label htmlFor="email">Email</Label>
+							<Input id="email" name="email" type="email" required />
 							{state.errors?.email && <p className="text-sm text-destructive">{state.errors.email[0]}</p>}
 						</div>
 						<div className="grid gap-2">
-							<Label htmlFor="password">Contraseña</Label>
+							<Label htmlFor="password">Password</Label>
 							<Input id="password" name="password" type="password" required />
 							{state.errors?.password && <p className="text-sm text-destructive">{state.errors.password[0]}</p>}
 						</div>
 						<div className="grid gap-2">
-							<Label htmlFor="confirmPassword">Confirmar Contraseña</Label>
+							<Label htmlFor="confirmPassword">Confirm password</Label>
 							<Input id="confirmPassword" name="confirmPassword" type="password" required />
 							{state.errors?.confirmPassword && <p className="text-sm text-destructive">{state.errors.confirmPassword[0]}</p>}
 						</div>
 						<Button type="submit" className="w-full" disabled={isPending}>
-							{isPending ? "Creando cuenta..." : "Crear cuenta"}
+							{isPending ? "Signing..." : "Sign Up"}
 						</Button>
 					</form>
 					<div className="mt-4 text-center text-sm">
-						¿Ya tiene cuenta?{" "}
+						Already have an account?{" "}
 						<Link href="/signin" className="underline">
-							Inicie sesión
+							Sign In
 						</Link>
 					</div>
 				</CardContent>
 			</Card>
-			<div className="text-balance text-center text-xs text-muted-foreground [&_a]:underline [&_a]:underline-offset-4 [&_a]:hover:text-primary">
-				Al hacer clic en Crear cuenta, acepta nuestras <a href="#">Condiciones de Uso</a> y <a href="#">Política de Privacidad</a>.
-			</div>
 		</div>
 	);
 }

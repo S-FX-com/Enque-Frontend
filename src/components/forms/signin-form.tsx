@@ -22,8 +22,8 @@ export function SignInForm({ className, ...props }: React.ComponentPropsWithoutR
 		<div className={cn("flex flex-col gap-6", className)} {...props}>
 			<Card className="">
 				<CardHeader>
-					<CardTitle className="text-2xl">Iniciar sesión</CardTitle>
-					<CardDescription>Introduzca su dirección de correo electrónico para acceder a su cuenta</CardDescription>
+					<CardTitle className="text-2xl">Sign in to your account</CardTitle>
+					<CardDescription>Enter your email address to access your account</CardDescription>
 				</CardHeader>
 				<CardContent>
 					<form action={formAction} className="grid gap-4">
@@ -33,38 +33,32 @@ export function SignInForm({ className, ...props }: React.ComponentPropsWithoutR
 							</Alert>
 						)}
 						<div className="grid gap-2">
-							<Label htmlFor="email">Correo electrónico</Label>
-							<Input id="email" name="email" type="email" placeholder="alex@ejemplo.com" required />
+							<Label htmlFor="email">Email</Label>
+							<Input id="email" name="email" type="email" required />
 							{state.errors?.email && <p className="text-sm text-destructive">{state.errors.email[0]}</p>}
 						</div>
 						<div className="grid gap-2">
 							<div className="flex items-center">
-								<Label htmlFor="password">Contraseña</Label>
+								<Label htmlFor="password">Password</Label>
 								<Link href="/forgot" className="ml-auto inline-block underline-offset-4 text-sm hover:underline">
-									¿Ha olvidado su contraseña?
+									Forgotten your password?
 								</Link>
 							</div>
 							<Input id="password" name="password" type="password" required />
 							{state.errors?.password && <p className="text-sm text-destructive">{state.errors.password[0]}</p>}
 						</div>
 						<Button type="submit" className="w-full" disabled={isPending}>
-							{isPending ? "Iniciando sesión..." : "Iniciar sesión"}
-						</Button>
-						<Button variant="outline" className="w-full" disabled={isPending}>
-							Continuar con Google
+							{isPending ? "Signing..." : "Sign In"}
 						</Button>
 					</form>
 					<div className="mt-4 text-center text-sm">
-						¿No tiene cuenta?{" "}
+						Don't have an account?{" "}
 						<Link href="/signup" className="underline-offset-4 underline">
-							Regístrese
+							Sign Up
 						</Link>
 					</div>
 				</CardContent>
 			</Card>
-			<div className="text-balance text-center text-xs text-muted-foreground [&_a]:underline [&_a]:underline-offset-4 [&_a]:hover:text-primary">
-				Al hacer clic en Continuar, acepta nuestras <a href="#">Condiciones de Uso</a> y <a href="#">Política de Privacidad</a>.
-			</div>
 		</div>
 	);
 }
