@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { AppConfigs, PlatformConfigs } from "./configs";
+import { getLocalSubdomainByHost } from "./lib/utils";
 
 // Routes excluded from authorization
 const authPaths = ["/signin", "/signup"];
@@ -28,9 +29,9 @@ export async function middleware(request: NextRequest) {
 		const accessToken = request.cookies.get(AppConfigs.cookies.accessToken.name)?.value;
 
 		if (isAuthPath(path)) {
-			if (accessToken) return NextResponse.redirect(PlatformConfigs.url("app"));
+			if (accessToken) return NextResponse.redirect(PlatformConfigs.url(getLocalSubdomainByHost(host as string)));
 		} else {
-			if (!accessToken) return NextResponse.redirect(PlatformConfigs.url("app") + "/signin");
+			if (!accessToken) return NextResponse.redirect(PlatformConfigs.url(getLocalSubdomainByHost(host as string)) + "/signin");
 		}
 	}
 

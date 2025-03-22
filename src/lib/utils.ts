@@ -1,3 +1,4 @@
+import { AppConfigs } from "@/configs";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
@@ -12,4 +13,8 @@ export function formatDate(dateString: string): string {
 		month: "short",
 		day: "numeric",
 	}).format(date);
+}
+
+export function getLocalSubdomainByHost(host: string) {
+	return host?.replace(`.${AppConfigs.host}`, "");
 }

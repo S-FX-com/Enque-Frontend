@@ -2,8 +2,10 @@
 
 import { AppConfigs, PlatformConfigs } from "@/configs";
 import { createCookie, deleteCookie, getCookie } from "@/lib/cookies";
+import { getLocalSubdomainByHost } from "@/lib/utils";
 import { authService } from "@/services/auth";
 import { ServiceResponse } from "@/typescript";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
@@ -17,13 +19,13 @@ export type AuthFormState = {
 	message?: string;
 };
 
-/** Esquema de validación para autenticar un usuario */
+/** Validation scheme for user authentication */
 const AuthSchema = z.object({
-	email: z.string().email("El correo electrónico no es válido"),
-	password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres"),
+	email: z.string().email("Email address is invalid"),
+	password: z.string().min(8, "Password must be at least 8 characters long"),
 });
 
-/** Crear autenticación */
+/** Create authentication */
 export async function Auth(prevState: AuthFormState, formData: FormData) {
 	const email = formData.get("email") as string;
 	const password = formData.get("password") as string;
@@ -50,21 +52,27 @@ export async function Auth(prevState: AuthFormState, formData: FormData) {
 	redirect(PlatformConfigs.url("app"));
 }
 
-/** Obtener autenticación */
+/** Get authentication */
 export async function GetAuth(): Promise<ServiceResponse<any>> {
+	const headersList = await headers();
+	const host = headersList.get("host");
+
 	const accessToken = await getCookie(AppConfigs.cookies.accessToken.name);
-	if (!accessToken) return redirect(PlatformConfigs.url("app") + "/signin");
+	if (!accessToken) return redirect(PlatformConfigs.url(getLocalSubdomainByHost(host as string)) + "/signin");
 
 	const response = await authService.getCurrentAuth();
-	if (!response.success) return redirect(PlatformConfigs.url() + "/signin");
+	if (!response.success) return redirect(PlatformConfigs.url(getLocalSubdomainByHost(host as string)) + "/signin");
 
 	return response;
 }
 
-/** Eliminar autenticación */
+/** Delete authentication */
 export async function DeleteAuth() {
+	const headersList = await headers();
+	const host = headersList.get("host");
+
 	const accessToken = await getCookie(AppConfigs.cookies.accessToken.name);
-	if (!accessToken) return redirect(PlatformConfigs.url("app") + "/signin");
+	if (!accessToken) return redirect(PlatformConfigs.url(getLocalSubdomainByHost(host as string)) + "/signin");
 
 	const response = await authService.deleteCurrentAuth();
 	if (!response.success) console.error(response);

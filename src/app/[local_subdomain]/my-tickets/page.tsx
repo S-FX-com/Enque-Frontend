@@ -1,6 +1,6 @@
 import { AppProvider } from "@/hooks/use-app";
 import { Sidebar } from "@/components/sidebar";
-import { UserNav } from "@/components/topbar";
+import { Topbar } from "@/components/topbar";
 import { GetAuth } from "@/actions/auth.action";
 import MyTicketsClientPage from "./page-client";
 
@@ -13,7 +13,7 @@ export default async function TasksPage() {
 				<Sidebar />
 				<div className="flex-1 bg-[#F4F7FE] flex flex-col overflow-hidden">
 					<div className="flex h-16 items-center justify-end border-b px-6 bg-white">
-						<UserNav />
+						<Topbar />
 					</div>
 					<main className="flex-1 overflow-hidden">
 						<MyTicketsClientPage />

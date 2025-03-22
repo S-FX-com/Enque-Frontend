@@ -1,7 +1,7 @@
 import { AppProvider } from "@/hooks/use-app";
 import OverviewClientPage from "./page-client";
 import { Sidebar } from "@/components/sidebar";
-import { UserNav } from "@/components/topbar";
+import { Topbar } from "@/components/topbar";
 import { GetAuth } from "@/actions/auth.action";
 
 export default async function OverviewPage() {
@@ -13,7 +13,7 @@ export default async function OverviewPage() {
 				<Sidebar />
 				<div className="flex-1 bg-[#F4F7FE] flex flex-col overflow-hidden">
 					<div className="flex h-16 items-center justify-end border-b px-6 bg-white">
-						<UserNav />
+						<Topbar />
 					</div>
 					<main className="flex-1 overflow-hidden">
 						<OverviewClientPage />
