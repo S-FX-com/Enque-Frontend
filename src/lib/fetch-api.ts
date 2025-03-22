@@ -14,7 +14,7 @@ type IFetchAPI =
 			headers: HeadersInit;
 	  };
 
-/** Manejar solicitudes */
+/** Handle requests */
 async function handleFetchAPI<T>(request: IFetchAPI): Promise<ServiceResponse<T>> {
 	try {
 		const response = await fetch(request.url, {
@@ -33,13 +33,13 @@ async function handleFetchAPI<T>(request: IFetchAPI): Promise<ServiceResponse<T>
 
 		return { success: true, data };
 	} catch (error: unknown) {
-		const message = error instanceof Error ? error.message : "Error desconocido";
+		const message = error instanceof Error ? error.message : "Unknown error";
 		console.error("Fetch Error:", message);
 		return { success: false, message };
 	}
 }
 
-/** Obtener cabecera de autenticación */
+/** Get authentication header */
 async function getAuthorizationHeader(): Promise<string> {
 	const result = await authService.createAuthHeader();
 	if (!result.success) return "";
@@ -47,7 +47,7 @@ async function getAuthorizationHeader(): Promise<string> {
 }
 
 export const fetchAPI = {
-	/** Petición de tipo 'GET' */
+	/** GET request */
 	async GET<T>(url: string) {
 		return handleFetchAPI<T>({
 			method: "GET",
@@ -59,7 +59,7 @@ export const fetchAPI = {
 		});
 	},
 
-	/** Petición de tipo 'POST' */
+	/** POST request */
 	async POST<T>(url: string, body: object | URLSearchParams, isFormUrlEncoded = false) {
 		return handleFetchAPI<T>({
 			method: "POST",
@@ -72,7 +72,7 @@ export const fetchAPI = {
 		});
 	},
 
-	/** Petición de tipo 'PUT' */
+	/** PUT request */
 	async PUT<T>(url: string, body: object | URLSearchParams, isFormUrlEncoded = false) {
 		return handleFetchAPI<T>({
 			method: "PUT",
@@ -85,7 +85,7 @@ export const fetchAPI = {
 		});
 	},
 
-	/** Petición de tipo 'DELETE' */
+	/** DELETE request */
 	async DELETE<T>(url: string, body: object) {
 		return handleFetchAPI<T>({
 			method: "DELETE",

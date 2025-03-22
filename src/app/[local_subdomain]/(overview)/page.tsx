@@ -1,7 +1,7 @@
 import { AppProvider } from "@/hooks/use-app";
 import OverviewClientPage from "./page-client";
 import { Sidebar } from "@/components/sidebar";
-import { UserNav } from "@/components/usernav";
+import { UserNav } from "@/components/topbar";
 import { GetAuth } from "@/actions/auth.action";
 
 export default async function OverviewPage() {

@@ -1,6 +1,6 @@
 import { AppConfigs } from "./app";
 
-/** Configuración a nivel de plataforma */
+/** Platform-level configuration */
 export const PlatformConfigs = {
 	name: "ObieDesk",
 	url: (subdomain?: string) => {

@@ -14,7 +14,7 @@ import {
 import { useApp } from "@/hooks/use-app";
 import { useRouter } from "next/navigation";
 
-export function UserNav() {
+export function Topbar() {
 	const router = useRouter();
 	const { currentUser } = useApp();
 

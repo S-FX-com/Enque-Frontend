@@ -3,8 +3,9 @@ const PORT = process.env.PORT || 3000;
 const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME || "obiedesk";
 const APP_HOST = process.env.NEXT_PUBLIC_APP_HOST || "localhost";
 const APP_PROTOCOL = process.env.NEXT_PUBLIC_APP_PROTOCOL || "http";
+const APP_API = process.env.NEXT_PUBLIC_APP_API || "http://localhost:8000";
 
-/** Configuración a nivel de aplicación */
+/** Application-level configuration */
 export const AppConfigs = {
 	name: APP_NAME,
 	host: NODE_ENV === "development" ? `${APP_HOST}:${PORT}` : APP_HOST,
@@ -16,4 +17,5 @@ export const AppConfigs = {
 			name: "accessToken",
 		},
 	},
+	api: APP_API,
 };

@@ -1,29 +1,30 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { AppConfigs, PlatformConfigs } from "./configs";
 
-// Rutas Excluídas de Autorización
+// Routes excluded from authorization
 const authPaths = ["/signin", "/signup"];
 
-/** Función para excluír rutas de la autenticación */
+/** Function to exclude routes from authentication */
 function isAuthPath(path: string): boolean {
 	return authPaths.some((prefix) => path.startsWith(prefix));
 }
 
-/** Middleware principal */
+/** Main middleware */
 export async function middleware(request: NextRequest) {
 	const { headers, nextUrl } = request;
 	const host = headers.get("host");
 	const path = nextUrl.pathname;
 	let rewritePath = "";
 
-	// Condición para sobreescribir el path
+	// Condition for path overwrite
 	if (host?.startsWith("www") || host?.startsWith(AppConfigs.host)) rewritePath = `/main${path}`;
 	else rewritePath = `/${host}${path}`;
 
-	// Manejar solicitudes de www
+	// Handle `www` requests
 	if (host?.startsWith("www") || host?.startsWith(AppConfigs.host)) {
+		// Silence is gold
 	} else {
-		// Obtener token de acceso de la Cookie
+		// Get cookie access token
 		const accessToken = request.cookies.get(AppConfigs.cookies.accessToken.name)?.value;
 
 		if (isAuthPath(path)) {
@@ -33,12 +34,12 @@ export async function middleware(request: NextRequest) {
 		}
 	}
 
-	// Sobreescribir el path
+	// Overwrite path
 	nextUrl.pathname = rewritePath;
 	return NextResponse.rewrite(nextUrl);
 }
 
-// Configuración del middleware principal
+// Configuration of the main middleware
 export const config = {
 	matcher: ["/((?!_next|static|.*\\.).*)"],
 };

@@ -5,17 +5,17 @@ import { IUser } from "@/typescript/user";
 import { ICreateAuth } from "@/typescript/auth";
 import { ServiceResponse } from "@/typescript";
 
-/** Endpoint del servicio */
-const SERVICE_ENDPOINT = "http://localhost:8000/auth";
+/** Service endpoint */
+const SERVICE_ENDPOINT = `${AppConfigs.api}/auth`;
 
 export const authService = {
-	/** Crear cabecera de autorización por sesión en cookie */
+	/** Create authorization header */
 	async createAuthHeader(): Promise<ServiceResponse<any>> {
 		try {
 			const sessionCookie = await getCookie(AppConfigs.cookies.accessToken.name);
 			return { success: true, data: `Bearer ${sessionCookie}` };
 		} catch (error: unknown) {
-			const message = error instanceof Error ? error.message : "Error desconocido";
+			const message = error instanceof Error ? error.message : "Unknown error";
 			return { success: false, message };
 		}
 	},
@@ -32,7 +32,7 @@ export const authService = {
 			const data = await fetchAPI.POST<IUser>(SERVICE_ENDPOINT, formData, true);
 			return data;
 		} catch (error: unknown) {
-			const message = error instanceof Error ? error.message : "Error desconocido";
+			const message = error instanceof Error ? error.message : "Unknown error";
 			return { success: false, message };
 		}
 	},
@@ -43,7 +43,7 @@ export const authService = {
 			const data = await fetchAPI.GET<IUser>(`${SERVICE_ENDPOINT}/me`);
 			return data;
 		} catch (error: unknown) {
-			const message = error instanceof Error ? error.message : "Error desconocido";
+			const message = error instanceof Error ? error.message : "Unknown error";
 			return { success: false, message };
 		}
 	},

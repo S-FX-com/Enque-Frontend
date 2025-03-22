@@ -1,6 +1,6 @@
 import { AppProvider } from "@/hooks/use-app";
 import { Sidebar } from "@/components/sidebar";
-import { UserNav } from "@/components/usernav";
+import { UserNav } from "@/components/topbar";
 import { GetAuth } from "@/actions/auth.action";
 import MyTicketsClientPage from "./page-client";
 
