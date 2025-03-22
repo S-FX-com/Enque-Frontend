@@ -14,7 +14,7 @@ export function Sidebar() {
 	const mainItems = [
 		{
 			title: "Dashboard",
-			href: "/dashboard",
+			href: "/",
 			icon: <LayoutDashboard />,
 		},
 		{

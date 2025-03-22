@@ -3,7 +3,7 @@ import { ServiceResponse } from "@/typescript";
 import { ITicket } from "@/typescript/ticket";
 
 /** Endpoint del servicio */
-const SERVICE_ENDPOINT = "http://localhost:8000/tasks";
+const SERVICE_ENDPOINT = "http://localhost:8000/tickets";
 
 export const ticketService = {
 	/** */
