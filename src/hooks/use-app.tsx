@@ -1,17 +1,17 @@
 "use client";
 
-import { IUser } from "@/typescript/agent";
+import { IAgent } from "@/typescript/agent";
 import { createContext, useContext, useState } from "react";
 
 interface AppContextType {
-	currentUser?: IUser;
-	setCurrentUser: (user: IUser) => void;
+	currentUser?: IAgent;
+	setCurrentUser: (user: IAgent) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-export const AppProvider = ({ children, initialCurrentUser }: { children: React.ReactNode; initialCurrentUser?: IUser }) => {
-	const [currentUser, setCurrentUser] = useState<IUser | undefined>(initialCurrentUser);
+export const AppProvider = ({ children, initialCurrentUser }: { children: React.ReactNode; initialCurrentUser?: IAgent }) => {
+	const [currentUser, setCurrentUser] = useState<IAgent | undefined>(initialCurrentUser);
 
 	return <AppContext.Provider value={{ currentUser, setCurrentUser }}>{children}</AppContext.Provider>;
 };

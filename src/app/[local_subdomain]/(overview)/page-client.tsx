@@ -9,17 +9,18 @@ import { CheckCircle2, Circle, Clock } from "lucide-react";
 import { useApp } from "@/hooks/use-app";
 import { ticketService } from "@/services/ticket";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ITicket } from "@/typescript/ticket";
 
 export default function OverviewClientPage() {
 	const { currentUser } = useApp();
-	const [userTickets, setUserTickets] = useState([]);
+	const [tickets, setTickets] = useState<ITicket[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
 
 	useEffect(() => {
 		const loadTickets = async () => {
 			try {
-				const tickets = await ticketService.getTickets();
-				setUserTickets(tickets.data);
+				const ticketsResponse = await ticketService.getTickets({});
+				if (ticketsResponse.success) setTickets(ticketsResponse.data as ITicket[]);
 			} catch (error) {
 				console.error("Failed to load tickets:", error);
 			} finally {
@@ -29,6 +30,10 @@ export default function OverviewClientPage() {
 
 		loadTickets();
 	}, []);
+
+	const getAssignedTickets = tickets.filter((ticket) => ticket.sent_to?.id === currentUser?.id);
+	const getPendingTickets = tickets.filter((ticket) => ticket.sent_to?.id === currentUser?.id && ticket.status !== "Completed");
+	const getCompletedTickets = tickets.filter((ticket) => ticket.sent_to?.id === currentUser?.id && ticket.status === "Completed");
 
 	return (
 		<div className="p-8">
@@ -40,23 +45,23 @@ export default function OverviewClientPage() {
 					<CardContent className="p-0">
 						<div className="flex flex-col items-center p-6">
 							<Avatar className="h-24 w-24 mb-4">
-								<AvatarImage src={""} alt={currentUser.name} />
-								<AvatarFallback className="text-lg">{currentUser.name.substring(0, 2).toUpperCase()}</AvatarFallback>
+								<AvatarImage src={""} alt={currentUser?.name} />
+								<AvatarFallback className="text-lg">{currentUser?.name.substring(0, 2).toUpperCase()}</AvatarFallback>
 							</Avatar>
-							<h2 className="text-xl font-bold text-[#2B3674]">{currentUser.name}</h2>
+							<h2 className="text-xl font-bold text-[#2B3674]">{currentUser?.name}</h2>
 
 							<div className="flex justify-between w-full mt-8">
 								<div className="flex flex-col items-center">
-									<span className="text-2xl font-bold text-[#2B3674]">0</span>
-									<span className="text-xs text-gray-500">Tickets Assigned</span>
+									<span className="text-2xl font-bold text-[#2B3674]">{getAssignedTickets.length}</span>
+									<span className="text-xs text-gray-500">Assigned Tickets</span>
 								</div>
 								<div className="flex flex-col items-center">
-									<span className="text-2xl font-bold text-[#2B3674]">0</span>
-									<span className="text-xs text-gray-500">Tickets Completed</span>
+									<span className="text-2xl font-bold text-[#2B3674]">{getCompletedTickets.length}</span>
+									<span className="text-xs text-gray-500">Completed Tickets</span>
 								</div>
 								<div className="flex flex-col items-center">
-									<span className="text-2xl font-bold text-[#2B3674]">0</span>
-									<span className="text-xs text-gray-500">Teams</span>
+									<span className="text-2xl font-bold text-[#2B3674]">{getPendingTickets.length}</span>
+									<span className="text-xs text-gray-500">Pending Tickets</span>
 								</div>
 							</div>
 						</div>
@@ -73,7 +78,7 @@ export default function OverviewClientPage() {
 							<div className="space-y-4 mt-4">
 								{isLoading ? (
 									<TicketsLoadingSkeleton />
-								) : userTickets.length === 0 ? (
+								) : tickets.length === 0 ? (
 									<p className="text-sm text-gray-500">No tickets assigned to you.</p>
 								) : (
 									<div>
@@ -83,7 +88,7 @@ export default function OverviewClientPage() {
 											<div className="text-sm font-medium text-[#2B3674]">Status</div>
 										</div>
 
-										{userTickets.map((ticket: any) => (
+										{tickets.map((ticket: any) => (
 											<div key={ticket.id} className="grid grid-cols-3 py-3 border-t border-gray-100">
 												<div className="text-sm text-gray-600">{formatDate(ticket.created_at)}</div>
 												<div className="text-sm text-[#2B3674]">
