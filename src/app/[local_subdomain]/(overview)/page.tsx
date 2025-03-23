@@ -2,7 +2,7 @@ import { AppProvider } from "@/hooks/use-app";
 import OverviewClientPage from "./page-client";
 import { Sidebar } from "@/components/sidebar";
 import { Topbar } from "@/components/topbar";
-import { GetAuth } from "@/actions/auth.action";
+import { GetAuth } from "@/actions/auth";
 
 export default async function OverviewPage() {
 	const currentUser = await GetAuth();

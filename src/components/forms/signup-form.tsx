@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
-import { CreateUser, type CreateUserFormState } from "@/actions/user.action";
+import { CreateUser, type CreateUserFormState } from "@/actions/agent";
 
 const initialState: CreateUserFormState = {};
 

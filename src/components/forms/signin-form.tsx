@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 import { useActionState } from "react";
-import { Auth, type AuthFormState } from "@/actions/auth.action";
+import { Auth, type AuthFormState } from "@/actions/auth";
 
 const initialState: AuthFormState = {};
 

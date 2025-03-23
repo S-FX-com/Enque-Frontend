@@ -2,10 +2,11 @@
 
 import { PlatformConfigs } from "@/configs";
 import { fetchAPI } from "@/lib/fetch-api";
+import { agentService } from "@/services/agent";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
-export type CreateUserFormState = {
+export type CreateAgentFormState = {
 	success?: boolean;
 	errors?: {
 		name?: string[];
@@ -17,33 +18,30 @@ export type CreateUserFormState = {
 	message?: string;
 };
 
-/** Endpoint en la API */
-const API_ENDPOINT = `${PlatformConfigs.url("api")}/user`;
-
-/** Esquema de validación para crear un usuario */
-const CreateUserSchema = z
+/** Validation scheme to create a agent */
+const CreateAgentSchema = z
 	.object({
-		name: z.string().min(3, "El nombre debe tener al menos 3 caracteres"),
-		email: z.string().email("El correo electrónico no es válido"),
-		password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres"),
-		confirmPassword: z.string().min(8, "La confirmación de contraseña debe tener al menos 8 caracteres"),
+		name: z.string().min(3, "Name must be at least 3 characters long"),
+		email: z.string().email("Email address is invalid"),
+		password: z.string().min(8, "Password must be at least 8 characters long"),
+		confirmPassword: z.string().min(8, "Password confirmation must be at least 8 characters long"),
 	})
 	.refine((data) => data.password === data.confirmPassword, {
-		message: "Las contraseñas no coinciden",
+		message: "Passwords do not match",
 		path: ["confirmPassword"],
 	});
 
-/** Crear un usuario */
-export async function CreateUser(prevState: CreateUserFormState, formData: FormData) {
+/** Create agent */
+export async function CreateAgent(prevState: CreateAgentFormState, formData: FormData) {
 	const name = formData.get("name");
 	const email = formData.get("email");
 	const password = formData.get("password");
 	const confirmPassword = formData.get("confirmPassword");
 
-	const validation = CreateUserSchema.safeParse({ name, email, password, confirmPassword });
+	const validation = CreateAgentSchema.safeParse({ name, email, password, confirmPassword });
 	if (!validation.success) return { success: false, errors: validation.error.flatten().fieldErrors };
 
-	const response = await fetchAPI.POST<any>(API_ENDPOINT, { name, email, password });
+	const response = await agentService.createAgent({});
 	if (!response.success)
 		return {
 			errors: {

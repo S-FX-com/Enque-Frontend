@@ -1,7 +1,7 @@
 import { AppProvider } from "@/hooks/use-app";
 import { Sidebar } from "@/components/sidebar";
 import { Topbar } from "@/components/topbar";
-import { GetAuth } from "@/actions/auth.action";
+import { GetAuth } from "@/actions/auth";
 import MyTicketsClientPage from "./page-client";
 
 export default async function TasksPage() {

@@ -1,16 +1,17 @@
 import { AppConfigs } from "@/configs";
 import { getCookie } from "@/lib/cookies";
 import { fetchAPI } from "@/lib/fetch-api";
-import { IUser } from "@/typescript/agent";
+import { IAgent } from "@/typescript/agent";
 import { ICreateAuth } from "@/typescript/auth";
 import { ServiceResponse } from "@/typescript";
+import { IToken } from "@/typescript/token";
 
 /** Service endpoint */
 const SERVICE_ENDPOINT = `${AppConfigs.api}/auth`;
 
 export const authService = {
 	/** Create authorization header */
-	async createAuthHeader(): Promise<ServiceResponse<any>> {
+	async createAuthHeader(): Promise<ServiceResponse<string>> {
 		try {
 			const sessionCookie = await getCookie(AppConfigs.cookies.accessToken.name);
 			return { success: true, data: `Bearer ${sessionCookie}` };
@@ -21,7 +22,7 @@ export const authService = {
 	},
 
 	/** */
-	async createAuth(dataToCreate: ICreateAuth): Promise<ServiceResponse<IUser>> {
+	async createAuth(dataToCreate: ICreateAuth): Promise<ServiceResponse<IToken>> {
 		try {
 			const { email, password, companyId } = dataToCreate;
 
@@ -29,7 +30,7 @@ export const authService = {
 			formData.append("username", email);
 			formData.append("password", password);
 
-			const data = await fetchAPI.POST<IUser>(SERVICE_ENDPOINT, formData, true);
+			const data = await fetchAPI.POST<IToken>(SERVICE_ENDPOINT, formData, true);
 			return data;
 		} catch (error: unknown) {
 			const message = error instanceof Error ? error.message : "Unknown error";
@@ -38,9 +39,9 @@ export const authService = {
 	},
 
 	/** */
-	async getCurrentAuth(): Promise<ServiceResponse<IUser>> {
+	async getCurrentAuth(): Promise<ServiceResponse<IAgent>> {
 		try {
-			const data = await fetchAPI.GET<IUser>(`${SERVICE_ENDPOINT}/me`);
+			const data = await fetchAPI.GET<IAgent>(`${SERVICE_ENDPOINT}/me`);
 			return data;
 		} catch (error: unknown) {
 			const message = error instanceof Error ? error.message : "Unknown error";
