@@ -10,11 +10,11 @@ export interface ITicket {
 	description: string;
 	status: TicketStatus;
 	priority: TicketPriority;
-	due_date: Date;
+	due_date: string;
 	company: ICompany;
 	sent_from: IAgent;
 	sent_to: IAgent | null;
-	created_at: Date;
-	updated_at: Date;
-	deleted_at: Date | null;
+	created_at: string;
+	updated_at: string;
+	deleted_at: string | null;
 }

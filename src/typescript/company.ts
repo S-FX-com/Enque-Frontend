@@ -4,6 +4,6 @@ export interface ICompany {
 	local_subdomain: string;
 	email_domain: string;
 	logo_url: string;
-	created_at: Date;
-	updated_at: Date;
+	created_at: string;
+	updated_at: string;
 }
