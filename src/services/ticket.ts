@@ -8,7 +8,7 @@ const SERVICE_ENDPOINT = `${AppConfigs.api}/tickets`;
 
 export const ticketService = {
 	/** */
-	async getTickets(): Promise<ServiceResponse<ITicket[]>> {
+	async getTickets(paramsObj: any): Promise<ServiceResponse<ITicket[]>> {
 		try {
 			const data = await fetchAPI.GET<ITicket[]>(`${SERVICE_ENDPOINT}`);
 			return data;

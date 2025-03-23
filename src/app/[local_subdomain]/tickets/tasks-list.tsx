@@ -13,7 +13,7 @@ import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 import { formatDistanceToNow } from "date-fns";
 
 interface TasksListProps {
-	tickets: any[]; // Para permitir pasar tickets directamente
+	tickets: any[];
 	isFiltering?: boolean;
 }
 
@@ -23,69 +23,39 @@ export function TasksList({ tickets = [], isFiltering = false }: TasksListProps)
 	const scrollContainerRef = useRef<HTMLDivElement>(null);
 	const prevTicketsLength = useRef(tickets.length);
 
-	// Determinar si estamos en la página "My Tickets"
 	const isMyTicketsPage = pathname === "/my-tickets";
 
-	// Escuchar eventos de actualización de tickets
-	useEffect(() => {
-		const handleTicketUpdated = (event: CustomEvent) => {
-			// Actualizar el estado del ticket en la lista si está presente
-			const { id, status } = event.detail;
-			// No hacemos nada aquí porque los tickets se actualizan desde el componente padre
-		};
-
-		window.addEventListener("ticket-updated", handleTicketUpdated as EventListener);
-
-		return () => {
-			window.removeEventListener("ticket-updated", handleTicketUpdated as EventListener);
-		};
-	}, []);
-
-	// Preservar la posición de scroll cuando cambian los tickets
+	// Update scroll position when tickets change
 	useEffect(() => {
 		if (scrollContainerRef.current && prevTicketsLength.current !== tickets.length) {
-			// Solo guardamos la posición si estamos reduciendo la cantidad de tickets (filtrando)
-			if (tickets.length < prevTicketsLength.current) {
-				// No hacemos nada, dejamos que el scroll se mantenga en su posición
-			} else {
-				// Si estamos añadiendo tickets, podemos resetear el scroll
+			// Only reset scroll when adding tickets, not when filtering
+			if (tickets.length > prevTicketsLength.current) {
 				scrollContainerRef.current.scrollTop = 0;
 			}
 		}
 		prevTicketsLength.current = tickets.length;
 	}, [tickets]);
 
-	const handleTicketClick = (ticket: any) => {
-		setSelectedTicket(ticket);
-	};
-
-	const handleCloseDetail = () => {
-		setSelectedTicket(null);
-	};
-
-	// Función para formatear la fecha como tiempo relativo (ej: "2 hours ago")
+	// Format relative time (e.g., "2 hours ago")
 	const formatRelativeTime = (dateString: string) => {
 		try {
-			// Si la fecha es inválida o indefinida, devolver un texto por defecto
 			if (!dateString || dateString === "null" || dateString === "undefined") {
 				return "Unknown date";
 			}
 
-			// Intentar parsear la fecha
 			const date = new Date(dateString);
-
-			// Verificar si la fecha es válida
 			if (isNaN(date.getTime())) {
-				return dateString; // Si no es válida, devolver el string original
+				return dateString;
 			}
 
 			return formatDistanceToNow(date, { addSuffix: true });
 		} catch (error) {
-			console.error("Error formatting date:", error, "for dateString:", dateString);
+			console.error("Error formatting date:", error);
 			return dateString;
 		}
 	};
 
+	// Empty state
 	if (tickets.length === 0) {
 		return (
 			<motion.div
@@ -104,9 +74,37 @@ export function TasksList({ tickets = [], isFiltering = false }: TasksListProps)
 		);
 	}
 
+	// Render status icon based on ticket status
+	const renderStatusIcon = (status: string) => {
+		switch (status) {
+			case "Completed":
+				return <CheckCircle2 className="h-4 w-4 text-green-500" />;
+			case "In progress":
+				return <Clock className="h-4 w-4 text-blue-500" />;
+			case "Closed":
+				return <CheckCircle2 className="h-4 w-4 text-gray-500" />;
+			case "Deleted":
+				return <Circle className="h-4 w-4 text-red-500" />;
+			default:
+				return <Circle className="h-4 w-4 text-gray-300" />;
+		}
+	};
+
+	// Get badge variant based on priority
+	const getPriorityVariant = (priority: string) => {
+		switch (priority) {
+			case "High":
+				return "destructive";
+			case "Medium":
+				return "default";
+			default:
+				return "secondary";
+		}
+	};
+
 	return (
 		<div className="flex flex-col h-full overflow-hidden">
-			{/* Encabezado fijo */}
+			{/* Header */}
 			<div className="p-4 border-b">
 				<div className="flex items-center">
 					<div className="w-[100px] text-sm text-[#2B3674] flex items-center gap-2">
@@ -126,110 +124,87 @@ export function TasksList({ tickets = [], isFiltering = false }: TasksListProps)
 				</div>
 			</div>
 
-			{/* Contenido con scroll */}
+			{/* Scrollable content */}
 			<div
-				className={`flex-1 overflow-hidden`}
+				className={`flex-1 ${isFiltering ? "overflow-hidden" : "overflow-y-auto"}`}
 				ref={scrollContainerRef}
-				style={{
-					scrollbarWidth: "none",
-					msOverflowStyle: "none",
-					WebkitOverflowScrolling: "touch",
-				}}>
+				style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
 				<style jsx global>{`
-					/* Ocultar scrollbar para Chrome, Safari y Opera */
 					.overflow-y-auto::-webkit-scrollbar {
 						display: none;
 						width: 0 !important;
 					}
-
-					/* Ocultar scrollbar para IE, Edge y Firefox */
 					.overflow-y-auto {
-						-ms-overflow-style: none; /* IE y Edge */
-						scrollbar-width: none; /* Firefox */
+						-ms-overflow-style: none;
+						scrollbar-width: none;
 					}
 				`}</style>
 
-				<div className={`h-full ${isFiltering ? "overflow-hidden" : "overflow-y-auto"}`}>
-					<LayoutGroup>
-						<AnimatePresence initial={false} mode="popLayout">
-							{tickets.map((ticket) => (
-								<motion.div
-									key={ticket.id}
-									className="flex items-center py-4 px-4 border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
-									onClick={() => handleTicketClick(ticket)}
-									layout
-									initial={{ opacity: 0, y: 10 }}
-									animate={{ opacity: 1, y: 0 }}
-									exit={{ opacity: 0, scale: 0.95 }}
-									transition={{
-										type: "spring",
-										stiffness: 500,
-										damping: 30,
-										opacity: { duration: 0.2 },
-									}}>
-									<div className="w-[100px] flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-										<Checkbox id={`ticket-${ticket.id}`} />
-										<span className="text-blue-600">#{ticket.id}</span>
+				<LayoutGroup>
+					<AnimatePresence initial={false} mode="popLayout">
+						{tickets.map((ticket) => (
+							<motion.div
+								key={ticket.id}
+								className="flex items-center py-4 px-4 border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
+								onClick={() => setSelectedTicket(ticket)}
+								layout
+								initial={{ opacity: 0, y: 10 }}
+								animate={{ opacity: 1, y: 0 }}
+								exit={{ opacity: 0, scale: 0.95 }}
+								transition={{
+									type: "spring",
+									stiffness: 500,
+									damping: 30,
+									opacity: { duration: 0.2 },
+								}}>
+								<div className="w-[100px] flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+									<Checkbox id={`ticket-${ticket.id}`} />
+									<span className="text-blue-600">#{ticket.id}</span>
+								</div>
+								<div className="flex-1 pl-8">
+									<span className="text-[#2B3674] hover:underline">{ticket.title}</span>
+								</div>
+								<div className="w-[120px]">
+									<div className="flex items-center gap-2">
+										{renderStatusIcon(ticket.status)}
+										<span className="text-sm">{ticket.status}</span>
 									</div>
-									<div className="flex-1 pl-8">
-										<span className="text-[#2B3674] hover:underline">{ticket.title}</span>
-									</div>
-									<div className="w-[120px]">
-										<div className="flex items-center gap-2">
-											{ticket.status === "Completed" ? (
-												<CheckCircle2 className="h-4 w-4 text-green-500" />
-											) : ticket.status === "In progress" ? (
-												<Clock className="h-4 w-4 text-blue-500" />
-											) : ticket.status === "Closed" ? (
-												<CheckCircle2 className="h-4 w-4 text-gray-500" />
-											) : ticket.status === "Deleted" ? (
-												<Circle className="h-4 w-4 text-red-500" />
-											) : (
-												<Circle className="h-4 w-4 text-gray-300" />
-											)}
-											<span className="text-sm">{ticket.status}</span>
+								</div>
+								{!isMyTicketsPage && (
+									<>
+										<div className="w-[120px]">
+											<Badge variant={getPriorityVariant(ticket.priority)} className="text-xs">
+												{ticket.priority}
+											</Badge>
 										</div>
-									</div>
-									{!isMyTicketsPage && (
-										<>
-											<div className="w-[120px]">
-												<Badge
-													variant={
-														ticket.priority === "High" ? "destructive" : ticket.priority === "Medium" ? "default" : "secondary"
-													}
-													className="text-xs">
-													{ticket.priority}
-												</Badge>
+										<div className="w-[150px]">
+											<div className="flex items-center gap-2">
+												<Avatar className="h-6 w-6">
+													<AvatarFallback>{ticket.user?.name ? ticket.user.name.substring(0, 2).toUpperCase() : "UN"}</AvatarFallback>
+												</Avatar>
+												<span className="text-sm">{ticket.user?.name || "Unknown User"}</span>
 											</div>
-											<div className="w-[150px]">
-												<div className="flex items-center gap-2">
-													<Avatar className="h-6 w-6">
-														<AvatarFallback>
-															{ticket.user?.name ? ticket.user.name.substring(0, 2).toUpperCase() : "UN"}
-														</AvatarFallback>
-													</Avatar>
-													<span className="text-sm">{ticket.user?.name || "Unknown User"}</span>
-												</div>
+										</div>
+										<div className="w-[150px]">
+											<div className="flex items-center gap-2">
+												<Avatar className="h-6 w-6">
+													<AvatarFallback>
+														{ticket.assignee?.name ? ticket.assignee.name.substring(0, 2).toUpperCase() : "UN"}
+													</AvatarFallback>
+												</Avatar>
+												<span className="text-sm">{ticket.assignee?.name || "Unassigned"}</span>
 											</div>
-											<div className="w-[150px]">
-												<div className="flex items-center gap-2">
-													<Avatar className="h-6 w-6">
-														<AvatarFallback>{ticket.assignee.name.substring(0, 2).toUpperCase()}</AvatarFallback>
-													</Avatar>
-													<span className="text-sm">{ticket.assignee.name}</span>
-												</div>
-											</div>
-											<div className="w-[120px] text-sm">{formatRelativeTime(ticket.createdAt)}</div>
-										</>
-									)}
-								</motion.div>
-							))}
-						</AnimatePresence>
-					</LayoutGroup>
-				</div>
+										</div>
+										<div className="w-[120px] text-sm">{formatRelativeTime(ticket.createdAt)}</div>
+									</>
+								)}
+							</motion.div>
+						))}
+					</AnimatePresence>
+				</LayoutGroup>
 			</div>
 
-			{selectedTicket && <TicketDetail ticket={selectedTicket} onClose={handleCloseDetail} />}
+			{selectedTicket && <TicketDetail ticket={selectedTicket} onClose={() => setSelectedTicket(null)} />}
 		</div>
 	);
 }

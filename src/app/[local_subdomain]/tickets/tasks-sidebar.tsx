@@ -1,14 +1,14 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef, Suspense } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Image from "next/image";
-import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { ChevronsUpDown, X } from "lucide-react";
+import { ChevronsUpDown } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 
 interface TasksSidebarProps {
@@ -16,30 +16,27 @@ interface TasksSidebarProps {
 	onFiltersChange?: (filters: any) => void;
 }
 
-// Componente interno que usa searchParams
-function TasksSidebarContent({ initialAgents = [], onFiltersChange }: TasksSidebarProps) {
-	const router = useRouter();
-	const pathname = usePathname();
+export function TasksSidebar({ initialAgents = [], onFiltersChange }: TasksSidebarProps) {
 	const searchParams = useSearchParams();
 	const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
-	const isInitialRender = useRef(true);
 	const prevFiltersRef = useRef<any>({});
 
-	// Inicializar estados con valores de searchParams
+	// Filter states
 	const [subject, setSubject] = useState(searchParams.get("subject") || "");
 	const [selectedStatuses, setSelectedStatuses] = useState<string[]>(searchParams.get("status")?.split(",").filter(Boolean) || []);
 	const [selectedAgents, setSelectedAgents] = useState<string[]>(searchParams.get("agent")?.split(",").filter(Boolean) || []);
 	const [selectedPriorities, setSelectedPriorities] = useState<string[]>(searchParams.get("priority")?.split(",").filter(Boolean) || []);
 	const [selectedUsers, setSelectedUsers] = useState<string[]>(searchParams.get("user")?.split(",").filter(Boolean) || []);
+
+	// UI states
 	const [agents, setAgents] = useState<any[]>(initialAgents);
 	const [users, setUsers] = useState<any[]>([]);
 	const [statusOpen, setStatusOpen] = useState(false);
 	const [agentOpen, setAgentOpen] = useState(false);
 	const [priorityOpen, setPriorityOpen] = useState(false);
 	const [userOpen, setUserOpen] = useState(false);
-	const [isLoading, setIsLoading] = useState(false);
 
-	// Opciones de estado - Cambiado "Open" a "Pending"
+	// Options
 	const statusOptions = [
 		{ value: "Pending", label: "Pending" },
 		{ value: "In progress", label: "In Progress" },
@@ -48,24 +45,18 @@ function TasksSidebarContent({ initialAgents = [], onFiltersChange }: TasksSideb
 		{ value: "Deleted", label: "Deleted" },
 	];
 
-	// Opciones de prioridad
 	const priorityOptions = [
 		{ value: "High", label: "High" },
 		{ value: "Medium", label: "Medium" },
 		{ value: "Low", label: "Low" },
 	];
 
-	// Cargar agentes y usuarios
+	// Load agents and users
 	useEffect(() => {
 		const loadData = async () => {
 			try {
-				// Cargar agentes
-				const agentsData = await getTeamMembers();
-				setAgents(agentsData);
-
-				// Cargar usuarios reales de los tickets
+				// Load users
 				try {
-					// Intentar cargar los usuarios de la API
 					const response = await fetch("/api/users");
 					if (response.ok) {
 						const userData = await response.json();
@@ -78,7 +69,7 @@ function TasksSidebarContent({ initialAgents = [], onFiltersChange }: TasksSideb
 							);
 						}
 					} else {
-						console.warn("Could not load users from API, using default users");
+						// Fallback users
 						setUsers([
 							{ id: "1", name: "Richard Castro" },
 							{ id: "2", name: "Support User" },
@@ -87,7 +78,7 @@ function TasksSidebarContent({ initialAgents = [], onFiltersChange }: TasksSideb
 					}
 				} catch (error) {
 					console.warn("Error loading users:", error);
-					// Usuarios de reserva en caso de error
+					// Fallback users
 					setUsers([
 						{ id: "1", name: "Richard Castro" },
 						{ id: "2", name: "Support User" },
@@ -104,9 +95,8 @@ function TasksSidebarContent({ initialAgents = [], onFiltersChange }: TasksSideb
 		}
 	}, [initialAgents]);
 
-	// Actualizar filtros sin cambiar la URL
+	// Update filters
 	const updateFilters = useCallback(() => {
-		// Crear objeto de filtros
 		const filters: Record<string, string | string[]> = {};
 
 		if (subject) filters.subject = subject;
@@ -115,57 +105,40 @@ function TasksSidebarContent({ initialAgents = [], onFiltersChange }: TasksSideb
 		if (selectedPriorities.length > 0) filters.priority = selectedPriorities;
 		if (selectedUsers.length > 0) filters.user = selectedUsers;
 
-		// Incluir deleted solo si está seleccionado explícitamente
+		// Include deleted only if explicitly selected
 		if (selectedStatuses.includes("Deleted")) {
 			filters.includeDeleted = "true";
 		}
 
-		// Verificar si los filtros han cambiado realmente
+		// Check if filters have changed
 		const currentFiltersStr = JSON.stringify(filters);
 		const prevFiltersStr = JSON.stringify(prevFiltersRef.current);
 
 		if (currentFiltersStr !== prevFiltersStr) {
-			setIsLoading(true);
-
-			// Actualizar la referencia de filtros previos
 			prevFiltersRef.current = { ...filters };
 
-			// Notificar al componente padre sobre el cambio de filtros
+			// Notify parent component
 			if (onFiltersChange) {
 				onFiltersChange(filters);
 			}
-
-			// Desactivar el estado de carga después de un breve retraso
-			setTimeout(() => {
-				setIsLoading(false);
-			}, 200);
 		}
 	}, [subject, selectedStatuses, selectedAgents, selectedPriorities, selectedUsers, onFiltersChange]);
 
-	// Función para manejar cambios en los filtros con debounce
+	// Handle filter changes with debounce
 	const handleFilterChange = useCallback(() => {
-		// Limpiar el timer anterior si existe
 		if (debounceTimerRef.current) {
 			clearTimeout(debounceTimerRef.current);
 		}
 
-		// Establecer un nuevo timer
 		debounceTimerRef.current = setTimeout(() => {
 			updateFilters();
 		}, 300);
 	}, [updateFilters]);
 
-	// Actualizar filtros cuando cambian los valores
+	// Update filters when values change
 	useEffect(() => {
-		// Evitar la actualización en el primer renderizado
-		if (isInitialRender.current) {
-			isInitialRender.current = false;
-			return;
-		}
-
 		handleFilterChange();
 
-		// Limpiar el timer cuando el componente se desmonte
 		return () => {
 			if (debounceTimerRef.current) {
 				clearTimeout(debounceTimerRef.current);
@@ -173,7 +146,7 @@ function TasksSidebarContent({ initialAgents = [], onFiltersChange }: TasksSideb
 		};
 	}, [subject, selectedStatuses, selectedAgents, selectedPriorities, selectedUsers, handleFilterChange]);
 
-	// Limpiar todos los filtros
+	// Clear all filters
 	const handleClearFilters = () => {
 		setSubject("");
 		setSelectedStatuses([]);
@@ -182,7 +155,7 @@ function TasksSidebarContent({ initialAgents = [], onFiltersChange }: TasksSideb
 		setSelectedUsers([]);
 	};
 
-	// Restablecer filtros a los valores de la URL
+	// Reset filters to URL values
 	const handleResetFilters = () => {
 		setSubject(searchParams.get("subject") || "");
 		setSelectedStatuses(searchParams.get("status")?.split(",").filter(Boolean) || []);
@@ -191,23 +164,50 @@ function TasksSidebarContent({ initialAgents = [], onFiltersChange }: TasksSideb
 		setSelectedUsers(searchParams.get("user")?.split(",").filter(Boolean) || []);
 	};
 
-	// Eliminar un filtro específico
-	const handleRemoveFilter = (type: string, value: string) => {
-		switch (type) {
-			case "status":
-				setSelectedStatuses((prev) => prev.filter((s) => s !== value));
-				break;
-			case "agent":
-				setSelectedAgents((prev) => prev.filter((a) => a !== value));
-				break;
-			case "priority":
-				setSelectedPriorities((prev) => prev.filter((p) => p !== value));
-				break;
-			case "user":
-				setSelectedUsers((prev) => prev.filter((u) => u !== value));
-				break;
-		}
-	};
+	// Render a filter dropdown
+	const renderFilterDropdown = (
+		label: string,
+		options: { value: string; label: string }[],
+		selected: string[],
+		setSelected: (value: string[]) => void,
+		isOpen: boolean,
+		setIsOpen: (value: boolean) => void
+	) => (
+		<div className="mb-5">
+			<Label className="text-[#11142D] mb-2 block">{label}</Label>
+			<Popover open={isOpen} onOpenChange={setIsOpen}>
+				<PopoverTrigger asChild>
+					<Button variant="outline" role="combobox" aria-expanded={isOpen} className="w-full justify-between bg-[#F6F8FD] border-none">
+						<span className="truncate text-gray-400">{selected.length === 0 ? "Select..." : selected.join(", ")}</span>
+						<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+					</Button>
+				</PopoverTrigger>
+				<PopoverContent className="w-[270px] p-0">
+					<Command>
+						<CommandInput placeholder={`Search ${label.toLowerCase()}...`} />
+						<CommandList>
+							<CommandEmpty>No {label.toLowerCase()} found.</CommandEmpty>
+							<CommandGroup>
+								{options.map((option) => (
+									<CommandItem
+										key={option.value}
+										onSelect={() => {
+											const newSelected = selected.includes(option.value)
+												? selected.filter((s) => s !== option.value)
+												: [...selected, option.value];
+											setSelected(newSelected);
+										}}>
+										<Checkbox checked={selected.includes(option.value)} className="mr-2" />
+										{option.label}
+									</CommandItem>
+								))}
+							</CommandGroup>
+						</CommandList>
+					</Command>
+				</PopoverContent>
+			</Popover>
+		</div>
+	);
 
 	return (
 		<div className="w-[320px] p-6 h-full overflow-hidden flex flex-col">
@@ -225,7 +225,7 @@ function TasksSidebarContent({ initialAgents = [], onFiltersChange }: TasksSideb
 				</div>
 
 				<div className="p-6 flex-1 overflow-y-auto">
-					{/* Filter by subject */}
+					{/* Subject filter */}
 					<div className="mb-5">
 						<Label htmlFor="filter-subject" className="text-[#11142D] mb-2 block">
 							Subject
@@ -239,47 +239,10 @@ function TasksSidebarContent({ initialAgents = [], onFiltersChange }: TasksSideb
 						/>
 					</div>
 
-					{/* Filter by status */}
-					<div className="mb-5">
-						<Label className="text-[#11142D] mb-2 block">Statuses</Label>
-						<Popover open={statusOpen} onOpenChange={setStatusOpen}>
-							<PopoverTrigger asChild>
-								<Button
-									variant="outline"
-									role="combobox"
-									aria-expanded={statusOpen}
-									className="w-full justify-between bg-[#F6F8FD] border-none">
-									<span className="truncate text-gray-400">{selectedStatuses.length === 0 ? "Select..." : selectedStatuses.join(", ")}</span>
-									<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-								</Button>
-							</PopoverTrigger>
-							<PopoverContent className="w-[270px] p-0">
-								<Command>
-									<CommandInput placeholder="Search status..." />
-									<CommandList>
-										<CommandEmpty>No status found.</CommandEmpty>
-										<CommandGroup>
-											{statusOptions.map((status) => (
-												<CommandItem
-													key={status.value}
-													onSelect={() => {
-														const newSelectedStatuses = selectedStatuses.includes(status.value)
-															? selectedStatuses.filter((s) => s !== status.value)
-															: [...selectedStatuses, status.value];
-														setSelectedStatuses(newSelectedStatuses);
-													}}>
-													<Checkbox checked={selectedStatuses.includes(status.value)} className="mr-2" />
-													{status.label}
-												</CommandItem>
-											))}
-										</CommandGroup>
-									</CommandList>
-								</Command>
-							</PopoverContent>
-						</Popover>
-					</div>
+					{/* Status filter */}
+					{renderFilterDropdown("Statuses", statusOptions, selectedStatuses, setSelectedStatuses, statusOpen, setStatusOpen)}
 
-					{/* Filter by agent */}
+					{/* Agent filter */}
 					<div className="mb-5">
 						<Label className="text-[#11142D] mb-2 block">Agents</Label>
 						<Popover open={agentOpen} onOpenChange={setAgentOpen}>
@@ -307,10 +270,10 @@ function TasksSidebarContent({ initialAgents = [], onFiltersChange }: TasksSideb
 													key={agent.id}
 													onSelect={() => {
 														const agentId = String(agent.id);
-														const newSelectedAgents = selectedAgents.includes(agentId)
+														const newSelected = selectedAgents.includes(agentId)
 															? selectedAgents.filter((a) => a !== agentId)
 															: [...selectedAgents, agentId];
-														setSelectedAgents(newSelectedAgents);
+														setSelectedAgents(newSelected);
 													}}>
 													<Checkbox checked={selectedAgents.includes(String(agent.id))} className="mr-2" />
 													{agent.name}
@@ -323,49 +286,10 @@ function TasksSidebarContent({ initialAgents = [], onFiltersChange }: TasksSideb
 						</Popover>
 					</div>
 
-					{/* Filter by priority */}
-					<div className="mb-5">
-						<Label className="text-[#11142D] mb-2 block">Priorities</Label>
-						<Popover open={priorityOpen} onOpenChange={setPriorityOpen}>
-							<PopoverTrigger asChild>
-								<Button
-									variant="outline"
-									role="combobox"
-									aria-expanded={priorityOpen}
-									className="w-full justify-between bg-[#F6F8FD] border-none">
-									<span className="truncate text-gray-400">
-										{selectedPriorities.length === 0 ? "Select..." : selectedPriorities.join(", ")}
-									</span>
-									<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-								</Button>
-							</PopoverTrigger>
-							<PopoverContent className="w-[270px] p-0">
-								<Command>
-									<CommandInput placeholder="Search priority..." />
-									<CommandList>
-										<CommandEmpty>No priority found.</CommandEmpty>
-										<CommandGroup>
-											{priorityOptions.map((priority) => (
-												<CommandItem
-													key={priority.value}
-													onSelect={() => {
-														const newSelectedPriorities = selectedPriorities.includes(priority.value)
-															? selectedPriorities.filter((p) => p !== priority.value)
-															: [...selectedPriorities, priority.value];
-														setSelectedPriorities(newSelectedPriorities);
-													}}>
-													<Checkbox checked={selectedPriorities.includes(priority.value)} className="mr-2" />
-													{priority.label}
-												</CommandItem>
-											))}
-										</CommandGroup>
-									</CommandList>
-								</Command>
-							</PopoverContent>
-						</Popover>
-					</div>
+					{/* Priority filter */}
+					{renderFilterDropdown("Priorities", priorityOptions, selectedPriorities, setSelectedPriorities, priorityOpen, setPriorityOpen)}
 
-					{/* Filter by users */}
+					{/* User filter */}
 					<div className="mb-5">
 						<Label className="text-[#11142D] mb-2 block">Users</Label>
 						<Popover open={userOpen} onOpenChange={setUserOpen}>
@@ -393,10 +317,10 @@ function TasksSidebarContent({ initialAgents = [], onFiltersChange }: TasksSideb
 													key={user.id}
 													onSelect={() => {
 														const userId = String(user.id);
-														const newSelectedUsers = selectedUsers.includes(userId)
+														const newSelected = selectedUsers.includes(userId)
 															? selectedUsers.filter((u) => u !== userId)
 															: [...selectedUsers, userId];
-														setSelectedUsers(newSelectedUsers);
+														setSelectedUsers(newSelected);
 													}}>
 													<Checkbox checked={selectedUsers.includes(String(user.id))} className="mr-2" />
 													{user.name}
@@ -411,14 +335,5 @@ function TasksSidebarContent({ initialAgents = [], onFiltersChange }: TasksSideb
 				</div>
 			</div>
 		</div>
-	);
-}
-
-// Componente principal que utiliza Suspense
-export function TasksSidebar(props: TasksSidebarProps) {
-	return (
-		<Suspense fallback={<div className="w-[320px] p-6 bg-gray-100 animate-pulse"></div>}>
-			<TasksSidebarContent {...props} />
-		</Suspense>
 	);
 }

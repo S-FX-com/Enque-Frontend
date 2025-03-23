@@ -1,7 +1,7 @@
 import { AppConfigs } from "@/configs";
 import { getCookie } from "@/lib/cookies";
 import { fetchAPI } from "@/lib/fetch-api";
-import { IUser } from "@/typescript/user";
+import { IUser } from "@/typescript/agent";
 import { ICreateAuth } from "@/typescript/auth";
 import { ServiceResponse } from "@/typescript";
 

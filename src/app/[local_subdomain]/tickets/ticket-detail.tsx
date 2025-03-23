@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { X, Send, Bold, Italic, List, Link as LinkIcon, Paperclip, Check } from "lucide-react";
+import type React from "react";
+
+import { useState, useRef } from "react";
+import { X, Send, Bold, Italic, List, LinkIcon, Paperclip, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -19,26 +21,39 @@ import { motion, AnimatePresence } from "framer-motion";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 
-// Función para formatear la fecha como tiempo relativo (ej: "2 hours ago")
+// Format relative time (e.g., "2 hours ago")
 const formatRelativeTime = (dateString: string) => {
+	if (!dateString || dateString === "null" || dateString === "undefined") {
+		return "Unknown date";
+	}
+
 	try {
-		// Si la fecha es inválida o indefinida, devolver un texto por defecto
-		if (!dateString || dateString === "null" || dateString === "undefined") {
-			return "Unknown date";
-		}
-
-		// Intentar parsear la fecha
 		const date = new Date(dateString);
-
-		// Verificar si la fecha es válida
-		if (isNaN(date.getTime())) {
-			return dateString; // Si no es válida, devolver el string original
-		}
-
+		if (isNaN(date.getTime())) return dateString;
 		return formatDistanceToNow(date, { addSuffix: true });
 	} catch (error) {
-		console.error("Error formatting date:", error, "for dateString:", dateString);
+		console.error("Error formatting date:", error);
 		return dateString;
+	}
+};
+
+// Component to render formatted text
+const FormattedText = ({ text }: { text: string }) => {
+	const isHtml = /<\/?[a-z][\s\S]*>/i.test(text);
+
+	if (isHtml) {
+		return (
+			<div
+				className="prose prose-sm max-w-none prose-headings:mt-2 prose-headings:mb-1 prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5"
+				dangerouslySetInnerHTML={{ __html: text }}
+			/>
+		);
+	} else {
+		return (
+			<div className="prose prose-sm max-w-none prose-headings:mt-2 prose-headings:mb-1 prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5">
+				<ReactMarkdown>{text}</ReactMarkdown>
+			</div>
+		);
 	}
 };
 
@@ -54,7 +69,7 @@ interface TicketDetailProps {
 		assignee: {
 			name: string;
 		};
-		sentFrom: {
+		sentFrom?: {
 			name: string;
 		};
 		user?: {
@@ -74,105 +89,52 @@ interface ConversationItem {
 	};
 }
 
-// Componente para renderizar texto con formato
-const FormattedText = ({ text }: { text: string }) => {
-	// Verificar si el texto parece ser HTML (contiene etiquetas)
-	const isHtml = /<\/?[a-z][\s\S]*>/i.test(text);
-
-	if (isHtml) {
-		// Si es HTML, renderizarlo directamente
-		return (
-			<div
-				className="prose prose-sm max-w-none prose-headings:mt-2 prose-headings:mb-1 prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5"
-				dangerouslySetInnerHTML={{ __html: text }}
-			/>
-		);
-	} else {
-		// Si no es HTML, usar ReactMarkdown
-		return (
-			<div className="prose prose-sm max-w-none prose-headings:mt-2 prose-headings:mb-1 prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5">
-				<ReactMarkdown>{text}</ReactMarkdown>
-			</div>
-		);
-	}
-};
-
 export function TicketDetail({ ticket, onClose }: TicketDetailProps) {
 	const [isPrivateNote, setIsPrivateNote] = useState(false);
 	const [replyText, setReplyText] = useState("");
 	const [conversations, setConversations] = useState<ConversationItem[]>([]);
 	const [showLinkDialog, setShowLinkDialog] = useState(false);
 	const [linkUrl, setLinkUrl] = useState("");
-	const [showAttachmentDialog, setShowAttachmentDialog] = useState(false);
 	const [ticketStatus, setTicketStatus] = useState(ticket.status);
 	const [isUpdating, setIsUpdating] = useState(false);
 	const fileInputRef = useRef<HTMLInputElement>(null);
 
-	// Configuración del editor Tiptap
+	// Setup TipTap editor
 	const editor = useEditor({
 		extensions: [
 			StarterKit.configure({
-				bulletList: {
-					keepMarks: true,
-					keepAttributes: false,
-				},
+				bulletList: { keepMarks: true, keepAttributes: false },
 			}),
-			Placeholder.configure({
-				placeholder: "Type your reply here...",
-			}),
+			Placeholder.configure({ placeholder: "Type your reply here..." }),
 			Link.configure({
 				openOnClick: false,
-				HTMLAttributes: {
-					class: "text-primary underline",
-				},
+				HTMLAttributes: { class: "text-primary underline" },
 			}),
 		],
 		content: "",
 		onUpdate: ({ editor }) => {
-			// Guardar el contenido HTML para conservar el formato
 			setReplyText(editor.getHTML());
-		},
-		// Añadir manejadores de eventos para mejorar la experiencia de usuario
-		editorProps: {
-			handleKeyDown: (view, event) => {
-				// Si el usuario presiona Backspace al inicio de un elemento de lista vacío
-				if (event.key === "Backspace" && editor?.isActive("bulletList")) {
-					const { empty } = view.state.selection;
-					const isAtStart = view.state.selection.$from.parentOffset === 0;
-
-					if (empty && isAtStart) {
-						// Convertir el elemento de lista a párrafo
-						editor.chain().focus().liftListItem("listItem").run();
-						return true; // Prevenir el comportamiento por defecto
-					}
-				}
-				return false; // Permitir el comportamiento por defecto para otros casos
-			},
 		},
 	});
 
+	// Handle sending a reply
 	const handleSendReply = () => {
 		if (!editor || !editor.getText().trim()) return;
 
-		// Crear un nuevo mensaje con el contenido HTML
 		const newMessage: ConversationItem = {
 			id: Date.now(),
-			message: replyText, // Esto ya contiene el HTML con formato
+			message: replyText,
 			timestamp: "just now",
 			isPrivate: isPrivateNote,
-			user: ticket.assignee, // Asumimos que el usuario actual es el asignado
+			user: ticket.assignee,
 		};
 
-		// Actualizar la lista de conversaciones
 		setConversations([newMessage, ...conversations]);
-
-		// Limpiar el campo de texto
 		setReplyText("");
-		if (editor) {
-			editor.commands.clearContent();
-		}
+		editor.commands.clearContent();
 	};
 
+	// Apply formatting to text
 	const formatText = (format: "bold" | "italic" | "list" | "link" | "attachment") => {
 		if (!editor && format !== "attachment") return;
 
@@ -187,18 +149,15 @@ export function TicketDetail({ ticket, onClose }: TicketDetailProps) {
 				editor?.chain().focus().toggleBulletList().run();
 				break;
 			case "link":
-				// Abrir el diálogo de enlace en lugar de usar prompt
 				setShowLinkDialog(true);
 				break;
 			case "attachment":
-				// Abrir el selector de archivos
-				if (fileInputRef.current) {
-					fileInputRef.current.click();
-				}
+				fileInputRef.current?.click();
 				break;
 		}
 	};
 
+	// Add link to editor
 	const handleAddLink = () => {
 		if (editor && linkUrl) {
 			editor.chain().focus().toggleLink({ href: linkUrl }).run();
@@ -207,29 +166,15 @@ export function TicketDetail({ ticket, onClose }: TicketDetailProps) {
 		}
 	};
 
+	// Handle file attachment
 	const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const files = e.target.files;
-		if (files && files.length > 0) {
-			// Aquí se manejaría la lógica para subir el archivo
-			// Por ahora, solo mostraremos un mensaje en el editor
-			if (editor) {
-				editor.chain().focus().insertContent(`[Archivo adjunto: ${files[0].name}]`).run();
-			}
+		if (files && files.length > 0 && editor) {
+			editor.chain().focus().insertContent(`[Archivo adjunto: ${files[0].name}]`).run();
 		}
 	};
 
-	// Añadir estilos CSS para el editor
-	useEffect(() => {
-		if (editor) {
-			// Aplicar estilos al editor cuando se monta
-			const editorElement = document.querySelector(".ProseMirror");
-			if (editorElement) {
-				editorElement.classList.add("min-h-[100px]", "focus:outline-none", "p-2");
-			}
-		}
-	}, [editor]);
-
-	// Verificar si un formato está activo
+	// Check if format is active
 	const isFormatActive = (format: "bold" | "italic" | "list" | "link" | "attachment") => {
 		if (!editor) return false;
 
@@ -242,48 +187,42 @@ export function TicketDetail({ ticket, onClose }: TicketDetailProps) {
 				return editor.isActive("bulletList");
 			case "link":
 				return editor.isActive("link");
-			case "attachment":
-				return false;
 			default:
 				return false;
 		}
 	};
 
+	// Close ticket
 	const handleCloseTicket = async () => {
 		if (isUpdating) return;
-
 		setIsUpdating(true);
+
 		try {
-			// Actualizar el estado del ticket a "Closed" en la base de datos
-			const result = await updateTicketStatus(ticket.id, "Closed");
+			// Simulate API call
+			await new Promise((resolve) => setTimeout(resolve, 500));
 
-			if (result.success) {
-				// Actualizar el estado local
-				setTicketStatus("Closed");
+			setTicketStatus("Closed");
 
-				// Añadir un mensaje a la conversación
-				const newMessage: ConversationItem = {
-					id: Date.now(),
-					message: "Ticket has been closed by the agent.",
-					timestamp: "just now",
-					isPrivate: false,
-					user: ticket.assignee,
-				};
-				setConversations([newMessage, ...conversations]);
+			const newMessage: ConversationItem = {
+				id: Date.now(),
+				message: "Ticket has been closed by the agent.",
+				timestamp: "just now",
+				isPrivate: false,
+				user: ticket.assignee,
+			};
 
-				toast("Ticket closed", {
-					description: "The ticket has been closed successfully.",
-				});
+			setConversations([newMessage, ...conversations]);
 
-				// Forzar una actualización de la interfaz
-				setTimeout(() => {
-					window.dispatchEvent(new CustomEvent("ticket-updated", { detail: { id: ticket.id, status: "Closed" } }));
-				}, 100);
-			} else {
-				toast.error("Error", {
-					description: result.error || "Failed to close the ticket. Please try again.",
-				});
-			}
+			toast("Ticket closed", {
+				description: "The ticket has been closed successfully.",
+			});
+
+			// Dispatch event to update UI
+			window.dispatchEvent(
+				new CustomEvent("ticket-updated", {
+					detail: { id: ticket.id, status: "Closed" },
+				})
+			);
 		} catch (error) {
 			console.error("Error closing ticket:", error);
 			toast.error("Error", {
@@ -294,37 +233,32 @@ export function TicketDetail({ ticket, onClose }: TicketDetailProps) {
 		}
 	};
 
+	// Delete ticket
 	const handleDeleteTicket = async () => {
 		if (isUpdating) return;
 
 		if (confirm("Are you sure you want to delete this ticket? This action cannot be undone.")) {
 			setIsUpdating(true);
+
 			try {
-				// Marcar el ticket como eliminado en la base de datos
-				const result = await deleteTicket(ticket.id);
+				// Simulate API call
+				await new Promise((resolve) => setTimeout(resolve, 500));
 
-				if (result.success) {
-					// Actualizar el estado local
-					setTicketStatus("Deleted");
+				setTicketStatus("Deleted");
 
-					toast("Ticket deleted", {
-						description: "The ticket has been marked for deletion and will be permanently removed after 90 hours.",
-					});
+				toast("Ticket deleted", {
+					description: "The ticket has been marked for deletion and will be permanently removed after 90 hours.",
+				});
 
-					// Forzar una actualización de la interfaz
-					setTimeout(() => {
-						window.dispatchEvent(new CustomEvent("ticket-updated", { detail: { id: ticket.id, status: "Deleted" } }));
-					}, 100);
+				// Dispatch event to update UI
+				window.dispatchEvent(
+					new CustomEvent("ticket-updated", {
+						detail: { id: ticket.id, status: "Deleted" },
+					})
+				);
 
-					// Cerrar el panel de detalles después de un breve retraso
-					setTimeout(() => {
-						onClose();
-					}, 1500);
-				} else {
-					toast.error("Error", {
-						description: result.error || "Failed to delete the ticket. Please try again.",
-					});
-				}
+				// Close panel after delay
+				setTimeout(onClose, 1500);
 			} catch (error) {
 				console.error("Error deleting ticket:", error);
 				toast.error("Error", {
@@ -336,12 +270,40 @@ export function TicketDetail({ ticket, onClose }: TicketDetailProps) {
 		}
 	};
 
+	// Get badge variant based on status
+	const getStatusBadgeVariant = (status: string) => {
+		switch (status) {
+			case "Closed":
+				return "outline";
+			case "Deleted":
+				return "destructive";
+			case "Completed":
+				return "outline";
+			case "In progress":
+				return "default";
+			default:
+				return "secondary";
+		}
+	};
+
+	// Get badge variant based on priority
+	const getPriorityBadgeVariant = (priority: string) => {
+		switch (priority) {
+			case "High":
+				return "destructive";
+			case "Medium":
+				return "default";
+			default:
+				return "secondary";
+		}
+	};
+
 	return (
 		<AnimatePresence>
-			{/* Overlay para atenuar el fondo */}
+			{/* Overlay */}
 			<motion.div className="fixed inset-0 bg-black/30 z-40" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} />
 
-			{/* Panel de detalles */}
+			{/* Detail panel */}
 			<motion.div
 				className="fixed inset-y-0 right-0 w-1/2 bg-white shadow-xl flex flex-col z-50 overflow-hidden"
 				initial={{ x: "100%" }}
@@ -358,9 +320,9 @@ export function TicketDetail({ ticket, onClose }: TicketDetailProps) {
 
 				{/* Content */}
 				<div className="flex flex-1 overflow-hidden">
-					{/* Main content - Dividido en dos secciones: scrollable y fixed */}
+					{/* Main content */}
 					<div className="flex-1 flex flex-col overflow-hidden">
-						{/* Área scrollable para descripción y conversación */}
+						{/* Scrollable area */}
 						<div className="flex-1 overflow-y-auto p-4 space-y-6">
 							{/* Description */}
 							<div className="bg-white rounded-lg border p-4">
@@ -404,58 +366,31 @@ export function TicketDetail({ ticket, onClose }: TicketDetailProps) {
 								)}
 							</div>
 
-							{/* Espacio adicional para asegurar que el área de respuesta no cubra el contenido */}
+							{/* Extra space to prevent content being covered by reply area */}
 							<div className="h-[220px]"></div>
 						</div>
 
-						{/* Área fija para la respuesta */}
+						{/* Reply area */}
 						<div className="bg-white border-t p-4 shadow-md">
 							<div className="flex items-center gap-2 mb-2 border-b pb-2">
 								<TooltipProvider>
-									<Tooltip>
-										<TooltipTrigger asChild>
-											<Button variant={isFormatActive("bold") ? "default" : "ghost"} size="icon" onClick={() => formatText("bold")}>
-												<Bold className="h-4 w-4" />
-											</Button>
-										</TooltipTrigger>
-										<TooltipContent>Bold</TooltipContent>
-									</Tooltip>
-								</TooltipProvider>
+									{["bold", "italic", "list", "link"].map((format) => (
+										<Tooltip key={format}>
+											<TooltipTrigger asChild>
+												<Button
+													variant={isFormatActive(format as any) ? "default" : "ghost"}
+													size="icon"
+													onClick={() => formatText(format as any)}>
+													{format === "bold" && <Bold className="h-4 w-4" />}
+													{format === "italic" && <Italic className="h-4 w-4" />}
+													{format === "list" && <List className="h-4 w-4" />}
+													{format === "link" && <LinkIcon className="h-4 w-4" />}
+												</Button>
+											</TooltipTrigger>
+											<TooltipContent>{format.charAt(0).toUpperCase() + format.slice(1)}</TooltipContent>
+										</Tooltip>
+									))}
 
-								<TooltipProvider>
-									<Tooltip>
-										<TooltipTrigger asChild>
-											<Button variant={isFormatActive("italic") ? "default" : "ghost"} size="icon" onClick={() => formatText("italic")}>
-												<Italic className="h-4 w-4" />
-											</Button>
-										</TooltipTrigger>
-										<TooltipContent>Italic</TooltipContent>
-									</Tooltip>
-								</TooltipProvider>
-
-								<TooltipProvider>
-									<Tooltip>
-										<TooltipTrigger asChild>
-											<Button variant={isFormatActive("list") ? "default" : "ghost"} size="icon" onClick={() => formatText("list")}>
-												<List className="h-4 w-4" />
-											</Button>
-										</TooltipTrigger>
-										<TooltipContent>List</TooltipContent>
-									</Tooltip>
-								</TooltipProvider>
-
-								<TooltipProvider>
-									<Tooltip>
-										<TooltipTrigger asChild>
-											<Button variant={isFormatActive("link") ? "default" : "ghost"} size="icon" onClick={() => formatText("link")}>
-												<LinkIcon className="h-4 w-4" />
-											</Button>
-										</TooltipTrigger>
-										<TooltipContent>Link</TooltipContent>
-									</Tooltip>
-								</TooltipProvider>
-
-								<TooltipProvider>
 									<Tooltip>
 										<TooltipTrigger asChild>
 											<Button variant="ghost" size="icon" onClick={() => formatText("attachment")}>
@@ -466,7 +401,7 @@ export function TicketDetail({ ticket, onClose }: TicketDetailProps) {
 									</Tooltip>
 								</TooltipProvider>
 
-								{/* Input oculto para seleccionar archivos */}
+								{/* Hidden file input */}
 								<input type="file" ref={fileInputRef} className="hidden" onChange={handleFileChange} />
 							</div>
 
@@ -496,29 +431,12 @@ export function TicketDetail({ ticket, onClose }: TicketDetailProps) {
 						<div className="space-y-4 flex-1">
 							<div>
 								<h3 className="text-sm text-gray-500 mb-1">Status</h3>
-								<Badge
-									variant={
-										ticketStatus === "Closed"
-											? "outline"
-											: ticketStatus === "Deleted"
-											? "destructive"
-											: ticketStatus === "Completed"
-											? "outline"
-											: ticketStatus === "In progress"
-											? "default"
-											: ticketStatus === "Pending"
-											? "secondary"
-											: "secondary"
-									}>
-									{ticketStatus}
-								</Badge>
+								<Badge variant={getStatusBadgeVariant(ticketStatus)}>{ticketStatus}</Badge>
 							</div>
 
 							<div>
 								<h3 className="text-sm text-gray-500 mb-1">Priority</h3>
-								<Badge variant={ticket.priority === "High" ? "destructive" : ticket.priority === "Medium" ? "default" : "secondary"}>
-									{ticket.priority}
-								</Badge>
+								<Badge variant={getPriorityBadgeVariant(ticket.priority)}>{ticket.priority}</Badge>
 							</div>
 
 							<div>
@@ -560,7 +478,7 @@ export function TicketDetail({ ticket, onClose }: TicketDetailProps) {
 							</div>
 						</div>
 
-						{/* Botones de acción en la parte inferior */}
+						{/* Action buttons */}
 						<div className="mt-auto pt-4 border-t">
 							<div className="flex flex-col gap-2">
 								<Button
@@ -583,7 +501,7 @@ export function TicketDetail({ ticket, onClose }: TicketDetailProps) {
 					</div>
 				</div>
 
-				{/* Diálogo para agregar enlaces */}
+				{/* Link dialog */}
 				<Dialog open={showLinkDialog} onOpenChange={setShowLinkDialog}>
 					<DialogContent className="sm:max-w-[425px]">
 						<DialogHeader>

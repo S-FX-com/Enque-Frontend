@@ -1,6 +1,6 @@
 "use client";
 
-import { IUser } from "@/typescript/user";
+import { IUser } from "@/typescript/agent";
 import { createContext, useContext, useState } from "react";
 
 interface AppContextType {
