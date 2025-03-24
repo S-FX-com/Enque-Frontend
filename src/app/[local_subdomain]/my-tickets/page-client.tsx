@@ -1,17 +1,14 @@
+"use client";
+
+import { useApp } from "@/hooks/use-app";
 import { TasksList } from "../tickets/tasks-list";
-import { redirect } from "next/navigation";
 
-export default async function MyTicketsClientPage({ searchParams }: { searchParams?: { [key: string]: string | string[] | undefined } }) {
-	// Obtener la sesión del usuario actual
-	const session = await getServerSession();
-
-	if (!session?.user?.id) {
-		redirect("/login");
-	}
+export default function MyTicketsClientPage({ searchParams }: { searchParams?: { [key: string]: string | string[] | undefined } }) {
+	const { currentUser } = useApp();
 
 	// Crear un objeto de filtros manualmente en lugar de usar spread operator
 	const filters: Record<string, string | string[]> = {
-		agent: session.user.id.toString(),
+		agent: currentUser.id.toString(),
 	};
 
 	// Añadir manualmente los parámetros que necesitamos

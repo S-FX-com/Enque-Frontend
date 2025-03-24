@@ -11,30 +11,17 @@ import { TicketDetail } from "./ticket-detail";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 import { formatDistanceToNow } from "date-fns";
+import { ITicket } from "@/typescript/ticket";
 
 interface TasksListProps {
-	tickets: any[];
-	isFiltering?: boolean;
+	tickets: ITicket[];
 }
 
-export function TasksList({ tickets = [], isFiltering = false }: TasksListProps) {
+export function TasksList({ tickets = [] }: TasksListProps) {
 	const [selectedTicket, setSelectedTicket] = useState<any>(null);
 	const pathname = usePathname();
-	const scrollContainerRef = useRef<HTMLDivElement>(null);
-	const prevTicketsLength = useRef(tickets.length);
 
 	const isMyTicketsPage = pathname === "/my-tickets";
-
-	// Update scroll position when tickets change
-	useEffect(() => {
-		if (scrollContainerRef.current && prevTicketsLength.current !== tickets.length) {
-			// Only reset scroll when adding tickets, not when filtering
-			if (tickets.length > prevTicketsLength.current) {
-				scrollContainerRef.current.scrollTop = 0;
-			}
-		}
-		prevTicketsLength.current = tickets.length;
-	}, [tickets]);
 
 	// Format relative time (e.g., "2 hours ago")
 	const formatRelativeTime = (dateString: string) => {
@@ -125,10 +112,7 @@ export function TasksList({ tickets = [], isFiltering = false }: TasksListProps)
 			</div>
 
 			{/* Scrollable content */}
-			<div
-				className={`flex-1 ${isFiltering ? "overflow-hidden" : "overflow-y-auto"}`}
-				ref={scrollContainerRef}
-				style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
+			<div className="flex-1 overflow-y-auto" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
 				<style jsx global>{`
 					.overflow-y-auto::-webkit-scrollbar {
 						display: none;
@@ -180,22 +164,24 @@ export function TasksList({ tickets = [], isFiltering = false }: TasksListProps)
 										<div className="w-[150px]">
 											<div className="flex items-center gap-2">
 												<Avatar className="h-6 w-6">
-													<AvatarFallback>{ticket.user?.name ? ticket.user.name.substring(0, 2).toUpperCase() : "UN"}</AvatarFallback>
+													<AvatarFallback>
+														{ticket.sent_from?.name ? ticket.sent_from.name.substring(0, 2).toUpperCase() : "UN"}
+													</AvatarFallback>
 												</Avatar>
-												<span className="text-sm">{ticket.user?.name || "Unknown User"}</span>
+												<span className="text-sm">{ticket.sent_from?.name || "Unknown User"}</span>
 											</div>
 										</div>
 										<div className="w-[150px]">
 											<div className="flex items-center gap-2">
 												<Avatar className="h-6 w-6">
 													<AvatarFallback>
-														{ticket.assignee?.name ? ticket.assignee.name.substring(0, 2).toUpperCase() : "UN"}
+														{ticket.sent_to?.name ? ticket.sent_to.name.substring(0, 2).toUpperCase() : "UN"}
 													</AvatarFallback>
 												</Avatar>
-												<span className="text-sm">{ticket.assignee?.name || "Unassigned"}</span>
+												<span className="text-sm">{ticket.sent_to?.name || "Unassigned"}</span>
 											</div>
 										</div>
-										<div className="w-[120px] text-sm">{formatRelativeTime(ticket.createdAt)}</div>
+										<div className="w-[120px] text-sm">{formatRelativeTime(ticket.created_at)}</div>
 									</>
 								)}
 							</motion.div>

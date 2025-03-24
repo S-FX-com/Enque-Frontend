@@ -6,7 +6,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 export function TasksListSkeleton() {
 	return (
 		<div className="flex flex-col h-full overflow-hidden">
-			{/* Encabezado fijo */}
 			<div className="p-4 border-b">
 				<div className="flex items-center">
 					<div className="w-[100px] text-sm text-[#2B3674] flex items-center gap-2">
@@ -22,7 +21,6 @@ export function TasksListSkeleton() {
 				</div>
 			</div>
 
-			{/* Contenido con scroll */}
 			<div className="flex-1 overflow-y-auto">
 				{Array.from({ length: 8 }).map((_, index) => (
 					<div key={index} className="flex items-center py-4 px-4 border-b border-gray-100">

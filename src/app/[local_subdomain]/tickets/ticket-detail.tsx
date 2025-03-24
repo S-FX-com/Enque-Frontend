@@ -455,9 +455,9 @@ export function TicketDetail({ ticket, onClose }: TicketDetailProps) {
 								<h3 className="text-sm text-gray-500 mb-1">Assigned to</h3>
 								<div className="flex items-center gap-2">
 									<Avatar className="h-6 w-6">
-										<AvatarFallback>{ticket.assignee.name.substring(0, 2).toUpperCase()}</AvatarFallback>
+										<AvatarFallback>{ticket.sent_to.name.substring(0, 2).toUpperCase()}</AvatarFallback>
 									</Avatar>
-									<span className="text-sm">{ticket.assignee.name}</span>
+									<span className="text-sm">{ticket.sent_to.name}</span>
 								</div>
 							</div>
 

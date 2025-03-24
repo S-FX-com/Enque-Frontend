@@ -51,50 +51,6 @@ export function TasksSidebar({ initialAgents = [], onFiltersChange }: TasksSideb
 		{ value: "Low", label: "Low" },
 	];
 
-	// Load agents and users
-	useEffect(() => {
-		const loadData = async () => {
-			try {
-				// Load users
-				try {
-					const response = await fetch("/api/users");
-					if (response.ok) {
-						const userData = await response.json();
-						if (Array.isArray(userData)) {
-							setUsers(
-								userData.map((user) => ({
-									id: user.id,
-									name: user.name,
-								}))
-							);
-						}
-					} else {
-						// Fallback users
-						setUsers([
-							{ id: "1", name: "Richard Castro" },
-							{ id: "2", name: "Support User" },
-							{ id: "3", name: "Customer" },
-						]);
-					}
-				} catch (error) {
-					console.warn("Error loading users:", error);
-					// Fallback users
-					setUsers([
-						{ id: "1", name: "Richard Castro" },
-						{ id: "2", name: "Support User" },
-						{ id: "3", name: "Customer" },
-					]);
-				}
-			} catch (error) {
-				console.error("Error loading data:", error);
-			}
-		};
-
-		if (initialAgents.length === 0) {
-			loadData();
-		}
-	}, [initialAgents]);
-
 	// Update filters
 	const updateFilters = useCallback(() => {
 		const filters: Record<string, string | string[]> = {};

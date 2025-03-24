@@ -11,12 +11,12 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
-import { CreateUser, type CreateUserFormState } from "@/actions/agent";
+import { CreateAgent, type CreateAgentFormState } from "@/actions/agent";
 
-const initialState: CreateUserFormState = {};
+const initialState: CreateAgentFormState = {};
 
 export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutRef<"div">) {
-	const [state, formAction, isPending] = useActionState<CreateUserFormState>(CreateUser, initialState);
+	const [state, formAction, isPending] = useActionState<CreateAgentFormState>(CreateAgent, initialState);
 
 	return (
 		<div className={cn("flex flex-col gap-6", className)} {...props}>
