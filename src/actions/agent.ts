@@ -1,7 +1,9 @@
 "use server";
 
 import { PlatformConfigs } from "@/configs";
+import { getLocalSubdomainByHost } from "@/lib/utils";
 import { agentService } from "@/services/agent";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
@@ -48,5 +50,8 @@ export async function CreateAgent(prevState: CreateAgentFormState, formData: For
 			},
 		};
 
-	redirect(PlatformConfigs.url() + "/signin");
+	const headersList = await headers();
+	const host = headersList.get("host");
+
+	redirect(PlatformConfigs.url(getLocalSubdomainByHost(host as string)) + "/signin");
 }

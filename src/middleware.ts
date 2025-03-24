@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { AppConfigs, PlatformConfigs } from "./configs";
 import { getLocalSubdomainByHost } from "./lib/utils";
+import { authService } from "./services/auth";
 
 // Routes excluded from authorization
 const authPaths = ["/signin", "/signup"];
@@ -32,6 +33,13 @@ export async function middleware(request: NextRequest) {
 			if (accessToken) return NextResponse.redirect(PlatformConfigs.url(getLocalSubdomainByHost(host as string)));
 		} else {
 			if (!accessToken) return NextResponse.redirect(PlatformConfigs.url(getLocalSubdomainByHost(host as string)) + "/signin");
+
+			const currentAuth = await authService.getCurrentAuth();
+			if (!currentAuth) {
+				const response = NextResponse.redirect(PlatformConfigs.url(getLocalSubdomainByHost(host as string)) + "/signin");
+				response.cookies.delete({ name: AppConfigs.cookies.accessToken.name, domain: `.${AppConfigs.hostWithoutPort}` });
+				return response;
+			}
 		}
 	}
 

@@ -1,207 +1,118 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
+import { useEffect, useState } from "react";
+import { useActionState } from "react";
 import { Button } from "@/components/ui/button";
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { toast } from "sonner";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { CreateTicket, type CreateTicketFormState } from "@/actions/ticket";
 
-const formSchema = z.object({
-	title: z.string().min(1, { message: "Title is required" }),
-	description: z.string().optional(),
-	status: z.enum(["Pending", "In progress", "Completed"], {
-		required_error: "Please select a status",
-	}),
-	priority: z.enum(["Low", "Medium", "High"], {
-		required_error: "Please select a priority",
-	}),
-	assigneeId: z.string().min(1, { message: "Assignee is required" }),
-	dueDate: z.string().min(1, { message: "Due date is required" }),
-});
+const initialState: CreateTicketFormState = {};
 
 export function CreateTicketForm() {
-	const router = useRouter();
-	const [isLoading, setIsLoading] = useState(false);
 	const [teamMembers, setTeamMembers] = useState<{ id: string; name: string }[]>([]);
-
-	const form = useForm<z.infer<typeof formSchema>>({
-		resolver: zodResolver(formSchema),
-		defaultValues: {
-			title: "",
-			description: "",
-			status: "Pending",
-			priority: "Medium",
-			assigneeId: "",
-			dueDate: new Date().toISOString().split("T")[0],
-		},
-	});
+	const [state, formAction, isPending] = useActionState<CreateTicketFormState>(CreateTicket, initialState);
 
 	useEffect(() => {
 		const fetchData = async () => {
-			const teamMembersData = await getTeamMembers();
+			const teamMembersData = [];
 			setTeamMembers(teamMembersData);
 		};
 		fetchData();
 	}, []);
 
-	async function onSubmit(values: z.infer<typeof formSchema>) {
-		setIsLoading(true);
-
-		const formData = new FormData();
-		formData.append("title", values.title);
-		formData.append("description", values.description || "");
-		formData.append("status", values.status);
-		formData.append("priority", values.priority);
-		formData.append("assigneeId", values.assigneeId);
-		formData.append("dueDate", values.dueDate);
-
-		const result = await createTask(formData);
-
-		setIsLoading(false);
-
-		if (result?.errors) {
-			const fieldErrors = result.errors;
-			Object.keys(fieldErrors).forEach((key) => {
-				form.setError(key as keyof TaskFormValues, {
-					// @ts-ignore
-					message: fieldErrors[key]?.[0],
-				});
-			});
-			return;
-		}
-
-		toast("Ticket created", {
-			description: "Your ticket has been created successfully.",
-		});
-
-		router.push("/tickets");
-	}
-
 	return (
-		<Form {...form}>
-			<form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-				<FormField
-					control={form.control}
-					name="title"
-					render={({ field }) => (
-						<FormItem>
-							<FormLabel>Title</FormLabel>
-							<FormControl>
-								<Input placeholder="Ticket title" {...field} />
-							</FormControl>
-							<FormDescription>A clear and concise title for your ticket.</FormDescription>
-							<FormMessage />
-						</FormItem>
-					)}
-				/>
-				<FormField
-					control={form.control}
-					name="description"
-					render={({ field }) => (
-						<FormItem>
-							<FormLabel>Description</FormLabel>
-							<FormControl>
-								<Textarea placeholder="Describe the ticket" className="resize-none" {...field} />
-							</FormControl>
-							<FormDescription>A detailed description of what needs to be done.</FormDescription>
-							<FormMessage />
-						</FormItem>
-					)}
-				/>
-				<div className="grid gap-4 md:grid-cols-2">
-					<FormField
-						control={form.control}
-						name="assigneeId"
-						render={({ field }) => (
-							<FormItem>
-								<FormLabel>Assigned to</FormLabel>
-								<Select onValueChange={field.onChange} defaultValue={field.value}>
-									<FormControl>
-										<SelectTrigger>
-											<SelectValue placeholder="Select a team member" />
-										</SelectTrigger>
-									</FormControl>
-									<SelectContent>
-										{teamMembers.map((member) => (
-											<SelectItem key={member.id} value={member.id}>
-												{member.name}
-											</SelectItem>
-										))}
-									</SelectContent>
-								</Select>
-								<FormDescription>The person responsible for this ticket.</FormDescription>
-								<FormMessage />
-							</FormItem>
-						)}
-					/>
-					<FormField
-						control={form.control}
-						name="status"
-						render={({ field }) => (
-							<FormItem>
-								<FormLabel>Status</FormLabel>
-								<Select onValueChange={field.onChange} defaultValue={field.value}>
-									<FormControl>
-										<SelectTrigger>
-											<SelectValue placeholder="Select a status" />
-										</SelectTrigger>
-									</FormControl>
-									<SelectContent>
-										<SelectItem value="Pending">Pending</SelectItem>
-										<SelectItem value="In progress">In progress</SelectItem>
-										<SelectItem value="Completed">Completed</SelectItem>
-									</SelectContent>
-								</Select>
-								<FormMessage />
-							</FormItem>
-						)}
-					/>
-					<FormField
-						control={form.control}
-						name="priority"
-						render={({ field }) => (
-							<FormItem>
-								<FormLabel>Priority</FormLabel>
-								<Select onValueChange={field.onChange} defaultValue={field.value}>
-									<FormControl>
-										<SelectTrigger>
-											<SelectValue placeholder="Select a priority" />
-										</SelectTrigger>
-									</FormControl>
-									<SelectContent>
-										<SelectItem value="Low">Low</SelectItem>
-										<SelectItem value="Medium">Medium</SelectItem>
-										<SelectItem value="High">High</SelectItem>
-									</SelectContent>
-								</Select>
-								<FormMessage />
-							</FormItem>
-						)}
-					/>
-					<FormField
-						control={form.control}
-						name="dueDate"
-						render={({ field }) => (
-							<FormItem>
-								<FormLabel>Due date</FormLabel>
-								<FormControl>
-									<Input type="date" {...field} />
-								</FormControl>
-								<FormMessage />
-							</FormItem>
-						)}
-					/>
+		<form action={formAction} className="space-y-8">
+			{state.errors?._form && (
+				<Alert variant="destructive">
+					<AlertDescription>{state.errors._form[0]}</AlertDescription>
+				</Alert>
+			)}
+
+			<div className="grid gap-4">
+				<div className="grid gap-2">
+					<Label htmlFor="title">Title</Label>
+					<Input id="title" name="title" placeholder="Ticket title" defaultValue={state.values?.title || ""} />
+					{state.errors?.title && <p className="text-sm text-destructive">{state.errors.title[0]}</p>}
+					<p className="text-sm text-muted-foreground">A clear and concise title for your ticket.</p>
 				</div>
-				<Button type="submit" disabled={isLoading}>
-					{isLoading ? "Creating..." : "Create ticket"}
-				</Button>
-			</form>
-		</Form>
+
+				<div className="grid gap-2">
+					<Label htmlFor="description">Description</Label>
+					<Textarea
+						id="description"
+						name="description"
+						placeholder="Describe the ticket"
+						className="resize-none"
+						defaultValue={state.values?.description || ""}
+					/>
+					{state.errors?.description && <p className="text-sm text-destructive">{state.errors.description[0]}</p>}
+					<p className="text-sm text-muted-foreground">A detailed description of what needs to be done.</p>
+				</div>
+
+				<div className="grid gap-4 md:grid-cols-2">
+					<div className="grid gap-2">
+						<Label htmlFor="assigneeId">Assigned to</Label>
+						<Select name="assigneeId" defaultValue={state.values?.assigneeId || ""}>
+							<SelectTrigger id="assigneeId">
+								<SelectValue placeholder="Select a team member" />
+							</SelectTrigger>
+							<SelectContent>
+								{teamMembers.map((member) => (
+									<SelectItem key={member.id} value={member.id}>
+										{member.name}
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
+						{state.errors?.assigneeId && <p className="text-sm text-destructive">{state.errors.assigneeId[0]}</p>}
+						<p className="text-sm text-muted-foreground">The person responsible for this ticket.</p>
+					</div>
+
+					<div className="grid gap-2">
+						<Label htmlFor="status">Status</Label>
+						<Select name="status" defaultValue={state.values?.status || ""}>
+							<SelectTrigger id="status">
+								<SelectValue placeholder="Select a status" />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="Pending">Pending</SelectItem>
+								<SelectItem value="In progress">In progress</SelectItem>
+								<SelectItem value="Completed">Completed</SelectItem>
+							</SelectContent>
+						</Select>
+						{state.errors?.status && <p className="text-sm text-destructive">{state.errors.status[0]}</p>}
+					</div>
+
+					<div className="grid gap-2">
+						<Label htmlFor="priority">Priority</Label>
+						<Select name="priority" defaultValue={state.values?.priority || ""}>
+							<SelectTrigger id="priority">
+								<SelectValue placeholder="Select a priority" />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="Low">Low</SelectItem>
+								<SelectItem value="Medium">Medium</SelectItem>
+								<SelectItem value="High">High</SelectItem>
+							</SelectContent>
+						</Select>
+						{state.errors?.priority && <p className="text-sm text-destructive">{state.errors.priority[0]}</p>}
+					</div>
+
+					<div className="grid gap-2">
+						<Label htmlFor="dueDate">Due date</Label>
+						<Input id="dueDate" name="dueDate" type="date" defaultValue={state.values?.dueDate || ""} />
+						{state.errors?.dueDate && <p className="text-sm text-destructive">{state.errors.dueDate[0]}</p>}
+					</div>
+				</div>
+			</div>
+
+			<Button type="submit" disabled={isPending}>
+				{isPending ? "Creating..." : "Create ticket"}
+			</Button>
+		</form>
 	);
 }
