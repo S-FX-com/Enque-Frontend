@@ -35,7 +35,7 @@ export async function middleware(request: NextRequest) {
 			if (!accessToken) return NextResponse.redirect(PlatformConfigs.url(getLocalSubdomainByHost(host as string)) + "/signin");
 
 			const currentAuth = await authService.getCurrentAuth();
-			if (!currentAuth) {
+			if (!currentAuth.success) {
 				const response = NextResponse.redirect(PlatformConfigs.url(getLocalSubdomainByHost(host as string)) + "/signin");
 				response.cookies.delete({ name: AppConfigs.cookies.accessToken.name, domain: `.${AppConfigs.hostWithoutPort}` });
 				return response;
