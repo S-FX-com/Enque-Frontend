@@ -4,11 +4,11 @@ import { useApp } from "@/hooks/use-app";
 import { TasksList } from "../tickets/tasks-list";
 
 export default function MyTicketsClientPage({ searchParams }: { searchParams?: { [key: string]: string | string[] | undefined } }) {
-	const { currentUser } = useApp();
+	const { currentAgent } = useApp();
 
 	// Crear un objeto de filtros manualmente en lugar de usar spread operator
 	const filters: Record<string, string | string[]> = {
-		agent: currentUser.id.toString(),
+		agent: currentAgent.id.toString(),
 	};
 
 	// Añadir manualmente los parámetros que necesitamos

@@ -5,13 +5,13 @@ import { createContext, useContext, useState } from "react";
 
 interface AppContextType {
 	currentAgent?: IAgent;
-	setCurrentAgent: (user: IAgent) => void;
+	setCurrentAgent: (agent: IAgent) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-export const AppProvider = ({ children, initialCurrentUser }: { children: React.ReactNode; initialCurrentUser?: IAgent }) => {
-	const [currentAgent, setCurrentAgent] = useState<IAgent | undefined>(initialCurrentUser);
+export const AppProvider = ({ children, initialCurrentAgent }: { children: React.ReactNode; initialCurrentAgent?: IAgent }) => {
+	const [currentAgent, setCurrentAgent] = useState<IAgent | undefined>(initialCurrentAgent);
 
 	return <AppContext.Provider value={{ currentAgent, setCurrentAgent }}>{children}</AppContext.Provider>;
 };

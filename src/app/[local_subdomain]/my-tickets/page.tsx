@@ -5,10 +5,11 @@ import { GetAuth } from "@/actions/auth";
 import MyTicketsClientPage from "./page-client";
 
 export default async function TasksPage() {
-	const currentUser = await GetAuth();
+	const currentAuth = await GetAuth();
+	if (!currentAuth.success) return;
 
 	return (
-		<AppProvider initialCurrentUser={currentUser.data}>
+		<AppProvider initialCurrentAgent={currentAuth.data}>
 			<div className="flex h-screen overflow-hidden">
 				<Sidebar />
 				<div className="flex-1 bg-[#F4F7FE] flex flex-col overflow-hidden">

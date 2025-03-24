@@ -8,7 +8,7 @@ import { ChartArea, LayoutDashboard, Tickets, Users } from "lucide-react";
 
 export function Sidebar() {
 	const pathname = usePathname();
-	const { currentUser } = useApp();
+	const { currentAgent } = useApp();
 
 	const mainItems = [
 		{

@@ -12,7 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ITicket } from "@/typescript/ticket";
 
 export default function OverviewClientPage() {
-	const { currentUser } = useApp();
+	const { currentAgent } = useApp();
 	const [tickets, setTickets] = useState<ITicket[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
 
@@ -31,9 +31,9 @@ export default function OverviewClientPage() {
 		loadTickets();
 	}, []);
 
-	const getAssignedTickets = tickets.filter((ticket) => ticket.sent_to?.id === currentUser?.id);
-	const getPendingTickets = tickets.filter((ticket) => ticket.sent_to?.id === currentUser?.id && ticket.status !== "Completed");
-	const getCompletedTickets = tickets.filter((ticket) => ticket.sent_to?.id === currentUser?.id && ticket.status === "Completed");
+	const getAssignedTickets = tickets.filter((ticket) => ticket.sent_to?.id === currentAgent?.id);
+	const getPendingTickets = tickets.filter((ticket) => ticket.sent_to?.id === currentAgent?.id && ticket.status !== "Completed");
+	const getCompletedTickets = tickets.filter((ticket) => ticket.sent_to?.id === currentAgent?.id && ticket.status === "Completed");
 
 	return (
 		<div className="p-8">
@@ -45,10 +45,10 @@ export default function OverviewClientPage() {
 					<CardContent className="p-0">
 						<div className="flex flex-col items-center p-6">
 							<Avatar className="h-24 w-24 mb-4">
-								<AvatarImage src={""} alt={currentUser?.name} />
-								<AvatarFallback className="text-lg">{currentUser?.name.substring(0, 2).toUpperCase()}</AvatarFallback>
+								<AvatarImage src={""} alt={currentAgent?.name} />
+								<AvatarFallback className="text-lg">{currentAgent?.name.substring(0, 2).toUpperCase()}</AvatarFallback>
 							</Avatar>
-							<h2 className="text-xl font-bold text-[#2B3674]">{currentUser?.name}</h2>
+							<h2 className="text-xl font-bold text-[#2B3674]">{currentAgent?.name}</h2>
 
 							<div className="flex justify-between w-full mt-8">
 								<div className="flex flex-col items-center">

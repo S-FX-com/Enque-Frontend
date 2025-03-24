@@ -16,17 +16,17 @@ import { useRouter } from "next/navigation";
 
 export function Topbar() {
 	const router = useRouter();
-	const { currentUser } = useApp();
+	const { currentAgent } = useApp();
 
 	return (
 		<DropdownMenu>
 			<DropdownMenuTrigger asChild>
 				<Button variant="ghost" className="relative h-8 w-8 rounded-full">
 					<Avatar className="h-8 w-8">
-						{currentUser?.avatar ? (
-							<AvatarImage src={currentUser?.avatar} alt={currentUser?.name} />
+						{currentAgent?.avatar ? (
+							<AvatarImage src={currentAgent?.avatar} alt={currentAgent?.name} />
 						) : (
-							<AvatarFallback>{currentUser?.name?.substring(0, 2).toUpperCase()}</AvatarFallback>
+							<AvatarFallback>{currentAgent?.name?.substring(0, 2).toUpperCase()}</AvatarFallback>
 						)}
 					</Avatar>
 				</Button>
@@ -34,8 +34,8 @@ export function Topbar() {
 			<DropdownMenuContent className="w-56" align="end" forceMount>
 				<DropdownMenuLabel className="font-normal">
 					<div className="flex flex-col space-y-1">
-						<p className="text-sm font-medium leading-none">{currentUser?.name}</p>
-						<p className="text-xs leading-none text-muted-foreground">{currentUser?.email}</p>
+						<p className="text-sm font-medium leading-none">{currentAgent?.name}</p>
+						<p className="text-xs leading-none text-muted-foreground">{currentAgent?.email}</p>
 					</div>
 				</DropdownMenuLabel>
 				<DropdownMenuSeparator />

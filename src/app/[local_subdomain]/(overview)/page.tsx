@@ -5,10 +5,11 @@ import { Topbar } from "@/components/topbar";
 import { GetAuth } from "@/actions/auth";
 
 export default async function OverviewPage() {
-	const currentUser = await GetAuth();
+	const currentAuth = await GetAuth();
+	if (!currentAuth.success) return;
 
 	return (
-		<AppProvider initialCurrentUser={currentUser.data}>
+		<AppProvider initialCurrentAgent={currentAuth.data}>
 			<div className="flex h-screen overflow-hidden">
 				<Sidebar />
 				<div className="flex-1 bg-[#F4F7FE] flex flex-col overflow-hidden">
