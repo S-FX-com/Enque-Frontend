@@ -1,12 +1,12 @@
 import { AppProvider } from "@/hooks/use-app";
+import ClientPage from "./page-client";
 import { Sidebar } from "@/components/sidebar";
 import { Topbar } from "@/components/topbar";
 import { GetAuth } from "@/actions/auth";
-import MyTicketsClientPage from "./page-client";
 
-export default async function TasksPage() {
+export default async function MyTicketsPage() {
 	const currentAuth = await GetAuth();
-	if (!currentAuth.success) return;
+	if (!currentAuth.success || !currentAuth.data) return;
 
 	return (
 		<AppProvider initialCurrentAgent={currentAuth.data}>
@@ -17,7 +17,7 @@ export default async function TasksPage() {
 						<Topbar />
 					</div>
 					<main className="flex-1 overflow-hidden">
-						<MyTicketsClientPage />
+						<ClientPage />
 					</main>
 				</div>
 			</div>

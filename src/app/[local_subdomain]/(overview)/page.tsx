@@ -1,12 +1,12 @@
 import { AppProvider } from "@/hooks/use-app";
-import OverviewClientPage from "./page-client";
+import ClientPage from "./page-client";
 import { Sidebar } from "@/components/sidebar";
 import { Topbar } from "@/components/topbar";
 import { GetAuth } from "@/actions/auth";
 
 export default async function OverviewPage() {
 	const currentAuth = await GetAuth();
-	if (!currentAuth.success) return;
+	if (!currentAuth.success || !currentAuth.data) return;
 
 	return (
 		<AppProvider initialCurrentAgent={currentAuth.data}>
@@ -17,7 +17,7 @@ export default async function OverviewPage() {
 						<Topbar />
 					</div>
 					<main className="flex-1 overflow-hidden">
-						<OverviewClientPage />
+						<ClientPage />
 					</main>
 				</div>
 			</div>
