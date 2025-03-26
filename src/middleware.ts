@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { AppConfigs, PlatformConfigs } from "./configs";
 import { getLocalSubdomainByHost } from "./lib/utils";
 import { authService } from "./services/auth";
+import { workspaceService } from "./services/workspace";
 
 // Routes excluded from authorization
 const authPaths = ["/signin", "/signup"];
@@ -28,6 +29,10 @@ export async function middleware(request: NextRequest) {
 	} else {
 		// Get cookie access token
 		const accessToken = request.cookies.get(AppConfigs.cookies.accessToken.name)?.value;
+		if (accessToken) {
+			const currentWorkspace = await workspaceService.getWorkspace({ local_subdomain: getLocalSubdomainByHost(host as string) });
+			if (!currentWorkspace.success) return NextResponse.redirect(PlatformConfigs.url() + "/workspace");
+		}
 
 		if (isAuthPath(path)) {
 			if (accessToken) return NextResponse.redirect(PlatformConfigs.url(getLocalSubdomainByHost(host as string)));

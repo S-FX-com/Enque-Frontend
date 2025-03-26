@@ -24,7 +24,7 @@ export const authService = {
 	/** */
 	async createAuth(dataToCreate: ICreateAuth): Promise<ServiceResponse<IToken>> {
 		try {
-			const { email, password, companyId } = dataToCreate;
+			const { email, password } = dataToCreate;
 
 			const formData = new URLSearchParams();
 			formData.append("username", email);

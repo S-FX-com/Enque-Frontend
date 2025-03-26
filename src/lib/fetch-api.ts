@@ -86,11 +86,10 @@ export const fetchAPI = {
 	},
 
 	/** DELETE request */
-	async DELETE<T>(url: string, body: object) {
+	async DELETE<T>(url: string) {
 		return handleFetchAPI<T>({
 			method: "DELETE",
 			url,
-			body,
 			headers: {
 				"Content-Type": "application/json",
 				Authorization: await getAuthorizationHeader(),

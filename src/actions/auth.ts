@@ -33,7 +33,7 @@ export async function Auth(prevState: AuthFormState, formData: FormData) {
 	const validation = AuthSchema.safeParse({ email, password });
 	if (!validation.success) return { success: false, errors: validation.error.flatten().fieldErrors };
 
-	const response = await authService.createAuth({ email, password, companyId: "sfx" });
+	const response = await authService.createAuth({ email, password });
 	if (!response.success)
 		return {
 			errors: {

@@ -1,16 +1,16 @@
 import { AppConfigs } from "@/configs";
 import { fetchAPI } from "@/lib/fetch-api";
 import { ServiceResponse } from "@/typescript";
-import { IAgent, ICreateAgent, IUpdateAgent } from "@/typescript/agent";
+import { IWorkspace, ICreateWorkspace, IUpdateWorkspace } from "@/typescript/workspace";
 
 /** Service endpoint */
-const SERVICE_ENDPOINT = `${AppConfigs.api}/agents`;
+const SERVICE_ENDPOINT = `${AppConfigs.api}/workspaces`;
 
-export const agentService = {
+export const workspaceService = {
 	/** */
-	async getAgent(paramsObj: IAgent): Promise<ServiceResponse<IAgent>> {
+	async getWorkspace(paramsObj: Partial<IWorkspace>): Promise<ServiceResponse<IWorkspace>> {
 		try {
-			const data = await fetchAPI.GET<IAgent>(`${SERVICE_ENDPOINT}`);
+			const data = await fetchAPI.GET<IWorkspace>(`${SERVICE_ENDPOINT}`);
 			return data;
 		} catch (error: unknown) {
 			const message = error instanceof Error ? error.message : "Unknown error";
@@ -19,9 +19,9 @@ export const agentService = {
 	},
 
 	/** */
-	async createAgent(dataToCreate: ICreateAgent): Promise<ServiceResponse<IAgent>> {
+	async createWorkspace(dataToCreate: ICreateWorkspace): Promise<ServiceResponse<IWorkspace>> {
 		try {
-			const data = await fetchAPI.POST<IAgent>(`${SERVICE_ENDPOINT}`, dataToCreate);
+			const data = await fetchAPI.POST<IWorkspace>(`${SERVICE_ENDPOINT}`, dataToCreate);
 			return data;
 		} catch (error: unknown) {
 			const message = error instanceof Error ? error.message : "Unknown error";
@@ -30,9 +30,9 @@ export const agentService = {
 	},
 
 	/** */
-	async updateAgentById(agent_id: number, dataToUpdate: IUpdateAgent): Promise<ServiceResponse<IAgent>> {
+	async updateWorkspaceById(workspace_id: number, dataToUpdate: IUpdateWorkspace): Promise<ServiceResponse<IWorkspace>> {
 		try {
-			const data = await fetchAPI.PUT<IAgent>(`${SERVICE_ENDPOINT}/${agent_id}`, dataToUpdate);
+			const data = await fetchAPI.PUT<IWorkspace>(`${SERVICE_ENDPOINT}/${workspace_id}`, dataToUpdate);
 			return data;
 		} catch (error: unknown) {
 			const message = error instanceof Error ? error.message : "Unknown error";
@@ -41,9 +41,9 @@ export const agentService = {
 	},
 
 	/** */
-	async deleteAgentById(agent_id: number): Promise<ServiceResponse<IAgent>> {
+	async deleteWorkspaceById(workspace_id: number): Promise<ServiceResponse<IWorkspace>> {
 		try {
-			const data = await fetchAPI.DELETE<IAgent>(`${SERVICE_ENDPOINT}/${agent_id}`);
+			const data = await fetchAPI.DELETE<IWorkspace>(`${SERVICE_ENDPOINT}/${workspace_id}`);
 			return data;
 		} catch (error: unknown) {
 			const message = error instanceof Error ? error.message : "Unknown error";
@@ -52,9 +52,9 @@ export const agentService = {
 	},
 
 	/** */
-	async getAgents(paramsObj: IAgent): Promise<ServiceResponse<IAgent[]>> {
+	async getWorkspaces(paramsObj: IWorkspace): Promise<ServiceResponse<IWorkspace[]>> {
 		try {
-			const data = await fetchAPI.GET<IAgent[]>(`${SERVICE_ENDPOINT}`);
+			const data = await fetchAPI.GET<IWorkspace[]>(`${SERVICE_ENDPOINT}`);
 			return data;
 		} catch (error: unknown) {
 			const message = error instanceof Error ? error.message : "Unknown error";

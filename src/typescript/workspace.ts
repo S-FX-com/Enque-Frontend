@@ -1,4 +1,4 @@
-export interface ICompany {
+export interface IWorkspace {
 	id: 0;
 	name: string;
 	local_subdomain: string;
@@ -7,3 +7,7 @@ export interface ICompany {
 	created_at: string;
 	updated_at: string;
 }
+
+export interface ICreateWorkspace {}
+
+export interface IUpdateWorkspace {}
