@@ -4,6 +4,7 @@ import { AppConfigs, PlatformConfigs } from "@/configs";
 import { createCookie, deleteCookie, getCookie } from "@/lib/cookies";
 import { getLocalSubdomainByHost } from "@/lib/utils";
 import { authService } from "@/services/auth";
+import { workspaceService } from "@/services/workspace";
 import { ServiceResponse } from "@/typescript";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -49,7 +50,10 @@ export async function Auth(prevState: AuthFormState, formData: FormData) {
 		domain: "." + AppConfigs.hostWithoutPort,
 	});
 
-	redirect(PlatformConfigs.url("app"));
+	const headersList = await headers();
+	const host = headersList.get("host");
+
+	redirect(PlatformConfigs.url(getLocalSubdomainByHost(host as string)));
 }
 
 /** Get authentication */
@@ -82,5 +86,5 @@ export async function DeleteAuth() {
 		domain: "." + AppConfigs.hostWithoutPort,
 	});
 
-	return redirect(PlatformConfigs.url() + "/signin");
+	return redirect(PlatformConfigs.url(getLocalSubdomainByHost(host as string)) + "/signin");
 }

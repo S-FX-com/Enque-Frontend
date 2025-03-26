@@ -1,14 +1,14 @@
 import { AppConfigs } from "@/configs";
 import { fetchAPI } from "@/lib/fetch-api";
 import { ServiceResponse } from "@/typescript";
-import { IWorkspace, ICreateWorkspace, IUpdateWorkspace } from "@/typescript/workspace";
+import { IComment, ICreateComment, IUpdateComment } from "@/typescript/comment";
 
 /** Service endpoint */
-const SERVICE_ENDPOINT = `${AppConfigs.api}/workspaces`;
+const SERVICE_ENDPOINT = `${AppConfigs.api}/comments`;
 
-export const workspaceService = {
+export const commentService = {
 	/** */
-	async getWorkspace(paramsObj: Partial<IWorkspace>): Promise<ServiceResponse<IWorkspace>> {
+	async getComment(paramsObj: IComment): Promise<ServiceResponse<IComment>> {
 		try {
 			const queryParams = new URLSearchParams();
 			Object.entries(paramsObj).forEach(([key, value]) => {
@@ -17,10 +17,10 @@ export const workspaceService = {
 				}
 			});
 
-			const data = await fetchAPI.GET<IWorkspace[]>(`${SERVICE_ENDPOINT}?${queryParams.toString()}`);
+			const data = await fetchAPI.GET<IComment[]>(`${SERVICE_ENDPOINT}?${queryParams.toString()}`);
 			if (data.success && data.data && data.data.length > 0) return { success: true, data: data.data[0] };
 
-			return { success: false, message: "Workspace not found" };
+			return { success: false, message: "Comment not found" };
 		} catch (error: unknown) {
 			const message = error instanceof Error ? error.message : "Unknown error";
 			return { success: false, message };
@@ -28,9 +28,9 @@ export const workspaceService = {
 	},
 
 	/** */
-	async createWorkspace(dataToCreate: ICreateWorkspace): Promise<ServiceResponse<IWorkspace>> {
+	async createComment(dataToCreate: ICreateComment): Promise<ServiceResponse<IComment>> {
 		try {
-			const data = await fetchAPI.POST<IWorkspace>(`${SERVICE_ENDPOINT}`, dataToCreate);
+			const data = await fetchAPI.POST<IComment>(`${SERVICE_ENDPOINT}`, dataToCreate);
 			return data;
 		} catch (error: unknown) {
 			const message = error instanceof Error ? error.message : "Unknown error";
@@ -39,9 +39,9 @@ export const workspaceService = {
 	},
 
 	/** */
-	async updateWorkspaceById(workspace_id: number, dataToUpdate: IUpdateWorkspace): Promise<ServiceResponse<IWorkspace>> {
+	async updateCommentById(comment_id: number, dataToUpdate: IUpdateComment): Promise<ServiceResponse<IComment>> {
 		try {
-			const data = await fetchAPI.PUT<IWorkspace>(`${SERVICE_ENDPOINT}/${workspace_id}`, dataToUpdate);
+			const data = await fetchAPI.PUT<IComment>(`${SERVICE_ENDPOINT}/${comment_id}`, dataToUpdate);
 			return data;
 		} catch (error: unknown) {
 			const message = error instanceof Error ? error.message : "Unknown error";
@@ -50,9 +50,9 @@ export const workspaceService = {
 	},
 
 	/** */
-	async deleteWorkspaceById(workspace_id: number): Promise<ServiceResponse<IWorkspace>> {
+	async deleteCommentById(comment_id: number): Promise<ServiceResponse<IComment>> {
 		try {
-			const data = await fetchAPI.DELETE<IWorkspace>(`${SERVICE_ENDPOINT}/${workspace_id}`);
+			const data = await fetchAPI.DELETE<IComment>(`${SERVICE_ENDPOINT}/${comment_id}`);
 			return data;
 		} catch (error: unknown) {
 			const message = error instanceof Error ? error.message : "Unknown error";
@@ -61,7 +61,7 @@ export const workspaceService = {
 	},
 
 	/** */
-	async getWorkspaces(paramsObj: IWorkspace): Promise<ServiceResponse<IWorkspace[]>> {
+	async getComments(paramsObj: IComment): Promise<ServiceResponse<IComment[]>> {
 		try {
 			const queryParams = new URLSearchParams();
 			Object.entries(paramsObj).forEach(([key, value]) => {
@@ -70,7 +70,7 @@ export const workspaceService = {
 				}
 			});
 
-			const data = await fetchAPI.GET<IWorkspace[]>(`${SERVICE_ENDPOINT}?${queryParams.toString()}`);
+			const data = await fetchAPI.GET<IComment[]>(`${SERVICE_ENDPOINT}?${queryParams.toString()}`);
 			return data;
 		} catch (error: unknown) {
 			const message = error instanceof Error ? error.message : "Unknown error";

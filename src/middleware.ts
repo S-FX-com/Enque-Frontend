@@ -27,12 +27,12 @@ export async function middleware(request: NextRequest) {
 	if (host?.startsWith("www") || host?.startsWith(AppConfigs.host)) {
 		// Silence is gold
 	} else {
+		// Verify workspace
+		const currentWorkspace = await workspaceService.getWorkspace({ local_subdomain: getLocalSubdomainByHost(host as string) });
+		if (!currentWorkspace.success || !currentWorkspace.data) return NextResponse.redirect(PlatformConfigs.url() + "/workspace");
+
 		// Get cookie access token
 		const accessToken = request.cookies.get(AppConfigs.cookies.accessToken.name)?.value;
-		if (accessToken) {
-			const currentWorkspace = await workspaceService.getWorkspace({ local_subdomain: getLocalSubdomainByHost(host as string) });
-			if (!currentWorkspace.success) return NextResponse.redirect(PlatformConfigs.url() + "/workspace");
-		}
 
 		if (isAuthPath(path)) {
 			if (accessToken) return NextResponse.redirect(PlatformConfigs.url(getLocalSubdomainByHost(host as string)));
@@ -40,7 +40,13 @@ export async function middleware(request: NextRequest) {
 			if (!accessToken) return NextResponse.redirect(PlatformConfigs.url(getLocalSubdomainByHost(host as string)) + "/signin");
 
 			const currentAuth = await authService.getCurrentAuth();
-			if (!currentAuth.success) {
+			if (currentAuth.success && currentAuth.data) {
+				if (currentWorkspace.data.id != currentAuth.data.workspace.id) {
+					const response = NextResponse.redirect(PlatformConfigs.url(getLocalSubdomainByHost(host as string)) + "/signin");
+					response.cookies.delete({ name: AppConfigs.cookies.accessToken.name, domain: `.${AppConfigs.hostWithoutPort}` });
+					return response;
+				}
+			} else {
 				const response = NextResponse.redirect(PlatformConfigs.url(getLocalSubdomainByHost(host as string)) + "/signin");
 				response.cookies.delete({ name: AppConfigs.cookies.accessToken.name, domain: `.${AppConfigs.hostWithoutPort}` });
 				return response;

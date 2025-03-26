@@ -10,8 +10,17 @@ export const teamService = {
 	/** */
 	async getTeam(paramsObj: ITeam): Promise<ServiceResponse<ITeam>> {
 		try {
-			const data = await fetchAPI.GET<ITeam>(`${SERVICE_ENDPOINT}`);
-			return data;
+			const queryParams = new URLSearchParams();
+			Object.entries(paramsObj).forEach(([key, value]) => {
+				if (value !== undefined && value !== null) {
+					queryParams.append(`filter[${key}]`, String(value));
+				}
+			});
+
+			const data = await fetchAPI.GET<ITeam[]>(`${SERVICE_ENDPOINT}?${queryParams.toString()}`);
+			if (data.success && data.data && data.data.length > 0) return { success: true, data: data.data[0] };
+
+			return { success: false, message: "Team not found" };
 		} catch (error: unknown) {
 			const message = error instanceof Error ? error.message : "Unknown error";
 			return { success: false, message };
@@ -54,7 +63,14 @@ export const teamService = {
 	/** */
 	async getTeams(paramsObj: ITeam): Promise<ServiceResponse<ITeam[]>> {
 		try {
-			const data = await fetchAPI.GET<ITeam[]>(`${SERVICE_ENDPOINT}`);
+			const queryParams = new URLSearchParams();
+			Object.entries(paramsObj).forEach(([key, value]) => {
+				if (value !== undefined && value !== null) {
+					queryParams.append(`filter[${key}]`, String(value));
+				}
+			});
+
+			const data = await fetchAPI.GET<ITeam[]>(`${SERVICE_ENDPOINT}?${queryParams.toString()}`);
 			return data;
 		} catch (error: unknown) {
 			const message = error instanceof Error ? error.message : "Unknown error";
