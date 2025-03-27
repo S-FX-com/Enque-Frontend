@@ -42,7 +42,7 @@ export async function CreateAgent(prevState: CreateAgentFormState, formData: For
 	const validation = CreateAgentSchema.safeParse({ name, email, password, confirmPassword });
 	if (!validation.success) return { success: false, errors: validation.error.flatten().fieldErrors };
 
-	const response = await agentService.createAgent({});
+	const response = await agentService.createAgent({ name, email, password });
 	if (!response.success)
 		return {
 			errors: {
