@@ -34,15 +34,16 @@ const CreateAgentSchema = z
 
 /** Create agent */
 export async function CreateAgent(prevState: CreateAgentFormState, formData: FormData) {
-	const name = formData.get("name");
-	const email = formData.get("email");
-	const password = formData.get("password");
+	const name = formData.get("name") as string;
+	const email = formData.get("email") as string;
+	const password = formData.get("password") as string;
+	const workspace_id = formData.get("workspace_id") as string;
 	const confirmPassword = formData.get("confirmPassword");
 
-	const validation = CreateAgentSchema.safeParse({ name, email, password, confirmPassword });
+	const validation = CreateAgentSchema.safeParse({ name, email, password, confirmPassword, workspace_id });
 	if (!validation.success) return { success: false, errors: validation.error.flatten().fieldErrors };
 
-	const response = await agentService.createAgent({ name, email, password });
+	const response = await agentService.createAgent({ name, email, password, workspace_id });
 	if (!response.success)
 		return {
 			errors: {

@@ -12,10 +12,12 @@ import { cn } from "@/lib/utils";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 import { CreateAgent, type CreateAgentFormState } from "@/actions/agent";
+import { useApp } from "@/hooks/use-app";
 
 const initialState: CreateAgentFormState = {};
 
 export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutRef<"div">) {
+	const { currentWorkspace } = useApp();
 	const [state, formAction, isPending] = useActionState<CreateAgentFormState>(CreateAgent, initialState);
 
 	return (
@@ -27,6 +29,8 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
 				</CardHeader>
 				<CardContent>
 					<form action={formAction} className="grid gap-4">
+						<input type="hidden" name="workspace_id" value={currentWorkspace?.id} />
+
 						{state.errors?._form && (
 							<Alert variant="destructive">
 								<AlertDescription>{state.errors._form[0]}</AlertDescription>

@@ -4,7 +4,6 @@ export type AgentRole = "Agent";
 
 export interface IAgent {
 	name: string;
-	username: string;
 	email: string;
 	role: AgentRole;
 	is_active: boolean;
@@ -14,6 +13,12 @@ export interface IAgent {
 	updated_at: string;
 }
 
-export interface ICreateAgent {}
+export type ICreateAgent = Pick<IAgent, "name" | "email"> & {
+	password: string;
+	workspace_id: string;
+};
 
-export interface IUpdateAgent {}
+export type IUpdateAgent = Pick<IAgent, "name" | "email" | "role" | "is_active"> & {
+	password: string;
+	workspace_id: string;
+};
