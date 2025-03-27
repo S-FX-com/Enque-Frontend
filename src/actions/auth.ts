@@ -4,7 +4,6 @@ import { AppConfigs, PlatformConfigs } from "@/configs";
 import { createCookie, deleteCookie, getCookie } from "@/lib/cookies";
 import { getLocalSubdomainByHost } from "@/lib/utils";
 import { authService } from "@/services/auth";
-import { workspaceService } from "@/services/workspace";
 import { ServiceResponse } from "@/typescript";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
