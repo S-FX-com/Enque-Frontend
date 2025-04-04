@@ -86,7 +86,7 @@ export default function ClientPage() {
 		if (!isInitialDataLoading || Object.keys(filters).length === 0) {
 			loadTickets();
 		}
-	}, [filters, isInitialDataLoading, toast]);
+	}, [filters, isInitialDataLoading]);
 
 	// Handle filter changes from the sidebar
 	const handleFiltersChange = (newFilters: any) => {
@@ -103,7 +103,7 @@ export default function ClientPage() {
 					<TicketsList tickets={tickets} />
 				) : (
 					<div className="flex flex-col items-center justify-center h-full p-8 text-center">
-						<h3 className="text-lg font-medium text-gray-700 mb-2">No tickets found</h3>
+						<h3 className="text-lg font-medium mb-2">No tickets found</h3>
 						<p className="text-gray-500 mb-6">
 							{Object.keys(filters).length > 0 ? "Try adjusting your filters to see more results." : "Create your first ticket to get started."}
 						</p>
