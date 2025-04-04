@@ -2,24 +2,81 @@
 
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
+import { IUser } from "@/typescript/user";
+import { useEffect, useState } from "react";
+import { ICompany } from "@/typescript/company";
+import { toast } from "sonner";
+import { companyService } from "@/services/company";
+import { userService } from "@/services/user";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { UserCircle2 } from "lucide-react";
 
 export default function ClientPage() {
-	const companies = [
-		{ name: "CareContrix", logo: "/placeholder.svg?height=32&width=32", color: "bg-purple-100" },
-		{ name: "CMT Association", logo: "/placeholder.svg?height=32&width=32", color: "bg-gray-100" },
-		{ name: "HG Farms", logo: "/placeholder.svg?height=32&width=32", color: "bg-green-100" },
-		{ name: "IES", logo: "/placeholder.svg?height=32&width=32", color: "bg-yellow-100" },
-		{ name: "Monarch Housing", logo: "/placeholder.svg?height=32&width=32", color: "bg-gray-800" },
-		{ name: "NHLGA", logo: "/placeholder.svg?height=32&width=32", color: "bg-gray-200" },
-		{ name: "DRTC", logo: "/placeholder.svg?height=32&width=32", color: "bg-teal-100" },
-		{ name: "Sage Pub", logo: "/placeholder.svg?height=32&width=32", color: "bg-gray-200" },
-		{ name: "Urgent Care Now", logo: "/placeholder.svg?height=32&width=32", color: "bg-red-100" },
-		{ name: "Window Treats", logo: "/placeholder.svg?height=32&width=32", color: "bg-amber-100" },
-	];
+	const [companies, setCompanies] = useState<ICompany[]>([]);
+	const [companiesIsLoading, setCompaniesIsLoading] = useState<boolean>(true);
+	const [users, setUsers] = useState<IUser[]>([]);
+	const [usersIsLoading, setUsersIsLoading] = useState<boolean>(true);
+	const [selectedCompany, setSelectedCompany] = useState<ICompany | null>(null);
+
+	useEffect(() => {
+		const loadCompanies = async () => {
+			try {
+				const response = await companyService.getCompanies({});
+				if (response.success) {
+					setCompanies(response.data as ICompany[]);
+					console.log(response);
+				} else {
+					toast.error("Error", {
+						description: response.message || "Failed to load companies",
+					});
+				}
+			} catch (error: unknown) {
+				console.error("Failed to load companies:", error);
+				toast.error("Error", {
+					description: "Failed to load companies. Please try again.",
+				});
+			} finally {
+				setCompaniesIsLoading(false);
+			}
+		};
+
+		const loadUsers = async () => {
+			try {
+				const response = await userService.getUsers({});
+				if (response.success) {
+					setUsers(response.data as IUser[]);
+				} else {
+					toast.error("Error", {
+						description: response.message || "Failed to load users",
+					});
+				}
+			} catch (error: unknown) {
+				console.error("Failed to load users:", error);
+				toast.error("Error", {
+					description: "Failed to load users. Please try again.",
+				});
+			} finally {
+				setUsersIsLoading(false);
+			}
+		};
+
+		loadCompanies();
+		loadUsers();
+	}, []);
+
+	const handleSelectCompany = (company: ICompany) => {
+		if (selectedCompany !== company) setSelectedCompany(company);
+		else setSelectedCompany(null);
+	};
+
+	const usersByCompany = () => {
+		if (!selectedCompany) return [];
+		return users.filter((user) => user.company.id === selectedCompany.id);
+	};
 
 	return (
-		<div className="">
-			<div className="flex gap-2 mb-6">
+		<div className="flex flex-col gap-4">
+			<div className="flex gap-2">
 				<Button variant="default" size="sm">
 					Unassigned Users
 				</Button>
@@ -31,35 +88,65 @@ export default function ClientPage() {
 				</Button>
 			</div>
 
-			<div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-				<div className="bg-white dark:bg-black rounded-xl p-4 ">
-					<h2 className="text-xl font-semibold mb-4">Active Companies</h2>
-					<div className="space-y-4">
-						{companies.map((company, index) => (
-							<div key={index} className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded-md cursor-pointer">
-								<div className={`w-8 h-8 rounded-full flex items-center justify-center ${company.color}`}>
-									<Image src={company.logo || "/placeholder.svg"} alt={company.name} width={24} height={24} />
-								</div>
-								<span className="text-sm">{company.name}</span>
-							</div>
-						))}
-					</div>
-				</div>
+			<div className="flex gap-4">
+				<Card className="w-full max-w-2xs">
+					<CardHeader>
+						<CardTitle>
+							<h2 className="text-xl">Active Companies</h2>
+						</CardTitle>
+					</CardHeader>
+					<CardContent>
+						<div className="space-y-4">
+							{companies.map((company, index) => (
+								<button
+									key={index}
+									onClick={() => handleSelectCompany(company)}
+									className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded-md cursor-pointer">
+									<div className={`w-8 h-8 rounded-full flex items-center justify-center ${company.color}`}>
+										<Image src={company.logo || "/placeholder.svg"} alt={company.name} width={24} height={24} />
+									</div>
+									<span className="text-sm">{company.name}</span>
+								</button>
+							))}
+						</div>
+					</CardContent>
+				</Card>
 
-				<div className="md:col-span-3 bg-white rounded-xl p-8 flex flex-col items-center justify-center min-h-[400px]">
-					<div>
-						<p className="mb-4">Select a company on the left</p>
-					</div>
-					<span className="mb-4">- or -</span>
-					<div className="flex gap-2">
-						<Button variant="default" size="sm">
-							Add a Company
-						</Button>
-						<Button variant="default" size="sm">
-							Add a User
-						</Button>
-					</div>
-				</div>
+				<Card className="flex-1">
+					<CardContent>
+						{selectedCompany ? (
+							<div className="flex flex-col min-h-96">
+								<div className="grid grid-cols-12 px-4 py-2 text-sm font-semibold">
+									<div className="col-span-3">Name</div>
+									<div className="col-span-3">Email</div>
+									<div className="col-span-3">Phone Number</div>
+									<div className="col-span-3">Company</div>
+								</div>
+								{usersByCompany(selectedCompany.id).map((user, indexUser) => (
+									<div key={indexUser} className="grid grid-cols-12 px-4 py-2 items-center">
+										<div className="col-span-3 text-sm">{user.name}</div>
+										<div className="col-span-3 text-sm truncate">{user.email}</div>
+										<div className="col-span-3"></div>
+										<div className="col-span-3">{user.company.name}</div>
+									</div>
+								))}
+							</div>
+						) : (
+							<div className="flex flex-col gap-2 justify-center items-center min-h-96">
+								<p>Select a company on the left</p>
+								<span>- or -</span>
+								<div className="flex gap-2">
+									<Button variant="default" size="sm">
+										Add a Company
+									</Button>
+									<Button variant="default" size="sm">
+										Add a User
+									</Button>
+								</div>
+							</div>
+						)}
+					</CardContent>
+				</Card>
 			</div>
 		</div>
 	);

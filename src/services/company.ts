@@ -61,7 +61,7 @@ export const companyService = {
 	},
 
 	/** */
-	async getCompanys(paramsObj: ICompany): Promise<ServiceResponse<ICompany[]>> {
+	async getCompanies(paramsObj: ICompany): Promise<ServiceResponse<ICompany[]>> {
 		try {
 			const queryParams = new URLSearchParams();
 			Object.entries(paramsObj).forEach(([key, value]) => {

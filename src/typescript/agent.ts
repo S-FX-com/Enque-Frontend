@@ -7,7 +7,7 @@ export interface IAgent {
 	email: string;
 	role: AgentRole;
 	is_active: boolean;
-	id: 0;
+	id: number;
 	workspace: IWorkspace;
 	created_at: string;
 	updated_at: string;
