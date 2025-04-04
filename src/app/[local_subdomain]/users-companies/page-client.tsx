@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { UserCircle2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
+import { CompanyDetails } from "./company-details";
 
 export default function ClientPage() {
 	const [companies, setCompanies] = useState<ICompany[]>([]);
@@ -126,41 +127,45 @@ export default function ClientPage() {
 					</CardContent>
 				</Card>
 
-				<Card className="flex-1">
-					<CardContent>
-						{selectedCompany ? (
-							<div className="flex flex-col min-h-96">
-								<div className="grid grid-cols-12 px-4 py-2 text-sm font-semibold">
-									<div className="col-span-3">Name</div>
-									<div className="col-span-3">Email</div>
-									<div className="col-span-3">Phone Number</div>
-									<div className="col-span-3">Company</div>
-								</div>
-								{usersByCompany(selectedCompany.id).map((user, indexUser) => (
-									<div key={indexUser} className="grid grid-cols-12 px-4 py-1 rounded-xl items-center hover:bg-background">
-										<div className="col-span-3 text-sm">{user.name}</div>
-										<div className="col-span-3 text-sm truncate">{user.email}</div>
-										<div className="col-span-3">{user.phone}</div>
-										<div className="col-span-3">{user.company.name}</div>
+				<div className="flex-1 flex flex-col gap-4">
+					<CompanyDetails />
+
+					<Card>
+						<CardContent>
+							{selectedCompany ? (
+								<div className="flex flex-col">
+									<div className="grid grid-cols-12 px-4 py-2 text-sm font-semibold">
+										<div className="col-span-3">Name</div>
+										<div className="col-span-3">Email</div>
+										<div className="col-span-3">Phone Number</div>
+										<div className="col-span-3">Company</div>
 									</div>
-								))}
-							</div>
-						) : (
-							<div className="flex flex-col gap-2 justify-center items-center min-h-96">
-								<p>Select a company on the left</p>
-								<span>- or -</span>
-								<div className="flex gap-2">
-									<Button variant="default" size="sm">
-										Add a Company
-									</Button>
-									<Button variant="default" size="sm">
-										Add a User
-									</Button>
+									{usersByCompany(selectedCompany.id).map((user, indexUser) => (
+										<div key={indexUser} className="grid grid-cols-12 px-4 py-1 rounded-xl items-center hover:bg-background">
+											<div className="col-span-3 text-sm">{user.name}</div>
+											<div className="col-span-3 text-sm truncate">{user.email}</div>
+											<div className="col-span-3">{user.phone}</div>
+											<div className="col-span-3">{user.company.name}</div>
+										</div>
+									))}
 								</div>
-							</div>
-						)}
-					</CardContent>
-				</Card>
+							) : (
+								<div className="flex flex-col gap-2 justify-center items-center">
+									<p>Select a company on the left</p>
+									<span>- or -</span>
+									<div className="flex gap-2">
+										<Button variant="default" size="sm">
+											Add a Company
+										</Button>
+										<Button variant="default" size="sm">
+											Add a User
+										</Button>
+									</div>
+								</div>
+							)}
+						</CardContent>
+					</Card>
+				</div>
 			</div>
 		</div>
 	);
