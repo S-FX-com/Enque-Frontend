@@ -12,7 +12,7 @@ export default async function ReportingPage() {
 		<AppProvider initialCurrentAgent={currentAuth.data}>
 			<div className="flex h-screen overflow-hidden">
 				<Sidebar />
-				<div className="flex-1 bg-[#F4F7FE] flex flex-col overflow-hidden px-6">
+				<div className="flex-1 flex flex-col overflow-hidden px-6">
 					<Topbar
 						title="Reporting"
 						breadcrumbs={[

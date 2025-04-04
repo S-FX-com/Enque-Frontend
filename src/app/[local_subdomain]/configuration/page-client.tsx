@@ -67,7 +67,7 @@ export default function ClientPage() {
 							<div
 								key={itemIndex}
 								className={`flex gap-2 flex-col items-center justify-center p-6 rounded-xl cursor-pointer
-					  ${item.highlight ? "bg-primary text-white" : "bg-background"}`}>
+					  ${item.highlight ? "bg-primary text-white dark:text-black" : "bg-background"}`}>
 								<item.icon size={32} />
 								<span className="text-sm font-semibold">{item.name}</span>
 							</div>

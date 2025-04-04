@@ -10,6 +10,8 @@ import { companyService } from "@/services/company";
 import { userService } from "@/services/user";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { UserCircle2 } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { cn } from "@/lib/utils";
 
 export default function ClientPage() {
 	const [companies, setCompanies] = useState<ICompany[]>([]);
@@ -96,18 +98,30 @@ export default function ClientPage() {
 						</CardTitle>
 					</CardHeader>
 					<CardContent>
-						<div className="space-y-4">
-							{companies.map((company, index) => (
-								<button
-									key={index}
-									onClick={() => handleSelectCompany(company)}
-									className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded-md cursor-pointer">
-									<div className={`w-8 h-8 rounded-full flex items-center justify-center ${company.color}`}>
-										<Image src={company.logo || "/placeholder.svg"} alt={company.name} width={24} height={24} />
-									</div>
-									<span className="text-sm">{company.name}</span>
-								</button>
-							))}
+						<div className="flex flex-col gap-1">
+							{companies.map((company, index) => {
+								const isActive = selectedCompany && company.id === selectedCompany.id;
+								return (
+									<button
+										key={index}
+										onClick={() => handleSelectCompany(company)}
+										className={cn(
+											"flex w-full items-center gap-3 px-3 py-1 rounded-xl cursor-pointer",
+											isActive ? "bg-background" : "hover:bg-background"
+										)}>
+										<div className={`w-8 h-8 rounded-full flex items-center justify-center ${company.color}`}>
+											<Avatar className="h-8 w-8">
+												{company?.logo ? (
+													<AvatarImage src={company?.logo} alt={company?.name} />
+												) : (
+													<AvatarFallback>{company?.name?.substring(0, 2).toUpperCase()}</AvatarFallback>
+												)}
+											</Avatar>
+										</div>
+										<span className={cn("text-sm", isActive && "text-primary")}>{company.name}</span>
+									</button>
+								);
+							})}
 						</div>
 					</CardContent>
 				</Card>
@@ -123,10 +137,10 @@ export default function ClientPage() {
 									<div className="col-span-3">Company</div>
 								</div>
 								{usersByCompany(selectedCompany.id).map((user, indexUser) => (
-									<div key={indexUser} className="grid grid-cols-12 px-4 py-2 items-center">
+									<div key={indexUser} className="grid grid-cols-12 px-4 py-1 rounded-xl items-center hover:bg-background">
 										<div className="col-span-3 text-sm">{user.name}</div>
 										<div className="col-span-3 text-sm truncate">{user.email}</div>
-										<div className="col-span-3"></div>
+										<div className="col-span-3">{user.phone}</div>
 										<div className="col-span-3">{user.company.name}</div>
 									</div>
 								))}

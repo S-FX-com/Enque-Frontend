@@ -70,7 +70,7 @@ export function Sidebar() {
 	return (
 		<div className="flex h-full w-[calc(var(--spacing)*72)] flex-col bg-white dark:bg-black py-6">
 			<div className="flex items-center px-6">
-				<Link href="/" className="flex items-center space-x-1 text-2xl text-[#1D73F4]">
+				<Link href="/" className="flex items-center space-x-1 text-2xl text-primary">
 					<span className="font-semibold">Obie</span>
 					<span className="font-light">Desk</span>
 				</Link>
@@ -87,10 +87,10 @@ export function Sidebar() {
 								href={item.href}
 								className={cn(
 									"flex items-center space-x-2 rounded-lg px-3 py-2 text-sm transition-colors",
-									isActive ? "bg-blue-50 font-medium text-[#1D73F4]" : "text-[#2B3674] hover:bg-gray-50"
+									isActive ? "bg-primary-foreground font-medium text-primary" : "hover:bg-background"
 								)}>
 								<div className="relative h-5 w-5">
-									<IconComponent className={cn("h-5 w-5", isActive ? "text-[#1D73F4]" : "text-[#2B3674]")} />
+									<IconComponent className={cn("h-5 w-5", isActive && "text-primary")} />
 								</div>
 								<span>{item.title}</span>
 							</Link>
@@ -98,10 +98,10 @@ export function Sidebar() {
 					})}
 				</nav>
 				<div className="my-8 px-4">
-					<h3 className="mb-3 px-3 text-sm font-bold tracking-wider text-[#2B3674]">My Teams</h3>
+					<h3 className="mb-3 px-3 text-sm font-bold tracking-wider">My Teams</h3>
 					<div className="space-y-1">
 						{teamsIsLoading ? (
-							<div className="flex items-center px-3 py-2 text-sm text-gray-500">
+							<div className="flex items-center px-3 py-2 text-sm text-muted-foreground">
 								<Loader2 className="mr-2 h-4 w-4 animate-spin" />
 								Loading teams...
 							</div>
@@ -114,7 +114,7 @@ export function Sidebar() {
 										href={`/teams/${team.id}`}
 										className={cn(
 											"flex items-center justify-between rounded-lg px-3 py-2 text-sm transition-colors",
-											isActive ? "bg-blue-50 font-medium text-[#1D73F4]" : "text-[#2B3674] hover:bg-gray-50"
+											isActive ? "bg-primary-foreground font-medium text-primary" : "hover:bg-background"
 										)}>
 										<div className="flex items-center space-x-2">
 											<Avatar className="h-6 w-6">
@@ -126,7 +126,7 @@ export function Sidebar() {
 											<span>{team.name}</span>
 										</div>
 										{team.notifications && team.notifications > 0 && (
-											<span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#1D73F4] text-xs font-medium text-white">
+											<span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs font-medium text-white">
 												{team.notifications}
 											</span>
 										)}
@@ -149,10 +149,10 @@ export function Sidebar() {
 								href={item.href}
 								className={cn(
 									"flex items-center space-x-2 rounded-lg px-3 py-2 text-sm transition-colors",
-									isActive ? "bg-blue-50 font-medium text-[#1D73F4]" : "text-[#2B3674] hover:bg-gray-50"
+									isActive ? "bg-primary-foreground font-medium text-primary" : "hover:bg-background"
 								)}>
 								<div className="relative h-5 w-5">
-									<IconComponent className={cn("h-5 w-5", isActive ? "text-[#1D73F4]" : "text-[#2B3674]")} />
+									<IconComponent className={cn("h-5 w-5", isActive && "text-primary")} />
 								</div>
 								<span>{item.title}</span>
 							</Link>
