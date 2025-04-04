@@ -4,7 +4,7 @@ import { Sidebar } from "@/components/sidebar";
 import { Topbar } from "@/components/topbar";
 import { GetAuth } from "@/actions/auth";
 
-export default async function TicketsPage() {
+export default async function ConfigurationPage() {
 	const currentAuth = await GetAuth();
 	if (!currentAuth.success || !currentAuth.data) return;
 
@@ -14,10 +14,10 @@ export default async function TicketsPage() {
 				<Sidebar />
 				<div className="flex-1 bg-[#F4F7FE] flex flex-col overflow-hidden px-6">
 					<Topbar
-						title="Tickets"
+						title="Configuration"
 						breadcrumbs={[
 							{ label: "S-FX.COM", href: "/" },
-							{ label: "Tickets", href: "/tickets" },
+							{ label: "Configuration", href: "/configuration" },
 						]}
 					/>
 					<main className="flex-1 overflow-hidden">

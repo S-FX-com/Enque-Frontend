@@ -12,10 +12,14 @@ export default async function UsersCompaniesPage() {
 		<AppProvider initialCurrentAgent={currentAuth.data}>
 			<div className="flex h-screen overflow-hidden">
 				<Sidebar />
-				<div className="flex-1 bg-[#F4F7FE] flex flex-col overflow-hidden">
-					<div className="flex h-16 items-center justify-end border-b px-6 bg-white">
-						<Topbar />
-					</div>
+				<div className="flex-1 bg-[#F4F7FE] flex flex-col overflow-hidden px-6">
+					<Topbar
+						title="Users & Companies"
+						breadcrumbs={[
+							{ label: "S-FX.COM", href: "/" },
+							{ label: "Users & Companies", href: "/users-companies" },
+						]}
+					/>
 					<main className="flex-1 overflow-hidden">
 						<ClientPage />
 					</main>

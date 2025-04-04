@@ -4,52 +4,82 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useApp } from "@/hooks/use-app";
-import { ChartArea, LayoutDashboard, Tickets, Users } from "lucide-react";
+import { AreaChartIcon as ChartArea, Compass, LayoutDashboard, Loader2, Settings, TicketIcon as Tickets, Users } from "lucide-react";
+import { useEffect, useState } from "react";
+import { teamService } from "@/services/team";
+import type { ITeam } from "@/typescript/team";
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 
 export function Sidebar() {
 	const pathname = usePathname();
 	const { currentAgent } = useApp();
+	const [teams, setTeams] = useState<ITeam[]>([]);
+	const [teamsIsLoading, setTeamsIsLoading] = useState(true);
 
 	const mainItems = [
 		{
-			title: "Dashboard",
+			title: "Overview",
 			href: "/",
-			icon: <LayoutDashboard />,
+			icon: LayoutDashboard,
 		},
 		{
 			title: "All Tickets",
 			href: "/tickets",
-			icon: <Tickets />,
+			icon: Tickets,
 		},
 		{
 			title: "My Tickets",
 			href: "/my-tickets",
-			icon: <Tickets />,
+			icon: Tickets,
 		},
 		{
 			title: "Users & Companies",
 			href: "/users-companies",
-			icon: <Users />,
+			icon: Users,
 		},
 		{
 			title: "Reporting",
 			href: "/reports",
-			icon: <ChartArea />,
+			icon: ChartArea,
 		},
 	];
 
+	const bottomItems = [
+		{
+			title: "Configuration",
+			href: "/configuration",
+			icon: Settings,
+		},
+	];
+
+	useEffect(() => {
+		const loadTeams = async () => {
+			try {
+				const teamsResponse = await teamService.getTeams({});
+				if (teamsResponse.success) setTeams(teamsResponse.data as ITeam[]);
+			} catch (error) {
+				console.error("Failed to load teams:", error);
+			} finally {
+				setTeamsIsLoading(false);
+			}
+		};
+
+		loadTeams();
+	}, []);
+
 	return (
-		<div className="flex h-full w-64 flex-col border-r bg-white overflow-hidden">
-			<div className="flex h-16 items-center border-b px-6">
-				<Link href="/" className="flex items-center space-x-2">
-					Obie
+		<div className="flex h-full w-[calc(var(--spacing)*72)] flex-col bg-white dark:bg-black py-6">
+			<div className="flex items-center px-6">
+				<Link href="/" className="flex items-center space-x-1 text-2xl text-[#1D73F4]">
+					<span className="font-semibold">Obie</span>
+					<span className="font-light">Desk</span>
 				</Link>
 			</div>
 			<div className="flex-1 overflow-y-auto py-6">
 				<nav className="space-y-1 px-4">
 					{mainItems.map((item) => {
 						const isActive = pathname === item.href;
-						const iconColor = isActive ? "#1D73F4" : "#2B3674";
+						const IconComponent = item.icon;
 
 						return (
 							<Link
@@ -57,18 +87,78 @@ export function Sidebar() {
 								href={item.href}
 								className={cn(
 									"flex items-center space-x-2 rounded-lg px-3 py-2 text-sm transition-colors",
-									isActive ? "bg-gray-100 font-medium text-[#1D73F4]" : "text-[#2B3674] hover:bg-gray-100"
+									isActive ? "bg-blue-50 font-medium text-[#1D73F4]" : "text-[#2B3674] hover:bg-gray-50"
 								)}>
-								<div className="relative h-5 w-5">{item.icon}</div>
+								<div className="relative h-5 w-5">
+									<IconComponent className={cn("h-5 w-5", isActive ? "text-[#1D73F4]" : "text-[#2B3674]")} />
+								</div>
 								<span>{item.title}</span>
 							</Link>
 						);
 					})}
 				</nav>
-				<div className="mt-8 px-6">
-					<h3 className="font-bold text-[#2B3674]">MY TEAMS</h3>
-					{/* Teams will be added here */}
+				<div className="my-8 px-4">
+					<h3 className="mb-3 px-3 text-sm font-bold tracking-wider text-[#2B3674]">My Teams</h3>
+					<div className="space-y-1">
+						{teamsIsLoading ? (
+							<div className="flex items-center px-3 py-2 text-sm text-gray-500">
+								<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+								Loading teams...
+							</div>
+						) : teams.length > 0 ? (
+							teams.map((team) => {
+								const isActive = pathname === `/teams/${team.id}`;
+								return (
+									<Link
+										key={team.id}
+										href={`/teams/${team.id}`}
+										className={cn(
+											"flex items-center justify-between rounded-lg px-3 py-2 text-sm transition-colors",
+											isActive ? "bg-blue-50 font-medium text-[#1D73F4]" : "text-[#2B3674] hover:bg-gray-50"
+										)}>
+										<div className="flex items-center space-x-2">
+											<Avatar className="h-6 w-6">
+												<AvatarImage src={team.avatarUrl} alt={team.name} />
+												<AvatarFallback>
+													<Compass size={14} />
+												</AvatarFallback>
+											</Avatar>
+											<span>{team.name}</span>
+										</div>
+										{team.notifications && team.notifications > 0 && (
+											<span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#1D73F4] text-xs font-medium text-white">
+												{team.notifications}
+											</span>
+										)}
+									</Link>
+								);
+							})
+						) : (
+							<div className="px-3 py-2 text-sm text-gray-500">No teams found</div>
+						)}
+					</div>
 				</div>
+				<nav className="space-y-1 px-4">
+					{bottomItems.map((item) => {
+						const isActive = pathname === item.href;
+						const IconComponent = item.icon;
+
+						return (
+							<Link
+								key={item.href}
+								href={item.href}
+								className={cn(
+									"flex items-center space-x-2 rounded-lg px-3 py-2 text-sm transition-colors",
+									isActive ? "bg-blue-50 font-medium text-[#1D73F4]" : "text-[#2B3674] hover:bg-gray-50"
+								)}>
+								<div className="relative h-5 w-5">
+									<IconComponent className={cn("h-5 w-5", isActive ? "text-[#1D73F4]" : "text-[#2B3674]")} />
+								</div>
+								<span>{item.title}</span>
+							</Link>
+						);
+					})}
+				</nav>
 			</div>
 		</div>
 	);
