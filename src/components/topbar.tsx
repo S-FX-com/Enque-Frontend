@@ -39,7 +39,7 @@ export function Topbar({ title = "Tickets", breadcrumbs = [] }) {
 				<h1 className="text-3xl font-semibold">{title}</h1>
 			</div>
 
-			<div className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-black rounded-full">
+			<div className="flex items-center gap-2 px-2 py-2 bg-white dark:bg-black rounded-full">
 				<div className="relative">
 					<SearchIcon className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
 					<Input type="search" placeholder="Search" className="w-64 pl-8 h-9" />

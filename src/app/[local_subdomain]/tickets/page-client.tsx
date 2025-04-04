@@ -13,6 +13,7 @@ import { teamService } from "@/services/team";
 import { userService } from "@/services/user";
 import type { ITicket } from "@/typescript/ticket";
 import { toast } from "sonner";
+import { Card } from "@/components/ui/card";
 
 export default function ClientPage() {
 	const [tickets, setTickets] = useState<ITicket[]>([]);
@@ -96,7 +97,7 @@ export default function ClientPage() {
 
 	return (
 		<div className="flex-1 flex gap-6 overflow-hidden">
-			<div className="flex-1 bg-white rounded-xl overflow-hidden">
+			<Card className="flex-1 rounded-xl overflow-hidden">
 				{isLoading ? (
 					<TicketsListSkeleton />
 				) : tickets.length > 0 ? (
@@ -104,7 +105,7 @@ export default function ClientPage() {
 				) : (
 					<div className="flex flex-col items-center justify-center h-full p-8 text-center">
 						<h3 className="text-lg font-medium mb-2">No tickets found</h3>
-						<p className="text-gray-500 mb-6">
+						<p className="text-muted-foreground mb-6">
 							{Object.keys(filters).length > 0 ? "Try adjusting your filters to see more results." : "Create your first ticket to get started."}
 						</p>
 						{Object.keys(filters).length === 0 && (
@@ -117,7 +118,7 @@ export default function ClientPage() {
 						)}
 					</div>
 				)}
-			</div>
+			</Card>
 
 			<TicketsSidebar initialAgents={initialAgents} initialTeams={initialTeams} initialUsers={initialUsers} onFiltersChange={handleFiltersChange} />
 		</div>
