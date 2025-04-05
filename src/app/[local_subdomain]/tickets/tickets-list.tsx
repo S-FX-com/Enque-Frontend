@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
@@ -8,7 +8,6 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { CheckCircle2, Circle, Clock } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { TicketDetail } from "./ticket-details";
-import { usePathname } from "next/navigation";
 import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 import { formatDistanceToNow } from "date-fns";
 import { ITicket } from "@/typescript/ticket";
@@ -19,9 +18,6 @@ interface TasksListProps {
 
 export function TicketsList({ tickets = [] }: TasksListProps) {
 	const [selectedTicket, setSelectedTicket] = useState<any>(null);
-	const pathname = usePathname();
-
-	const isMyTicketsPage = pathname === "/my-tickets";
 
 	// Format relative time (e.g., "2 hours ago")
 	const formatRelativeTime = (dateString: string) => {
@@ -100,14 +96,10 @@ export function TicketsList({ tickets = [] }: TasksListProps) {
 					</div>
 					<div className="flex-1 text-sm text-[#2B3674] pl-8">Subject</div>
 					<div className="w-[120px] text-sm text-[#2B3674]">Status</div>
-					{!isMyTicketsPage && (
-						<>
-							<div className="w-[120px] text-sm text-[#2B3674]">Priority</div>
-							<div className="w-[150px] text-sm text-[#2B3674]">Sent from</div>
-							<div className="w-[150px] text-sm text-[#2B3674]">Assigned to</div>
-							<div className="w-[120px] text-sm text-[#2B3674]">Created</div>
-						</>
-					)}
+					<div className="w-[120px] text-sm text-[#2B3674]">Priority</div>
+					<div className="w-[150px] text-sm text-[#2B3674]">Sent from</div>
+					<div className="w-[150px] text-sm text-[#2B3674]">Assigned to</div>
+					<div className="w-[120px] text-sm text-[#2B3674]">Created</div>
 				</div>
 			</div>
 
@@ -154,36 +146,30 @@ export function TicketsList({ tickets = [] }: TasksListProps) {
 										<span className="text-sm">{ticket.status}</span>
 									</div>
 								</div>
-								{!isMyTicketsPage && (
-									<>
-										<div className="w-[120px]">
-											<Badge variant={getPriorityVariant(ticket.priority)} className="text-xs">
-												{ticket.priority}
-											</Badge>
-										</div>
-										<div className="w-[150px]">
-											<div className="flex items-center gap-2">
-												<Avatar className="h-6 w-6">
-													<AvatarFallback>
-														{ticket.sent_from?.name ? ticket.sent_from.name.substring(0, 2).toUpperCase() : "UN"}
-													</AvatarFallback>
-												</Avatar>
-												<span className="text-sm">{ticket.sent_from?.name || "Unknown User"}</span>
-											</div>
-										</div>
-										<div className="w-[150px]">
-											<div className="flex items-center gap-2">
-												<Avatar className="h-6 w-6">
-													<AvatarFallback>
-														{ticket.sent_to?.name ? ticket.sent_to.name.substring(0, 2).toUpperCase() : "UN"}
-													</AvatarFallback>
-												</Avatar>
-												<span className="text-sm">{ticket.sent_to?.name || "Unassigned"}</span>
-											</div>
-										</div>
-										<div className="w-[120px] text-sm">{formatRelativeTime(ticket.created_at)}</div>
-									</>
-								)}
+								<div className="w-[120px]">
+									<Badge variant={getPriorityVariant(ticket.priority)} className="text-xs">
+										{ticket.priority}
+									</Badge>
+								</div>
+								<div className="w-[150px]">
+									<div className="flex items-center gap-2">
+										<Avatar className="h-6 w-6">
+											<AvatarFallback>
+												{ticket.sent_from?.name ? ticket.sent_from.name.substring(0, 2).toUpperCase() : "UN"}
+											</AvatarFallback>
+										</Avatar>
+										<span className="text-sm">{ticket.sent_from?.name || "Unknown User"}</span>
+									</div>
+								</div>
+								<div className="w-[150px]">
+									<div className="flex items-center gap-2">
+										<Avatar className="h-6 w-6">
+											<AvatarFallback>{ticket.sent_to?.name ? ticket.sent_to.name.substring(0, 2).toUpperCase() : "UN"}</AvatarFallback>
+										</Avatar>
+										<span className="text-sm">{ticket.sent_to?.name || "Unassigned"}</span>
+									</div>
+								</div>
+								<div className="w-[120px] text-sm">{formatRelativeTime(ticket.created_at)}</div>
 							</motion.div>
 						))}
 					</AnimatePresence>
