@@ -13,6 +13,8 @@ import { UserCircle2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { CompanyDetails } from "./company-details";
+import { CreateUserModal } from "@/components/modals/create-user-modal";
+import { CreateCompanyModal } from "@/components/modals/create-company-modal";
 
 export default function ClientPage() {
 	const [companies, setCompanies] = useState<ICompany[]>([]);
@@ -83,12 +85,8 @@ export default function ClientPage() {
 				<Button variant="default" size="sm">
 					Unassigned Users
 				</Button>
-				<Button variant="default" size="sm">
-					Add a Company
-				</Button>
-				<Button variant="default" size="sm">
-					Add a User
-				</Button>
+				<CreateCompanyModal />
+				<CreateUserModal />
 			</div>
 
 			<div className="flex gap-4">
@@ -128,7 +126,7 @@ export default function ClientPage() {
 				</Card>
 
 				<div className="flex-1 flex flex-col gap-4">
-					<CompanyDetails />
+					{selectedCompany && <CompanyDetails company={selectedCompany} companyUsers={usersByCompany(selectedCompany.id)} />}
 
 					<Card>
 						<CardContent>
@@ -154,12 +152,8 @@ export default function ClientPage() {
 									<p>Select a company on the left</p>
 									<span>- or -</span>
 									<div className="flex gap-2">
-										<Button variant="default" size="sm">
-											Add a Company
-										</Button>
-										<Button variant="default" size="sm">
-											Add a User
-										</Button>
+										<CreateCompanyModal />
+										<CreateUserModal />
 									</div>
 								</div>
 							)}

@@ -39,16 +39,16 @@ export default function PageClient() {
 	return (
 		<div className="flex gap-4">
 			<Sidebar />
-			<div className="flex-1">
-				<div className="flex justify-between items-center mb-6">
+			<div className="flex-1 flex flex-col gap-4">
+				<div className="flex justify-between items-center">
 					<h1 className="text-2xl font-bold">Reporting Dashboard</h1>
-					<Button variant="outline" size="sm" className="flex items-center gap-2">
+					<Button variant="outline" className="flex items-center gap-2">
 						<Calendar className="h-4 w-4" />
 						Last 7 days
 					</Button>
 				</div>
 
-				<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+				<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
 					<MetricCard title="Created Tickets" value="173" />
 					<MetricCard title="Resolved Tickets" value="163" />
 					<MetricCard title="Unresolved Tickets" value="10" />
@@ -57,7 +57,7 @@ export default function PageClient() {
 				</div>
 
 				{/* Charts - First Row */}
-				<div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+				<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 					<Card>
 						<CardContent className="p-6">
 							<h3 className="text-lg font-medium mb-4">Tickets created by hour</h3>
@@ -94,7 +94,7 @@ export default function PageClient() {
 				</div>
 
 				{/* Charts - Second Row */}
-				<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+				<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 					<Card>
 						<CardContent className="p-6">
 							<h3 className="text-lg font-medium mb-4">Created tickets by status</h3>

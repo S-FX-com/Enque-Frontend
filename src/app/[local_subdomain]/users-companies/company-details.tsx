@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,13 +8,25 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Ticket, Users, Trash2 } from "lucide-react";
+import { ICompany } from "@/typescript/company";
+import { IUser } from "@/typescript/user";
 
-export function CompanyDetails() {
-	const [companyName, setCompanyName] = useState("CareCentrix");
-	const [primaryContact, setPrimaryContact] = useState("Madey, Andrew");
-	const [accountManager, setAccountManager] = useState("Diego Velasquez");
-	const [emailDomain, setEmailDomain] = useState("carecentrix.com");
-	const [description, setDescription] = useState("");
+interface Props {
+	company: ICompany;
+	companyUsers: IUser[];
+}
+
+export function CompanyDetails({ company, companyUsers }: Props) {
+	const [companyName, setCompanyName] = useState(company.name);
+	const [description, setDescription] = useState("Ok ok ok ...");
+	const [primaryContact, setPrimaryContact] = useState("Alexis Cuevas");
+	const [accountManager, setAccountManager] = useState("Alexis Cuevas");
+	const [emailDomain, setEmailDomain] = useState(company.email_domain);
+
+	useEffect(() => {
+		setCompanyName(company.name);
+		setEmailDomain(company.email_domain);
+	}, [company]);
 
 	return (
 		<Card className="w-full">
@@ -22,7 +34,9 @@ export function CompanyDetails() {
 				<div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 					<div className="space-y-6">
 						<div className="flex items-center gap-2">
-							<div className="bg-purple-100 text-purple-800 h-10 w-10 flex items-center justify-center rounded-md font-bold text-xl">re</div>
+							<div className="bg-purple-100 text-purple-800 h-10 w-10 flex items-center justify-center rounded-md font-bold text-xl">
+								{company.name.substring(0, 2).toUpperCase()}
+							</div>
 							<div className="flex items-center">
 								<span className="font-medium">{companyName}</span>
 								<button className="ml-2 text-gray-400 hover:text-gray-600">
@@ -69,7 +83,7 @@ export function CompanyDetails() {
 									<SelectValue placeholder="Select contact" />
 								</SelectTrigger>
 								<SelectContent>
-									<SelectItem value="Madey, Andrew">Madey, Andrew</SelectItem>
+									<SelectItem value="Alexis Cuevas">Alexis Cuevas</SelectItem>
 									<SelectItem value="Smith, John">Smith, John</SelectItem>
 									<SelectItem value="Johnson, Emily">Johnson, Emily</SelectItem>
 								</SelectContent>
@@ -101,7 +115,7 @@ export function CompanyDetails() {
 									<SelectValue placeholder="Select manager" />
 								</SelectTrigger>
 								<SelectContent>
-									<SelectItem value="Diego Velasquez">Diego Velasquez</SelectItem>
+									<SelectItem value="Alexis Cuevas">Alexis Cuevas</SelectItem>
 									<SelectItem value="Maria Rodriguez">Maria Rodriguez</SelectItem>
 									<SelectItem value="Alex Chen">Alex Chen</SelectItem>
 								</SelectContent>
@@ -119,7 +133,7 @@ export function CompanyDetails() {
 								</div>
 								<div className="flex items-center gap-1 text-sm">
 									<Users className="h-4 w-4" />
-									<span>3 Users</span>
+									<span>{companyUsers.length} Users</span>
 								</div>
 							</div>
 							<Button variant="destructive" size="sm">
