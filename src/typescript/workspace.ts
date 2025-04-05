@@ -1,9 +1,9 @@
 export interface IWorkspace {
-	id: 0;
 	name: string;
 	local_subdomain: string;
 	email_domain: string;
 	logo_url: string;
+	id: 0;
 	created_at: string;
 	updated_at: string;
 }
