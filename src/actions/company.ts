@@ -56,3 +56,111 @@ export async function CreateCompany(prevState: CreateCompanyFormState, formData:
 		};
 	}
 }
+
+// Define the schema for company update validation
+const companySchema = z.object({
+	id: z.string(),
+	name: z.string().min(1, "Company name is required"),
+	emailDomain: z.string().optional(),
+	description: z.string().max(150, "Description cannot exceed 150 characters").optional(),
+	primaryContact: z.string().optional(),
+	accountManager: z.string().optional(),
+});
+
+export type CompanyFormState = {
+	errors?: {
+		id?: string[];
+		name?: string[];
+		emailDomain?: string[];
+		description?: string[];
+		primaryContact?: string[];
+		accountManager?: string[];
+		_form?: string[];
+	};
+	values?: {
+		id?: string;
+		name?: string;
+		emailDomain?: stringa;
+		description?: string;
+		primaryContact?: string;
+		accountManager?: string;
+	};
+	success?: boolean;
+	message?: string;
+};
+
+export async function UpdateCompany(prevState: CompanyFormState, formData: FormData): Promise<CompanyFormState> {
+	// Extract data from the form
+	const id = formData.get("id") as string;
+	const name = formData.get("name") as string;
+	const emailDomain = formData.get("emailDomain") as string;
+	const description = formData.get("description") as string;
+	const primaryContact = formData.get("primaryContact") as string;
+	const accountManager = formData.get("accountManager") as string;
+
+	// Validate the data
+	const validationResult = companySchema.safeParse({
+		id,
+		name,
+		emailDomain,
+		description,
+		primaryContact,
+		accountManager,
+	});
+
+	// If validation fails, return errors
+	if (!validationResult.success) {
+		const errors = validationResult.error.flatten().fieldErrors;
+		return {
+			errors: {
+				...errors,
+				_form: errors._errors,
+			},
+			values: {
+				id,
+				name,
+				emailDomain,
+				description,
+				primaryContact,
+				accountManager,
+			},
+		};
+	}
+
+	try {
+		// Here you would update the company in your database
+		// For example: await db.company.update({ where: { id }, data: { ... } })
+
+		// For now, we'll just simulate a successful update
+		console.log("Updating company:", validationResult.data);
+
+		// Return success
+		return {
+			values: {
+				id,
+				name,
+				emailDomain,
+				description,
+				primaryContact,
+				accountManager,
+			},
+			success: true,
+			message: "Company updated successfully",
+		};
+	} catch (error) {
+		console.error("Error updating company:", error);
+		return {
+			errors: {
+				_form: ["An unexpected error occurred while updating the company."],
+			},
+			values: {
+				id,
+				name,
+				emailDomain,
+				description,
+				primaryContact,
+				accountManager,
+			},
+		};
+	}
+}
