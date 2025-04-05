@@ -8,13 +8,14 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Ticket, Users, Trash2, Save, Pencil, Info } from "lucide-react";
+import { Ticket, Users, Trash2, Save, Pencil, Info, AlertTriangle } from "lucide-react";
 import type { ICompany } from "@/typescript/company";
 import type { IUser } from "@/typescript/user";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { UpdateCompany, type CompanyFormState } from "@/actions/company";
+import { UpdateCompany, DeleteCompany, type CompanyFormState, type DeleteCompanyFormState } from "@/actions/company";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 interface Props {
 	company: ICompany;
@@ -22,14 +23,21 @@ interface Props {
 }
 
 const initialState: CompanyFormState = {};
+const initialDeleteState: DeleteCompanyFormState = {};
 
 export function CompanyDetails({ company, companyUsers }: Props) {
+	const router = useRouter();
+
 	// State for edit name modal
 	const [editNameOpen, setEditNameOpen] = useState(false);
 	const [newCompanyName, setNewCompanyName] = useState(company.name);
 
+	// State for delete confirmation modal
+	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+
 	// Form state using useActionState
 	const [state, formAction, isPending] = useActionState<CompanyFormState>(UpdateCompany, initialState);
+	const [deleteState, deleteAction, isDeletePending] = useActionState<DeleteCompanyFormState>(DeleteCompany, initialDeleteState);
 
 	// Track if there are unsaved changes
 	const [hasChanges, setHasChanges] = useState(false);
@@ -55,7 +63,7 @@ export function CompanyDetails({ company, companyUsers }: Props) {
 		setNewCompanyName(company.name);
 	}, [company]);
 
-	// Show success toast when action completes successfully
+	// Show success toast when update action completes successfully
 	useEffect(() => {
 		if (state.success) {
 			toast.success("Success", {
@@ -64,6 +72,21 @@ export function CompanyDetails({ company, companyUsers }: Props) {
 			setHasChanges(false);
 		}
 	}, [state.success, state.message]);
+
+	// Handle successful deletion
+	useEffect(() => {
+		if (deleteState.success) {
+			toast.success("Success", {
+				description: deleteState.message,
+			});
+			setDeleteDialogOpen(false);
+
+			// Navigate away or refresh the page
+			// This would typically redirect to the companies list
+			router.push("/clients");
+			router.refresh();
+		}
+	}, [deleteState.success, deleteState.message, router]);
 
 	// Handle form value changes
 	const handleChange = (field: string, value: string) => {
@@ -183,7 +206,7 @@ export function CompanyDetails({ company, companyUsers }: Props) {
 											<span>{companyUsers.length} Users</span>
 										</div>
 									</div>
-									<Button type="button" variant="destructive" size="sm">
+									<Button type="button" variant="destructive" size="sm" onClick={() => setDeleteDialogOpen(true)}>
 										<Trash2 className="h-4 w-4 mr-1" />
 										Delete
 									</Button>
@@ -254,6 +277,40 @@ export function CompanyDetails({ company, companyUsers }: Props) {
 						</Button>
 						<Button onClick={handleUpdateCompanyName}>Update</Button>
 					</DialogFooter>
+				</DialogContent>
+			</Dialog>
+
+			{/* Delete Company Confirmation Modal */}
+			<Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+				<DialogContent>
+					<DialogHeader>
+						<DialogTitle>Delete Company</DialogTitle>
+						<DialogDescription>Are you sure you want to delete {company.name}? This action cannot be undone.</DialogDescription>
+					</DialogHeader>
+
+					<form action={deleteAction} className="py-4">
+						{deleteState.errors?._form && (
+							<Alert variant="destructive" className="mb-4">
+								<AlertDescription>{deleteState.errors._form[0]}</AlertDescription>
+							</Alert>
+						)}
+
+						<input type="hidden" name="id" value={company.id} />
+
+						<div className="flex items-center gap-2 text-amber-600 mb-4">
+							<AlertTriangle className="h-5 w-5" />
+							<p>This will delete all associated data including users and tickets.</p>
+						</div>
+
+						<DialogFooter>
+							<Button type="button" variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+								Cancel
+							</Button>
+							<Button type="submit" variant="destructive" disabled={isDeletePending}>
+								{isDeletePending ? "Deleting..." : "Delete Company"}
+							</Button>
+						</DialogFooter>
+					</form>
 				</DialogContent>
 			</Dialog>
 		</>

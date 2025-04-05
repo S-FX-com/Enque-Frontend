@@ -164,3 +164,57 @@ export async function UpdateCompany(prevState: CompanyFormState, formData: FormD
 		};
 	}
 }
+
+// Define the schema for company deletion validation
+const deleteCompanySchema = z.object({
+	id: z.string(),
+});
+
+export type DeleteCompanyFormState = {
+	errors?: {
+		id?: string[];
+		_form?: string[];
+	};
+	success?: boolean;
+	message?: string;
+};
+
+export async function DeleteCompany(prevState: DeleteCompanyFormState, formData: FormData): Promise<DeleteCompanyFormState> {
+	// Extract company ID from the form
+	const id = formData.get("id") as string;
+
+	// Validate the ID
+	const validationResult = deleteCompanySchema.safeParse({ id });
+
+	// If validation fails, return errors
+	if (!validationResult.success) {
+		const errors = validationResult.error.flatten().fieldErrors;
+		return {
+			errors: {
+				...errors,
+				_form: errors._errors,
+			},
+		};
+	}
+
+	try {
+		// Here you would delete the company from your database
+		// For example: await db.company.delete({ where: { id } })
+
+		// For now, we'll just simulate a successful deletion
+		console.log("Deleting company with ID:", id);
+
+		// Return success
+		return {
+			success: true,
+			message: "Company deleted successfully",
+		};
+	} catch (error) {
+		console.error("Error deleting company:", error);
+		return {
+			errors: {
+				_form: ["An unexpected error occurred while deleting the company."],
+			},
+		};
+	}
+}
