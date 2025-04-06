@@ -4,20 +4,13 @@ import { AppConfigs, PlatformConfigs } from "@/configs";
 import { createCookie, deleteCookie, getCookie } from "@/lib/cookies";
 import { getLocalSubdomainByHost } from "@/lib/utils";
 import { authService } from "@/services/auth";
-import { ServiceResponse } from "@/typescript";
+import { FormState, ServiceResponse } from "@/typescript";
+import { ICreateAuth } from "@/typescript/auth";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
-export type AuthFormState = {
-	success?: boolean;
-	errors?: {
-		email?: string[];
-		password?: string[];
-		_form?: string[];
-	};
-	message?: string;
-};
+export type AuthFormState = FormState<ICreateAuth>;
 
 /** Validation scheme for user authentication */
 const AuthSchema = z.object({

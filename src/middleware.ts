@@ -25,7 +25,7 @@ export async function middleware(request: NextRequest) {
 
 	// Handle `www` requests
 	if (host?.startsWith("www") || host?.startsWith(AppConfigs.host)) {
-		// Silence is gold
+		if (isAuthPath(path)) return NextResponse.redirect(PlatformConfigs.url() + "/workspace");
 	} else {
 		// Verify workspace
 		const currentWorkspace = await workspaceService.getWorkspace({ local_subdomain: getLocalSubdomainByHost(host as string) });

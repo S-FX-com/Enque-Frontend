@@ -19,7 +19,17 @@ import Link from "next/link";
 import { ModeToggle } from "./mode-toggle";
 import React from "react";
 
-export function Topbar({ title = "Tickets", breadcrumbs = [] }) {
+interface Breadcrumb {
+	label: string;
+	href: string;
+}
+
+interface Props {
+	title: string;
+	breadcrumbs: Breadcrumb[];
+}
+
+export function Topbar({ title = "Tickets", breadcrumbs = [] }: Props) {
 	const router = useRouter();
 	const { currentAgent } = useApp();
 

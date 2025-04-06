@@ -3,31 +3,13 @@
 import { PlatformConfigs } from "@/configs";
 import { getLocalSubdomainByHost } from "@/lib/utils";
 import { ticketService } from "@/services/ticket";
+import { FormState } from "@/typescript";
+import { ICreateTicket } from "@/typescript/ticket";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
-export type CreateTicketFormState = {
-	success?: boolean;
-	errors?: {
-		title?: string[];
-		description?: string[];
-		status?: string[];
-		priority?: string[];
-		assigneeId?: string[];
-		dueDate?: string[];
-		_form?: string[];
-	};
-	message?: string;
-	values?: {
-		title?: string;
-		description?: string;
-		status?: string;
-		priority?: string;
-		assigneeId?: string;
-		dueDate?: string;
-	};
-};
+export type CreateTicketFormState = FormState<ICreateTicket>;
 
 const CreateTicketSchema = z.object({
 	title: z.string().min(1, { message: "Title is required" }),

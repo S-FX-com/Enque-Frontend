@@ -3,21 +3,13 @@
 import { PlatformConfigs } from "@/configs";
 import { getLocalSubdomainByHost } from "@/lib/utils";
 import { agentService } from "@/services/agent";
+import { FormState } from "@/typescript";
+import { ICreateAgent } from "@/typescript/agent";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
-export type CreateAgentFormState = {
-	success?: boolean;
-	errors?: {
-		name?: string[];
-		email?: string[];
-		password?: string[];
-		confirmPassword?: string[];
-		_form?: string[];
-	};
-	message?: string;
-};
+export type CreateAgentFormState = FormState<ICreateAgent>;
 
 /** Validation scheme to create a agent */
 const CreateAgentSchema = z

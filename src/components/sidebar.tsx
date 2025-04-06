@@ -3,18 +3,20 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { useApp } from "@/hooks/use-app";
-import { AreaChartIcon as ChartArea, Compass, LayoutDashboard, Loader2, Settings, TicketIcon as Tickets, Users } from "lucide-react";
+import { AreaChartIcon as ChartArea, LayoutDashboard, Loader2, Settings, TicketIcon as Tickets, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 import { teamService } from "@/services/team";
 import type { ITeam } from "@/typescript/team";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
+import { ticketService } from "@/services/ticket";
+import { ITicket } from "@/typescript/ticket";
 
 export function Sidebar() {
 	const pathname = usePathname();
-	const { currentAgent } = useApp();
 	const [teams, setTeams] = useState<ITeam[]>([]);
 	const [teamsIsLoading, setTeamsIsLoading] = useState(true);
+	const [tickets, setTickets] = useState<ITicket[]>([]);
+	const [ticketsIsLoading, setTicketsIsLoading] = useState(true);
 
 	const mainItems = [
 		{
@@ -64,8 +66,24 @@ export function Sidebar() {
 			}
 		};
 
+		const loadTickets = async () => {
+			try {
+				teams.forEach(async (team) => {
+					const ticketsResponse = await ticketService.getTickets({ team_id: team.id });
+					if (ticketsResponse.success) setTickets({ ...tickets, ...(ticketsResponse.data as ITicket[]) });
+				});
+			} catch (error) {
+				console.error("Failed to load teams:", error);
+			} finally {
+				setTicketsIsLoading(false);
+			}
+		};
+
 		loadTeams();
+		loadTickets();
 	}, []);
+
+	const openTicketsByTeamId = (team_id: number) => tickets.map((ticket) => ticket.team.id === team_id && ticket.status !== "Completed");
 
 	return (
 		<div className="flex h-full w-[calc(var(--spacing)*72)] flex-col bg-white dark:bg-black py-6">
@@ -117,17 +135,15 @@ export function Sidebar() {
 											isActive ? "bg-primary-foreground font-medium text-primary" : "hover:bg-background"
 										)}>
 										<div className="flex items-center space-x-2">
-											<Avatar className="h-6 w-6">
-												<AvatarImage src={team.avatarUrl} alt={team.name} />
-												<AvatarFallback>
-													<Compass size={14} />
-												</AvatarFallback>
+											<Avatar className="h-8 w-8">
+												<AvatarImage src={team.logo_url} alt={team.name} />
+												<AvatarFallback>{team.name.substring(0, 2).toUpperCase()}</AvatarFallback>
 											</Avatar>
 											<span>{team.name}</span>
 										</div>
-										{team.notifications && team.notifications > 0 && (
+										{openTicketsByTeamId(team.id).length > 0 && (
 											<span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs font-medium text-white">
-												{team.notifications}
+												{openTicketsByTeamId(team.id).length}
 											</span>
 										)}
 									</Link>

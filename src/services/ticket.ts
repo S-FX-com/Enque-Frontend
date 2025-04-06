@@ -1,14 +1,14 @@
 import { AppConfigs } from "@/configs";
 import { fetchAPI } from "@/lib/fetch-api";
 import { ServiceResponse } from "@/typescript";
-import { ITicket, ICreateTicket, IUpdateTicket } from "@/typescript/ticket";
+import { ITicket, ICreateTicket, IUpdateTicket, IGetTicket } from "@/typescript/ticket";
 
 /** Service endpoint */
 const SERVICE_ENDPOINT = `${AppConfigs.api}/tickets`;
 
 export const ticketService = {
 	/** */
-	async getTicket(paramsObj: ITicket): Promise<ServiceResponse<ITicket>> {
+	async getTicket(paramsObj: IGetTicket): Promise<ServiceResponse<ITicket>> {
 		try {
 			const queryParams = new URLSearchParams();
 			Object.entries(paramsObj).forEach(([key, value]) => {
@@ -61,7 +61,7 @@ export const ticketService = {
 	},
 
 	/** */
-	async getTickets(paramsObj: ITicket): Promise<ServiceResponse<ITicket[]>> {
+	async getTickets(paramsObj: IGetTicket): Promise<ServiceResponse<ITicket[]>> {
 		try {
 			const queryParams = new URLSearchParams();
 			Object.entries(paramsObj).forEach(([key, value]) => {

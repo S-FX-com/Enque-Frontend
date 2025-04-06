@@ -1,24 +1,11 @@
 "use server";
 
-import { PlatformConfigs } from "@/configs";
-import { getLocalSubdomainByHost } from "@/lib/utils";
-import { ticketService } from "@/services/ticket";
 import { userService } from "@/services/user";
-import { headers } from "next/headers";
-import { redirect } from "next/navigation";
+import { FormState } from "@/typescript";
+import { ICreateUser } from "@/typescript/user";
 import { z } from "zod";
 
-export type CreateUserFormState = {
-	success?: boolean;
-	errors?: {
-		title?: string[];
-		_form?: string[];
-	};
-	message?: string;
-	values?: {
-		title?: string;
-	};
-};
+export type CreateUserFormState = FormState<ICreateUser>;
 
 const CreateUserSchema = z.object({});
 

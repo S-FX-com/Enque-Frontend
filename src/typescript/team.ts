@@ -3,6 +3,7 @@ import { IWorkspace } from "./workspace";
 export interface ITeam {
 	name: string;
 	description: string;
+	logo_url: string;
 	id: number;
 	workspace: IWorkspace;
 	created_at: string;

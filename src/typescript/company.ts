@@ -10,6 +10,8 @@ export interface ICompany {
 	updated_at: string;
 }
 
-export interface ICreateCompany {}
+export type ICreateCompany = Pick<ICompany, "name" | "logo_url" | "email_domain"> & {
+	workspace_id: number;
+};
 
 export interface IUpdateCompany {}

@@ -1,23 +1,15 @@
 "use server";
 
 import { companyService } from "@/services/company";
+import { FormState } from "@/typescript";
+import { ICreateCompany, IUpdateCompany } from "@/typescript/company";
 import { z } from "zod";
 
-export type CreateCompanyFormState = {
-	success?: boolean;
-	errors?: {
-		title?: string[];
-		_form?: string[];
-	};
-	message?: string;
-	values?: {
-		title?: string;
-	};
-};
+export type CreateCompanyFormState = FormState<ICreateCompany>;
 
 const CreateCompanySchema = z.object({});
 
-export async function CreateCompany(prevState: CreateCompanyFormState, formData: FormData) {
+export async function CreateCompany(prevState: CreateCompanyFormState, formData: FormData): Promise<CreateCompanyFormState> {
 	const title = formData.get("title") as string;
 
 	const values = {
@@ -57,8 +49,9 @@ export async function CreateCompany(prevState: CreateCompanyFormState, formData:
 	}
 }
 
-// Define the schema for company update validation
-const companySchema = z.object({
+export type UpdateCompanyFormState = FormState<IUpdateCompany>;
+
+const UpdateCompanySchema = z.object({
 	id: z.string(),
 	name: z.string().min(1, "Company name is required"),
 	emailDomain: z.string().optional(),
@@ -67,29 +60,7 @@ const companySchema = z.object({
 	accountManager: z.string().optional(),
 });
 
-export type CompanyFormState = {
-	errors?: {
-		id?: string[];
-		name?: string[];
-		emailDomain?: string[];
-		description?: string[];
-		primaryContact?: string[];
-		accountManager?: string[];
-		_form?: string[];
-	};
-	values?: {
-		id?: string;
-		name?: string;
-		emailDomain?: stringa;
-		description?: string;
-		primaryContact?: string;
-		accountManager?: string;
-	};
-	success?: boolean;
-	message?: string;
-};
-
-export async function UpdateCompany(prevState: CompanyFormState, formData: FormData): Promise<CompanyFormState> {
+export async function UpdateCompany(prevState: UpdateCompanyFormState, formData: FormData): Promise<UpdateCompanyFormState> {
 	// Extract data from the form
 	const id = formData.get("id") as string;
 	const name = formData.get("name") as string;
@@ -99,7 +70,7 @@ export async function UpdateCompany(prevState: CompanyFormState, formData: FormD
 	const accountManager = formData.get("accountManager") as string;
 
 	// Validate the data
-	const validationResult = companySchema.safeParse({
+	const validationResult = UpdateCompanySchema.safeParse({
 		id,
 		name,
 		emailDomain,
@@ -165,26 +136,18 @@ export async function UpdateCompany(prevState: CompanyFormState, formData: FormD
 	}
 }
 
-// Define the schema for company deletion validation
-const deleteCompanySchema = z.object({
+export type DeleteCompanyFormState = FormState<IDeleteCompany>;
+
+const DeleteCompanySchema = z.object({
 	id: z.string(),
 });
-
-export type DeleteCompanyFormState = {
-	errors?: {
-		id?: string[];
-		_form?: string[];
-	};
-	success?: boolean;
-	message?: string;
-};
 
 export async function DeleteCompany(prevState: DeleteCompanyFormState, formData: FormData): Promise<DeleteCompanyFormState> {
 	// Extract company ID from the form
 	const id = formData.get("id") as string;
 
 	// Validate the ID
-	const validationResult = deleteCompanySchema.safeParse({ id });
+	const validationResult = DeleteCompanySchema.safeParse({ id });
 
 	// If validation fails, return errors
 	if (!validationResult.success) {

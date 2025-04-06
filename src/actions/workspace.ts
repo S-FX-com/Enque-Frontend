@@ -3,19 +3,12 @@
 import { PlatformConfigs } from "@/configs";
 import { getLocalSubdomainByHost } from "@/lib/utils";
 import { workspaceService } from "@/services/workspace";
-import { ServiceResponse } from "@/typescript";
+import { FormState, ServiceResponse } from "@/typescript";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
-export type GoToWorkspaceFormState = {
-	success?: boolean;
-	errors?: {
-		local_subdomain?: string[];
-		_form?: string[];
-	};
-	message?: string;
-};
+export type GoToWorkspaceFormState = FormState<{ local_subdomain: string }>;
 
 /**  */
 const GoToWorkspaceSchema = z.object({
