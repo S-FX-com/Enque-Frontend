@@ -5,6 +5,7 @@ import { createCookie, deleteCookie, getCookie } from "@/lib/cookies";
 import { getLocalSubdomainByHost } from "@/lib/utils";
 import { authService } from "@/services/auth";
 import { FormState, ServiceResponse } from "@/typescript";
+import { IAgent } from "@/typescript/agent";
 import { ICreateAuth } from "@/typescript/auth";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -12,26 +13,30 @@ import { z } from "zod";
 
 export type AuthFormState = FormState<ICreateAuth>;
 
-/** Validation scheme for user authentication */
+/** Create authentication - Schema */
 const AuthSchema = z.object({
 	email: z.string().email("Email address is invalid"),
 	password: z.string().min(8, "Password must be at least 8 characters long"),
 });
 
-/** Create authentication */
-export async function Auth(prevState: AuthFormState, formData: FormData) {
+/** Create authentication - Action */
+export async function Auth(prevState: AuthFormState, formData: FormData): Promise<AuthFormState> {
 	const email = formData.get("email") as string;
 	const password = formData.get("password") as string;
 
-	const validation = AuthSchema.safeParse({ email, password });
-	if (!validation.success) return { success: false, errors: validation.error.flatten().fieldErrors };
+	const values = { email, password };
 
-	const response = await authService.createAuth({ email, password });
+	const validation = AuthSchema.safeParse(values);
+	if (!validation.success) return { success: false, errors: validation.error.flatten().fieldErrors, values };
+
+	const response = await authService.createAuth(values);
 	if (!response.success)
 		return {
+			success: false,
 			errors: {
-				_form: [response.message],
+				_form: [response.message as string],
 			},
+			values,
 		};
 
 	await createCookie({
@@ -48,8 +53,8 @@ export async function Auth(prevState: AuthFormState, formData: FormData) {
 	redirect(PlatformConfigs.url(getLocalSubdomainByHost(host as string)));
 }
 
-/** Get authentication */
-export async function GetAuth(): Promise<ServiceResponse<any>> {
+/** Get authentication - Action */
+export async function GetAuth(): Promise<ServiceResponse<IAgent>> {
 	const headersList = await headers();
 	const host = headersList.get("host");
 
@@ -62,7 +67,7 @@ export async function GetAuth(): Promise<ServiceResponse<any>> {
 	return response;
 }
 
-/** Delete authentication */
+/** Delete authentication - Action */
 export async function DeleteAuth() {
 	const headersList = await headers();
 	const host = headersList.get("host");

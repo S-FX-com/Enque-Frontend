@@ -7,177 +7,93 @@ import { z } from "zod";
 
 export type CreateCompanyFormState = FormState<ICreateCompany>;
 
-const CreateCompanySchema = z.object({});
-
-export async function CreateCompany(prevState: CreateCompanyFormState, formData: FormData): Promise<CreateCompanyFormState> {
-	const title = formData.get("title") as string;
-
-	const values = {
-		title,
-	};
-
-	const validation = CreateCompanySchema.safeParse(values);
-	if (!validation.success)
-		return {
-			success: false,
-			errors: validation.error.flatten().fieldErrors,
-			values,
-		};
-
-	try {
-		const response = await companyService.createCompany(values);
-		if (!response.success)
-			return {
-				success: false,
-				errors: {
-					_form: [response.message || "Failed to create company"],
-				},
-				values,
-			};
-
-		return {
-			success: true,
-		};
-	} catch (error) {
-		return {
-			success: false,
-			errors: {
-				_form: ["An unexpected error occurred. Please try again."],
-			},
-			values,
-		};
-	}
-}
-
 export type UpdateCompanyFormState = FormState<IUpdateCompany>;
-
-const UpdateCompanySchema = z.object({
-	id: z.string(),
-	name: z.string().min(1, "Company name is required"),
-	emailDomain: z.string().optional(),
-	description: z.string().max(150, "Description cannot exceed 150 characters").optional(),
-	primaryContact: z.string().optional(),
-	accountManager: z.string().optional(),
-});
-
-export async function UpdateCompany(prevState: UpdateCompanyFormState, formData: FormData): Promise<UpdateCompanyFormState> {
-	// Extract data from the form
-	const id = formData.get("id") as string;
-	const name = formData.get("name") as string;
-	const emailDomain = formData.get("emailDomain") as string;
-	const description = formData.get("description") as string;
-	const primaryContact = formData.get("primaryContact") as string;
-	const accountManager = formData.get("accountManager") as string;
-
-	// Validate the data
-	const validationResult = UpdateCompanySchema.safeParse({
-		id,
-		name,
-		emailDomain,
-		description,
-		primaryContact,
-		accountManager,
-	});
-
-	// If validation fails, return errors
-	if (!validationResult.success) {
-		const errors = validationResult.error.flatten().fieldErrors;
-		return {
-			errors: {
-				...errors,
-				_form: errors._errors,
-			},
-			values: {
-				id,
-				name,
-				emailDomain,
-				description,
-				primaryContact,
-				accountManager,
-			},
-		};
-	}
-
-	try {
-		// Here you would update the company in your database
-		// For example: await db.company.update({ where: { id }, data: { ... } })
-
-		// For now, we'll just simulate a successful update
-		console.log("Updating company:", validationResult.data);
-
-		// Return success
-		return {
-			values: {
-				id,
-				name,
-				emailDomain,
-				description,
-				primaryContact,
-				accountManager,
-			},
-			success: true,
-			message: "Company updated successfully",
-		};
-	} catch (error) {
-		console.error("Error updating company:", error);
-		return {
-			errors: {
-				_form: ["An unexpected error occurred while updating the company."],
-			},
-			values: {
-				id,
-				name,
-				emailDomain,
-				description,
-				primaryContact,
-				accountManager,
-			},
-		};
-	}
-}
 
 export type DeleteCompanyFormState = FormState<IDeleteCompany>;
 
-const DeleteCompanySchema = z.object({
-	id: z.string(),
+/** Create company - Schema */
+const CreateCompanySchema = z.object({
+	name: z.string(),
+	logo_url: z.string(),
+	email_domain: z.string(),
+	workspace_id: z.string(),
 });
 
-export async function DeleteCompany(prevState: DeleteCompanyFormState, formData: FormData): Promise<DeleteCompanyFormState> {
-	// Extract company ID from the form
+/** Create company - Action */
+export async function CreateCompany(prevState: CreateCompanyFormState, formData: FormData): Promise<CreateCompanyFormState> {
+	const name = formData.get("name") as string;
+	const logo_url = formData.get("logo_url") as string;
+	const email_domain = formData.get("email_domain") as string;
+	const workspace_id = formData.get("workspace_id") as unknown as number;
+
+	const values = { name, logo_url, email_domain, workspace_id };
+
+	const validation = CreateCompanySchema.safeParse(values);
+	if (!validation.success) return { success: false, errors: validation.error.flatten().fieldErrors, values };
+
+	const response = await companyService.createCompany(values);
+	if (!response.success)
+		return {
+			success: false,
+			errors: {
+				_form: [response.message as string],
+			},
+			values,
+		};
+
+	return {
+		success: true,
+	};
+}
+
+/** Update company - Schema */
+const UpdateCompanySchema = z.object({});
+
+/** Update company - Action */
+export async function UpdateCompany(prevState: UpdateCompanyFormState, formData: FormData): Promise<UpdateCompanyFormState> {
 	const id = formData.get("id") as string;
 
-	// Validate the ID
-	const validationResult = DeleteCompanySchema.safeParse({ id });
+	const values = { id };
 
-	// If validation fails, return errors
-	if (!validationResult.success) {
-		const errors = validationResult.error.flatten().fieldErrors;
+	const validation = UpdateCompanySchema.safeParse(values);
+	if (!validation.success) return { success: false, errors: validation.error.flatten().fieldErrors, values };
+
+	const response = await companyService.createCompany(values);
+	if (!response.success)
 		return {
+			success: false,
 			errors: {
-				...errors,
-				_form: errors._errors,
+				_form: [response.message as string],
 			},
+			values,
 		};
-	}
 
-	try {
-		// Here you would delete the company from your database
-		// For example: await db.company.delete({ where: { id } })
+	return { success: true };
+}
 
-		// For now, we'll just simulate a successful deletion
-		console.log("Deleting company with ID:", id);
+/** Delete company - Schema */
+const DeleteCompanySchema = z.object({
+	company_id: z.number(),
+});
 
-		// Return success
+/** Delete company - Action */
+export async function DeleteCompany(prevState: DeleteCompanyFormState, formData: FormData): Promise<DeleteCompanyFormState> {
+	const company_id = formData.get("company_id") as unknown as number;
+
+	const values = { company_id };
+
+	const validation = DeleteCompanySchema.safeParse(values);
+	if (!validation.success) return { success: false, errors: validation.error.flatten().fieldErrors, values };
+
+	const response = await companyService.deleteCompanyById(values.company_id);
+	if (!response.success)
 		return {
-			success: true,
-			message: "Company deleted successfully",
-		};
-	} catch (error) {
-		console.error("Error deleting company:", error);
-		return {
+			success: false,
 			errors: {
-				_form: ["An unexpected error occurred while deleting the company."],
+				_form: [response.message as string],
 			},
+			values,
 		};
-	}
+
+	return { success: true };
 }

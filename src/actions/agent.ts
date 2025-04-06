@@ -11,36 +11,33 @@ import { z } from "zod";
 
 export type CreateAgentFormState = FormState<ICreateAgent>;
 
-/** Validation scheme to create a agent */
-const CreateAgentSchema = z
-	.object({
-		name: z.string().min(3, "Name must be at least 3 characters long"),
-		email: z.string().email("Email address is invalid"),
-		password: z.string().min(8, "Password must be at least 8 characters long"),
-		confirmPassword: z.string().min(8, "Password confirmation must be at least 8 characters long"),
-	})
-	.refine((data) => data.password === data.confirmPassword, {
-		message: "Passwords do not match",
-		path: ["confirmPassword"],
-	});
+/** Create agent - Schema */
+const CreateAgentSchema = z.object({
+	name: z.string().min(3, "Name must be at least 3 characters long"),
+	email: z.string().email("Email address is invalid"),
+	password: z.string().min(8, "Password must be at least 8 characters long"),
+});
 
-/** Create agent */
-export async function CreateAgent(prevState: CreateAgentFormState, formData: FormData) {
+/** Create agent - Action */
+export async function CreateAgent(prevState: CreateAgentFormState, formData: FormData): Promise<CreateAgentFormState> {
 	const name = formData.get("name") as string;
 	const email = formData.get("email") as string;
 	const password = formData.get("password") as string;
-	const workspace_id = formData.get("workspace_id") as string;
-	const confirmPassword = formData.get("confirmPassword");
+	const workspace_id = formData.get("workspace_id") as unknown as number;
 
-	const validation = CreateAgentSchema.safeParse({ name, email, password, confirmPassword, workspace_id });
-	if (!validation.success) return { success: false, errors: validation.error.flatten().fieldErrors };
+	const values = { name, email, password, workspace_id };
 
-	const response = await agentService.createAgent({ name, email, password, workspace_id });
+	const validation = CreateAgentSchema.safeParse(values);
+	if (!validation.success) return { success: false, errors: validation.error.flatten().fieldErrors, values };
+
+	const response = await agentService.createAgent(values);
 	if (!response.success)
 		return {
+			success: false,
 			errors: {
-				_form: [response.message],
+				_form: [response.message as string],
 			},
+			values,
 		};
 
 	const headersList = await headers();
