@@ -15,3 +15,8 @@ export interface IUser {
 export interface ICreateUser {}
 
 export interface IUpdateUser {}
+
+export type IGetUser = Pick<IUser, "name" | "email" | "phone"> & {
+	company_id: number | null;
+	workspace_id: number;
+};

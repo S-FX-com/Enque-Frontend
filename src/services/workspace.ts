@@ -12,7 +12,7 @@ export const workspaceService = {
 		try {
 			const queryParams = new URLSearchParams();
 			Object.entries(paramsObj).forEach(([key, value]) => {
-				if (value !== undefined && value !== null) {
+				if (value !== undefined) {
 					queryParams.append(`filter[${key}]`, String(value));
 				}
 			});
@@ -65,7 +65,7 @@ export const workspaceService = {
 		try {
 			const queryParams = new URLSearchParams();
 			Object.entries(paramsObj).forEach(([key, value]) => {
-				if (value !== undefined && value !== null) {
+				if (value !== undefined) {
 					queryParams.append(`filter[${key}]`, String(value));
 				}
 			});

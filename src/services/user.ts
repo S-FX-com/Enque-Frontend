@@ -1,7 +1,7 @@
 import { AppConfigs } from "@/configs";
 import { fetchAPI } from "@/lib/fetch-api";
 import { ServiceResponse } from "@/typescript";
-import { IUser, ICreateUser, IUpdateUser } from "@/typescript/user";
+import { IUser, ICreateUser, IUpdateUser, IGetUser } from "@/typescript/user";
 
 /** Service endpoint */
 const SERVICE_ENDPOINT = `${AppConfigs.api}/users`;
@@ -12,7 +12,7 @@ export const userService = {
 		try {
 			const queryParams = new URLSearchParams();
 			Object.entries(paramsObj).forEach(([key, value]) => {
-				if (value !== undefined && value !== null) {
+				if (value !== undefined) {
 					queryParams.append(`filter[${key}]`, String(value));
 				}
 			});
@@ -61,11 +61,11 @@ export const userService = {
 	},
 
 	/** */
-	async getUsers(paramsObj: IUser): Promise<ServiceResponse<IUser[]>> {
+	async getUsers(paramsObj: Partial<IGetUser> = {}): Promise<ServiceResponse<IUser[]>> {
 		try {
 			const queryParams = new URLSearchParams();
 			Object.entries(paramsObj).forEach(([key, value]) => {
-				if (value !== undefined && value !== null) {
+				if (value !== undefined) {
 					queryParams.append(`filter[${key}]`, String(value));
 				}
 			});

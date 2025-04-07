@@ -1,7 +1,7 @@
 import { AppConfigs } from "@/configs";
 import { fetchAPI } from "@/lib/fetch-api";
 import { ServiceResponse } from "@/typescript";
-import { ICompany, ICreateCompany, IUpdateCompany } from "@/typescript/company";
+import { ICompany, ICreateCompany, IGetCompany, IUpdateCompany } from "@/typescript/company";
 
 /** Service endpoint */
 const SERVICE_ENDPOINT = `${AppConfigs.api}/companies`;
@@ -12,7 +12,7 @@ export const companyService = {
 		try {
 			const queryParams = new URLSearchParams();
 			Object.entries(paramsObj).forEach(([key, value]) => {
-				if (value !== undefined && value !== null) {
+				if (value !== undefined) {
 					queryParams.append(`filter[${key}]`, String(value));
 				}
 			});
@@ -61,11 +61,11 @@ export const companyService = {
 	},
 
 	/** */
-	async getCompanies(paramsObj: ICompany): Promise<ServiceResponse<ICompany[]>> {
+	async getCompanies(paramsObj: Partial<IGetCompany>): Promise<ServiceResponse<ICompany[]>> {
 		try {
 			const queryParams = new URLSearchParams();
 			Object.entries(paramsObj).forEach(([key, value]) => {
-				if (value !== undefined && value !== null) {
+				if (value !== undefined) {
 					queryParams.append(`filter[${key}]`, String(value));
 				}
 			});

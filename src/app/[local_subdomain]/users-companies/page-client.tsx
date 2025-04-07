@@ -2,8 +2,8 @@
 
 import { Button } from "@/components/ui/button";
 import type { IUser } from "@/typescript/user";
-import { useEffect, useState } from "react";
 import type { ICompany } from "@/typescript/company";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { companyService } from "@/services/company";
 import { userService } from "@/services/user";
@@ -15,8 +15,12 @@ import { CreateUserModal } from "@/components/modals/create-user-modal";
 import { CreateCompanyModal } from "@/components/modals/create-company-modal";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ITicket } from "@/typescript/ticket";
+import { ticketService } from "@/services/ticket";
+import { useApp } from "@/hooks/use-app";
 
 export default function ClientPage() {
+	const { currentWorkspace } = useApp();
 	const [companies, setCompanies] = useState<ICompany[]>([]);
 	const [companiesIsLoading, setCompaniesIsLoading] = useState<boolean>(true);
 	const [users, setUsers] = useState<IUser[]>([]);
@@ -28,64 +32,53 @@ export default function ClientPage() {
 
 	useEffect(() => {
 		const loadCompanies = async () => {
-			try {
-				const response = await companyService.getCompanies({});
-				if (response.success) {
-					setCompanies(response.data as ICompany[]);
-					console.log(response);
-				} else {
-					toast.error("Error", {
-						description: response.message || "Failed to load companies",
-					});
-				}
-			} catch (error: unknown) {
-				console.error("Failed to load companies:", error);
+			const response = await companyService.getCompanies({ workspace_id: currentWorkspace?.id as number });
+			if (response.success) setCompanies(response.data as ICompany[]);
+			else
 				toast.error("Error", {
-					description: "Failed to load companies. Please try again.",
+					description: response.message || "Failed to load companies",
 				});
-			} finally {
-				setCompaniesIsLoading(false);
-			}
+
+			setCompaniesIsLoading(false);
 		};
 
+		loadCompanies();
+	}, []);
+
+	useEffect(() => {
 		const loadUsers = async () => {
-			try {
-				const response = await userService.getUsers({});
-				if (response.success) {
-					setUsers(response.data as IUser[]);
-				} else {
+			if (selectedCompany || showUnassignedUsers) {
+				setUsersIsLoading(true);
+
+				const response = await userService.getUsers({ company_id: selectedCompany ? selectedCompany.id : null });
+				if (response.success) setUsers(response.data as IUser[]);
+				else
 					toast.error("Error", {
 						description: response.message || "Failed to load users",
 					});
-				}
-			} catch (error: unknown) {
-				console.error("Failed to load users:", error);
-				toast.error("Error", {
-					description: "Failed to load users. Please try again.",
-				});
-			} finally {
+
 				setUsersIsLoading(false);
 			}
 		};
 
 		const loadTickets = async () => {
-			try {
-				const mockTickets = [];
-				setTickets(mockTickets);
-			} catch (error: unknown) {
-				console.error("Failed to load tickets:", error);
-				toast.error("Error", {
-					description: "Failed to load tickets. Please try again.",
-				});
-			} finally {
+			if (selectedCompany || showUnassignedUsers) {
+				setTicketsIsLoading(true);
+
+				const response = await ticketService.getTickets({});
+				if (response.success) setTickets(response.data as ITicket[]);
+				else
+					toast.error("Error", {
+						description: response.message || "Failed to load tickets",
+					});
+
 				setTicketsIsLoading(false);
 			}
 		};
 
-		loadCompanies();
 		loadUsers();
 		loadTickets();
-	}, []);
+	}, [selectedCompany, showUnassignedUsers]);
 
 	const handleSelectCompany = (company: ICompany) => {
 		if (selectedCompany !== company) {
@@ -105,19 +98,6 @@ export default function ClientPage() {
 		}
 	};
 
-	const usersByCompany = () => {
-		if (!selectedCompany) return [];
-		return users.filter((user) => user.company.id === selectedCompany.id);
-	};
-
-	const unassignedUsers = users.filter((user) => !user.company);
-
-	const ticketsByCompany = () => {
-		if (!selectedCompany) return [];
-		return tickets.filter((ticket) => ticket.company.id === selectedCompany.id);
-	};
-
-	// Company skeleton loading component
 	const CompanySkeleton = () => (
 		<div className="flex flex-col gap-2">
 			{[1, 2, 3, 4, 5].map((i) => (
@@ -161,10 +141,10 @@ export default function ClientPage() {
 												"flex w-full items-center gap-3 px-3 py-1 rounded-xl cursor-pointer",
 												isActive ? "bg-background" : "hover:bg-background"
 											)}>
-											<div className={`w-8 h-8 rounded-full flex items-center justify-center ${company.color}`}>
+											<div className={`w-8 h-8 rounded-full flex items-center justify-center`}>
 												<Avatar className="h-8 w-8">
-													{company?.logo ? (
-														<AvatarImage src={company?.logo} alt={company?.name} />
+													{company?.logo_url ? (
+														<AvatarImage src={company?.logo_url} alt={company?.name} />
 													) : (
 														<AvatarFallback>{company?.name?.substring(0, 2).toUpperCase()}</AvatarFallback>
 													)}
@@ -180,7 +160,7 @@ export default function ClientPage() {
 				</Card>
 
 				<div className="flex-1 flex flex-col gap-4">
-					{selectedCompany && <CompanyDetails company={selectedCompany} companyUsers={usersByCompany()} />}
+					{selectedCompany && <CompanyDetails company={selectedCompany} companyUsers={users} />}
 
 					{showUnassignedUsers && (
 						<Card>
@@ -199,14 +179,14 @@ export default function ClientPage() {
 												<Skeleton className="h-10 w-full" />
 												<Skeleton className="h-10 w-full" />
 											</div>
-										) : unassignedUsers.length > 0 ? (
+										) : users.length > 0 ? (
 											<div className="flex flex-col">
 												<div className="grid grid-cols-12 px-4 py-2 text-sm font-semibold">
 													<div className="col-span-3">Name</div>
 													<div className="col-span-3">Email</div>
 													<div className="col-span-3">Phone Number</div>
 												</div>
-												{unassignedUsers.map((user, indexUser) => (
+												{users.map((user, indexUser) => (
 													<div key={indexUser} className="grid grid-cols-12 px-4 py-1 rounded-xl items-center hover:bg-background">
 														<div className="col-span-3 text-sm">{user.name}</div>
 														<div className="col-span-3 text-sm truncate">{user.email}</div>
@@ -230,14 +210,14 @@ export default function ClientPage() {
 												<Skeleton className="h-10 w-full" />
 												<Skeleton className="h-10 w-full" />
 											</div>
-										) : ticketsByCompany().length > 0 ? (
+										) : tickets.length > 0 ? (
 											<div className="flex flex-col">
 												<div className="grid grid-cols-12 px-4 py-2 text-sm font-semibold">
 													<div className="col-span-3">ID</div>
 													<div className="col-span-6">Title</div>
 													<div className="col-span-3">Status</div>
 												</div>
-												{ticketsByCompany().map((ticket, indexTicket) => (
+												{tickets.map((ticket, indexTicket) => (
 													<div key={indexTicket} className="grid grid-cols-12 px-4 py-1 rounded-xl items-center hover:bg-background">
 														<div className="col-span-3 text-sm">{ticket.id}</div>
 														<div className="col-span-6 text-sm">{ticket.title}</div>
@@ -299,7 +279,7 @@ export default function ClientPage() {
 													<Skeleton className="h-10 w-full" />
 													<Skeleton className="h-10 w-full" />
 												</div>
-											) : usersByCompany().length > 0 ? (
+											) : users.length > 0 ? (
 												<div className="flex flex-col">
 													<div className="grid grid-cols-12 px-4 py-2 text-sm font-semibold">
 														<div className="col-span-3">Name</div>
@@ -307,14 +287,14 @@ export default function ClientPage() {
 														<div className="col-span-3">Phone Number</div>
 														<div className="col-span-3">Company</div>
 													</div>
-													{usersByCompany().map((user, indexUser) => (
+													{users.map((user, indexUser) => (
 														<div
 															key={indexUser}
 															className="grid grid-cols-12 px-4 py-1 rounded-xl items-center hover:bg-background">
 															<div className="col-span-3 text-sm">{user.name}</div>
 															<div className="col-span-3 text-sm truncate">{user.email}</div>
 															<div className="col-span-3">{user.phone}</div>
-															<div className="col-span-3">{user.company.name}</div>
+															<div className="col-span-3">{user.company?.name}</div>
 														</div>
 													))}
 												</div>
@@ -334,14 +314,14 @@ export default function ClientPage() {
 													<Skeleton className="h-10 w-full" />
 													<Skeleton className="h-10 w-full" />
 												</div>
-											) : ticketsByCompany().length > 0 ? (
+											) : tickets.length > 0 ? (
 												<div className="flex flex-col">
 													<div className="grid grid-cols-12 px-4 py-2 text-sm font-semibold">
 														<div className="col-span-3">ID</div>
 														<div className="col-span-6">Title</div>
 														<div className="col-span-3">Status</div>
 													</div>
-													{ticketsByCompany().map((ticket, indexTicket) => (
+													{tickets.map((ticket, indexTicket) => (
 														<div
 															key={indexTicket}
 															className="grid grid-cols-12 px-4 py-1 rounded-xl items-center hover:bg-background">
