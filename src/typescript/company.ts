@@ -2,6 +2,7 @@ import { IWorkspace } from "./workspace";
 
 export interface ICompany {
 	name: string;
+	description: string;
 	logo_url: string;
 	email_domain: string;
 	id: number;
@@ -10,8 +11,8 @@ export interface ICompany {
 	updated_at: string;
 }
 
-export type ICreateCompany = Pick<ICompany, "name" | "logo_url" | "email_domain"> & {
+export type ICreateCompany = Pick<ICompany, "name" | "description" | "logo_url" | "email_domain"> & {
 	workspace_id: number;
 };
 
-export interface IUpdateCompany {}
+export type IUpdateCompany = Pick<ICompany, "name" | "description" | "logo_url" | "email_domain">;

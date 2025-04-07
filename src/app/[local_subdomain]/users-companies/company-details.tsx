@@ -8,41 +8,27 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Ticket, Users, Trash2, Save, Pencil, Info, AlertTriangle } from "lucide-react";
+import { Ticket, Users, Save, Pencil, Info } from "lucide-react";
 import type { ICompany } from "@/typescript/company";
 import type { IUser } from "@/typescript/user";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { UpdateCompany, DeleteCompany, type CompanyFormState, type DeleteCompanyFormState } from "@/actions/company";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { UpdateCompany, type UpdateCompanyFormState } from "@/actions/company";
 import { toast } from "sonner";
-import { useRouter } from "next/navigation";
+import { DeleteCompanyModal } from "@/components/modals/delete-company-modal";
 
 interface Props {
 	company: ICompany;
 	companyUsers: IUser[];
 }
 
-const initialState: CompanyFormState = {};
-const initialDeleteState: DeleteCompanyFormState = {};
+const initialUpdateState: UpdateCompanyFormState = {};
 
 export function CompanyDetails({ company, companyUsers }: Props) {
-	const router = useRouter();
-
-	// State for edit name modal
 	const [editNameOpen, setEditNameOpen] = useState(false);
 	const [newCompanyName, setNewCompanyName] = useState(company.name);
+	const [updateState, updateAction, isUpdatePending] = useActionState<UpdateCompanyFormState>(UpdateCompany, initialUpdateState);
 
-	// State for delete confirmation modal
-	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-
-	// Form state using useActionState
-	const [state, formAction, isPending] = useActionState<CompanyFormState>(UpdateCompany, initialState);
-	const [deleteState, deleteAction, isDeletePending] = useActionState<DeleteCompanyFormState>(DeleteCompany, initialDeleteState);
-
-	// Track if there are unsaved changes
 	const [hasChanges, setHasChanges] = useState(false);
-
-	// Current form values
 	const [formValues, setFormValues] = useState({
 		name: company.name,
 		description: "Ok ok ok ...",
@@ -51,7 +37,6 @@ export function CompanyDetails({ company, companyUsers }: Props) {
 		emailDomain: company.email_domain || "",
 	});
 
-	// Update values when company changes
 	useEffect(() => {
 		setFormValues({
 			name: company.name,
@@ -63,37 +48,19 @@ export function CompanyDetails({ company, companyUsers }: Props) {
 		setNewCompanyName(company.name);
 	}, [company]);
 
-	// Show success toast when update action completes successfully
 	useEffect(() => {
-		if (state.success) {
+		if (updateState.success) {
 			toast.success("Success", {
-				description: state.message,
+				description: updateState.message,
 			});
 			setHasChanges(false);
 		}
-	}, [state.success, state.message]);
+	}, [updateState.success, updateState.message]);
 
-	// Handle successful deletion
-	useEffect(() => {
-		if (deleteState.success) {
-			toast.success("Success", {
-				description: deleteState.message,
-			});
-			setDeleteDialogOpen(false);
-
-			// Navigate away or refresh the page
-			// This would typically redirect to the companies list
-			router.push("/clients");
-			router.refresh();
-		}
-	}, [deleteState.success, deleteState.message, router]);
-
-	// Handle form value changes
 	const handleChange = (field: string, value: string) => {
 		setFormValues((prev) => {
 			const newValues = { ...prev, [field]: value };
 
-			// Check if values are different from original
 			const originalValues = {
 				name: company.name,
 				description: "Ok ok ok ...",
@@ -108,7 +75,6 @@ export function CompanyDetails({ company, companyUsers }: Props) {
 		});
 	};
 
-	// Handle company name update from modal
 	const handleUpdateCompanyName = () => {
 		handleChange("name", newCompanyName);
 		setEditNameOpen(false);
@@ -118,14 +84,7 @@ export function CompanyDetails({ company, companyUsers }: Props) {
 		<>
 			<Card className="w-full">
 				<CardContent className="p-6">
-					<form action={formAction}>
-						{state.errors?._form && (
-							<Alert variant="destructive" className="mb-6">
-								<AlertDescription>{state.errors._form[0]}</AlertDescription>
-							</Alert>
-						)}
-
-						{/* Hidden input for company ID */}
+					<form action={updateAction}>
 						<input type="hidden" name="id" value={company.id} />
 
 						<div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -141,7 +100,7 @@ export function CompanyDetails({ company, companyUsers }: Props) {
 										</button>
 									</div>
 									<input type="hidden" name="name" value={formValues.name} />
-									{state.errors?.name && <p className="text-sm text-destructive">{state.errors.name[0]}</p>}
+									{updateState.errors?.name && <p className="text-sm text-destructive">{updateState.errors.name[0]}</p>}
 								</div>
 							</div>
 
@@ -166,7 +125,7 @@ export function CompanyDetails({ company, companyUsers }: Props) {
 											<SelectItem value="Johnson, Emily">Johnson, Emily</SelectItem>
 										</SelectContent>
 									</Select>
-									{state.errors?.primaryContact && <p className="text-sm text-destructive">{state.errors.primaryContact[0]}</p>}
+									{updateState.errors?.primaryContact && <p className="text-sm text-destructive">{updateState.errors.primaryContact[0]}</p>}
 								</div>
 
 								<div className="space-y-2">
@@ -189,7 +148,7 @@ export function CompanyDetails({ company, companyUsers }: Props) {
 											<SelectItem value="Alex Chen">Alex Chen</SelectItem>
 										</SelectContent>
 									</Select>
-									{state.errors?.accountManager && <p className="text-sm text-destructive">{state.errors.accountManager[0]}</p>}
+									{updateState.errors?.accountManager && <p className="text-sm text-destructive">{updateState.errors.accountManager[0]}</p>}
 								</div>
 							</div>
 
@@ -206,10 +165,7 @@ export function CompanyDetails({ company, companyUsers }: Props) {
 											<span>{companyUsers.length} Users</span>
 										</div>
 									</div>
-									<Button type="button" variant="destructive" size="sm" onClick={() => setDeleteDialogOpen(true)}>
-										<Trash2 className="h-4 w-4 mr-1" />
-										Delete
-									</Button>
+									<DeleteCompanyModal company={company} />
 								</div>
 							</div>
 						</div>
@@ -228,7 +184,7 @@ export function CompanyDetails({ company, companyUsers }: Props) {
 									value={formValues.emailDomain}
 									onChange={(e) => handleChange("emailDomain", e.target.value)}
 								/>
-								{state.errors?.emailDomain && <p className="text-sm text-destructive">{state.errors.emailDomain[0]}</p>}
+								{updateState.errors?.emailDomain && <p className="text-sm text-destructive">{updateState.errors.emailDomain[0]}</p>}
 							</div>
 						</div>
 
@@ -244,16 +200,15 @@ export function CompanyDetails({ company, companyUsers }: Props) {
 									placeholder="Add a description..."
 								/>
 								<div className="text-right text-sm text-muted-foreground mt-1">{formValues.description.length}/150</div>
-								{state.errors?.description && <p className="text-sm text-destructive">{state.errors.description[0]}</p>}
+								{updateState.errors?.description && <p className="text-sm text-destructive">{updateState.errors.description[0]}</p>}
 							</div>
 						</div>
 
-						{/* Save changes button - only appears when changes are detected */}
 						{hasChanges && (
 							<div className="mt-6 flex justify-end">
-								<Button type="submit" disabled={isPending}>
+								<Button type="submit" disabled={isUpdatePending}>
 									<Save className="h-4 w-4 mr-2" />
-									{isPending ? "Saving..." : "Save Changes"}
+									{isUpdatePending ? "Saving..." : "Save Changes"}
 								</Button>
 							</div>
 						)}
@@ -261,7 +216,6 @@ export function CompanyDetails({ company, companyUsers }: Props) {
 				</CardContent>
 			</Card>
 
-			{/* Edit Company Name Modal */}
 			<Dialog open={editNameOpen} onOpenChange={setEditNameOpen}>
 				<DialogContent>
 					<DialogHeader>
@@ -277,40 +231,6 @@ export function CompanyDetails({ company, companyUsers }: Props) {
 						</Button>
 						<Button onClick={handleUpdateCompanyName}>Update</Button>
 					</DialogFooter>
-				</DialogContent>
-			</Dialog>
-
-			{/* Delete Company Confirmation Modal */}
-			<Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-				<DialogContent>
-					<DialogHeader>
-						<DialogTitle>Delete Company</DialogTitle>
-						<DialogDescription>Are you sure you want to delete {company.name}? This action cannot be undone.</DialogDescription>
-					</DialogHeader>
-
-					<form action={deleteAction} className="py-4">
-						{deleteState.errors?._form && (
-							<Alert variant="destructive" className="mb-4">
-								<AlertDescription>{deleteState.errors._form[0]}</AlertDescription>
-							</Alert>
-						)}
-
-						<input type="hidden" name="id" value={company.id} />
-
-						<div className="flex items-center gap-2 text-amber-600 mb-4">
-							<AlertTriangle className="h-5 w-5" />
-							<p>This will delete all associated data including users and tickets.</p>
-						</div>
-
-						<DialogFooter>
-							<Button type="button" variant="outline" onClick={() => setDeleteDialogOpen(false)}>
-								Cancel
-							</Button>
-							<Button type="submit" variant="destructive" disabled={isDeletePending}>
-								{isDeletePending ? "Deleting..." : "Delete Company"}
-							</Button>
-						</DialogFooter>
-					</form>
 				</DialogContent>
 			</Dialog>
 		</>
