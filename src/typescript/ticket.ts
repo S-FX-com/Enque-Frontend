@@ -28,7 +28,7 @@ export interface ITicket {
 export type IGetTicket = Pick<ITicket, "title" | "description" | "status" | "priority" | "due_date"> & {
 	workspace_id: number;
 	team_id: number;
-	company_id: number;
+	company_id: number | null;
 	user_id: number;
 	sent_from_id: number;
 	sent_to_id: number;

@@ -23,11 +23,11 @@ export default function ClientPage() {
 	const { currentWorkspace } = useApp();
 	const [companies, setCompanies] = useState<ICompany[]>([]);
 	const [companiesIsLoading, setCompaniesIsLoading] = useState<boolean>(true);
+	const [selectedCompany, setSelectedCompany] = useState<ICompany | null>(null);
 	const [users, setUsers] = useState<IUser[]>([]);
 	const [usersIsLoading, setUsersIsLoading] = useState<boolean>(true);
-	const [selectedCompany, setSelectedCompany] = useState<ICompany | null>(null);
 	const [showUnassignedUsers, setShowUnassignedUsers] = useState<boolean>(false);
-	const [tickets, setTickets] = useState<any[]>([]);
+	const [tickets, setTickets] = useState<ITicket[]>([]);
 	const [ticketsIsLoading, setTicketsIsLoading] = useState<boolean>(true);
 
 	useEffect(() => {
@@ -65,7 +65,7 @@ export default function ClientPage() {
 			if (selectedCompany || showUnassignedUsers) {
 				setTicketsIsLoading(true);
 
-				const response = await ticketService.getTickets({});
+				const response = await ticketService.getTickets({ company_id: selectedCompany ? selectedCompany.id : null });
 				if (response.success) setTickets(response.data as ITicket[]);
 				else
 					toast.error("Error", {
@@ -98,7 +98,7 @@ export default function ClientPage() {
 		}
 	};
 
-	const CompanySkeleton = () => (
+	const CompaniesSkeleton = () => (
 		<div className="flex flex-col gap-2">
 			{[1, 2, 3, 4, 5].map((i) => (
 				<div key={i} className="flex items-center gap-3 px-3 py-1">
@@ -106,6 +106,26 @@ export default function ClientPage() {
 					<Skeleton className="h-5 w-24" />
 				</div>
 			))}
+		</div>
+	);
+
+	const UsersSkeleton = () => (
+		<div className="flex flex-col gap-2">
+			<div className="space-y-2">
+				<Skeleton className="h-6 w-full" />
+				<Skeleton className="h-10 w-full" />
+				<Skeleton className="h-10 w-full" />
+				<Skeleton className="h-10 w-full" />
+			</div>
+		</div>
+	);
+
+	const TicketsSkeleton = () => (
+		<div className="space-y-2">
+			<Skeleton className="h-6 w-full" />
+			<Skeleton className="h-10 w-full" />
+			<Skeleton className="h-10 w-full" />
+			<Skeleton className="h-10 w-full" />
 		</div>
 	);
 
@@ -128,7 +148,7 @@ export default function ClientPage() {
 					</CardHeader>
 					<CardContent>
 						{companiesIsLoading ? (
-							<CompanySkeleton />
+							<CompaniesSkeleton />
 						) : (
 							<div className="flex flex-col gap-1">
 								{companies.map((company, index) => {
@@ -173,12 +193,7 @@ export default function ClientPage() {
 
 									<TabsContent value="users">
 										{usersIsLoading ? (
-											<div className="space-y-2">
-												<Skeleton className="h-6 w-full" />
-												<Skeleton className="h-10 w-full" />
-												<Skeleton className="h-10 w-full" />
-												<Skeleton className="h-10 w-full" />
-											</div>
+											<UsersSkeleton />
 										) : users.length > 0 ? (
 											<div className="flex flex-col">
 												<div className="grid grid-cols-12 px-4 py-2 text-sm font-semibold">
@@ -204,12 +219,7 @@ export default function ClientPage() {
 
 									<TabsContent value="tickets">
 										{ticketsIsLoading ? (
-											<div className="space-y-2">
-												<Skeleton className="h-6 w-full" />
-												<Skeleton className="h-10 w-full" />
-												<Skeleton className="h-10 w-full" />
-												<Skeleton className="h-10 w-full" />
-											</div>
+											<TicketsSkeleton />
 										) : tickets.length > 0 ? (
 											<div className="flex flex-col">
 												<div className="grid grid-cols-12 px-4 py-2 text-sm font-semibold">
@@ -223,13 +233,12 @@ export default function ClientPage() {
 														<div className="col-span-6 text-sm">{ticket.title}</div>
 														<div className="col-span-3">
 															<span
-																className={`px-2 py-1 rounded-full text-xs ${
-																	ticket.status === "open"
-																		? "bg-red-100 text-red-800"
-																		: ticket.status === "in-progress"
-																		? "bg-yellow-100 text-yellow-800"
-																		: "bg-green-100 text-green-800"
-																}`}>
+																className={cn(
+																	"px-2 py-1 rounded-full text-xs",
+																	ticket.status === "Pending" && "bg-yellow-100 text-yellow-800",
+																	ticket.status === "In progress" && "bg-green-100 text-green-800",
+																	ticket.status === "Completed" && "bg-green-100 text-green-800"
+																)}>
 																{ticket.status}
 															</span>
 														</div>
@@ -273,12 +282,7 @@ export default function ClientPage() {
 
 										<TabsContent value="users">
 											{usersIsLoading ? (
-												<div className="space-y-2">
-													<Skeleton className="h-6 w-full" />
-													<Skeleton className="h-10 w-full" />
-													<Skeleton className="h-10 w-full" />
-													<Skeleton className="h-10 w-full" />
-												</div>
+												<UsersSkeleton />
 											) : users.length > 0 ? (
 												<div className="flex flex-col">
 													<div className="grid grid-cols-12 px-4 py-2 text-sm font-semibold">
@@ -308,12 +312,7 @@ export default function ClientPage() {
 
 										<TabsContent value="tickets">
 											{ticketsIsLoading ? (
-												<div className="space-y-2">
-													<Skeleton className="h-6 w-full" />
-													<Skeleton className="h-10 w-full" />
-													<Skeleton className="h-10 w-full" />
-													<Skeleton className="h-10 w-full" />
-												</div>
+												<TicketsSkeleton />
 											) : tickets.length > 0 ? (
 												<div className="flex flex-col">
 													<div className="grid grid-cols-12 px-4 py-2 text-sm font-semibold">
@@ -329,13 +328,12 @@ export default function ClientPage() {
 															<div className="col-span-6 text-sm">{ticket.title}</div>
 															<div className="col-span-3">
 																<span
-																	className={`px-2 py-1 rounded-full text-xs ${
-																		ticket.status === "open"
-																			? "bg-red-100 text-red-800"
-																			: ticket.status === "in-progress"
-																			? "bg-yellow-100 text-yellow-800"
-																			: "bg-green-100 text-green-800"
-																	}`}>
+																	className={cn(
+																		"px-2 py-1 rounded-full text-xs",
+																		ticket.status === "Pending" && "bg-yellow-100 text-yellow-800",
+																		ticket.status === "In progress" && "bg-green-100 text-green-800",
+																		ticket.status === "Completed" && "bg-green-100 text-green-800"
+																	)}>
 																	{ticket.status}
 																</span>
 															</div>
