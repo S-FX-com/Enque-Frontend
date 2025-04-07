@@ -39,11 +39,9 @@ export async function CreateTicket(prevState: CreateTicketFormState, formData: F
 	if (!response.success)
 		return {
 			success: false,
-			errors: {
-				_form: [response.message as string],
-			},
+			message: response.message as string,
 			values,
 		};
 
-	return { success: true };
+	return { success: true, message: "Ticket successfully created" };
 }

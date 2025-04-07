@@ -37,15 +37,11 @@ export async function CreateCompany(prevState: CreateCompanyFormState, formData:
 	if (!response.success)
 		return {
 			success: false,
-			errors: {
-				_form: [response.message as string],
-			},
+			message: response.message as string,
 			values,
 		};
 
-	return {
-		success: true,
-	};
+	return { success: true, message: "Company successfully created" };
 }
 
 /** Update company - Schema */
@@ -67,20 +63,17 @@ export async function UpdateCompany(prevState: UpdateCompanyFormState, formData:
 	const values = { name, description, logo_url, email_domain };
 
 	const validation = UpdateCompanySchema.safeParse(values);
-	console.log(validation.error);
 	if (!validation.success) return { success: false, errors: validation.error.flatten().fieldErrors, values };
 
 	const response = await companyService.updateCompanyById(company_id, values);
 	if (!response.success)
 		return {
 			success: false,
-			errors: {
-				_form: [response.message as string],
-			},
+			message: response.message as string,
 			values,
 		};
 
-	return { success: true };
+	return { success: true, message: "Company successfully updated" };
 }
 
 /** Delete company - Action */
@@ -91,10 +84,8 @@ export async function DeleteCompany(prevState: DeleteCompanyFormState, formData:
 	if (!response.success)
 		return {
 			success: false,
-			errors: {
-				_form: [response.message as string],
-			},
+			message: response.message as string,
 		};
 
-	return { success: true };
+	return { success: true, message: "Company successfully deleted" };
 }

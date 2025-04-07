@@ -32,18 +32,15 @@ export function CompanyDetails({ company, companyUsers }: Props) {
 		description: "Ok ok ok ...",
 		primaryContact: "Alexis Cuevas",
 		accountManager: "Alexis Cuevas",
-		email_domain: company.email_domain || "",
+		email_domain: company.email_domain,
 	};
 
 	const [formValues, setFormValues] = useState(initialFormValues);
 	const [hasChanges, setHasChanges] = useState(false);
 
 	useEffect(() => {
-		setFormValues({
-			...initialFormValues,
-			name: company.name,
-			email_domain: company.email_domain || "",
-		});
+		setFormValues(initialFormValues);
+		setHasChanges(false);
 	}, [company]);
 
 	useEffect(() => {
@@ -52,6 +49,10 @@ export function CompanyDetails({ company, companyUsers }: Props) {
 				description: updateState.message,
 			});
 			setHasChanges(false);
+		} else {
+			toast.error("Error", {
+				description: updateState.message,
+			});
 		}
 	}, [updateState.success, updateState.message]);
 

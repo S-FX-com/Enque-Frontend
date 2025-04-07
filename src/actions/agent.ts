@@ -34,9 +34,7 @@ export async function CreateAgent(prevState: CreateAgentFormState, formData: For
 	if (!response.success)
 		return {
 			success: false,
-			errors: {
-				_form: [response.message as string],
-			},
+			message: response.message as string,
 			values,
 		};
 

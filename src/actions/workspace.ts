@@ -29,9 +29,7 @@ export async function GoToWorkspace(prevState: GoToWorkspaceFormState, formData:
 	if (!response.success)
 		return {
 			success: false,
-			errors: {
-				_form: [response.message as string],
-			},
+			message: response.message as string,
 			values,
 		};
 
