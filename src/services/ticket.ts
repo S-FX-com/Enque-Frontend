@@ -61,7 +61,7 @@ export const ticketService = {
 	},
 
 	/** */
-	async getTickets(paramsObj: IGetTicket): Promise<ServiceResponse<ITicket[]>> {
+	async getTickets(paramsObj: Partial<IGetTicket>): Promise<ServiceResponse<ITicket[]>> {
 		try {
 			const queryParams = new URLSearchParams();
 			Object.entries(paramsObj).forEach(([key, value]) => {

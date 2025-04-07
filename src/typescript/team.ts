@@ -10,6 +10,10 @@ export interface ITeam {
 	updated_at: string;
 }
 
-export interface ICreateTeam {}
+export type ICreateTeam = {};
 
-export interface IUpdateTeam {}
+export type IUpdateTeam = {};
+
+export type IGetTeam = Pick<ITeam, "name" | "description" | "logo_url"> & {
+	workspace_id: number;
+};

@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { useApp } from "@/hooks/use-app";
@@ -16,7 +15,7 @@ import { format } from "date-fns";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export default function ClientPage() {
-	const { currentAgent } = useApp();
+	const { currentAgent, currentWorkspace } = useApp();
 	const [tickets, setTickets] = useState<ITicket[]>([]);
 	const [ticketsIsLoading, setTicketsIsLoading] = useState<boolean>(true);
 	const [teams, setTeams] = useState<ITeam[]>([]);
@@ -24,43 +23,25 @@ export default function ClientPage() {
 
 	useEffect(() => {
 		const loadTickets = async () => {
-			try {
-				const response = await ticketService.getTickets({});
-				if (response.success) {
-					setTickets(response.data as ITicket[]);
-				} else {
-					toast.error("Error", {
-						description: response.message || "Failed to load tickets",
-					});
-				}
-			} catch (error: unknown) {
-				console.error("Failed to load tickets:", error);
+			const response = await ticketService.getTickets({ workspace_id: currentWorkspace?.id });
+			if (response.success) setTickets(response.data as ITicket[]);
+			else
 				toast.error("Error", {
-					description: "Failed to load tickets. Please try again.",
+					description: response.message || "Failed to load tickets",
 				});
-			} finally {
-				setTicketsIsLoading(false);
-			}
+
+			setTicketsIsLoading(false);
 		};
 
 		const loadTeams = async () => {
-			try {
-				const response = await teamService.getTeams({});
-				if (response.success) {
-					setTeams(response.data as ITeam[]);
-				} else {
-					toast.error("Error", {
-						description: response.message || "Failed to load teams",
-					});
-				}
-			} catch (error: unknown) {
-				console.error("Failed to load teams:", error);
+			const response = await teamService.getTeams({ workspace_id: currentWorkspace?.id });
+			if (response.success) setTeams(response.data as ITeam[]);
+			else
 				toast.error("Error", {
-					description: "Failed to load teams. Please try again.",
+					description: response.message || "Failed to load teams",
 				});
-			} finally {
-				setTeamsIsLoading(false);
-			}
+
+			setTeamsIsLoading(false);
 		};
 
 		loadTickets();
@@ -73,6 +54,12 @@ export default function ClientPage() {
 	const ticketsUnassignedByTeamId = (team_id: number) => tickets.filter((ticket) => ticket.team?.id === team_id && !ticket.sent_to);
 	const agentTicketsAssignedByTeamId = (team_id: number, agent_id: number) =>
 		tickets.filter((ticket) => ticket.team?.id === team_id && ticket.sent_to?.id === agent_id);
+
+	const getprogressByTicketStatus = (ticket: ITicket) => {
+		if (ticket.status === "Pending") return 0;
+		else if (ticket.status === "In progress") return 50;
+		else return 100;
+	};
 
 	return (
 		<div className="grid gap-4 grid-cols-3">
@@ -127,7 +114,7 @@ export default function ClientPage() {
 									<div className="col-span-2 text-sm">{format(ticket.created_at, "MMM d")}</div>
 									<div className="col-span-7 text-sm truncate">{ticket.title}</div>
 									<div className="col-span-3">
-										<Progress value={ticket.progress} />
+										<Progress value={getprogressByTicketStatus(ticket)} />
 									</div>
 								</div>
 							))}

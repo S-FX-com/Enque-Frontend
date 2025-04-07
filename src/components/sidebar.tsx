@@ -10,6 +10,7 @@ import type { ITeam } from "@/typescript/team";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { ticketService } from "@/services/ticket";
 import { ITicket } from "@/typescript/ticket";
+import { toast } from "sonner";
 
 export function Sidebar() {
 	const pathname = usePathname();
@@ -56,27 +57,27 @@ export function Sidebar() {
 
 	useEffect(() => {
 		const loadTeams = async () => {
-			try {
-				const teamsResponse = await teamService.getTeams({});
-				if (teamsResponse.success) setTeams(teamsResponse.data as ITeam[]);
-			} catch (error) {
-				console.error("Failed to load teams:", error);
-			} finally {
-				setTeamsIsLoading(false);
-			}
+			const response = await teamService.getTeams({});
+			if (response.success) setTeams(response.data as ITeam[]);
+			else
+				toast.error("Error", {
+					description: response.message || "Failed to load teams",
+				});
+
+			setTeamsIsLoading(false);
 		};
 
 		const loadTickets = async () => {
-			try {
-				teams.forEach(async (team) => {
-					const ticketsResponse = await ticketService.getTickets({ team_id: team.id });
-					if (ticketsResponse.success) setTickets({ ...tickets, ...(ticketsResponse.data as ITicket[]) });
-				});
-			} catch (error) {
-				console.error("Failed to load teams:", error);
-			} finally {
-				setTicketsIsLoading(false);
-			}
+			teams.forEach(async (team) => {
+				const response = await ticketService.getTickets({ team_id: team.id });
+				if (response.success) setTickets({ ...tickets, ...(response.data as ITicket[]) });
+				else
+					toast.error("Error", {
+						description: response.message || "Failed to load tickets",
+					});
+			});
+
+			setTicketsIsLoading(false);
 		};
 
 		loadTeams();

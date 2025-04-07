@@ -53,7 +53,7 @@
   --primary: #1D73F4;
   --primary-foreground: #edf4ff;
   --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
+  --secondary-foreground: #1D73F4;
   --muted: oklch(0.97 0 0);
   --muted-foreground: #707EAE;
   --accent: oklch(0.97 0 0);

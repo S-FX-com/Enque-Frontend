@@ -3,7 +3,7 @@ export interface IWorkspace {
 	local_subdomain: string;
 	email_domain: string;
 	logo_url: string;
-	id: 0;
+	id: number;
 	created_at: string;
 	updated_at: string;
 }

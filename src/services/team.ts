@@ -1,7 +1,7 @@
 import { AppConfigs } from "@/configs";
 import { fetchAPI } from "@/lib/fetch-api";
 import { ServiceResponse } from "@/typescript";
-import { ITeam, ICreateTeam, IUpdateTeam } from "@/typescript/team";
+import { ITeam, ICreateTeam, IUpdateTeam, IGetTeam } from "@/typescript/team";
 
 /** Service endpoint */
 const SERVICE_ENDPOINT = `${AppConfigs.api}/teams`;
@@ -61,7 +61,7 @@ export const teamService = {
 	},
 
 	/** */
-	async getTeams(paramsObj: ITeam): Promise<ServiceResponse<ITeam[]>> {
+	async getTeams(paramsObj: Partial<IGetTeam>): Promise<ServiceResponse<ITeam[]>> {
 		try {
 			const queryParams = new URLSearchParams();
 			Object.entries(paramsObj).forEach(([key, value]) => {

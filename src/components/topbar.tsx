@@ -26,7 +26,7 @@ interface Breadcrumb {
 
 interface Props {
 	title: string;
-	breadcrumbs: Breadcrumb[];
+	breadcrumbs?: Breadcrumb[];
 }
 
 export function Topbar({ title = "Tickets", breadcrumbs = [] }: Props) {

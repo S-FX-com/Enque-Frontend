@@ -25,7 +25,7 @@ export interface ITicket {
 	deleted_at: string | null;
 }
 
-export type IGetTicket = Pick<ITicket, "title" | "description" | "status" | "priority" | "due_date" | "id" | "created_at" | "updated_at" | "deleted_at"> & {
+export type IGetTicket = Pick<ITicket, "title" | "description" | "status" | "priority" | "due_date"> & {
 	workspace_id: number;
 	team_id: number;
 	company_id: number;
