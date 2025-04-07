@@ -48,6 +48,7 @@ export default function ClientPage() {
 	useEffect(() => {
 		const loadUsers = async () => {
 			if (selectedCompany || showUnassignedUsers) {
+				setUsers([]);
 				setUsersIsLoading(true);
 
 				const response = await userService.getUsers({ company_id: selectedCompany ? selectedCompany.id : null });
@@ -63,6 +64,7 @@ export default function ClientPage() {
 
 		const loadTickets = async () => {
 			if (selectedCompany || showUnassignedUsers) {
+				setTickets([]);
 				setTicketsIsLoading(true);
 
 				const response = await ticketService.getTickets({ company_id: selectedCompany ? selectedCompany.id : null });

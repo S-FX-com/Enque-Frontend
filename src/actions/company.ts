@@ -67,6 +67,7 @@ export async function UpdateCompany(prevState: UpdateCompanyFormState, formData:
 	const values = { name, description, logo_url, email_domain };
 
 	const validation = UpdateCompanySchema.safeParse(values);
+	console.log(validation.error);
 	if (!validation.success) return { success: false, errors: validation.error.flatten().fieldErrors, values };
 
 	const response = await companyService.updateCompanyById(company_id, values);
