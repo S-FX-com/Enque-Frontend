@@ -4,7 +4,7 @@ import { IWorkspace } from "./workspace";
 export interface IUser {
 	name: string;
 	email: string;
-	phone: string;
+	phone: string | null;
 	id: number;
 	company: ICompany | null;
 	workspace: IWorkspace;

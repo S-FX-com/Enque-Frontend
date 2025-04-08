@@ -20,5 +20,5 @@ export type ICreateAgent = Pick<IAgent, "name" | "email"> & {
 
 export type IUpdateAgent = Pick<IAgent, "name" | "email" | "role" | "is_active"> & {
 	password: string;
-	workspace_id: string;
+	workspace_id: number;
 };
