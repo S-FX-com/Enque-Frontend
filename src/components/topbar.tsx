@@ -73,11 +73,8 @@ export function Topbar({ title = "Tickets", breadcrumbs = [], extra = undefined 
 					<DropdownMenuTrigger asChild>
 						<Button variant="ghost" className="relative h-8 w-8 rounded-full">
 							<Avatar className="h-8 w-8">
-								{currentAgent?.avatar ? (
-									<AvatarImage src={currentAgent?.avatar} alt={currentAgent?.name} />
-								) : (
-									<AvatarFallback>{currentAgent?.name?.substring(0, 2).toUpperCase()}</AvatarFallback>
-								)}
+								{currentAgent?.avatar_url && <AvatarImage src={currentAgent?.avatar_url} alt={currentAgent?.name} />}
+								<AvatarFallback>{currentAgent?.name?.substring(0, 2).toUpperCase()}</AvatarFallback>
 							</Avatar>
 						</Button>
 					</DropdownMenuTrigger>

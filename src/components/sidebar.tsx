@@ -84,7 +84,7 @@ export function Sidebar() {
 		loadTickets();
 	}, []);
 
-	const openTicketsByTeamId = (team_id: number) => tickets.map((ticket) => ticket.team.id === team_id && ticket.status !== "Completed");
+	const openTicketsByTeamId = (team_id: number) => tickets.map((ticket) => ticket.team?.id === team_id && ticket.status !== "Closed");
 
 	return (
 		<div className="flex h-full w-[calc(var(--spacing)*72)] flex-col bg-white dark:bg-black py-6">
@@ -137,7 +137,7 @@ export function Sidebar() {
 										)}>
 										<div className="flex items-center space-x-2">
 											<Avatar className="h-8 w-8">
-												<AvatarImage src={team.logo_url} alt={team.name} />
+												{team.logo_url && <AvatarImage src={team.logo_url} alt={team.name} />}
 												<AvatarFallback>{team.name.substring(0, 2).toUpperCase()}</AvatarFallback>
 											</Avatar>
 											<span>{team.name}</span>

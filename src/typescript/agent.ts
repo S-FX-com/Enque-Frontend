@@ -6,6 +6,7 @@ export interface IAgent {
 	name: string;
 	email: string;
 	role: AgentRole;
+	avatar_url: string | null;
 	is_active: boolean;
 	id: number;
 	workspace: IWorkspace;
@@ -18,7 +19,7 @@ export type ICreateAgent = Pick<IAgent, "name" | "email"> & {
 	workspace_id: number;
 };
 
-export type IUpdateAgent = Pick<IAgent, "name" | "email" | "role" | "is_active"> & {
+export type IUpdateAgent = Pick<IAgent, "name" | "email" | "role" | "avatar_url" | "is_active"> & {
 	password: string;
 	workspace_id: number;
 };

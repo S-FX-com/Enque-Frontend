@@ -2,7 +2,7 @@
 
 import { ticketService } from "@/services/ticket";
 import { FormState } from "@/typescript";
-import { ICreateTicket } from "@/typescript/ticket";
+import { ICreateTicket, TicketPriority, TicketStatus } from "@/typescript/ticket";
 import { z } from "zod";
 
 export type CreateTicketFormState = FormState<ICreateTicket>;
@@ -25,12 +25,17 @@ const CreateTicketSchema = z.object({
 export async function CreateTicket(prevState: CreateTicketFormState, formData: FormData) {
 	const title = formData.get("title") as string;
 	const description = formData.get("description") as string;
-	const status = formData.get("status") as string;
-	const priority = formData.get("priority") as string;
-	const assigneeId = formData.get("assigneeId") as string;
-	const dueDate = formData.get("dueDate") as string;
+	const status = formData.get("status") as TicketStatus;
+	const priority = formData.get("priority") as TicketPriority;
+	const due_date = formData.get("due_date") as string;
+	const workspace_id = Number(formData.get("workspace_id"));
+	const team_id = Number(formData.get("team_id"));
+	const company_id = Number(formData.get("company_id"));
+	const user_id = Number(formData.get("user_id"));
+	const sent_from_id = Number(formData.get("sent_from_id"));
+	const sent_to_id = Number(formData.get("sent_to_id"));
 
-	const values = { title, description, status, priority, assigneeId, dueDate };
+	const values = { title, description, status, priority, due_date, workspace_id, team_id, company_id, user_id, sent_from_id, sent_to_id };
 
 	const validation = CreateTicketSchema.safeParse(values);
 	if (!validation.success) return { success: false, errors: validation.error.flatten().fieldErrors, values };

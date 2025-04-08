@@ -17,6 +17,10 @@ export type ICreateCompany = Pick<ICompany, "name" | "description" | "logo_url" 
 
 export type IUpdateCompany = Pick<ICompany, "name" | "description" | "logo_url" | "email_domain"> & {};
 
+export type IDeleteCompany = {
+	company_id: number;
+};
+
 export type IGetCompany = Pick<ICompany, "name" | "description" | "logo_url" | "email_domain"> & {
 	workspace_id: number;
 };

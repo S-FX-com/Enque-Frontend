@@ -2,7 +2,7 @@
 
 import { companyService } from "@/services/company";
 import { FormState } from "@/typescript";
-import { ICreateCompany, IUpdateCompany } from "@/typescript/company";
+import { ICreateCompany, IDeleteCompany, IUpdateCompany } from "@/typescript/company";
 import { z } from "zod";
 
 export type CreateCompanyFormState = FormState<ICreateCompany>;

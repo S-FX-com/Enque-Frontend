@@ -24,12 +24,10 @@ export default function ClientPage() {
 	const [initialUsers, setInitialUsers] = useState<any[]>([]);
 	const [isInitialDataLoading, setIsInitialDataLoading] = useState<boolean>(true);
 
-	// Load initial data for filters (agents, teams, users)
 	useEffect(() => {
 		const loadInitialData = async () => {
 			setIsInitialDataLoading(true);
 			try {
-				// Load agents, teams, and users in parallel
 				const [agentsResponse, teamsResponse, usersResponse] = await Promise.all([
 					agentService.getAgents({}),
 					teamService.getTeams({}),
@@ -60,7 +58,6 @@ export default function ClientPage() {
 		loadInitialData();
 	}, [toast]);
 
-	// Load tickets when filters change
 	useEffect(() => {
 		const loadTickets = async () => {
 			setIsLoading(true);

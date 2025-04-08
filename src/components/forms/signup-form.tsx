@@ -51,11 +51,6 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
 							<Input id="password" name="password" type="password" required />
 							{state.errors?.password && <p className="text-sm text-destructive">{state.errors.password[0]}</p>}
 						</div>
-						<div className="grid gap-2">
-							<Label htmlFor="confirmPassword">Confirm password</Label>
-							<Input id="confirmPassword" name="confirmPassword" type="password" required />
-							{state.errors?.confirmPassword && <p className="text-sm text-destructive">{state.errors.confirmPassword[0]}</p>}
-						</div>
 						<Button type="submit" className="w-full" disabled={isPending}>
 							{isPending ? "Signing..." : "Sign Up"}
 						</Button>
