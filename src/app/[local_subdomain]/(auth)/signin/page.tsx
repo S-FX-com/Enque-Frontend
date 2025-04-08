@@ -1,9 +1,13 @@
+import { GetWorkspace } from "@/actions/workspace";
 import ClientPage from "./page-client";
 import { AppProvider } from "@/hooks/use-app";
 
 export default async function SignInPage() {
+	const currentWorkspace = await GetWorkspace();
+	if (!currentWorkspace.success || !currentWorkspace.data) return;
+
 	return (
-		<AppProvider>
+		<AppProvider initialCurrentWorkspace={currentWorkspace.data}>
 			<ClientPage />
 		</AppProvider>
 	);
