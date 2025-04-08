@@ -237,9 +237,9 @@ export default function ClientPage() {
 															<span
 																className={cn(
 																	"px-2 py-1 rounded-full text-xs",
-																	ticket.status === "Pending" && "bg-yellow-100 text-yellow-800",
-																	ticket.status === "In progress" && "bg-green-100 text-green-800",
-																	ticket.status === "Completed" && "bg-green-100 text-green-800"
+																	ticket.status === "Unread" && "bg-yellow-100 text-yellow-800",
+																	ticket.status === "Open" && "bg-green-100 text-green-800",
+																	ticket.status === "Closed" && "bg-green-100 text-green-800"
 																)}>
 																{ticket.status}
 															</span>
@@ -332,9 +332,9 @@ export default function ClientPage() {
 																<span
 																	className={cn(
 																		"px-2 py-1 rounded-full text-xs",
-																		ticket.status === "Pending" && "bg-yellow-100 text-yellow-800",
-																		ticket.status === "In progress" && "bg-green-100 text-green-800",
-																		ticket.status === "Completed" && "bg-green-100 text-green-800"
+																		ticket.status === "Unread" && "bg-yellow-100 text-yellow-800",
+																		ticket.status === "Open" && "bg-green-100 text-green-800",
+																		ticket.status === "Closed" && "bg-green-100 text-green-800"
 																	)}>
 																	{ticket.status}
 																</span>

@@ -4,7 +4,7 @@ import { ITeam } from "./team";
 import { IUser } from "./user";
 import { IWorkspace } from "./workspace";
 
-export type TicketStatus = "Unread" | "Read" | "Closed";
+export type TicketStatus = "Unread" | "Open" | "Closed";
 export type TicketPriority = "High" | "Medium" | "Low";
 
 export interface ITicket {

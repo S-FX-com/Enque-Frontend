@@ -49,16 +49,16 @@ export default function ClientPage() {
 	}, []);
 
 	const agentTicketsAssigned = (agent_id: number) => tickets.filter((ticket) => ticket.sent_to?.id === agent_id);
-	const agentTicketsCompleted = (agent_id: number) => tickets.filter((ticket) => ticket.sent_to?.id === agent_id && ticket.status === "Completed");
+	const agentTicketsCompleted = (agent_id: number) => tickets.filter((ticket) => ticket.sent_to?.id === agent_id && ticket.status === "Closed");
 	const ticketsAssignedByTeamId = (team_id: number) => tickets.filter((ticket) => ticket.team?.id === team_id && ticket.sent_to);
 	const ticketsUnassignedByTeamId = (team_id: number) => tickets.filter((ticket) => ticket.team?.id === team_id && !ticket.sent_to);
 	const agentTicketsAssignedByTeamId = (team_id: number, agent_id: number) =>
 		tickets.filter((ticket) => ticket.team?.id === team_id && ticket.sent_to?.id === agent_id);
 
 	const getprogressByTicketStatus = (ticket: ITicket) => {
-		if (ticket.status === "Pending") return 0;
-		else if (ticket.status === "In progress") return 50;
-		else return 100;
+		if (ticket.status === "Unread") return 0;
+		else if (ticket.status === "Read") return 50;
+		else if (ticket.status === "Closed") return 100;
 	};
 
 	return (
@@ -67,11 +67,8 @@ export default function ClientPage() {
 				<div className="flex flex-col items-center mb-8">
 					<div className="relative mb-2">
 						<Avatar className="h-20 w-20">
-							{currentAgent?.avatar ? (
-								<AvatarImage src={currentAgent?.avatar} alt={currentAgent?.name} />
-							) : (
-								<AvatarFallback>{currentAgent?.name?.substring(0, 2).toUpperCase()}</AvatarFallback>
-							)}
+							{currentAgent?.avatar_url && <AvatarImage src={currentAgent?.avatar_url} alt={currentAgent?.name} />}
+							<AvatarFallback>{currentAgent?.name?.substring(0, 2).toUpperCase()}</AvatarFallback>
 						</Avatar>
 						<div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>
 					</div>
