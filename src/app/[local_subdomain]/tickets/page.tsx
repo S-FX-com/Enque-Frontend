@@ -24,7 +24,7 @@ export default async function TicketsPage() {
 							{ label: "S-FX.COM", href: "/" },
 							{ label: "Tickets", href: "/tickets" },
 						]}
-						buttons={<CreateTicketModal TriggerSize="sm" />}
+						extra={<CreateTicketModal TriggerSize="sm" />}
 					/>
 					<main className="flex-1 overflow-hidden">
 						<ClientPage />
