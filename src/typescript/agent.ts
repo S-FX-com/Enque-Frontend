@@ -23,3 +23,7 @@ export type IUpdateAgent = Pick<IAgent, "name" | "email" | "role" | "avatar_url"
 	password: string;
 	workspace_id: number;
 };
+
+export type IGetAgent = Pick<IAgent, "name" | "email" | "role" | "avatar_url" | "is_active"> & {
+	workspace_id: number;
+};

@@ -1,7 +1,7 @@
 import { AppConfigs } from "@/configs";
 import { fetchAPI } from "@/lib/fetch-api";
 import { ServiceResponse } from "@/typescript";
-import { IAgent, ICreateAgent, IUpdateAgent } from "@/typescript/agent";
+import { IAgent, ICreateAgent, IGetAgent, IUpdateAgent } from "@/typescript/agent";
 
 /** Service endpoint */
 const SERVICE_ENDPOINT = `${AppConfigs.api}/agents`;
@@ -61,7 +61,7 @@ export const agentService = {
 	},
 
 	/** */
-	async getAgents(paramsObj: IAgent): Promise<ServiceResponse<IAgent[]>> {
+	async getAgents(paramsObj: Partial<IGetAgent>): Promise<ServiceResponse<IAgent[]>> {
 		try {
 			const queryParams = new URLSearchParams();
 			Object.entries(paramsObj).forEach(([key, value]) => {

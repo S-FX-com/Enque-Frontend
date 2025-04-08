@@ -4,53 +4,63 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { ChevronsUpDown, Eraser, Rotate3D, RotateCcw } from "lucide-react";
+import { ChevronsUpDown, Eraser, RotateCcw } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
-import { teamService } from "@/services/team";
 import type { ITeam } from "@/typescript/team";
 import { Card } from "@/components/ui/card";
+import { IAgent } from "@/typescript/agent";
+import { ICompany } from "@/typescript/company";
+import { IUser } from "@/typescript/user";
 
-interface TasksSidebarProps {
-	initialAgents?: any[];
+interface Props {
 	initialTeams?: ITeam[];
+	isTeamsLoading?: boolean;
+	initialAgents?: IAgent[];
+	isAgentsLoading?: boolean;
+	initialCompanies?: ICompany[];
+	isCompaniesLoading?: boolean;
+	initialUsers?: IUser[];
+	isUsersLoading?: boolean;
 	onFiltersChange?: (filters: any) => void;
 }
 
-export function TicketsSidebar({ initialAgents = [], initialTeams = [], onFiltersChange }: TasksSidebarProps) {
+export function TicketsSidebar({
+	initialTeams = [],
+	isTeamsLoading = true,
+	initialAgents = [],
+	isAgentsLoading = true,
+	initialCompanies = [],
+	isCompaniesLoading = true,
+	initialUsers = [],
+	isUsersLoading = true,
+	onFiltersChange,
+}: Props) {
 	const searchParams = useSearchParams();
 	const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 	const prevFiltersRef = useRef<any>({});
 
-	// Filter states
 	const [subject, setSubject] = useState(searchParams.get("subject") || "");
 	const [selectedStatuses, setSelectedStatuses] = useState<string[]>(searchParams.get("status")?.split(",").filter(Boolean) || []);
+	const [selectedTeams, setSelectedTeams] = useState<string[]>(searchParams.get("team")?.split(",").filter(Boolean) || []);
 	const [selectedAgents, setSelectedAgents] = useState<string[]>(searchParams.get("agent")?.split(",").filter(Boolean) || []);
 	const [selectedPriorities, setSelectedPriorities] = useState<string[]>(searchParams.get("priority")?.split(",").filter(Boolean) || []);
+	const [selectedCompanies, setSelectedCompanies] = useState<string[]>(searchParams.get("company")?.split(",").filter(Boolean) || []);
 	const [selectedUsers, setSelectedUsers] = useState<string[]>(searchParams.get("user")?.split(",").filter(Boolean) || []);
-	const [selectedTeams, setSelectedTeams] = useState<string[]>(searchParams.get("team")?.split(",").filter(Boolean) || []);
 
-	// UI states
-	const [agents, setAgents] = useState<any[]>(initialAgents);
-	const [users, setUsers] = useState<any[]>([]);
-	const [teams, setTeams] = useState<ITeam[]>(initialTeams);
 	const [statusOpen, setStatusOpen] = useState(false);
+	const [teamOpen, setTeamOpen] = useState(false);
 	const [agentOpen, setAgentOpen] = useState(false);
 	const [priorityOpen, setPriorityOpen] = useState(false);
+	const [companyOpen, setCompanyOpen] = useState(false);
 	const [userOpen, setUserOpen] = useState(false);
-	const [teamOpen, setTeamOpen] = useState(false);
-	const [teamsLoading, setTeamsLoading] = useState(initialTeams.length === 0);
 
-	// Options
 	const statusOptions = [
-		{ value: "Pending", label: "Pending" },
-		{ value: "In progress", label: "In Progress" },
-		{ value: "Completed", label: "Completed" },
+		{ value: "Unread", label: "Unread" },
+		{ value: "Open", label: "Open" },
 		{ value: "Closed", label: "Closed" },
-		{ value: "Deleted", label: "Deleted" },
 	];
 
 	const priorityOptions = [
@@ -59,58 +69,31 @@ export function TicketsSidebar({ initialAgents = [], initialTeams = [], onFilter
 		{ value: "Low", label: "Low" },
 	];
 
-	// Load teams if not provided
-	useEffect(() => {
-		const loadTeams = async () => {
-			if (initialTeams.length === 0) {
-				setTeamsLoading(true);
-				try {
-					const teamsResponse = await teamService.getTeams({});
-					if (teamsResponse.success) {
-						setTeams(teamsResponse.data as ITeam[]);
-					}
-				} catch (error) {
-					console.error("Failed to load teams:", error);
-				} finally {
-					setTeamsLoading(false);
-				}
-			}
-		};
-
-		loadTeams();
-	}, [initialTeams]);
-
-	// Update filters
 	const updateFilters = useCallback(() => {
 		const filters: Record<string, string | string[]> = {};
 
 		if (subject) filters.subject = subject;
 		if (selectedStatuses.length > 0) filters.status = selectedStatuses;
+		if (selectedTeams.length > 0) filters.team = selectedTeams;
 		if (selectedAgents.length > 0) filters.agent = selectedAgents;
 		if (selectedPriorities.length > 0) filters.priority = selectedPriorities;
+		if (selectedCompanies.length > 0) filters.company = selectedCompanies;
 		if (selectedUsers.length > 0) filters.user = selectedUsers;
-		if (selectedTeams.length > 0) filters.team = selectedTeams;
 
-		// Include deleted only if explicitly selected
 		if (selectedStatuses.includes("Deleted")) {
 			filters.includeDeleted = "true";
 		}
 
-		// Check if filters have changed
 		const currentFiltersStr = JSON.stringify(filters);
 		const prevFiltersStr = JSON.stringify(prevFiltersRef.current);
 
 		if (currentFiltersStr !== prevFiltersStr) {
 			prevFiltersRef.current = { ...filters };
 
-			// Notify parent component
-			if (onFiltersChange) {
-				onFiltersChange(filters);
-			}
+			if (onFiltersChange) onFiltersChange(filters);
 		}
-	}, [subject, selectedStatuses, selectedAgents, selectedPriorities, selectedUsers, selectedTeams, onFiltersChange]);
+	}, [subject, selectedStatuses, selectedTeams, selectedAgents, selectedPriorities, selectedCompanies, selectedUsers, onFiltersChange]);
 
-	// Handle filter changes with debounce
 	const handleFilterChange = useCallback(() => {
 		if (debounceTimerRef.current) {
 			clearTimeout(debounceTimerRef.current);
@@ -121,7 +104,6 @@ export function TicketsSidebar({ initialAgents = [], initialTeams = [], onFilter
 		}, 300);
 	}, [updateFilters]);
 
-	// Update filters when values change
 	useEffect(() => {
 		handleFilterChange();
 
@@ -130,29 +112,28 @@ export function TicketsSidebar({ initialAgents = [], initialTeams = [], onFilter
 				clearTimeout(debounceTimerRef.current);
 			}
 		};
-	}, [subject, selectedStatuses, selectedAgents, selectedPriorities, selectedUsers, selectedTeams, handleFilterChange]);
+	}, [subject, selectedStatuses, selectedTeams, selectedAgents, selectedPriorities, selectedCompanies, selectedUsers, handleFilterChange]);
 
-	// Clear all filters
 	const handleClearFilters = () => {
 		setSubject("");
 		setSelectedStatuses([]);
+		setSelectedTeams([]);
 		setSelectedAgents([]);
 		setSelectedPriorities([]);
+		setSelectedCompanies([]);
 		setSelectedUsers([]);
-		setSelectedTeams([]);
 	};
 
-	// Reset filters to URL values
 	const handleResetFilters = () => {
 		setSubject(searchParams.get("subject") || "");
 		setSelectedStatuses(searchParams.get("status")?.split(",").filter(Boolean) || []);
+		setSelectedTeams(searchParams.get("team")?.split(",").filter(Boolean) || []);
 		setSelectedAgents(searchParams.get("agent")?.split(",").filter(Boolean) || []);
 		setSelectedPriorities(searchParams.get("priority")?.split(",").filter(Boolean) || []);
 		setSelectedUsers(searchParams.get("user")?.split(",").filter(Boolean) || []);
-		setSelectedTeams(searchParams.get("team")?.split(",").filter(Boolean) || []);
+		setSelectedCompanies(searchParams.get("company")?.split(",").filter(Boolean) || []);
 	};
 
-	// Render a filter dropdown
 	const renderFilterDropdown = (
 		label: string,
 		options: { value: string; label: string }[],
@@ -230,50 +211,6 @@ export function TicketsSidebar({ initialAgents = [], initialTeams = [], onFilter
 					{/* Status filter */}
 					{renderFilterDropdown("Statuses", statusOptions, selectedStatuses, setSelectedStatuses, statusOpen, setStatusOpen)}
 
-					{/* Agent filter */}
-					<div className="mb-5">
-						<Label className="text-[#11142D] mb-2 block">Agents</Label>
-						<Popover open={agentOpen} onOpenChange={setAgentOpen}>
-							<PopoverTrigger asChild>
-								<Button variant="outline" role="combobox" aria-expanded={agentOpen} className="w-full justify-between bg-[#F6F8FD] border-none">
-									<span className="truncate text-gray-400">
-										{selectedAgents.length === 0
-											? "Select..."
-											: agents
-													.filter((a) => selectedAgents.includes(String(a.id)))
-													.map((a) => a.name)
-													.join(", ")}
-									</span>
-									<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-								</Button>
-							</PopoverTrigger>
-							<PopoverContent className="w-[270px] p-0">
-								<Command>
-									<CommandInput placeholder="Search agent..." />
-									<CommandList>
-										<CommandEmpty>No agent found.</CommandEmpty>
-										<CommandGroup>
-											{agents.map((agent) => (
-												<CommandItem
-													key={agent.id}
-													onSelect={() => {
-														const agentId = String(agent.id);
-														const newSelected = selectedAgents.includes(agentId)
-															? selectedAgents.filter((a) => a !== agentId)
-															: [...selectedAgents, agentId];
-														setSelectedAgents(newSelected);
-													}}>
-													<Checkbox checked={selectedAgents.includes(String(agent.id))} className="mr-2" />
-													{agent.name}
-												</CommandItem>
-											))}
-										</CommandGroup>
-									</CommandList>
-								</Command>
-							</PopoverContent>
-						</Popover>
-					</div>
-
 					{/* Team filter */}
 					<div className="mb-5">
 						<Label className="text-[#11142D] mb-2 block">Teams</Label>
@@ -283,7 +220,7 @@ export function TicketsSidebar({ initialAgents = [], initialTeams = [], onFilter
 									<span className="truncate text-gray-400">
 										{selectedTeams.length === 0
 											? "Select..."
-											: teams
+											: initialTeams
 													.filter((t) => selectedTeams.includes(String(t.id)))
 													.map((t) => t.name)
 													.join(", ")}
@@ -297,10 +234,10 @@ export function TicketsSidebar({ initialAgents = [], initialTeams = [], onFilter
 									<CommandList>
 										<CommandEmpty>No team found.</CommandEmpty>
 										<CommandGroup>
-											{teamsLoading ? (
+											{isTeamsLoading ? (
 												<div className="flex items-center justify-center py-6 text-sm text-gray-500">Loading teams...</div>
 											) : (
-												teams.map((team) => (
+												initialTeams.map((team) => (
 													<CommandItem
 														key={team.id}
 														onSelect={() => {
@@ -322,8 +259,108 @@ export function TicketsSidebar({ initialAgents = [], initialTeams = [], onFilter
 						</Popover>
 					</div>
 
+					{/* Agent filter */}
+					<div className="mb-5">
+						<Label className="text-[#11142D] mb-2 block">Agents</Label>
+						<Popover open={agentOpen} onOpenChange={setAgentOpen}>
+							<PopoverTrigger asChild>
+								<Button variant="outline" role="combobox" aria-expanded={agentOpen} className="w-full justify-between bg-[#F6F8FD] border-none">
+									<span className="truncate text-gray-400">
+										{selectedAgents.length === 0
+											? "Select..."
+											: initialAgents
+													.filter((a) => selectedAgents.includes(String(a.id)))
+													.map((a) => a.name)
+													.join(", ")}
+									</span>
+									<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+								</Button>
+							</PopoverTrigger>
+							<PopoverContent className="w-[270px] p-0">
+								<Command>
+									<CommandInput placeholder="Search agent..." />
+									<CommandList>
+										<CommandEmpty>No agent found.</CommandEmpty>
+										<CommandGroup>
+											{isAgentsLoading ? (
+												<div className="flex items-center justify-center py-6 text-sm text-gray-500">Loading agents...</div>
+											) : (
+												initialAgents.map((agent) => (
+													<CommandItem
+														key={agent.id}
+														onSelect={() => {
+															const agentId = String(agent.id);
+															const newSelected = selectedAgents.includes(agentId)
+																? selectedAgents.filter((a) => a !== agentId)
+																: [...selectedAgents, agentId];
+															setSelectedAgents(newSelected);
+														}}>
+														<Checkbox checked={selectedAgents.includes(String(agent.id))} className="mr-2" />
+														{agent.name}
+													</CommandItem>
+												))
+											)}
+										</CommandGroup>
+									</CommandList>
+								</Command>
+							</PopoverContent>
+						</Popover>
+					</div>
+
 					{/* Priority filter */}
 					{renderFilterDropdown("Priorities", priorityOptions, selectedPriorities, setSelectedPriorities, priorityOpen, setPriorityOpen)}
+
+					{/* Company filter */}
+					<div className="mb-5">
+						<Label className="text-[#11142D] mb-2 block">Companies</Label>
+						<Popover open={companyOpen} onOpenChange={setCompanyOpen}>
+							<PopoverTrigger asChild>
+								<Button
+									variant="outline"
+									role="combobox"
+									aria-expanded={companyOpen}
+									className="w-full justify-between bg-[#F6F8FD] border-none">
+									<span className="truncate text-gray-400">
+										{selectedCompanies.length === 0
+											? "Select..."
+											: initialCompanies
+													.filter((c) => selectedCompanies.includes(String(c.id)))
+													.map((c) => c.name)
+													.join(", ")}
+									</span>
+									<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+								</Button>
+							</PopoverTrigger>
+							<PopoverContent className="w-[270px] p-0">
+								<Command>
+									<CommandInput placeholder="Search company..." />
+									<CommandList>
+										<CommandEmpty>No company found.</CommandEmpty>
+										<CommandGroup>
+											{isCompaniesLoading ? (
+												<div className="flex items-center justify-center py-6 text-sm text-gray-500">Loading companies...</div>
+											) : (
+												initialCompanies.map((company) => (
+													<CommandItem
+														key={company.id}
+														onSelect={() => {
+															const companyId = String(company.id);
+															const newSelected = selectedCompanies.includes(companyId)
+																? selectedCompanies.filter((u) => u !== companyId)
+																: [...selectedCompanies, companyId];
+															setSelectedCompanies(newSelected);
+														}}>
+														<Checkbox checked={selectedCompanies.includes(String(company.id))} className="mr-2" />
+														{company.name}
+													</CommandItem>
+												))
+											)}
+										</CommandGroup>
+									</CommandList>
+								</Command>
+							</PopoverContent>
+						</Popover>
+					</div>
 
 					{/* User filter */}
 					<div className="mb-5">
@@ -334,7 +371,7 @@ export function TicketsSidebar({ initialAgents = [], initialTeams = [], onFilter
 									<span className="truncate text-gray-400">
 										{selectedUsers.length === 0
 											? "Select..."
-											: users
+											: initialUsers
 													.filter((u) => selectedUsers.includes(String(u.id)))
 													.map((u) => u.name)
 													.join(", ")}
@@ -348,20 +385,24 @@ export function TicketsSidebar({ initialAgents = [], initialTeams = [], onFilter
 									<CommandList>
 										<CommandEmpty>No user found.</CommandEmpty>
 										<CommandGroup>
-											{users.map((user) => (
-												<CommandItem
-													key={user.id}
-													onSelect={() => {
-														const userId = String(user.id);
-														const newSelected = selectedUsers.includes(userId)
-															? selectedUsers.filter((u) => u !== userId)
-															: [...selectedUsers, userId];
-														setSelectedUsers(newSelected);
-													}}>
-													<Checkbox checked={selectedUsers.includes(String(user.id))} className="mr-2" />
-													{user.name}
-												</CommandItem>
-											))}
+											{isUsersLoading ? (
+												<div className="flex items-center justify-center py-6 text-sm text-gray-500">Loading users...</div>
+											) : (
+												initialUsers.map((user) => (
+													<CommandItem
+														key={user.id}
+														onSelect={() => {
+															const userId = String(user.id);
+															const newSelected = selectedUsers.includes(userId)
+																? selectedUsers.filter((u) => u !== userId)
+																: [...selectedUsers, userId];
+															setSelectedUsers(newSelected);
+														}}>
+														<Checkbox checked={selectedUsers.includes(String(user.id))} className="mr-2" />
+														{user.name}
+													</CommandItem>
+												))
+											)}
 										</CommandGroup>
 									</CommandList>
 								</Command>
