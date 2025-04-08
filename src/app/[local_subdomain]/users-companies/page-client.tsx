@@ -138,7 +138,7 @@ export default function ClientPage() {
 					Unassigned Users
 				</Button>
 				<CreateCompanyModal />
-				<CreateUserModal />
+				<CreateUserModal companies={companies} />
 			</div>
 
 			<div className="flex gap-4">

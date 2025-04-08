@@ -26,17 +26,17 @@ const initialUpdateState: UpdateCompanyFormState = {};
 export function CompanyDetails({ company, companyUsers }: Props) {
 	const [editCompanyNameOpen, setEditCompanyNameOpen] = useState(false);
 	const [updateState, updateAction, isUpdatePending] = useActionState<UpdateCompanyFormState>(UpdateCompany, initialUpdateState);
-
 	const initialFormValues = {
 		name: company.name,
 		description: "Ok ok ok ...",
 		primaryContact: "Alexis Cuevas",
 		accountManager: "Alexis Cuevas",
 		email_domain: company.email_domain,
+		logo_url: company.logo_url,
 	};
-
 	const [formValues, setFormValues] = useState(initialFormValues);
 	const [hasChanges, setHasChanges] = useState(false);
+	const [hasSubmitted, setHasSubmitted] = useState(false);
 
 	useEffect(() => {
 		setFormValues(initialFormValues);
@@ -44,17 +44,20 @@ export function CompanyDetails({ company, companyUsers }: Props) {
 	}, [company]);
 
 	useEffect(() => {
+		if (!hasSubmitted) return;
+		setHasSubmitted(false);
+
 		if (updateState.success) {
 			toast.success("Success", {
 				description: updateState.message,
 			});
 			setHasChanges(false);
-		} else {
+		} else if (!updateState.success && updateState.message && !updateState.errors) {
 			toast.error("Error", {
 				description: updateState.message,
 			});
 		}
-	}, [updateState.success, updateState.message]);
+	}, [updateState, hasSubmitted]);
 
 	const handleChange = (field: string, value: string) => {
 		setFormValues((prev) => {
@@ -66,14 +69,19 @@ export function CompanyDetails({ company, companyUsers }: Props) {
 		});
 	};
 
+	const handleSubmit = (formData: FormData) => {
+		setHasSubmitted(true);
+		return updateAction(formData);
+	};
+
 	return (
 		<Card className="w-full">
 			<CardContent className="p-6">
-				<form action={updateAction}>
+				<form action={handleSubmit}>
 					<input type="hidden" name="company_id" value={company.id} />
 					<input type="hidden" name="name" value={formValues.name} />
 					<input type="hidden" name="description" value={formValues.description} />
-					<input type="hidden" name="logo_url" value={company.logo_url || ""} />
+					<input type="hidden" name="logo_url" value={formValues.logo_url} />
 
 					<div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 						<div className="space-y-6">

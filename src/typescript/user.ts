@@ -12,9 +12,12 @@ export interface IUser {
 	updated_at: string;
 }
 
-export interface ICreateUser {}
+export type ICreateUser = Pick<IUser, "name" | "email" | "phone"> & {
+	company_id: number;
+	workspace_id: number;
+};
 
-export interface IUpdateUser {}
+export type IUpdateUser = Pick<IUser, "name" | "email" | "phone"> & {};
 
 export type IGetUser = Pick<IUser, "name" | "email" | "phone"> & {
 	company_id: number | null;

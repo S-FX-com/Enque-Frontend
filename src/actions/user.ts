@@ -8,13 +8,23 @@ import { z } from "zod";
 export type CreateUserFormState = FormState<ICreateUser>;
 
 /** Create user - Schema */
-const CreateUserSchema = z.object({});
+const CreateUserSchema = z.object({
+	name: z.string(),
+	email: z.string(),
+	phone: z.string(),
+	company_id: z.number(),
+	workspace_id: z.number(),
+});
 
 /** Create user - Action */
 export async function CreateUser(prevState: CreateUserFormState, formData: FormData) {
-	const title = formData.get("title") as string;
+	const name = formData.get("name") as string;
+	const email = formData.get("email") as string;
+	const phone = formData.get("phone") as string;
+	const company_id = Number(formData.get("company_id"));
+	const workspace_id = Number(formData.get("workspace_id"));
 
-	const values = { title };
+	const values = { name, email, phone, company_id, workspace_id };
 
 	const validation = CreateUserSchema.safeParse(values);
 	if (!validation.success) return { success: false, errors: validation.error.flatten().fieldErrors, values };

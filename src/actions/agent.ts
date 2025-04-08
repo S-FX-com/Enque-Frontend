@@ -23,7 +23,7 @@ export async function CreateAgent(prevState: CreateAgentFormState, formData: For
 	const name = formData.get("name") as string;
 	const email = formData.get("email") as string;
 	const password = formData.get("password") as string;
-	const workspace_id = formData.get("workspace_id") as unknown as number;
+	const workspace_id = Number(formData.get("workspace_id"));
 
 	const values = { name, email, password, workspace_id };
 
