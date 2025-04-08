@@ -61,7 +61,7 @@ export function Sidebar() {
 			if (response.success) setTeams(response.data as ITeam[]);
 			else
 				toast.error("Error", {
-					description: response.message || "Failed to load teams",
+					description: response.message,
 				});
 
 			setTeamsIsLoading(false);
@@ -73,7 +73,7 @@ export function Sidebar() {
 				if (response.success) setTickets({ ...tickets, ...(response.data as ITicket[]) });
 				else
 					toast.error("Error", {
-						description: response.message || "Failed to load tickets",
+						description: response.message,
 					});
 			});
 

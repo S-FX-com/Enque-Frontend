@@ -56,9 +56,10 @@ export default function ClientPage() {
 		tickets.filter((ticket) => ticket.team?.id === team_id && ticket.sent_to?.id === agent_id);
 
 	const getprogressByTicketStatus = (ticket: ITicket) => {
-		if (ticket.status === "Unread") return 0;
-		else if (ticket.status === "Read") return 50;
+		if (ticket.status === "Open" && !ticket.sent_to) return 25;
+		else if (ticket.status === "Open" && ticket.sent_to) return 50;
 		else if (ticket.status === "Closed") return 100;
+		else return 0;
 	};
 
 	return (
