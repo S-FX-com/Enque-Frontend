@@ -16,7 +16,7 @@ export function EditCompanyNameModal({ editCompanyNameOpen, setEditCompanyNameOp
 	return (
 		<Dialog open={editCompanyNameOpen} onOpenChange={setEditCompanyNameOpen}>
 			<DialogTrigger asChild>
-				<button type="button" className="ml-2 text-gray-400 hover:text-gray-600" onClick={() => setEditCompanyNameOpen(true)}>
+				<button className="ml-2 text-gray-400 hover:text-gray-600">
 					<Pencil size={16} />
 				</button>
 			</DialogTrigger>

@@ -10,9 +10,10 @@ const initialState: DeleteCompanyFormState = {};
 
 interface Props {
 	company: ICompany;
+	TriggerSize?: "default" | "sm" | "lg";
 }
 
-export function DeleteCompanyModal({ company }: Props) {
+export function DeleteCompanyModal({ company, TriggerSize = "default" }: Props) {
 	const [open, setOpen] = useState(false);
 	const [state, formAction, isPending] = useActionState<DeleteCompanyFormState>(DeleteCompany, initialState);
 	const [hasSubmitted, setHasSubmitted] = useState(false);
@@ -41,7 +42,7 @@ export function DeleteCompanyModal({ company }: Props) {
 	return (
 		<Dialog open={open} onOpenChange={setOpen}>
 			<DialogTrigger asChild>
-				<Button type="button" variant="destructive" size="sm" onClick={() => setOpen(true)}>
+				<Button size={TriggerSize} variant="destructive">
 					<Trash2 className="h-4 w-4 mr-1" />
 					Delete
 				</Button>

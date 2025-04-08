@@ -16,9 +16,10 @@ const initialState: CreateUserFormState = {};
 
 interface Props {
 	companies: ICompany[];
+	TriggerSize?: "default" | "sm" | "lg";
 }
 
-export function CreateUserModal({ companies }: Props) {
+export function CreateUserModal({ companies, TriggerSize = "default" }: Props) {
 	const { currentWorkspace } = useApp();
 	const [open, setOpen] = useState(false);
 	const [state, formAction, isPending] = useActionState<CreateUserFormState>(CreateUser, initialState);
@@ -50,7 +51,9 @@ export function CreateUserModal({ companies }: Props) {
 	return (
 		<Dialog open={open} onOpenChange={setOpen}>
 			<DialogTrigger asChild>
-				<Button variant="default">Add User</Button>
+				<Button size={TriggerSize} variant="default">
+					Add User
+				</Button>
 			</DialogTrigger>
 			<DialogContent className="sm:max-w-[425px]">
 				<DialogHeader>
@@ -86,7 +89,7 @@ export function CreateUserModal({ companies }: Props) {
 								<SelectValue placeholder="Select a company" />
 							</SelectTrigger>
 							<SelectContent>
-								{companies?.map((company) => (
+								{companies.map((company) => (
 									<SelectItem key={company.id} value={String(company.id)}>
 										{company.name}
 									</SelectItem>

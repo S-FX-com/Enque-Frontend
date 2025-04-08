@@ -12,7 +12,11 @@ import { useApp } from "@/hooks/use-app";
 
 const initialState: CreateCompanyFormState = {};
 
-export function CreateCompanyModal() {
+interface Props {
+	TriggerSize?: "default" | "sm" | "lg";
+}
+
+export function CreateCompanyModal({ TriggerSize = "default" }: Props) {
 	const { currentWorkspace } = useApp();
 	const [open, setOpen] = useState(false);
 	const [state, formAction, isPending] = useActionState<CreateCompanyFormState>(CreateCompany, initialState);
@@ -42,7 +46,9 @@ export function CreateCompanyModal() {
 	return (
 		<Dialog open={open} onOpenChange={setOpen}>
 			<DialogTrigger asChild>
-				<Button variant="default">Add Company</Button>
+				<Button size={TriggerSize} variant="default">
+					Add Company
+				</Button>
 			</DialogTrigger>
 			<DialogContent className="sm:max-w-[425px]">
 				<DialogHeader>

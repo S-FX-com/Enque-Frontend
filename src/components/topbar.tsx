@@ -17,7 +17,7 @@ import { useRouter } from "next/navigation";
 import { BellIcon, HelpCircleIcon, SearchIcon } from "lucide-react";
 import Link from "next/link";
 import { ModeToggle } from "./mode-toggle";
-import React from "react";
+import React, { JSX } from "react";
 
 interface Breadcrumb {
 	label: string;
@@ -27,9 +27,10 @@ interface Breadcrumb {
 interface Props {
 	title: string;
 	breadcrumbs?: Breadcrumb[];
+	buttons?: JSX.Element;
 }
 
-export function Topbar({ title = "Tickets", breadcrumbs = [] }: Props) {
+export function Topbar({ title = "Tickets", breadcrumbs = [], buttons = undefined }: Props) {
 	const router = useRouter();
 	const { currentAgent } = useApp();
 
@@ -46,7 +47,10 @@ export function Topbar({ title = "Tickets", breadcrumbs = [] }: Props) {
 						</React.Fragment>
 					))}
 				</div>
-				<h1 className="text-3xl font-semibold">{title}</h1>
+				<div className="flex items-center gap-2">
+					<h1 className="text-3xl font-semibold">{title}</h1>
+					{buttons && buttons}
+				</div>
 			</div>
 
 			<div className="flex items-center gap-2 px-2 py-2 bg-white dark:bg-black rounded-full">

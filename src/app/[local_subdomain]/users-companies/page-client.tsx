@@ -214,7 +214,7 @@ export default function ClientPage() {
 										) : (
 											<div className="flex flex-col gap-2 justify-center items-center">
 												<p>No unassigned users found</p>
-												<CreateUserModal />
+												<CreateUserModal companies={companies} />
 											</div>
 										)}
 									</TabsContent>
@@ -267,7 +267,7 @@ export default function ClientPage() {
 									<span>- or -</span>
 									<div className="flex gap-2">
 										<CreateCompanyModal />
-										<CreateUserModal />
+										<CreateUserModal companies={companies} />
 									</div>
 								</div>
 							</CardContent>
@@ -307,7 +307,7 @@ export default function ClientPage() {
 											) : (
 												<div className="flex flex-col gap-2 justify-center items-center">
 													<p>No users found for this company</p>
-													<CreateUserModal />
+													<CreateUserModal companies={companies} />
 												</div>
 											)}
 										</TabsContent>

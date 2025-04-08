@@ -162,7 +162,7 @@ export function CompanyDetails({ company, companyUsers }: Props) {
 										<span>{companyUsers.length} Users</span>
 									</div>
 								</div>
-								<DeleteCompanyModal company={company} />
+								<DeleteCompanyModal company={company} TriggerSize="sm" />
 							</div>
 						</div>
 					</div>
