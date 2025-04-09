@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
-import { useActionState, useEffect } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { GoToWorkspace, type GoToWorkspaceFormState } from "@/actions/workspace";
 import { AppConfigs } from "@/configs";
 import { toast } from "sonner";
@@ -36,7 +36,7 @@ export function WorkspaceForm({ className, ...props }: React.ComponentPropsWitho
 
 	return (
 		<div className={cn("flex flex-col gap-6", className)} {...props}>
-			<Card className="">
+			<Card>
 				<CardHeader>
 					<CardTitle className="text-2xl">Go to your workspace</CardTitle>
 					<CardDescription>Enter your workspace details to access it</CardDescription>
@@ -52,7 +52,7 @@ export function WorkspaceForm({ className, ...props }: React.ComponentPropsWitho
 									className="rounded-r-none"
 									defaultValue={state.values?.local_subdomain || ""}
 								/>
-								<div className="bg-muted px-3 py-2 h-10 flex items-center border border-l-0 border-input rounded-r-md">
+								<div className="bg-muted px-3 h-9 flex items-center border border-l-0 border-input rounded-r-full">
 									<span className="text-muted-foreground">{`.${AppConfigs.host}`}</span>
 								</div>
 							</div>

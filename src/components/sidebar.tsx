@@ -11,6 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { ticketService } from "@/services/ticket";
 import { ITicket } from "@/typescript/ticket";
 import { toast } from "sonner";
+import { Logo } from "./brand";
 
 export function Sidebar() {
 	const pathname = usePathname();
@@ -89,10 +90,7 @@ export function Sidebar() {
 	return (
 		<div className="flex h-full w-[calc(var(--spacing)*72)] flex-col bg-white dark:bg-black py-6">
 			<div className="flex items-center px-6">
-				<Link href="/" className="flex items-center space-x-1 text-2xl text-primary">
-					<span className="font-semibold">Obie</span>
-					<span className="font-light">Desk</span>
-				</Link>
+				<Logo />
 			</div>
 			<div className="flex-1 overflow-y-auto py-6">
 				<nav className="space-y-1 px-4">
