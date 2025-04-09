@@ -20,6 +20,7 @@ import { IUser } from "@/typescript/user";
 import { IAgent } from "@/typescript/agent";
 import { companyService } from "@/services/company";
 import { ICompany } from "@/typescript/company";
+import { CreateTicketModal } from "@/components/modals/create-ticket-modal";
 
 export default function ClientPage() {
 	const { currentWorkspace } = useApp();
@@ -131,14 +132,7 @@ export default function ClientPage() {
 						<p className="text-muted-foreground mb-6">
 							{Object.keys(filters).length > 0 ? "Try adjusting your filters to see more results." : "Create your first ticket to get started."}
 						</p>
-						{Object.keys(filters).length === 0 && (
-							<Link href="/tickets/new">
-								<Button className="gap-2">
-									<Plus className="h-4 w-4" />
-									Create Ticket
-								</Button>
-							</Link>
-						)}
+						{Object.keys(filters).length === 0 && <CreateTicketModal />}
 					</div>
 				)}
 			</Card>

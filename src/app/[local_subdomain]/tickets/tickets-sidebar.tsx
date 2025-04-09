@@ -182,7 +182,7 @@ export function TicketsSidebar({
 		<div className="w-[320px] h-full overflow-hidden flex flex-col">
 			<Card className="rounded-xl flex flex-col h-full overflow-hidden">
 				<div className="flex justify-between items-center px-7 py-5 w-full border-b">
-					<div className="text-xl font-medium text-[#2B3674] line-clamp-1 overflow-clip">Filters</div>
+					<div className="text-xl font-medium line-clamp-1 overflow-clip">Filters</div>
 					<div className="flex items-center shrink-0 gap-1">
 						<Button variant="ghost" size="icon" title="Reset Filters" onClick={handleResetFilters}>
 							<RotateCcw />
