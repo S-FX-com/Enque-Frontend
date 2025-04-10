@@ -1,4 +1,5 @@
 import { AppConfigs } from "@/configs";
+import { TicketPriority, TicketStatus } from "@/typescript/ticket";
 import { clsx, type ClassValue } from "clsx";
 import { formatDistanceToNow } from "date-fns";
 import { twMerge } from "tailwind-merge";
@@ -33,6 +34,32 @@ export function formatRelativeTime(dateString: string) {
 		return dateString;
 	}
 }
+
+export const getPriorityVariant = (priority: TicketPriority) => {
+	switch (priority) {
+		case "High":
+			return "destructive";
+		case "Medium":
+			return "default";
+		case "Low":
+			return "secondary";
+		default:
+			return "secondary";
+	}
+};
+
+export const getStatusVariant = (status: TicketStatus) => {
+	switch (status) {
+		case "Unread":
+			return "default";
+		case "Open":
+			return "secondary";
+		case "Closed":
+			return "outline";
+		default:
+			return "outline";
+	}
+};
 
 export function getLocalSubdomainByHost(host: string) {
 	return host?.replace(`.${AppConfigs.host}`, "");

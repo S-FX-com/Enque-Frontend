@@ -4,6 +4,7 @@ import { IWorkspace } from "./workspace";
 
 export interface IComment {
 	content: string;
+	id: number;
 	agent: IAgent;
 	ticket: ITicket;
 	workspace: IWorkspace;

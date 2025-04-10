@@ -8,8 +8,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
 import { TicketDetail } from "./ticket-details";
 import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
-import { ITicket, TicketPriority, TicketStatus } from "@/typescript/ticket";
-import { formatRelativeTime } from "@/lib/utils";
+import { ITicket } from "@/typescript/ticket";
+import { formatRelativeTime, getPriorityVariant, getStatusVariant } from "@/lib/utils";
 
 interface TasksListProps {
 	tickets: ITicket[];
@@ -35,32 +35,6 @@ export function TicketsList({ tickets = [] }: TasksListProps) {
 			</motion.div>
 		);
 	}
-
-	const getPriorityVariant = (priority: TicketPriority) => {
-		switch (priority) {
-			case "High":
-				return "destructive";
-			case "Medium":
-				return "default";
-			case "Low":
-				return "secondary";
-			default:
-				return "secondary";
-		}
-	};
-
-	const getStatusVariant = (status: TicketStatus) => {
-		switch (status) {
-			case "Unread":
-				return "default";
-			case "Open":
-				return "secondary";
-			case "Closed":
-				return "outline";
-			default:
-				return "outline";
-		}
-	};
 
 	return (
 		<div className="flex flex-col h-full overflow-hidden">

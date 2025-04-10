@@ -18,26 +18,10 @@ import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import Link from "@tiptap/extension-link";
 import { motion, AnimatePresence } from "framer-motion";
-import { formatDistanceToNow } from "date-fns";
-import { toast } from "sonner";
+import { ITicket } from "@/typescript/ticket";
+import { IComment } from "@/typescript/comment";
+import { formatRelativeTime, getPriorityVariant, getStatusVariant } from "@/lib/utils";
 
-// Format relative time (e.g., "2 hours ago")
-const formatRelativeTime = (dateString: string) => {
-	if (!dateString || dateString === "null" || dateString === "undefined") {
-		return "Unknown date";
-	}
-
-	try {
-		const date = new Date(dateString);
-		if (isNaN(date.getTime())) return dateString;
-		return formatDistanceToNow(date, { addSuffix: true });
-	} catch (error) {
-		console.error("Error formatting date:", error);
-		return dateString;
-	}
-};
-
-// Component to render formatted text
 const FormattedText = ({ text }: { text: string }) => {
 	const isHtml = /<\/?[a-z][\s\S]*>/i.test(text);
 
@@ -57,49 +41,19 @@ const FormattedText = ({ text }: { text: string }) => {
 	}
 };
 
-interface TicketDetailProps {
-	ticket: {
-		id: number;
-		title: string;
-		status: string;
-		priority: string;
-		createdAt: string;
-		dueDate?: string;
-		description?: string;
-		assignee: {
-			name: string;
-		};
-		sentFrom?: {
-			name: string;
-		};
-		user?: {
-			name: string;
-		};
-	};
+interface Props {
+	ticket: ITicket;
 	onClose: () => void;
 }
 
-interface ConversationItem {
-	id: number;
-	message: string;
-	timestamp: string;
-	isPrivate?: boolean;
-	user: {
-		name: string;
-	};
-}
-
-export function TicketDetail({ ticket, onClose }: TicketDetailProps) {
+export function TicketDetail({ ticket, onClose }: Props) {
 	const [isPrivateNote, setIsPrivateNote] = useState(false);
 	const [replyText, setReplyText] = useState("");
-	const [conversations, setConversations] = useState<ConversationItem[]>([]);
+	const [comments, setComments] = useState<IComment[]>([]);
 	const [showLinkDialog, setShowLinkDialog] = useState(false);
 	const [linkUrl, setLinkUrl] = useState("");
-	const [ticketStatus, setTicketStatus] = useState(ticket.status);
-	const [isUpdating, setIsUpdating] = useState(false);
 	const fileInputRef = useRef<HTMLInputElement>(null);
 
-	// Setup TipTap editor
 	const editor = useEditor({
 		extensions: [
 			StarterKit.configure({
@@ -117,24 +71,38 @@ export function TicketDetail({ ticket, onClose }: TicketDetailProps) {
 		},
 	});
 
-	// Handle sending a reply
-	const handleSendReply = () => {
-		if (!editor || !editor.getText().trim()) return;
-
-		const newMessage: ConversationItem = {
-			id: Date.now(),
-			message: replyText,
-			timestamp: "just now",
-			isPrivate: isPrivateNote,
-			user: ticket.assignee,
-		};
-
-		setConversations([newMessage, ...conversations]);
-		setReplyText("");
-		editor.commands.clearContent();
+	const handleAddLink = () => {
+		if (editor && linkUrl) {
+			editor.chain().focus().toggleLink({ href: linkUrl }).run();
+			setShowLinkDialog(false);
+			setLinkUrl("");
+		}
 	};
 
-	// Apply formatting to text
+	const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+		const files = e.target.files;
+		if (files && files.length > 0 && editor) {
+			editor.chain().focus().insertContent(`[Archivo adjunto: ${files[0].name}]`).run();
+		}
+	};
+
+	const isFormatActive = (format: "bold" | "italic" | "list" | "link" | "attachment") => {
+		if (!editor) return false;
+
+		switch (format) {
+			case "bold":
+				return editor.isActive("bold");
+			case "italic":
+				return editor.isActive("italic");
+			case "list":
+				return editor.isActive("bulletList");
+			case "link":
+				return editor.isActive("link");
+			default:
+				return false;
+		}
+	};
+
 	const formatText = (format: "bold" | "italic" | "list" | "link" | "attachment") => {
 		if (!editor && format !== "attachment") return;
 
@@ -157,160 +125,22 @@ export function TicketDetail({ ticket, onClose }: TicketDetailProps) {
 		}
 	};
 
-	// Add link to editor
-	const handleAddLink = () => {
-		if (editor && linkUrl) {
-			editor.chain().focus().toggleLink({ href: linkUrl }).run();
-			setShowLinkDialog(false);
-			setLinkUrl("");
-		}
-	};
+	const handleSendReply = () => {};
 
-	// Handle file attachment
-	const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-		const files = e.target.files;
-		if (files && files.length > 0 && editor) {
-			editor.chain().focus().insertContent(`[Archivo adjunto: ${files[0].name}]`).run();
-		}
-	};
+	const handleCloseTicket = async () => {};
 
-	// Check if format is active
-	const isFormatActive = (format: "bold" | "italic" | "list" | "link" | "attachment") => {
-		if (!editor) return false;
-
-		switch (format) {
-			case "bold":
-				return editor.isActive("bold");
-			case "italic":
-				return editor.isActive("italic");
-			case "list":
-				return editor.isActive("bulletList");
-			case "link":
-				return editor.isActive("link");
-			default:
-				return false;
-		}
-	};
-
-	// Close ticket
-	const handleCloseTicket = async () => {
-		if (isUpdating) return;
-		setIsUpdating(true);
-
-		try {
-			// Simulate API call
-			await new Promise((resolve) => setTimeout(resolve, 500));
-
-			setTicketStatus("Closed");
-
-			const newMessage: ConversationItem = {
-				id: Date.now(),
-				message: "Ticket has been closed by the agent.",
-				timestamp: "just now",
-				isPrivate: false,
-				user: ticket.assignee,
-			};
-
-			setConversations([newMessage, ...conversations]);
-
-			toast("Ticket closed", {
-				description: "The ticket has been closed successfully.",
-			});
-
-			// Dispatch event to update UI
-			window.dispatchEvent(
-				new CustomEvent("ticket-updated", {
-					detail: { id: ticket.id, status: "Closed" },
-				})
-			);
-		} catch (error) {
-			console.error("Error closing ticket:", error);
-			toast.error("Error", {
-				description: "An unexpected error occurred. Please try again.",
-			});
-		} finally {
-			setIsUpdating(false);
-		}
-	};
-
-	// Delete ticket
-	const handleDeleteTicket = async () => {
-		if (isUpdating) return;
-
-		if (confirm("Are you sure you want to delete this ticket? This action cannot be undone.")) {
-			setIsUpdating(true);
-
-			try {
-				// Simulate API call
-				await new Promise((resolve) => setTimeout(resolve, 500));
-
-				setTicketStatus("Deleted");
-
-				toast("Ticket deleted", {
-					description: "The ticket has been marked for deletion and will be permanently removed after 90 hours.",
-				});
-
-				// Dispatch event to update UI
-				window.dispatchEvent(
-					new CustomEvent("ticket-updated", {
-						detail: { id: ticket.id, status: "Deleted" },
-					})
-				);
-
-				// Close panel after delay
-				setTimeout(onClose, 1500);
-			} catch (error) {
-				console.error("Error deleting ticket:", error);
-				toast.error("Error", {
-					description: "An unexpected error occurred. Please try again.",
-				});
-			} finally {
-				setIsUpdating(false);
-			}
-		}
-	};
-
-	// Get badge variant based on status
-	const getStatusBadgeVariant = (status: string) => {
-		switch (status) {
-			case "Closed":
-				return "outline";
-			case "Deleted":
-				return "destructive";
-			case "Completed":
-				return "outline";
-			case "In progress":
-				return "default";
-			default:
-				return "secondary";
-		}
-	};
-
-	// Get badge variant based on priority
-	const getPriorityBadgeVariant = (priority: string) => {
-		switch (priority) {
-			case "High":
-				return "destructive";
-			case "Medium":
-				return "default";
-			default:
-				return "secondary";
-		}
-	};
+	const handleDeleteTicket = async () => {};
 
 	return (
 		<AnimatePresence>
-			{/* Overlay */}
 			<motion.div className="fixed inset-0 bg-black/30 z-40" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} />
 
-			{/* Detail panel */}
 			<motion.div
 				className="fixed inset-y-0 right-0 w-1/2 bg-white shadow-xl flex flex-col z-50 overflow-hidden"
 				initial={{ x: "100%" }}
 				animate={{ x: 0 }}
 				exit={{ x: "100%" }}
 				transition={{ type: "spring", damping: 25, stiffness: 200 }}>
-				{/* Header */}
 				<div className="flex justify-between items-center p-4 border-b">
 					<div className="font-semibold text-lg">#{ticket.id}</div>
 					<Button variant="ghost" size="icon" onClick={onClose} title="Close">
@@ -318,13 +148,9 @@ export function TicketDetail({ ticket, onClose }: TicketDetailProps) {
 					</Button>
 				</div>
 
-				{/* Content */}
 				<div className="flex flex-1 overflow-hidden">
-					{/* Main content */}
 					<div className="flex-1 flex flex-col overflow-hidden">
-						{/* Scrollable area */}
 						<div className="flex-1 overflow-y-auto p-4 space-y-6">
-							{/* Description */}
 							<div className="bg-white rounded-lg border p-4">
 								<h2 className="font-semibold text-lg mb-2">Description</h2>
 								<div className="text-gray-700">
@@ -332,32 +158,31 @@ export function TicketDetail({ ticket, onClose }: TicketDetailProps) {
 								</div>
 							</div>
 
-							{/* Conversation */}
 							<div className="bg-white rounded-lg border p-4">
 								<h2 className="font-semibold text-lg mb-4">Conversation</h2>
-								{conversations.length === 0 ? (
+								{comments.length === 0 ? (
 									<div className="text-center py-8 text-gray-500">No messages yet. Start the conversation by sending a reply.</div>
 								) : (
 									<div className="space-y-4">
-										{conversations.map((item) => (
-											<div key={item.id} className={`flex gap-3 ${item.isPrivate ? "bg-yellow-50 p-3 rounded-lg" : ""}`}>
+										{comments.map((comment) => (
+											<div key={comment.id} className={`flex gap-3 ${comment.is_private ? "bg-yellow-50 p-3 rounded-lg" : ""}`}>
 												<Avatar className="h-8 w-8">
-													<AvatarFallback>{item.user.name.substring(0, 2).toUpperCase()}</AvatarFallback>
+													<AvatarFallback>{comment.agent.name.substring(0, 2).toUpperCase()}</AvatarFallback>
 												</Avatar>
 												<div className="flex-1">
 													<div className="flex justify-between items-center mb-1">
 														<div className="flex items-center gap-2">
-															<span className="font-medium">{item.user.name}</span>
-															{item.isPrivate && (
+															<span className="font-medium">{comment.agent.name}</span>
+															{comment.is_private && (
 																<Badge variant="outline" className="text-xs bg-yellow-100 text-yellow-800 border-yellow-300">
 																	Private
 																</Badge>
 															)}
 														</div>
-														<span className="text-xs text-gray-500">{formatRelativeTime(item.timestamp)}</span>
+														<span className="text-xs text-gray-500">{formatRelativeTime(comment.created_at)}</span>
 													</div>
 													<div className="text-sm">
-														<FormattedText text={item.message} />
+														<FormattedText text={comment.content} />
 													</div>
 												</div>
 											</div>
@@ -366,11 +191,9 @@ export function TicketDetail({ ticket, onClose }: TicketDetailProps) {
 								)}
 							</div>
 
-							{/* Extra space to prevent content being covered by reply area */}
 							<div className="h-[220px]"></div>
 						</div>
 
-						{/* Reply area */}
 						<div className="bg-white border-t p-4 shadow-md">
 							<div className="flex items-center gap-2 mb-2 border-b pb-2">
 								<TooltipProvider>
@@ -424,30 +247,65 @@ export function TicketDetail({ ticket, onClose }: TicketDetailProps) {
 						</div>
 					</div>
 
-					{/* Details sidebar */}
 					<div className="w-64 border-l p-4 overflow-y-auto flex flex-col">
 						<h2 className="font-semibold text-lg mb-4">Details</h2>
 
 						<div className="space-y-4 flex-1">
 							<div>
 								<h3 className="text-sm text-gray-500 mb-1">Status</h3>
-								<Badge variant={getStatusBadgeVariant(ticketStatus)}>{ticketStatus}</Badge>
+								<Badge variant={getStatusVariant(ticket.status)}>{ticket.status}</Badge>
 							</div>
 
 							<div>
 								<h3 className="text-sm text-gray-500 mb-1">Priority</h3>
-								<Badge variant={getPriorityBadgeVariant(ticket.priority)}>{ticket.priority}</Badge>
+								<Badge variant={getPriorityVariant(ticket.priority)}>{ticket.priority}</Badge>
 							</div>
 
 							<div>
 								<h3 className="text-sm text-gray-500 mb-1">Created</h3>
-								<p className="text-sm">{formatRelativeTime(ticket.createdAt)}</p>
+								<p className="text-sm">{formatRelativeTime(ticket.created_at)}</p>
 							</div>
 
-							{ticket.dueDate && (
+							{ticket.due_date && (
 								<div>
 									<h3 className="text-sm text-gray-500 mb-1">Due Date</h3>
-									<p className="text-sm">{formatRelativeTime(ticket.dueDate)}</p>
+									<p className="text-sm">{formatRelativeTime(ticket.due_date)}</p>
+								</div>
+							)}
+
+							{ticket.team && (
+								<div>
+									<h3 className="text-sm text-gray-500 mb-1">Team</h3>
+									<div className="flex items-center gap-2">
+										<Avatar className="h-6 w-6">
+											<AvatarFallback>{ticket.team?.name.substring(0, 2).toUpperCase()}</AvatarFallback>
+										</Avatar>
+										<span className="text-sm">{ticket.team?.name}</span>
+									</div>
+								</div>
+							)}
+
+							{ticket.company && (
+								<div>
+									<h3 className="text-sm text-gray-500 mb-1">Company</h3>
+									<div className="flex items-center gap-2">
+										<Avatar className="h-6 w-6">
+											<AvatarFallback>{ticket.company?.name.substring(0, 2).toUpperCase()}</AvatarFallback>
+										</Avatar>
+										<span className="text-sm">{ticket.company?.name}</span>
+									</div>
+								</div>
+							)}
+
+							{ticket.sent_from && (
+								<div>
+									<h3 className="text-sm text-gray-500 mb-1">Assigned from</h3>
+									<div className="flex items-center gap-2">
+										<Avatar className="h-6 w-6">
+											<AvatarFallback>{ticket.sent_from?.name.substring(0, 2).toUpperCase()}</AvatarFallback>
+										</Avatar>
+										<span className="text-sm">{ticket.sent_from?.name}</span>
+									</div>
 								</div>
 							)}
 
@@ -455,9 +313,9 @@ export function TicketDetail({ ticket, onClose }: TicketDetailProps) {
 								<h3 className="text-sm text-gray-500 mb-1">Assigned to</h3>
 								<div className="flex items-center gap-2">
 									<Avatar className="h-6 w-6">
-										<AvatarFallback>{ticket.sent_to.name.substring(0, 2).toUpperCase()}</AvatarFallback>
+										<AvatarFallback>{ticket.sent_to?.name ? ticket.sent_to?.name.substring(0, 2).toUpperCase() : "UN"}</AvatarFallback>
 									</Avatar>
-									<span className="text-sm">{ticket.sent_to.name}</span>
+									<span className="text-sm">{ticket.sent_to?.name || "Unknown User"}</span>
 								</div>
 							</div>
 
@@ -465,43 +323,28 @@ export function TicketDetail({ ticket, onClose }: TicketDetailProps) {
 								<h3 className="text-sm text-gray-500 mb-1">User</h3>
 								<div className="flex items-center gap-2">
 									<Avatar className="h-6 w-6">
-										<AvatarFallback>
-											{ticket.user?.name
-												? ticket.user.name.substring(0, 2).toUpperCase()
-												: ticket.sentFrom?.name
-												? ticket.sentFrom.name.substring(0, 2).toUpperCase()
-												: "UN"}
-										</AvatarFallback>
+										<AvatarFallback>{ticket.user?.name ? ticket.user.name.substring(0, 2).toUpperCase() : "UN"}</AvatarFallback>
 									</Avatar>
-									<span className="text-sm">{ticket.user?.name || ticket.sentFrom?.name || "Unknown User"}</span>
+									<span className="text-sm">{ticket.user?.name || "Unknown User"}</span>
 								</div>
 							</div>
 						</div>
 
-						{/* Action buttons */}
 						<div className="mt-auto pt-4 border-t">
 							<div className="flex flex-col gap-2">
-								<Button
-									variant="outline"
-									size="sm"
-									className="w-full gap-1 text-gray-600"
-									title="Close Ticket"
-									onClick={handleCloseTicket}
-									disabled={ticketStatus === "Closed"}>
+								<Button size="sm" className="gap-2" onClick={handleCloseTicket} disabled={ticket.status === "Closed"}>
 									<Check className="h-4 w-4" />
 									Close Ticket
 								</Button>
-								<div className="text-center">
-									<button onClick={handleDeleteTicket} className="text-xs text-red-500 hover:underline">
-										Delete
-									</button>
-								</div>
+								<Button size={"sm"} className="gap-2" onClick={handleDeleteTicket} variant={"destructive"}>
+									<X className="h-4 w-4" />
+									Delete
+								</Button>
 							</div>
 						</div>
 					</div>
 				</div>
 
-				{/* Link dialog */}
 				<Dialog open={showLinkDialog} onOpenChange={setShowLinkDialog}>
 					<DialogContent className="sm:max-w-[425px]">
 						<DialogHeader>
