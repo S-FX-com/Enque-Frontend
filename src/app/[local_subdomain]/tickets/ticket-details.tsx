@@ -21,6 +21,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ITicket } from "@/typescript/ticket";
 import { IComment } from "@/typescript/comment";
 import { formatRelativeTime, getPriorityVariant, getStatusVariant } from "@/lib/utils";
+import { CloseTicketModal } from "@/components/modals/close-ticket-modal";
 
 const FormattedText = ({ text }: { text: string }) => {
 	const isHtml = /<\/?[a-z][\s\S]*>/i.test(text);
@@ -43,10 +44,11 @@ const FormattedText = ({ text }: { text: string }) => {
 
 interface Props {
 	ticket: ITicket;
+	setTickets: (tickets: ITicket[]) => void;
 	onClose: () => void;
 }
 
-export function TicketDetail({ ticket, onClose }: Props) {
+export function TicketDetail({ ticket, setTickets, onClose }: Props) {
 	const [isPrivateNote, setIsPrivateNote] = useState(false);
 	const [replyText, setReplyText] = useState("");
 	const [comments, setComments] = useState<IComment[]>([]);
@@ -127,7 +129,9 @@ export function TicketDetail({ ticket, onClose }: Props) {
 
 	const handleSendReply = () => {};
 
-	const handleCloseTicket = async () => {};
+	const handleCloseTicket = async (updatedTicket: ITicket) => {
+		setTickets((prev) => prev.map((t) => (t.id === updatedTicket.id ? updatedTicket : t)));
+	};
 
 	const handleDeleteTicket = async () => {};
 
@@ -332,10 +336,7 @@ export function TicketDetail({ ticket, onClose }: Props) {
 
 						<div className="mt-auto pt-4 border-t">
 							<div className="flex flex-col gap-2">
-								<Button size="sm" className="gap-2" onClick={handleCloseTicket} disabled={ticket.status === "Closed"}>
-									<Check className="h-4 w-4" />
-									Close Ticket
-								</Button>
+								<CloseTicketModal ticket={ticket} onSuccess={handleCloseTicket} />
 								<Button size={"sm"} className="gap-2" onClick={handleDeleteTicket} variant={"destructive"}>
 									<X className="h-4 w-4" />
 									Delete

@@ -152,7 +152,7 @@ export function TicketsList({ tickets = [], setTickets }: TasksListProps) {
 				</LayoutGroup>
 			</div>
 
-			{selectedTicket && <TicketDetail ticket={selectedTicket} onClose={() => setSelectedTicket(null)} />}
+			{selectedTicket && <TicketDetail ticket={selectedTicket} setTickets={setTickets} onClose={() => setSelectedTicket(null)} />}
 		</div>
 	);
 }

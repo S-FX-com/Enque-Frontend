@@ -14,7 +14,7 @@ import type { IUser } from "@/typescript/user";
 import { UpdateCompany, type UpdateCompanyFormState } from "@/actions/company";
 import { toast } from "sonner";
 import { DeleteCompanyModal } from "@/components/modals/delete-company-modal";
-import { EditCompanyNameModal } from "@/components/modals/edit-company-name";
+import { EditCompanyNameModal } from "@/components/modals/edit-company-name-modal";
 
 interface Props {
 	company: ICompany;
