@@ -6,7 +6,7 @@ import { IActivity, ICreateActivity, IUpdateActivity } from "@/typescript/activi
 /** Service endpoint */
 const SERVICE_ENDPOINT = `${AppConfigs.api}/activities`;
 
-export const ticketService = {
+export const activityService = {
 	/** */
 	async getActivity(paramsObj: IActivity): Promise<ServiceResponse<IActivity>> {
 		try {

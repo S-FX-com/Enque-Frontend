@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
@@ -8,15 +8,34 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
 import { TicketDetail } from "./ticket-details";
 import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
-import { ITicket } from "@/typescript/ticket";
+import { ITicket, TicketStatus } from "@/typescript/ticket";
 import { formatRelativeTime, getPriorityVariant, getStatusVariant } from "@/lib/utils";
+import { ticketService } from "@/services/ticket";
+import { toast } from "sonner";
 
 interface TasksListProps {
 	tickets: ITicket[];
+	setTickets: (tickets: ITicket[]) => void;
 }
 
-export function TicketsList({ tickets = [] }: TasksListProps) {
-	const [selectedTicket, setSelectedTicket] = useState<any>(null);
+export function TicketsList({ tickets = [], setTickets }: TasksListProps) {
+	const [selectedTicket, setSelectedTicket] = useState<ITicket | null>(null);
+
+	const handleSelectTicket = async (ticket: ITicket) => {
+		if (ticket.status === "Unread") {
+			const response = await ticketService.updateTicketById(ticket.id, { status: "Open" });
+			if (response.success) {
+				const updatedTickets = tickets.map((t) => (t.id === ticket.id ? { ...t, status: "Open" } : t));
+				setTickets(updatedTickets as ITicket[]);
+				return setSelectedTicket({ ...ticket, status: "Open" });
+			} else
+				toast.error("Error", {
+					description: "An error occurred while updating the ticket status",
+				});
+		}
+
+		setSelectedTicket(ticket);
+	};
 
 	if (tickets.length === 0) {
 		return (
@@ -72,7 +91,7 @@ export function TicketsList({ tickets = [] }: TasksListProps) {
 							<motion.div
 								key={ticket.id}
 								className="grid grid-cols-12 items-center py-4 px-4 border-b hover:bg-background cursor-pointer"
-								onClick={() => setSelectedTicket(ticket)}
+								onClick={() => handleSelectTicket(ticket)}
 								layout
 								initial={{ opacity: 0, y: 10 }}
 								animate={{ opacity: 1, y: 0 }}

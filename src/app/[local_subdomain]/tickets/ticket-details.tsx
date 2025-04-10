@@ -136,7 +136,7 @@ export function TicketDetail({ ticket, onClose }: Props) {
 			<motion.div className="fixed inset-0 bg-black/30 z-40" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} />
 
 			<motion.div
-				className="fixed inset-y-0 right-0 w-1/2 bg-white shadow-xl flex flex-col z-50 overflow-hidden"
+				className="fixed inset-y-0 right-0 w-1/2 bg-white dark:bg-black shadow-xl flex flex-col z-50 overflow-hidden"
 				initial={{ x: "100%" }}
 				animate={{ x: 0 }}
 				exit={{ x: "100%" }}
@@ -151,14 +151,14 @@ export function TicketDetail({ ticket, onClose }: Props) {
 				<div className="flex flex-1 overflow-hidden">
 					<div className="flex-1 flex flex-col overflow-hidden">
 						<div className="flex-1 overflow-y-auto p-4 space-y-6">
-							<div className="bg-white rounded-lg border p-4">
+							<div className="rounded-lg border p-4">
 								<h2 className="font-semibold text-lg mb-2">Description</h2>
 								<div className="text-gray-700">
 									{ticket.description ? <FormattedText text={ticket.description} /> : <p>No description provided.</p>}
 								</div>
 							</div>
 
-							<div className="bg-white rounded-lg border p-4">
+							<div className="rounded-lg border p-4">
 								<h2 className="font-semibold text-lg mb-4">Conversation</h2>
 								{comments.length === 0 ? (
 									<div className="text-center py-8 text-gray-500">No messages yet. Start the conversation by sending a reply.</div>
@@ -179,7 +179,7 @@ export function TicketDetail({ ticket, onClose }: Props) {
 																</Badge>
 															)}
 														</div>
-														<span className="text-xs text-gray-500">{formatRelativeTime(comment.created_at)}</span>
+														<span className="text-xs text-muted-foreground">{formatRelativeTime(comment.created_at)}</span>
 													</div>
 													<div className="text-sm">
 														<FormattedText text={comment.content} />
@@ -194,7 +194,7 @@ export function TicketDetail({ ticket, onClose }: Props) {
 							<div className="h-[220px]"></div>
 						</div>
 
-						<div className="bg-white border-t p-4 shadow-md">
+						<div className="border-t p-4 shadow-md">
 							<div className="flex items-center gap-2 mb-2 border-b pb-2">
 								<TooltipProvider>
 									{["bold", "italic", "list", "link"].map((format) => (
@@ -252,30 +252,30 @@ export function TicketDetail({ ticket, onClose }: Props) {
 
 						<div className="space-y-4 flex-1">
 							<div>
-								<h3 className="text-sm text-gray-500 mb-1">Status</h3>
+								<h3 className="text-sm text-muted-foreground mb-1">Status</h3>
 								<Badge variant={getStatusVariant(ticket.status)}>{ticket.status}</Badge>
 							</div>
 
 							<div>
-								<h3 className="text-sm text-gray-500 mb-1">Priority</h3>
+								<h3 className="text-sm text-muted-foreground mb-1">Priority</h3>
 								<Badge variant={getPriorityVariant(ticket.priority)}>{ticket.priority}</Badge>
 							</div>
 
 							<div>
-								<h3 className="text-sm text-gray-500 mb-1">Created</h3>
+								<h3 className="text-sm text-muted-foreground mb-1">Created</h3>
 								<p className="text-sm">{formatRelativeTime(ticket.created_at)}</p>
 							</div>
 
 							{ticket.due_date && (
 								<div>
-									<h3 className="text-sm text-gray-500 mb-1">Due Date</h3>
+									<h3 className="text-sm text-muted-foreground mb-1">Due Date</h3>
 									<p className="text-sm">{formatRelativeTime(ticket.due_date)}</p>
 								</div>
 							)}
 
 							{ticket.team && (
 								<div>
-									<h3 className="text-sm text-gray-500 mb-1">Team</h3>
+									<h3 className="text-sm text-muted-foreground mb-1">Team</h3>
 									<div className="flex items-center gap-2">
 										<Avatar className="h-6 w-6">
 											<AvatarFallback>{ticket.team?.name.substring(0, 2).toUpperCase()}</AvatarFallback>
@@ -287,7 +287,7 @@ export function TicketDetail({ ticket, onClose }: Props) {
 
 							{ticket.company && (
 								<div>
-									<h3 className="text-sm text-gray-500 mb-1">Company</h3>
+									<h3 className="text-sm text-muted-foreground mb-1">Company</h3>
 									<div className="flex items-center gap-2">
 										<Avatar className="h-6 w-6">
 											<AvatarFallback>{ticket.company?.name.substring(0, 2).toUpperCase()}</AvatarFallback>
@@ -299,7 +299,7 @@ export function TicketDetail({ ticket, onClose }: Props) {
 
 							{ticket.sent_from && (
 								<div>
-									<h3 className="text-sm text-gray-500 mb-1">Assigned from</h3>
+									<h3 className="text-sm text-muted-foreground mb-1">Assigned from</h3>
 									<div className="flex items-center gap-2">
 										<Avatar className="h-6 w-6">
 											<AvatarFallback>{ticket.sent_from?.name.substring(0, 2).toUpperCase()}</AvatarFallback>
@@ -310,7 +310,7 @@ export function TicketDetail({ ticket, onClose }: Props) {
 							)}
 
 							<div>
-								<h3 className="text-sm text-gray-500 mb-1">Assigned to</h3>
+								<h3 className="text-sm text-muted-foreground mb-1">Assigned to</h3>
 								<div className="flex items-center gap-2">
 									<Avatar className="h-6 w-6">
 										<AvatarFallback>{ticket.sent_to?.name ? ticket.sent_to?.name.substring(0, 2).toUpperCase() : "UN"}</AvatarFallback>
@@ -320,7 +320,7 @@ export function TicketDetail({ ticket, onClose }: Props) {
 							</div>
 
 							<div>
-								<h3 className="text-sm text-gray-500 mb-1">User</h3>
+								<h3 className="text-sm text-muted-foreground mb-1">User</h3>
 								<div className="flex items-center gap-2">
 									<Avatar className="h-6 w-6">
 										<AvatarFallback>{ticket.user?.name ? ticket.user.name.substring(0, 2).toUpperCase() : "UN"}</AvatarFallback>

@@ -39,7 +39,7 @@ export const ticketService = {
 	},
 
 	/** */
-	async updateTicketById(ticket_id: number, dataToUpdate: IUpdateTicket): Promise<ServiceResponse<ITicket>> {
+	async updateTicketById(ticket_id: number, dataToUpdate: Partial<IUpdateTicket>): Promise<ServiceResponse<ITicket>> {
 		try {
 			const data = await fetchAPI.PUT<ITicket>(`${SERVICE_ENDPOINT}/${ticket_id}`, dataToUpdate);
 			return data;

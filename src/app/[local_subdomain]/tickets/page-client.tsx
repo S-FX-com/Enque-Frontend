@@ -121,7 +121,7 @@ export default function ClientPage() {
 				{isTicketsLoading ? (
 					<TicketsListSkeleton />
 				) : tickets.length > 0 ? (
-					<TicketsList tickets={tickets} />
+					<TicketsList tickets={tickets} setTickets={setTickets} />
 				) : (
 					<div className="flex flex-col items-center justify-center h-full p-8 text-center">
 						<h3 className="text-lg font-medium mb-2">No tickets found</h3>
