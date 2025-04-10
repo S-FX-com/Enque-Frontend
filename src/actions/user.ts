@@ -10,7 +10,7 @@ export type CreateUserFormState = FormState<ICreateUser>;
 /** Create user - Schema */
 const CreateUserSchema = z.object({
 	name: z.string(),
-	email: z.string(),
+	email: z.string().email(),
 	phone: z.string(),
 	company_id: z.number(),
 	workspace_id: z.number(),
@@ -18,11 +18,11 @@ const CreateUserSchema = z.object({
 
 /** Create user - Action */
 export async function CreateUser(prevState: CreateUserFormState, formData: FormData) {
-	const name = formData.get("name") as string;
-	const email = formData.get("email") as string;
-	const phone = formData.get("phone") as string;
-	const company_id = Number(formData.get("company_id"));
-	const workspace_id = Number(formData.get("workspace_id"));
+	const name = formData.get("name") as any;
+	const email = formData.get("email") as any;
+	const phone = formData.get("phone") as any;
+	const company_id = (formData.get("company_id") ? Number(formData.get("company_id")) : undefined) as any;
+	const workspace_id = (formData.get("workspace_id") ? Number(formData.get("workspace_id")) : undefined) as any;
 
 	const values = { name, email, phone, company_id, workspace_id };
 

@@ -18,7 +18,7 @@ const GoToWorkspaceSchema = z.object({
 
 /** Select workspace - Action */
 export async function GoToWorkspace(prevState: GoToWorkspaceFormState, formData: FormData): Promise<GoToWorkspaceFormState> {
-	const local_subdomain = formData.get("local_subdomain") as string;
+	const local_subdomain = formData.get("local_subdomain") as any;
 
 	const values = { local_subdomain };
 

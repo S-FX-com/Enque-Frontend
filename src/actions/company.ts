@@ -17,16 +17,16 @@ const CreateCompanySchema = z.object({
 	description: z.string().optional(),
 	logo_url: z.string().optional(),
 	email_domain: z.string(),
-	workspace_id: z.number(),
+	workspace_id: z.string(),
 });
 
 /** Create company - Action */
 export async function CreateCompany(prevState: CreateCompanyFormState, formData: FormData): Promise<CreateCompanyFormState> {
-	const name = formData.get("name") as string;
-	const description = formData.get("description") as string;
-	const logo_url = formData.get("logo_url") as string;
-	const email_domain = formData.get("email_domain") as string;
-	const workspace_id = Number(formData.get("workspace_id"));
+	const name = formData.get("name") as any;
+	const description = formData.get("description") as any;
+	const logo_url = (formData.get("logo_url") ? formData.get("logo_url") : undefined) as any;
+	const email_domain = formData.get("email_domain") as any;
+	const workspace_id = (formData.get("workspace_id") ? Number(formData.get("workspace_id")) : undefined) as any;
 
 	const values = { name, description, logo_url, email_domain, workspace_id };
 
@@ -54,11 +54,11 @@ const UpdateCompanySchema = z.object({
 
 /** Update company - Action */
 export async function UpdateCompany(prevState: UpdateCompanyFormState, formData: FormData): Promise<UpdateCompanyFormState> {
-	const company_id = Number(formData.get("company_id"));
-	const name = formData.get("name") as string;
-	const description = formData.get("description") as string;
-	const logo_url = formData.get("logo_url") as string;
-	const email_domain = formData.get("email_domain") as string;
+	const company_id = (formData.get("company_id") ? Number(formData.get("company_id")) : undefined) as any;
+	const name = formData.get("name") as any;
+	const description = formData.get("description") as any;
+	const logo_url = (formData.get("logo_url") ? formData.get("logo_url") : undefined) as any;
+	const email_domain = formData.get("email_domain") as any;
 
 	const values = { name, description, logo_url, email_domain };
 

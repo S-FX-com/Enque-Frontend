@@ -20,10 +20,10 @@ const CreateAgentSchema = z.object({
 
 /** Create agent - Action */
 export async function CreateAgent(prevState: CreateAgentFormState, formData: FormData): Promise<CreateAgentFormState> {
-	const name = formData.get("name") as string;
-	const email = formData.get("email") as string;
-	const password = formData.get("password") as string;
-	const workspace_id = Number(formData.get("workspace_id"));
+	const name = formData.get("name") as any;
+	const email = formData.get("email") as any;
+	const password = formData.get("password") as any;
+	const workspace_id = (formData.get("workspace_id") ? Number(formData.get("workspace_id")) : undefined) as any;
 
 	const values = { name, email, password, workspace_id };
 

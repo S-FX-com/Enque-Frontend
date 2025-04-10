@@ -21,8 +21,8 @@ const AuthSchema = z.object({
 
 /** Create authentication - Action */
 export async function Auth(prevState: AuthFormState, formData: FormData): Promise<AuthFormState> {
-	const email = formData.get("email") as string;
-	const password = formData.get("password") as string;
+	const email = formData.get("email") as any;
+	const password = formData.get("password") as any;
 
 	const values = { email, password };
 
