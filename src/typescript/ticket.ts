@@ -17,7 +17,7 @@ export interface ITicket {
 	workspace: IWorkspace;
 	team: ITeam | null;
 	company: ICompany | null;
-	user: IUser;
+	user: IUser | null;
 	sent_from: IAgent | null;
 	sent_to: IAgent | null;
 	created_at: string;
@@ -29,7 +29,7 @@ export type ICreateTicket = Pick<ITicket, "title" | "description" | "status" | "
 	workspace_id: number;
 	team_id: number | null;
 	company_id: number | null;
-	user_id: number;
+	user_id: number | null;
 	sent_from_id: number;
 	sent_to_id: number;
 };

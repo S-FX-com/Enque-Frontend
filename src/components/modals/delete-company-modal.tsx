@@ -54,7 +54,7 @@ export function DeleteCompanyModal({ company, TriggerSize = "default" }: Props) 
 				</DialogHeader>
 
 				<form action={handleSubmit} className="py-4">
-					<input type="hidden" name="company_id" value={company.id} />
+					<input type="hidden" name="company_id" value={String(company.id || "")} />
 
 					<div className="flex items-center gap-2 text-amber-600 mb-4">
 						<AlertTriangle className="h-5 w-5" />

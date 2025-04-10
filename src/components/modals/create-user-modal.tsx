@@ -62,7 +62,7 @@ export function CreateUserModal({ companies, TriggerSize = "default" }: Props) {
 				</DialogHeader>
 
 				<form action={handleSubmit} className="grid gap-4 py-4">
-					<Input type="hidden" name="workspace_id" value={currentWorkspace?.id} />
+					<Input type="hidden" name="workspace_id" value={String(currentWorkspace?.id || "")} />
 
 					<div className="grid gap-2">
 						<Label htmlFor="name">Name</Label>
@@ -90,7 +90,7 @@ export function CreateUserModal({ companies, TriggerSize = "default" }: Props) {
 							</SelectTrigger>
 							<SelectContent>
 								{companies.map((company) => (
-									<SelectItem key={company.id} value={String(company.id)}>
+									<SelectItem key={company.id} value={String(company.id || "")}>
 										{company.name}
 									</SelectItem>
 								))}

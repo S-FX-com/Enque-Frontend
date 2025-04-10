@@ -27,10 +27,9 @@ interface Breadcrumb {
 interface Props {
 	title: string;
 	breadcrumbs?: Breadcrumb[];
-	extra?: JSX.Element;
 }
 
-export function Topbar({ title = "Tickets", breadcrumbs = [], extra = undefined }: Props) {
+export function Topbar({ title = "Tickets", breadcrumbs = [] }: Props) {
 	const router = useRouter();
 	const { currentAgent } = useApp();
 
@@ -49,7 +48,6 @@ export function Topbar({ title = "Tickets", breadcrumbs = [], extra = undefined 
 				</div>
 				<div className="flex items-center gap-2">
 					<h1 className="text-3xl font-semibold">{title}</h1>
-					{extra && extra}
 				</div>
 			</div>
 

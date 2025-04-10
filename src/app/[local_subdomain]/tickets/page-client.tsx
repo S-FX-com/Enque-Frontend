@@ -4,9 +4,6 @@ import { useState, useEffect } from "react";
 import { TicketsList } from "./tickets-list";
 import { TicketsListSkeleton } from "./tickets-list-skeleton";
 import { TicketsSidebar } from "./tickets-sidebar";
-import { Button } from "@/components/ui/button";
-import Link from "next/link";
-import { Plus } from "lucide-react";
 import { ticketService } from "@/services/ticket";
 import { agentService } from "@/services/agent";
 import { teamService } from "@/services/team";
@@ -115,7 +112,6 @@ export default function ClientPage() {
 	}, [filters]);
 
 	const handleFiltersChange = (newFilters: any) => {
-		console.log(newFilters);
 		setFilters(newFilters);
 	};
 
@@ -132,7 +128,9 @@ export default function ClientPage() {
 						<p className="text-muted-foreground mb-6">
 							{Object.keys(filters).length > 0 ? "Try adjusting your filters to see more results." : "Create your first ticket to get started."}
 						</p>
-						{Object.keys(filters).length === 0 && <CreateTicketModal />}
+						{Object.keys(filters).length === 0 && (
+							<CreateTicketModal users={initialUsers} companies={initialCompanies} teams={initialTeams} agents={initialAgents} />
+						)}
 					</div>
 				)}
 			</Card>

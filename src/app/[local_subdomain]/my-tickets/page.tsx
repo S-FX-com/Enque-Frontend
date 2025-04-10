@@ -4,7 +4,6 @@ import { Sidebar } from "@/components/sidebar";
 import { Topbar } from "@/components/topbar";
 import { GetAuth } from "@/actions/auth";
 import { GetWorkspace } from "@/actions/workspace";
-import { CreateTicketModal } from "@/components/modals/create-ticket-modal";
 
 export default async function MyTicketsPage() {
 	const currentAuth = await GetAuth();
@@ -24,7 +23,6 @@ export default async function MyTicketsPage() {
 							{ label: "S-FX.COM", href: "/" },
 							{ label: "My Tickets", href: "/my-tickets" },
 						]}
-						extra={<CreateTicketModal TriggerSize="sm" />}
 					/>
 					<main className="flex-1 overflow-hidden">
 						<ClientPage />
