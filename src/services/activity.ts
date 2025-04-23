@@ -1,80 +1,29 @@
-import { AppConfigs } from "@/configs";
-import { fetchAPI } from "@/lib/fetch-api";
-import { ServiceResponse } from "@/typescript";
-import { IActivity, ICreateActivity, IUpdateActivity } from "@/typescript/activity";
+import { fetchAPI } from '@/lib/fetch-api';
+import { Activity } from '../typescript/activity'; // Use relative path
 
-/** Service endpoint */
-const SERVICE_ENDPOINT = `${AppConfigs.api}/activities`;
+// Use the production URL directly. Ensure NEXT_PUBLIC_API_BASE_URL is set in the production environment.
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://enque-backend-production.up.railway.app';
 
-export const activityService = {
-	/** */
-	async getActivity(paramsObj: IActivity): Promise<ServiceResponse<IActivity>> {
-		try {
-			const queryParams = new URLSearchParams();
-			Object.entries(paramsObj).forEach(([key, value]) => {
-				if (value !== undefined) {
-					queryParams.append(`filter[${key}]`, String(value));
-				}
-			});
+/**
+ * Fetches recent notifications (activities).
+ * @param limit Optional limit for the number of notifications to fetch.
+ * @returns A promise that resolves to an array of activities.
+ */
+export const getNotifications = async (limit: number = 10): Promise<Activity[]> => {
+  try {
+    const url = `${API_BASE_URL}/v1/notifications?limit=${limit}`;
+    // Assuming the endpoint returns ActivityWithDetails which matches our Activity type
+    const response = await fetchAPI.GET<Activity[]>(url);
 
-			const data = await fetchAPI.GET<IActivity[]>(`${SERVICE_ENDPOINT}?${queryParams.toString()}`);
-			if (data.success && data.data && data.data.length > 0) return { success: true, data: data.data[0] };
-
-			return { success: false, message: "Activity not found" };
-		} catch (error: unknown) {
-			const message = error instanceof Error ? error.message : "Unknown error";
-			return { success: false, message };
-		}
-	},
-
-	/** */
-	async createActivity(dataToCreate: ICreateActivity): Promise<ServiceResponse<IActivity>> {
-		try {
-			const data = await fetchAPI.POST<IActivity>(`${SERVICE_ENDPOINT}`, dataToCreate);
-			return data;
-		} catch (error: unknown) {
-			const message = error instanceof Error ? error.message : "Unknown error";
-			return { success: false, message };
-		}
-	},
-
-	/** */
-	async updateActivityById(ticket_id: number, dataToUpdate: IUpdateActivity): Promise<ServiceResponse<IActivity>> {
-		try {
-			const data = await fetchAPI.PUT<IActivity>(`${SERVICE_ENDPOINT}/${ticket_id}`, dataToUpdate);
-			return data;
-		} catch (error: unknown) {
-			const message = error instanceof Error ? error.message : "Unknown error";
-			return { success: false, message };
-		}
-	},
-
-	/** */
-	async deleteActivityById(ticket_id: number): Promise<ServiceResponse<IActivity>> {
-		try {
-			const data = await fetchAPI.DELETE<IActivity>(`${SERVICE_ENDPOINT}/${ticket_id}`);
-			return data;
-		} catch (error: unknown) {
-			const message = error instanceof Error ? error.message : "Unknown error";
-			return { success: false, message };
-		}
-	},
-
-	/** */
-	async getActivitys(paramsObj: IActivity): Promise<ServiceResponse<IActivity[]>> {
-		try {
-			const queryParams = new URLSearchParams();
-			Object.entries(paramsObj).forEach(([key, value]) => {
-				if (value !== undefined) {
-					queryParams.append(`filter[${key}]`, String(value));
-				}
-			});
-
-			const data = await fetchAPI.GET<IActivity[]>(`${SERVICE_ENDPOINT}?${queryParams.toString()}`);
-			return data;
-		} catch (error: unknown) {
-			const message = error instanceof Error ? error.message : "Unknown error";
-			return { success: false, message };
-		}
-	},
+    if (!response || !response.data) {
+      console.error('Failed to fetch notifications or data is missing');
+      return []; // Return empty array on failure
+    }
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching notifications:', error);
+    throw error; // Re-throw error for handling in the component
+  }
 };
+
+// Add other activity-related service functions here later if needed

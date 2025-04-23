@@ -1,80 +1,133 @@
-import { AppConfigs } from "@/configs";
 import { fetchAPI } from "@/lib/fetch-api";
-import { ServiceResponse } from "@/typescript";
-import { ITicket, ICreateTicket, IUpdateTicket, IGetTicket } from "@/typescript/ticket";
+import { ITicket, IGetTicket } from "@/typescript/ticket"; // Import IGetTicket
+import { IComment } from "@/typescript/comment"; // Import IComment
 
-/** Service endpoint */
-const SERVICE_ENDPOINT = `${AppConfigs.api}/tickets`;
+/**
+ * Fetches a list of tickets (tasks) from the backend.
+ * @param filters - Optional filters including skip, limit, status, etc.
+ * @param endpointPath - Optional endpoint path (defaults to /v1/tasks/)
+ * @returns A promise that resolves to an array of ITicket objects.
+ */
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://enque-backend-production.up.railway.app';
 
-export const ticketService = {
-	/** */
-	async getTicket(paramsObj: IGetTicket): Promise<ServiceResponse<ITicket>> {
-		try {
-			const queryParams = new URLSearchParams();
-			Object.entries(paramsObj).forEach(([key, value]) => {
-				if (value !== undefined) {
-					queryParams.append(`filter[${key}]`, String(value));
-				}
-			});
+// Update getTickets to accept filters and an optional endpoint path
+export async function getTickets(
+    filters: IGetTicket = {},
+    endpointPath: string = '/v1/tasks/' // Default path for all tickets
+): Promise<ITicket[]> {
+  // Destructure filters, excluding assignee_id as it's handled by endpointPath
+  const { skip = 0, limit = 100, status, priority, type, user_id, team_id } = filters;
 
-			const data = await fetchAPI.GET<ITicket[]>(`${SERVICE_ENDPOINT}?${queryParams.toString()}`);
-			if (data.success && data.data && data.data.length > 0) return { success: true, data: data.data[0] };
+  try {
+    // Construct query parameters, including potential filters
+    const queryParams = new URLSearchParams({
+      skip: skip.toString(),
+      limit: limit.toString(),
+    });
 
-			return { success: false, message: "Ticket not found" };
-		} catch (error: unknown) {
-			const message = error instanceof Error ? error.message : "Unknown error";
-			return { success: false, message };
-		}
-	},
+    // Add other filters if they have values
+    if (status !== undefined) queryParams.append('status', status);
+    if (priority !== undefined) queryParams.append('priority', priority);
+    if (type !== undefined) queryParams.append('type', type);
+    if (user_id !== undefined) queryParams.append('user_id', String(user_id));
+    if (team_id !== undefined) queryParams.append('team_id', String(team_id));
 
-	/** */
-	async createTicket(dataToCreate: ICreateTicket): Promise<ServiceResponse<ITicket>> {
-		try {
-			const data = await fetchAPI.POST<ITicket>(`${SERVICE_ENDPOINT}`, dataToCreate);
-			return data;
-		} catch (error: unknown) {
-			const message = error instanceof Error ? error.message : "Unknown error";
-			return { success: false, message };
-		}
-	},
+    // Construct URL using the provided endpointPath and query parameters
+    const url = `${API_BASE_URL}${endpointPath}?${queryParams.toString()}`;
+    console.log("Fetching tickets with URL:", url); // Log the URL for debugging filters
 
-	/** */
-	async updateTicketById(ticket_id: number, dataToUpdate: Partial<IUpdateTicket>): Promise<ServiceResponse<ITicket>> {
-		try {
-			const data = await fetchAPI.PUT<ITicket>(`${SERVICE_ENDPOINT}/${ticket_id}`, dataToUpdate);
-			return data;
-		} catch (error: unknown) {
-			const message = error instanceof Error ? error.message : "Unknown error";
-			return { success: false, message };
-		}
-	},
+    // Use fetchAPI.GET and expect BaseResponse<ITicket[]>
+    const response = await fetchAPI.GET<ITicket[]>(url);
+    // Extract data from the BaseResponse object
+    // Ensure response and response.data exist before returning
+    if (response && response.success && response.data) {
+      return response.data;
+    } else {
+      // Log error message from response if available
+      console.error("Error fetching tickets:", response?.message || "Unknown API error");
+      return [];
+    }
+  } catch (error) {
+    console.error("Error fetching tickets (catch block):", error);
+    // Depending on requirements, you might want to throw the error
+    // or return an empty array / handle it differently.
+    return [];
+  }
+}
 
-	/** */
-	async deleteTicketById(ticket_id: number): Promise<ServiceResponse<ITicket>> {
-		try {
-			const data = await fetchAPI.DELETE<ITicket>(`${SERVICE_ENDPOINT}/${ticket_id}`);
-			return data;
-		} catch (error: unknown) {
-			const message = error instanceof Error ? error.message : "Unknown error";
-			return { success: false, message };
-		}
-	},
+/**
+ * Fetches the comments/conversation history for a specific ticket.
+ * @param ticketId The ID of the ticket.
+ * @returns A promise that resolves to an array of IComment objects.
+ */
+export async function getTicketComments(ticketId: number): Promise<IComment[]> {
+  try {
+    // Construct the full URL for the comments endpoint
+    const url = `${API_BASE_URL}/v1/tasks/${ticketId}/comments`; // Corrected path based on user provided info
+    const response = await fetchAPI.GET<IComment[]>(url);
 
-	/** */
-	async getTickets(paramsObj: Partial<IGetTicket>): Promise<ServiceResponse<ITicket[]>> {
-		try {
-			const queryParams = new URLSearchParams();
-			Object.entries(paramsObj).forEach(([key, value]) => {
-				if (value !== undefined) {
-					queryParams.append(`filter[${key}]`, String(value));
-				}
-			});
+    if (response && response.success && response.data) {
+      // Sort comments by creation date, oldest first (optional, but common)
+      return response.data.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+    } else {
+      console.error(`Error fetching comments for ticket ${ticketId}:`, response?.message || "Unknown API error");
+      return [];
+    }
+  } catch (error) {
+    console.error(`Error fetching comments for ticket ${ticketId} (catch block):`, error);
+    return [];
+  }
+}
 
-			const data = await fetchAPI.GET<ITicket[]>(`${SERVICE_ENDPOINT}?${queryParams.toString()}`);
-			return data;
-		} catch (error: unknown) {
-			const message = error instanceof Error ? error.message : "Unknown error";
-			return { success: false, message };
-		}
-	},
+/**
+ * Updates specific fields of a ticket.
+ * @param ticketId The ID of the ticket to update.
+ * @param updates An object containing the fields to update (e.g., { status: 'closed', priority: 'high', assignee_id: 5 }).
+ * @returns A promise that resolves to the updated ITicket object or null on failure.
+ */
+// Define a type for the update payload that allows null for assignee_id
+type TicketUpdatePayload = {
+    status?: ITicket['status'];
+    priority?: ITicket['priority'];
+    assignee_id?: number | null; // Allow null here
 };
+
+export async function updateTicket(ticketId: number, updates: Partial<Pick<ITicket, 'status' | 'priority' | 'assignee_id'>>): Promise<ITicket | null> {
+    try {
+        const url = `${API_BASE_URL}/v1/tasks/${ticketId}`; // Endpoint for updating a task (ticket)
+
+        // Create the payload with the correct type
+        const payload: TicketUpdatePayload = {};
+        if (updates.status !== undefined) payload.status = updates.status;
+        if (updates.priority !== undefined) payload.priority = updates.priority;
+
+        // Handle assignee_id specifically to allow null
+        if ('assignee_id' in updates) { // Check if the key exists, even if value is null/undefined
+            const assigneeValue = updates.assignee_id;
+            payload.assignee_id = assigneeValue === null || assigneeValue === undefined ? null : Number(assigneeValue);
+             // Basic check if it's a number-like string, convert it. Handle potential NaN if needed.
+             if (typeof payload.assignee_id === 'string') {
+                 const parsed = parseInt(payload.assignee_id, 10);
+                 payload.assignee_id = isNaN(parsed) ? null : parsed;
+             }
+        }
+         // If assignee_id is not in updates, it's not included in the payload.
+
+        const response = await fetchAPI.PUT<ITicket>(url, payload); // Use PUT method
+
+        if (response && response.success && response.data) {
+            return response.data;
+        } else {
+            console.error(`Error updating ticket ${ticketId}:`, response?.message || "Unknown API error");
+            // Consider throwing an error here to be caught by the calling component
+            // throw new Error(response?.message || `Failed to update ticket ${ticketId}`);
+            return null; // Or return null/handle error as needed
+        }
+    } catch (error) {
+        console.error(`Error updating ticket ${ticketId} (catch block):`, error);
+        // throw error; // Re-throw the error for the component to handle
+        return null;
+    }
+}
+
+// You can add more ticket-related service functions

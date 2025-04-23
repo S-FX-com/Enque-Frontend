@@ -1,80 +1,25 @@
-import { AppConfigs } from "@/configs";
-import { fetchAPI } from "@/lib/fetch-api";
-import { ServiceResponse } from "@/typescript";
-import { IUser, ICreateUser, IUpdateUser, IGetUser } from "@/typescript/user";
+import { fetchAPI } from "@/lib/fetch-api"; 
+import { IUser } from "@/typescript/user"; // Assuming IUser type exists
 
-/** Service endpoint */
-const SERVICE_ENDPOINT = `${AppConfigs.api}/users`;
+// Use the production backend URL provided by the user
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://enque-backend-production.up.railway.app'; 
 
-export const userService = {
-	/** */
-	async getUser(paramsObj: IUser): Promise<ServiceResponse<IUser>> {
-		try {
-			const queryParams = new URLSearchParams();
-			Object.entries(paramsObj).forEach(([key, value]) => {
-				if (value !== undefined) {
-					queryParams.append(`filter[${key}]`, String(value));
-				}
-			});
-
-			const data = await fetchAPI.GET<IUser[]>(`${SERVICE_ENDPOINT}?${queryParams.toString()}`);
-			if (data.success && data.data && data.data.length > 0) return { success: true, data: data.data[0] };
-
-			return { success: false, message: "User not found" };
-		} catch (error: unknown) {
-			const message = error instanceof Error ? error.message : "Unknown error";
-			return { success: false, message };
-		}
-	},
-
-	/** */
-	async createUser(dataToCreate: ICreateUser): Promise<ServiceResponse<IUser>> {
-		try {
-			const data = await fetchAPI.POST<IUser>(`${SERVICE_ENDPOINT}`, dataToCreate);
-			return data;
-		} catch (error: unknown) {
-			const message = error instanceof Error ? error.message : "Unknown error";
-			return { success: false, message };
-		}
-	},
-
-	/** */
-	async updateUserById(user_id: number, dataToUpdate: IUpdateUser): Promise<ServiceResponse<IUser>> {
-		try {
-			const data = await fetchAPI.PUT<IUser>(`${SERVICE_ENDPOINT}/${user_id}`, dataToUpdate);
-			return data;
-		} catch (error: unknown) {
-			const message = error instanceof Error ? error.message : "Unknown error";
-			return { success: false, message };
-		}
-	},
-
-	/** */
-	async deleteUserById(user_id: number): Promise<ServiceResponse<IUser>> {
-		try {
-			const data = await fetchAPI.DELETE<IUser>(`${SERVICE_ENDPOINT}/${user_id}`);
-			return data;
-		} catch (error: unknown) {
-			const message = error instanceof Error ? error.message : "Unknown error";
-			return { success: false, message };
-		}
-	},
-
-	/** */
-	async getUsers(paramsObj: Partial<IGetUser> = {}): Promise<ServiceResponse<IUser[]>> {
-		try {
-			const queryParams = new URLSearchParams();
-			Object.entries(paramsObj).forEach(([key, value]) => {
-				if (value !== undefined) {
-					queryParams.append(`filter[${key}]`, String(value));
-				}
-			});
-
-			const data = await fetchAPI.GET<IUser[]>(`${SERVICE_ENDPOINT}?${queryParams.toString()}`);
-			return data;
-		} catch (error: unknown) {
-			const message = error instanceof Error ? error.message : "Unknown error";
-			return { success: false, message };
-		}
-	},
-};
+/**
+ * Fetches a list of users from the backend.
+ * @returns A promise that resolves to an array of IUser objects.
+ */
+export async function getUsers(): Promise<IUser[]> {
+  try {
+    const url = `${API_BASE_URL}/v1/users/`; 
+    const response = await fetchAPI.GET<IUser[]>(url); 
+    if (response && response.success && response.data) {
+      return response.data;
+    } else {
+      console.error("Error fetching users:", response?.message || "Unknown API error");
+      return [];
+    }
+  } catch (error) {
+    console.error("Error fetching users (catch block):", error);
+    return []; 
+  }
+}

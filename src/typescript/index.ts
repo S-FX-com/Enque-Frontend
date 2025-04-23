@@ -1,30 +1,30 @@
-export type Errors = Record<string, string>;
+// Tipo genérico para respuestas de servicio
+export interface ServiceResponse<T> {
+  success: boolean;
+  message?: string;
+  data?: T;
+}
 
-export type ServiceResponse<T> =
-	| {
-			success: true;
-			message?: string;
-			data?: T;
-	  }
-	| {
-			success: false;
-			message?: string;
-			errors?: Errors;
-	  };
+// Tipo para la paginación
+export interface Pagination {
+  page: number;
+  limit: number;
+  total?: number;
+}
 
-type FieldErrors<T> = {
-	[K in keyof T]?: string[];
-};
+// Interfaz base para filtros
+export interface BaseFilters {
+  skip?: number; // Use skip instead of page to match backend API
+  limit?: number;
+  search?: string;
+  sort_by?: string;
+  sort_order?: 'asc' | 'desc';
+}
 
-type FieldValues<T> = {
-	[K in keyof T]?: T[K];
-};
-
-export type FormState<T> = {
-	success?: boolean;
-	errors?: FieldErrors<T> & {
-		_form?: string[];
-	};
-	message?: string;
-	values?: FieldValues<T>;
-};
+// Interfaz para la navegación
+export interface NavItem {
+  title: string;
+  href: string;
+  icon?: React.ComponentType<{ className?: string }>;
+  disabled?: boolean;
+}

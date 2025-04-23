@@ -1,80 +1,58 @@
-import { AppConfigs } from "@/configs";
-import { fetchAPI } from "@/lib/fetch-api";
-import { ServiceResponse } from "@/typescript";
-import { IAgent, ICreateAgent, IGetAgent, IUpdateAgent } from "@/typescript/agent";
+import { fetchAPI } from '@/lib/fetch-api';
+import { Agent } from '../typescript/agent'; // Using relative path
+import { Team } from '../typescript/team'; // Import Team type
 
-/** Service endpoint */
-const SERVICE_ENDPOINT = `${AppConfigs.api}/agents`;
+// Use the production URL directly. Ensure NEXT_PUBLIC_API_BASE_URL is set in the production environment.
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://enque-backend-production.up.railway.app';
 
-export const agentService = {
-	/** */
-	async getAgent(paramsObj: IAgent): Promise<ServiceResponse<IAgent>> {
-		try {
-			const queryParams = new URLSearchParams();
-			Object.entries(paramsObj).forEach(([key, value]) => {
-				if (value !== undefined) {
-					queryParams.append(`filter[${key}]`, String(value));
-				}
-			});
+/**
+ * Fetches all available agents for the current workspace (assumption).
+ * TODO: Verify the correct endpoint and if filtering by workspace is needed/automatic.
+ * @returns A promise that resolves to an array of agents.
+ */
+export const getAgents = async (): Promise<Agent[]> => {
+  try {
+    // Assuming the endpoint to get all agents is /v1/agents/
+    // The backend might automatically filter by workspace based on auth token
+    const url = `${API_BASE_URL}/v1/agents/`;
+    const response = await fetchAPI.GET<Agent[]>(url);
 
-			const data = await fetchAPI.GET<IAgent[]>(`${SERVICE_ENDPOINT}?${queryParams.toString()}`);
-			if (data.success && data.data && data.data.length > 0) return { success: true, data: data.data[0] };
-
-			return { success: false, message: "Agent not found" };
-		} catch (error: unknown) {
-			const message = error instanceof Error ? error.message : "Unknown error";
-			return { success: false, message };
-		}
-	},
-
-	/** */
-	async createAgent(dataToCreate: ICreateAgent): Promise<ServiceResponse<IAgent>> {
-		try {
-			const data = await fetchAPI.POST<IAgent>(`${SERVICE_ENDPOINT}`, dataToCreate);
-			return data;
-		} catch (error: unknown) {
-			const message = error instanceof Error ? error.message : "Unknown error";
-			return { success: false, message };
-		}
-	},
-
-	/** */
-	async updateAgentById(agent_id: number, dataToUpdate: IUpdateAgent): Promise<ServiceResponse<IAgent>> {
-		try {
-			const data = await fetchAPI.PUT<IAgent>(`${SERVICE_ENDPOINT}/${agent_id}`, dataToUpdate);
-			return data;
-		} catch (error: unknown) {
-			const message = error instanceof Error ? error.message : "Unknown error";
-			return { success: false, message };
-		}
-	},
-
-	/** */
-	async deleteAgentById(agent_id: number): Promise<ServiceResponse<IAgent>> {
-		try {
-			const data = await fetchAPI.DELETE<IAgent>(`${SERVICE_ENDPOINT}/${agent_id}`);
-			return data;
-		} catch (error: unknown) {
-			const message = error instanceof Error ? error.message : "Unknown error";
-			return { success: false, message };
-		}
-	},
-
-	/** */
-	async getAgents(paramsObj: Partial<IGetAgent>): Promise<ServiceResponse<IAgent[]>> {
-		try {
-			const queryParams = new URLSearchParams();
-			Object.entries(paramsObj).forEach(([key, value]) => {
-				if (value !== undefined) {
-					queryParams.append(`filter[${key}]`, String(value));
-				}
-			});
-
-			const data = await fetchAPI.GET<IAgent[]>(`${SERVICE_ENDPOINT}?${queryParams.toString()}`);
-			return data;
-		} catch (error: unknown) {
-			const message = error instanceof Error ? error.message : "Unknown error";
-			return { success: false, message };
-		}
-	},
+    if (!response || !response.data) {
+      console.error('Failed to fetch agents or data is missing');
+      return []; // Return empty array on failure
+    }
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching agents:', error);
+    throw error; // Re-throw error for handling in the component
+  }
 };
+
+/**
+ * Fetches teams that a specific agent belongs to.
+ * @param agentId The ID of the agent.
+ * @returns A promise that resolves to an array of teams.
+ */
+export const getAgentTeams = async (agentId: number): Promise<Team[]> => {
+  if (!agentId) {
+    console.error('getAgentTeams requires a valid agentId');
+    return [];
+  }
+  try {
+    // Assuming the endpoint exists and returns Team objects
+    const url = `${API_BASE_URL}/v1/agents/${agentId}/teams`;
+    const response = await fetchAPI.GET<Team[]>(url);
+
+    if (!response || !response.data) {
+      console.error(`Failed to fetch teams for agent ${agentId} or data is missing`);
+      return [];
+    }
+    return response.data;
+  } catch (error) {
+    console.error(`Error fetching teams for agent ${agentId}:`, error);
+    throw error;
+  }
+};
+
+
+// Add other agent-related service functions here later (create, update, delete, etc.)

@@ -1,65 +1,79 @@
-import { type NextRequest, NextResponse } from "next/server";
-import { AppConfigs, PlatformConfigs } from "./configs";
-import { getLocalSubdomainByHost } from "./lib/utils";
-import { authService } from "./services/auth";
-import { workspaceService } from "./services/workspace";
+import { NextRequest, NextResponse } from "next/server";
+import { AppConfigs } from "@/configs";
 
-// Routes excluded from authorization
-const authPaths = ["/signin", "/signup"];
-
-/** Function to exclude routes from authentication */
-function isAuthPath(path: string): boolean {
-	return authPaths.some((prefix) => path.startsWith(prefix));
-}
-
-/** Main middleware */
+// Make the middleware async to use await for fetch
 export async function middleware(request: NextRequest) {
-	const { headers, nextUrl } = request;
-	const host = headers.get("host");
-	const path = nextUrl.pathname;
-	let rewritePath = "";
+  const url = request.nextUrl;
+  const hostname = request.headers.get("host") || "";
+  const pathname = url.pathname;
 
-	// Condition for path overwrite
-	if (host?.startsWith("www") || host?.startsWith(AppConfigs.host)) rewritePath = `/main${path}`;
-	else rewritePath = `/${host}${path}`;
+  // Extract potential subdomain
+  const subdomainMatch = hostname.match(`^(.*)\\.${AppConfigs.domain.replace('.', '\\.')}`);
+  const subdomain = subdomainMatch ? subdomainMatch[1] : null;
+  
+  // Check if we are on the base URL or a subdomain
+  const isBaseUrl = hostname === AppConfigs.baseUrl;
+  const isSubdomain = subdomain !== null && subdomain !== 'app'; // Ensure 'app' is not treated as a workspace subdomain
 
-	// Handle `www` requests
-	if (host?.startsWith("www") || host?.startsWith(AppConfigs.host)) {
-		if (isAuthPath(path)) return NextResponse.redirect(PlatformConfigs.url() + "/workspace");
-	} else {
-		// Verify workspace
-		const currentWorkspace = await workspaceService.getWorkspace({ local_subdomain: getLocalSubdomainByHost(host as string) });
-		if (!currentWorkspace.success || !currentWorkspace.data) return NextResponse.redirect(PlatformConfigs.url() + "/workspace");
+  // If on a subdomain, verify its existence before proceeding
+  if (isSubdomain) {
+    console.log(`Detected subdomain: ${subdomain}`);
+    const workspaceCheckUrl = `${AppConfigs.api}/workspaces/subdomain/${subdomain}`;
+    
+    try {
+      const response = await fetch(workspaceCheckUrl, { method: 'GET' });
+      console.log(`Workspace check for ${subdomain} status: ${response.status}`);
 
-		// Get cookie access token
-		const accessToken = request.cookies.get(AppConfigs.cookies.accessToken.name)?.value;
+      if (!response.ok) {
+        // If workspace doesn't exist (e.g., 404), redirect to base URL with an error
+        if (response.status === 404) {
+          const redirectUrl = new URL(request.url);
+          redirectUrl.hostname = AppConfigs.baseUrl; // Redirect to app.enque.cc
+          redirectUrl.pathname = '/'; // Go to the root page
+          redirectUrl.searchParams.set('error', 'invalid_subdomain');
+          redirectUrl.searchParams.set('subdomain', subdomain); // Pass subdomain for potential display
+          console.log(`Redirecting invalid subdomain ${subdomain} to ${redirectUrl.toString()}`);
+          return NextResponse.redirect(redirectUrl);
+        }
+        // Handle other potential errors if needed, otherwise let it pass for now
+      }
+      
+      // Workspace exists, proceed with subdomain logic
+      // If at the root of a VALID subdomain, redirect to its signin page
+      if (pathname === "/") {
+        console.log(`Redirecting root of valid subdomain ${subdomain} to /signin`);
+        return NextResponse.redirect(new URL("/signin", request.url));
+      }
 
-		if (isAuthPath(path)) {
-			if (accessToken) return NextResponse.redirect(PlatformConfigs.url(getLocalSubdomainByHost(host as string)));
-		} else {
-			if (!accessToken) return NextResponse.redirect(PlatformConfigs.url(getLocalSubdomainByHost(host as string)) + "/signin");
+    } catch (error) {
+      console.error(`Error checking workspace ${subdomain}:`, error);
+      // Optional: Redirect to an error page or the base URL on fetch failure
+      const errorRedirectUrl = new URL(request.url);
+      errorRedirectUrl.hostname = AppConfigs.baseUrl;
+      errorRedirectUrl.pathname = '/';
+      errorRedirectUrl.searchParams.set('error', 'workspace_check_failed');
+      return NextResponse.redirect(errorRedirectUrl);
+    }
+  } else if (isBaseUrl && pathname === "/") {
+     // If on the base URL root (app.enque.cc/), maybe redirect to workspace selection or a landing page?
+     // For now, just let it pass to the default page handler for app.enque.cc/
+     console.log("On base URL root, allowing request.");
+  }
 
-			const currentAuth = await authService.getCurrentAuth();
-			if (currentAuth.success && currentAuth.data) {
-				if (currentWorkspace.data.id != currentAuth.data.workspace.id) {
-					const response = NextResponse.redirect(PlatformConfigs.url(getLocalSubdomainByHost(host as string)) + "/signin");
-					response.cookies.delete({ name: AppConfigs.cookies.accessToken.name, domain: `.${AppConfigs.hostWithoutPort}` });
-					return response;
-				}
-			} else {
-				const response = NextResponse.redirect(PlatformConfigs.url(getLocalSubdomainByHost(host as string)) + "/signin");
-				response.cookies.delete({ name: AppConfigs.cookies.accessToken.name, domain: `.${AppConfigs.hostWithoutPort}` });
-				return response;
-			}
-		}
-	}
-
-	// Overwrite path
-	nextUrl.pathname = rewritePath;
-	return NextResponse.rewrite(nextUrl);
+  // Allow other requests (e.g., specific pages on valid subdomains, base URL pages) to continue
+  return NextResponse.next();
 }
 
-// Configuration of the main middleware
+// Configure the routes to which the middleware will be applied
+// Keep the existing matcher
 export const config = {
-	matcher: ["/((?!_next|static|.*\\.).*)"],
+  matcher: [
+    /*
+     * Match all request paths except:
+     * 1. Static files (/_next/, /static/, etc.)
+     * 2. Image files (/favicon.ico, etc.)
+     * 3. API routes (/api/)
+     */
+    "/((?!api|_next/static|_next/image|favicon.ico).*)",
+  ],
 };

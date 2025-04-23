@@ -1,25 +1,25 @@
-import { ICompany } from "./company";
-import { IWorkspace } from "./workspace";
-
+// Define the interface for the User object based on backend schema
 export interface IUser {
-	name: string;
-	email: string;
-	phone: string | null;
-	id: number;
-	company: ICompany | null;
-	workspace: IWorkspace;
-	created_at: string;
-	updated_at: string;
+  id: number;
+  name: string;
+  email: string;
+  company_id?: number | null; // Optional or null based on backend logic
+  phone?: string | null;      // Optional or null
+  created_at: string;
+  updated_at: string;
+  workspace_id: number;
+  // Add other fields if necessary based on UserSchema from backend
 }
 
-export type ICreateUser = Pick<IUser, "name" | "email" | "phone"> & {
-	company_id: number;
-	workspace_id: number;
-};
-
-export type IUpdateUser = Pick<IUser, "name" | "email" | "phone"> & {};
-
-export type IGetUser = Pick<IUser, "name" | "email" | "phone"> & {
-	company_id: number | null;
-	workspace_id: number;
-};
+// Define the interface for the Agent object based on backend schema
+export interface IAgent {
+  id: number;
+  name: string;
+  email: string;
+  role: 'admin' | 'agent'; // Use specific roles
+  is_active: boolean;
+  workspace_id: number;
+  created_at: string;
+  updated_at: string;
+  // Add other fields if necessary based on AgentSchema from backend
+}

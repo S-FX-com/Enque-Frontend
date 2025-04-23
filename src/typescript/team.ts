@@ -1,21 +1,36 @@
-import { IWorkspace } from "./workspace";
+// Based on backend/app/schemas/team.py TeamInDBBase
 
-export interface ITeam {
-	name: string;
-	description: string | null;
-	logo_url: string | null;
-	id: number;
-	workspace: IWorkspace;
-	created_at: string;
-	updated_at: string;
+export interface Team {
+  id: number;
+  name: string;
+  description?: string | null; // Optional in schema
+  logo_url?: string | null; // Optional in schema
+  workspace_id: number;
+  created_at: string; // Representing datetime as string
+  updated_at: string; // Representing datetime as string
+  // Note: tickets and agents counts are not directly available from GET /v1/teams/
+  // We might need separate calls or backend adjustments later.
 }
 
-export type ICreateTeam = Pick<ITeam, "name" | "description" | "logo_url"> & {
-	workspace_id: number;
-};
+// Interface for creating a team (based on TeamCreate)
+export interface TeamCreate {
+  name: string;
+  description?: string | null;
+  logo_url?: string | null;
+  workspace_id: number;
+}
 
-export type IUpdateTeam = Pick<ITeam, "name" | "description" | "logo_url"> & {};
+// Interface for updating a team (based on TeamUpdate)
+export interface TeamUpdate {
+  name?: string | null;
+  description?: string | null;
+  logo_url?: string | null;
+}
 
-export type IGetTeam = Pick<ITeam, "name" | "description" | "logo_url"> & {
-	workspace_id: number;
-};
+// Interface for Team Member (based on TeamMember) - might be useful later
+export interface TeamMember {
+    id: number;
+    team_id: number;
+    agent_id: number;
+    created_at: string;
+}

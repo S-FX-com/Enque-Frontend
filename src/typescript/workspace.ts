@@ -1,13 +1,34 @@
+import { BaseFilters } from './index';
+
+// Interfaz para workspace
 export interface IWorkspace {
-	name: string;
-	local_subdomain: string;
-	email_domain: string;
-	logo_url: string | null;
-	id: number;
-	created_at: string;
-	updated_at: string;
+  id: number;
+  name: string;
+  subdomain: string;
+  logo_url?: string;
+  theme?: string;
+  created_at: string;
+  updated_at: string;
 }
 
-export type ICreateWorkspace = Pick<IWorkspace, "name" | "local_subdomain" | "email_domain" | "logo_url"> & {};
+// Interfaz para crear workspace
+export interface ICreateWorkspace {
+  name: string;
+  subdomain: string;
+  logo_url?: string;
+  theme?: string;
+}
 
-export type IUpdateWorkspace = Pick<IWorkspace, "name" | "local_subdomain" | "email_domain" | "logo_url"> & {};
+// Interfaz para actualizar workspace
+export interface IUpdateWorkspace {
+  name?: string;
+  subdomain?: string;
+  logo_url?: string;
+  theme?: string;
+}
+
+// Interfaz para filtrar workspaces
+export interface IGetWorkspace extends BaseFilters {
+  id?: number;
+  subdomain?: string;
+} 

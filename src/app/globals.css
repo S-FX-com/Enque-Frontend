@@ -1,5 +1,4 @@
 @import "tailwindcss";
-@import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -59,9 +58,9 @@
   --accent: oklch(0.97 0 0);
   --accent-foreground: #2B3674;
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
+  --border: transparent;
   --input: oklch(0.922 0 0);
-  --ring: #bbd6ff;
+  --ring: transparent;
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
@@ -73,49 +72,175 @@
   --sidebar-primary-foreground: oklch(0.985 0 0);
   --sidebar-accent: oklch(0.97 0 0);
   --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --sidebar-border: transparent;
+  --sidebar-ring: transparent;
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --background: #121212;
+  --foreground: #ffffff;
+  --card: #1e1e1e;
+  --card-foreground: #ffffff;
+  --popover: #1e1e1e;
+  --popover-foreground: #ffffff;
+  --primary: #1e1e1e;
+  --primary-foreground: #ffffff;
+  --secondary: #2d2d2d;
+  --secondary-foreground: #ffffff;
+  --muted: #2d2d2d;
+  --muted-foreground: #a1a1a1;
+  --accent: #2d2d2d;
+  --accent-foreground: #ffffff;
+  --destructive: #ef4444;
+  --border: transparent;
+  --input: #2d2d2d;
+  --ring: transparent;
+  --chart-1: #7c3aed;
+  --chart-2: #38bdf8;
+  --chart-3: #f59e0b;
+  --chart-4: #a855f7;
+  --chart-5: #ef4444;
+  --sidebar: #121212;
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #2d2d2d;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #2d2d2d;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: transparent;
+  --sidebar-ring: transparent;
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    /* Eliminar la línea que fuerza el borde transparente */
+    outline-color: transparent !important;
   }
   body {
     @apply bg-background text-foreground font-sans;
+    transition: background-color 0.3s ease-in-out, color 0.3s ease-in-out;
   }
+}
+
+/* Mejora para animaciones de cambio de tema */
+html.dark {
+  transition: all 0.3s ease-in-out;
+}
+
+html {
+  transition: all 0.3s ease-in-out;
+}
+
+/* Animación para el cambio de tema */
+.theme-transition {
+  transition: background-color 0.3s ease-in-out, 
+              color 0.3s ease-in-out,
+              border-color 0.3s ease-in-out,
+              box-shadow 0.3s ease-in-out;
+}
+
+/* Estilos para corregir píldoras y elementos con fondos blancos en modo oscuro */
+.dark .bg-white {
+  background-color: #1e1e1e !important;
+}
+
+.dark .border-slate-100,
+.dark .border-slate-200 {
+  border-color: transparent !important;
+}
+
+.dark input[type="search"] {
+  background-color: #2d2d2d !important;
+  color: #ffffff !important;
+}
+
+.dark .text-slate-400 {
+  color: #a1a1a1 !important;
+}
+
+.dark .hover\:bg-slate-100:hover {
+  background-color: #2d2d2d !important;
+}
+
+/* Asegurar que el texto del menú desplegable sea blanco en modo oscuro */
+.dark [data-radix-menu-content] [role="menuitem"],
+.dark [data-radix-dropdown-menu-content] [role="menuitem"],
+.dark [data-state="open"] [role="menuitem"] {
+  color: #ffffff !important;
+}
+
+/* Textos de equipos y mensajes informativos en blanco */
+.dark h2,
+.dark h3,
+.dark p:not(.text-slate-500),
+.dark .text-slate-900 {
+  color: #ffffff !important;
+}
+
+/* Mensajes "No teams found" y similares */
+.dark .empty-message,
+.dark .not-found-message,
+.dark .no-data-message {
+  color: #ffffff !important;
+}
+
+/* Encabezados de tabla y etiquetas de tickets en gris */
+.dark th,
+.dark thead td,
+.dark thead th,
+.dark .column-header,
+.dark .ticket-label,
+.dark .dashboard-label,
+.dark .text-xs,
+.dark .text-muted {
+  color: #a1a1a1 !important;
+}
+
+/* Específicamente para etiquetas de tickets */
+.dark [class*="ticket"] span,
+.dark [class*="ticket"] label,
+.dark [class*="Ticket"] span,
+.dark [class*="Ticket"] label {
+  color: #a1a1a1 !important;
+}
+
+/* Texto "agent" y descriptores de perfil */
+.dark .text-slate-500,
+.dark p.text-slate-500,
+.dark .profile-role,
+.dark .user-role {
+  color: #a1a1a1 !important;
+}
+
+/* Placeholder de búsqueda */
+.dark input::placeholder,
+.dark input[type="search"]::placeholder {
+  color: #a1a1a1 !important;
+  opacity: 1;
+}
+
+/* Custom Scrollbar Styles */
+::-webkit-scrollbar {
+  width: 6px; /* Ancho más delgado */
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent; /* Fondo transparente */
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: rgba(156, 163, 175, 0.5); /* Gris claro semi-transparente (gray-400 con alpha) */
+  border-radius: 10px;
+  border: transparent; /* Sin borde */
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(107, 114, 128, 0.7); /* Gris un poco más oscuro al pasar el mouse (gray-500 con alpha) */
+}
+
+/* Para Firefox (menos personalizable) */
+* {
+  scrollbar-width: thin; /* Hace la barra más delgada */
+  scrollbar-color: rgba(156, 163, 175, 0.5) transparent; /* Pulgar y pista */
 }

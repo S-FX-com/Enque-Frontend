@@ -1,0 +1,70 @@
+/* Basic Tiptap Editor Styling */
+
+/* Set cursor appearance */
+.ProseMirror {
+  cursor: text;
+}
+
+/* Placeholder styling */
+.ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: #adb5bd; /* Or use Tailwind theme color e.g., theme('colors.muted-foreground') */
+  pointer-events: none;
+  height: 0;
+}
+
+/* Basic list styling - Apply ONLY within Tiptap editor */
+.ProseMirror ul,
+.ProseMirror ol {
+  padding: 0 1.5rem !important;
+  margin: 0.75rem 0 !important;
+  list-style-position: outside !important;
+}
+.ProseMirror ul {
+    list-style-type: disc !important;
+}
+.ProseMirror ol {
+    list-style-type: decimal !important;
+}
+.ProseMirror ul li::marker,
+.ProseMirror ol li::marker {
+  color: #6b7280 !important;
+  display: list-item !important;
+}
+.dark .ProseMirror ul li::marker,
+.dark .ProseMirror ol li::marker {
+   color: #9ca3af !important;
+}
+
+/* Styles for RENDERED lists outside the editor (e.g., in ConversationMessageItem) */
+/* Prefix with .text-foreground to increase specificity */
+.text-foreground ul,
+.text-foreground ol {
+  padding: 0 1.5rem !important; /* Ensure padding */
+  margin: 0.75rem 0 !important; /* Add vertical margin */
+  list-style-position: outside !important; /* Force markers outside */
+}
+.text-foreground ul {
+    list-style-type: disc !important;
+}
+.text-foreground ol {
+    list-style-type: decimal !important;
+}
+.text-foreground ul li::marker,
+.text-foreground ol li::marker {
+  color: #6b7280 !important; /* Example: gray-500, force color */
+  display: list-item !important; /* Ensure marker is displayed */
+}
+.dark .text-foreground ul li::marker,
+.dark .text-foreground ol li::marker {
+   color: #9ca3af !important; /* Example: gray-400, force color */
+}
+
+
+/* Link styling - Use a specific blue color (Applies in both editor and rendered) */
+.ProseMirror a {
+  color: #2563eb; /* Example: blue-600 */
+  text-decoration: underline;
+  cursor: pointer;
+}
