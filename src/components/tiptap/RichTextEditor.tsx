@@ -6,9 +6,10 @@ import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
 import Placeholder from '@tiptap/extension-placeholder';
-import HardBreak from '@tiptap/extension-hard-break'; // Import HardBreak
-import { RichTextToolbar } from './RichTextToolbar'; // Import the toolbar
-import './tiptap-styles.css'; // We'll create this file for basic styling
+import HardBreak from '@tiptap/extension-hard-break';
+import Image from '@tiptap/extension-image'; // Import Image extension
+import { RichTextToolbar } from './RichTextToolbar';
+import './tiptap-styles.css';
 
 interface Props {
   content: string;
@@ -60,6 +61,54 @@ export function RichTextEditor({ content, onChange, placeholder, disabled = fals
       Placeholder.configure({
         placeholder: placeholder || 'Type your message...',
       }),
+      Image.configure({
+        inline: false,
+        allowBase64: false,
+        HTMLAttributes: {
+          // No default classes needed here now
+        },
+      }).extend({ // Extend the Image extension to add custom attribute handling
+        addAttributes() {
+          return {
+            ...this.parent?.(), // Keep existing attributes like src, alt, title
+            width: {
+              default: null,
+              // Parse width attribute from HTML
+              parseHTML: element => element.getAttribute('width'),
+              // Render width attribute back to HTML
+              renderHTML: attributes => {
+                if (!attributes.width) {
+                  return {};
+                }
+                return { width: attributes.width };
+              },
+            },
+            height: {
+              default: null,
+              // Parse height attribute from HTML
+              parseHTML: element => element.getAttribute('height'),
+              // Render height attribute back to HTML
+              renderHTML: attributes => {
+                if (!attributes.height) {
+                  return {};
+                }
+                return { height: attributes.height };
+              },
+            },
+            // Keep style attribute handling if we decide to use it later, otherwise remove
+             style: {
+               default: null,
+               parseHTML: element => element.getAttribute('style'),
+               renderHTML: attributes => {
+                 if (!attributes.style) {
+                   return {};
+                 }
+                 return { style: attributes.style };
+               },
+             },
+          };
+        },
+      }),
     ],
     content: content,
     editable: !disabled,
@@ -70,16 +119,19 @@ export function RichTextEditor({ content, onChange, placeholder, disabled = fals
     // Basic editor styling directly or via CSS file
     editorProps: {
       attributes: {
-        // Re-add max-h-[300px] and overflow-y-auto
-        class: 'prose prose-sm dark:prose-invert max-w-none focus:outline-none p-2 border rounded-md min-h-[80px] max-h-[300px] overflow-y-auto',
+        // Remove prose classes, keep basic styling and dimensions/scroll
+        class: 'max-w-none focus:outline-none p-2 border rounded-md min-h-[80px] max-h-[300px] overflow-y-auto',
       },
     },
   });
 
   // Set content programmatically if the external content changes
+  // Set content programmatically if the external content changes
+  // Set content programmatically if the external content changes
   // (e.g., clearing the editor after sending)
   React.useEffect(() => {
     if (editor && editor.getHTML() !== content) {
+      // Restore comparison: Only set content if it actually differs
       editor.commands.setContent(content, false); // Set content without emitting update initially
     }
   }, [content, editor]);

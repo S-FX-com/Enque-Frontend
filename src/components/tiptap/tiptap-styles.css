@@ -1,70 +1,37 @@
-/* Basic Tiptap Editor Styling */
+/* Basic Tiptap Styling */
 
-/* Set cursor appearance */
-.ProseMirror {
-  cursor: text;
-}
-
-/* Placeholder styling */
-.ProseMirror p.is-editor-empty:first-child::before {
-  content: attr(data-placeholder);
-  float: left;
-  color: #adb5bd; /* Or use Tailwind theme color e.g., theme('colors.muted-foreground') */
-  pointer-events: none;
-  height: 0;
+/* Ensure the editor content area has focus styles if needed */
+.ProseMirror:focus {
+  outline: none;
+  /* Add other focus styles if desired */
 }
 
-/* Basic list styling - Apply ONLY within Tiptap editor */
-.ProseMirror ul,
-.ProseMirror ol {
-  padding: 0 1.5rem !important;
-  margin: 0.75rem 0 !important;
-  list-style-position: outside !important;
-}
-.ProseMirror ul {
-    list-style-type: disc !important;
-}
-.ProseMirror ol {
-    list-style-type: decimal !important;
-}
-.ProseMirror ul li::marker,
-.ProseMirror ol li::marker {
-  color: #6b7280 !important;
-  display: list-item !important;
-}
-.dark .ProseMirror ul li::marker,
-.dark .ProseMirror ol li::marker {
-   color: #9ca3af !important;
-}
-
-/* Styles for RENDERED lists outside the editor (e.g., in ConversationMessageItem) */
-/* Prefix with .text-foreground to increase specificity */
-.text-foreground ul,
-.text-foreground ol {
-  padding: 0 1.5rem !important; /* Ensure padding */
-  margin: 0.75rem 0 !important; /* Add vertical margin */
-  list-style-position: outside !important; /* Force markers outside */
-}
-.text-foreground ul {
-    list-style-type: disc !important;
-}
-.text-foreground ol {
-    list-style-type: decimal !important;
-}
-.text-foreground ul li::marker,
-.text-foreground ol li::marker {
-  color: #6b7280 !important; /* Example: gray-500, force color */
-  display: list-item !important; /* Ensure marker is displayed */
-}
-.dark .text-foreground ul li::marker,
-.dark .text-foreground ol li::marker {
-   color: #9ca3af !important; /* Example: gray-400, force color */
-}
-
-
-/* Link styling - Use a specific blue color (Applies in both editor and rendered) */
+/* Style links within the editor */
 .ProseMirror a {
-  color: #2563eb; /* Example: blue-600 */
+  color: theme('colors.blue.600');
   text-decoration: underline;
   cursor: pointer;
 }
+.dark .ProseMirror a {
+    color: theme('colors.blue.400');
+}
+
+/* Override ANY styles for images within the editor to force fixed size */
+.ProseMirror img[width][height] { /* Target images specifically having width/height attributes */
+  width: var(--img-width, 150px) !important;  /* Use CSS variable or fallback */
+  height: var(--img-height, 92px) !important; /* Use CSS variable or fallback */
+  max-width: var(--img-width, 150px) !important; /* Ensure max-width matches */
+  object-fit: contain; /* Optional: control how image fits if aspect ratio differs */
+  margin-top: 0.5em !important; /* Add some margin back */
+  margin-bottom: 0.5em !important;
+}
+
+/* Reset width/height for images *without* explicit dimensions if needed */
+.ProseMirror img:not([width]):not([height]) {
+    max-width: 100%;
+    height: auto;
+    margin-top: 1em; /* Default prose margins */
+    margin-bottom: 1em;
+}
+
+/* Add any other custom styles for Tiptap elements here */

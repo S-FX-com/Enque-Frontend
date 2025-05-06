@@ -1,11 +1,12 @@
 import { BaseFilters } from './index';
 import { IUser } from './user'; // Import IUser
+import { ICategory } from './category'; // Import ICategory
 
 // Define and export Ticket Status type (matching backend TaskStatus)
-export type TicketStatus = 'Unread' | 'Open' | 'Closed';
+export type TicketStatus = 'Unread' | 'Open' | 'With User' | 'In Progress' | 'Closed'; // Added 'With User' and 'In Progress'
 
 // Define and export Ticket Priority type (matching backend TaskPriority)
-export type TicketPriority = 'Low' | 'Medium' | 'High';
+export type TicketPriority = 'Low' | 'Medium' | 'High' | 'Critical'; // Added Critical
 
 // Define and export Ticket Type
 export type TicketType = 'bug' | 'feature' | 'support' | 'other';
@@ -45,6 +46,8 @@ export interface ITicket {
   body?: {
     email_body?: string | null;
   } | null;
+  category_id?: number | null; // Add category_id
+  category?: ICategory | null; // Add category object
 }
 
 // Interfaz para crear tickets
@@ -58,6 +61,7 @@ export interface ICreateTicket {
   user_id: number;
   assignee_id?: number; // ID of user/agent to assign
   team_id?: number;
+  category_id?: number | null; // Add category_id
   sent_from_id?: number; // Keep ID for creation if backend expects ID
   due_date?: string;
 }
@@ -72,6 +76,7 @@ export interface IUpdateTicket {
   user_id?: number;
   assignee_id?: number; // ID of user/agent to assign
   team_id?: number;
+  category_id?: number | null; // Add category_id
   due_date?: string;
 }
 
@@ -84,4 +89,5 @@ export interface IGetTicket extends BaseFilters {
   user_id?: number;
   assignee_id?: number; // Filter by assigned user/agent ID
   team_id?: number;
+  category_id?: number | null; // Add category_id filter
 }

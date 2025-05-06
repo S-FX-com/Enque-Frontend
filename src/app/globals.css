@@ -92,7 +92,7 @@
   --accent: #2d2d2d;
   --accent-foreground: #ffffff;
   --destructive: #ef4444;
-  --border: transparent;
+  --border: #2d2d2d; /* Use input color for subtle borders in dark mode */
   --input: #2d2d2d;
   --ring: transparent;
   --chart-1: #7c3aed;

@@ -1,204 +1,238 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react'; 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-// Remove Textarea import
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-// Remove formatting icons, they are in the toolbar now
-import { Send, Mail } from 'lucide-react';
+import { Send, Mail, Loader2 } from 'lucide-react'; 
 import { ITicket } from '@/typescript/ticket';
 import { IComment } from '@/typescript/comment';
-// Import the specific interface for creating comments if defined, or use inline object
+import { Agent } from '@/typescript/agent'; 
+import { getAgentById } from '@/services/agent'; 
 import { getCommentsByTaskId, createComment, CreateCommentPayload } from '@/services/comment';
 import { ConversationMessageItem } from '@/components/conversation-message-item';
-import { getCurrentUser } from '@/lib/auth';
-import { RichTextEditor } from '@/components/tiptap/RichTextEditor'; // Import the new editor
-// import { useToast } from "@/components/ui/use-toast";
+import { useAuth } from '@/hooks/use-auth'; 
+import { RichTextEditor } from '@/components/tiptap/RichTextEditor';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner'; 
 
 interface Props {
     ticket: ITicket;
-    // Add props for handling reply, fetching conversation, etc. later
 }
 
 export function TicketConversation({ ticket }: Props) {
-    // replyContent now stores HTML from Tiptap
+    const queryClient = useQueryClient();
+    const { user: currentUser } = useAuth(); 
     const [replyContent, setReplyContent] = useState('');
     const [isPrivateNote, setIsPrivateNote] = useState(false);
-    const [comments, setComments] = useState<IComment[]>([]);
-    const [isLoading, setIsLoading] = useState(true); // Loading for initial fetch
-    const [isSending, setIsSending] = useState(false); // Loading for sending reply
-    const [error, setError] = useState<string | null>(null);
-    // const { toast } = useToast(); // Initialize toast if using
+    const [editorKey, setEditorKey] = useState(0); 
+    const prevTicketIdRef = useRef<number | null>(null); 
+    const {
+        data: comments = [], 
+        isLoading: isLoadingComments,
+        error: commentsError,
+        isError: isCommentsError,
+    } = useQuery<IComment[]>({
+        queryKey: ['comments', ticket.id], 
+        queryFn: () => getCommentsByTaskId(ticket.id),
+        enabled: !!ticket?.id,
+        staleTime: 1 * 60 * 1000, 
+        refetchInterval: 5000, 
+        refetchIntervalInBackground: true, 
+    });
+    const currentAgentId = currentUser?.id;
+    const { data: currentAgentData } = useQuery<Agent>({
+        queryKey: ['agent', currentAgentId], 
+        queryFn: () => getAgentById(currentAgentId!),
+        enabled: !!currentAgentId, 
+        staleTime: 5 * 60 * 1000, 
+    });
 
-    // Use useCallback for fetchComments
-    const fetchComments = useCallback(async () => {
-        if (!ticket?.id) {
-            setComments([]); // Clear comments if no ticket id
-            setIsLoading(false);
+    useEffect(() => {
+        const currentSignature = currentAgentData?.email_signature || ''; 
+        const currentTicketId = ticket.id;
+        const userName = ticket.user?.name || 'there';
+        const greeting = `<p>Hi ${userName},</p><p><br></p>`;
+        const prevTicketId = prevTicketIdRef.current;
+        const initialContent = currentSignature ? `${greeting}${currentSignature}` : greeting;
+
+        console.log(`[TicketConversation Effect] Running. Ticket: ${currentTicketId}, Prev Ticket: ${prevTicketId}, Signature available: ${!!currentSignature}`);
+        setReplyContent(initialContent);
+        setEditorKey(prevKey => prevKey + 1);
+
+        if (currentTicketId !== prevTicketId) {
+            console.log("  Ticket ID changed. Resetting private note switch.");
+            setIsPrivateNote(false);
+        }
+        prevTicketIdRef.current = currentTicketId;
+
+    }, [ticket.id, ticket.user?.name, currentAgentData?.email_signature]);
+
+    const createCommentMutation = useMutation({
+        mutationFn: (payload: CreateCommentPayload) => createComment(ticket.id, payload),
+        onSuccess: () => { 
+            queryClient.invalidateQueries({ queryKey: ['comments', ticket.id] });
+            setReplyContent(''); 
+            setIsPrivateNote(false); 
+            toast.success("Reply sent successfully.");
+        },
+        onError: (error) => {
+            console.error("Failed to send reply:", error);
+            toast.error(`Failed to send reply: ${error.message}`);
+        },
+    });
+
+    const handleSendReply = () => { 
+        if (!replyContent.trim() || !ticket?.id || createCommentMutation.isPending) return;
+        if (!currentUser) {
+            toast.error("Authentication error. User not found.");
             return;
         }
-        setIsLoading(true);
-        setError(null);
-        try {
-            const fetchedComments = await getCommentsByTaskId(ticket.id);
-            setComments(fetchedComments);
-        } catch (err) {
-            console.error("Failed to fetch comments:", err instanceof Error ? err.message : err);
-            setError("Failed to load conversation history.");
-        } finally {
-            setIsLoading(false);
-        }
-    }, [ticket?.id]); // Dependency: ticket.id
+        const payload: CreateCommentPayload = {
+            content: replyContent,
+            ticket_id: ticket.id,
+            agent_id: currentUser.id,
+            workspace_id: currentUser.workspace_id,
+            is_private: isPrivateNote,
+        };
 
-    // Fetch comments when the component mounts or ticket ID changes
-    useEffect(() => {
-        fetchComments();
-    }, [fetchComments]); // Dependency: fetchComments callback
-
-    const handleSendReply = async () => { // Make async
-        if (!replyContent.trim() || !ticket?.id || isSending) return; // Prevent sending empty or while sending
-
-        setIsSending(true);
-        setError(null); // Clear previous errors
-
-        try {
-            // Get current user data to include agent_id and workspace_id
-            const currentUser = await getCurrentUser();
-            if (!currentUser) {
-                throw new Error("User not authenticated"); // Or handle appropriately
-            }
-
-            // Construct the full payload required by the backend validation schema
-            const payload: CreateCommentPayload = {
-                content: replyContent,
-                ticket_id: ticket.id, // Get ticket_id from the ticket prop
-                agent_id: currentUser.id, // Get agent_id from the current user session
-                workspace_id: currentUser.workspace_id, // Get workspace_id from the current user session
-                is_private: isPrivateNote,
-            };
-
-            const newComment = await createComment(ticket.id, payload);
-            // Add the new comment to the list
-            setComments((prevComments) => [...prevComments, newComment]);
-            setReplyContent(''); // Clear the editor content (will trigger useEffect in RichTextEditor)
-            setIsPrivateNote(false); // Reset private note switch
-            // Optional: Show success toast
-            // toast({ title: "Success", description: "Reply sent successfully." });
-        } catch (err) {
-            console.error("Failed to send reply:", err instanceof Error ? err.message : err);
-            setError("Failed to send reply. Please try again."); // Set error state
-            // Optional: Show error toast
-            // toast({ variant: "destructive", title: "Error", description: "Failed to send reply." });
-        } finally {
-            setIsSending(false);
+        createCommentMutation.mutate(payload);
+    };
+    const handlePrivateNoteChange = (checked: boolean) => {
+        setIsPrivateNote(checked);
+        if (checked) {
+            setReplyContent('');
         }
     };
 
     return (
-        // Increased vertical spacing between cards
         <div className="flex flex-col h-full space-y-6">
-            {/* Subject Section - Updated Format */}
             <Card>
                 <CardContent className="pt-4">
-                    <div className="flex items-center gap-2 text-sm font-semibold"> {/* Use flex container */}
-                        <Mail className="h-4 w-4 text-muted-foreground flex-shrink-0" /> {/* Mail icon */}
-                        {/* Apply gray color to ticket ID */}
-                        <span className="text-muted-foreground">#{ticket.id}</span> 
-                        <span>- {ticket.title}</span> {/* Separator and title */}
+                    <div className="flex items-center gap-2 text-sm font-semibold">
+                        <Mail className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                        <span className="text-muted-foreground">#{ticket.id}</span>
+                        <span>- {ticket.title}</span>
                     </div>
                 </CardContent>
             </Card>
-
-            {/* Conversation History Section */}
             <Card className="flex-1 flex flex-col min-h-0">
                 <CardHeader className="pb-2 flex-shrink-0">
                     <CardTitle className="text-lg">Conversation</CardTitle>
                 </CardHeader>
                 <CardContent className="flex-1 overflow-y-auto space-y-4">
-                    {/* Display initial message */}
-                    {ticket.body?.email_body && ticket.user && (
-                        <ConversationMessageItem
-                            key="initial-message"
-                            comment={{
+                    {(() => {
+                        console.log("[TicketConversation] Rendering initial message check for ticket:", ticket?.id);
+                        console.log("  - ticket.description:", ticket?.description);
+                        console.log("  - ticket.body?.email_body:", ticket?.body?.email_body);
+                        console.log("  - currentUser:", currentUser);
+                        let initialMessageContent: string | null | undefined = null;
+                        let initialMessageSender: IComment['user'] = null; 
+
+                        if (ticket.description) {
+                            initialMessageContent = ticket.description;
+                            if (currentUser) {
+                                initialMessageSender = {
+                                    id: currentUser.id,
+                                    name: currentUser.name || '',
+                                    email: currentUser.email,
+                                    company_id: 'company_id' in currentUser ? currentUser.company_id as (number | null | undefined) : null,
+                                    phone: 'phone' in currentUser ? currentUser.phone as (string | null | undefined) : null,
+                                    created_at: ticket.created_at || new Date().toISOString(),
+                                    updated_at: ticket.updated_at || new Date().toISOString(),
+                                    workspace_id: currentUser.workspace_id,
+                                };
+                            } else {
+                                initialMessageSender = null;
+                            }
+                        } else if (ticket.body?.email_body) {
+                            initialMessageContent = ticket.body.email_body;
+                            initialMessageSender = ticket.user; 
+                        }
+
+                        console.log("  - Determined initialMessageContent:", initialMessageContent);
+                        console.log("  - Determined initialMessageSender:", initialMessageSender);
+
+
+                        if (initialMessageContent && initialMessageSender) {
+                            const initialComment: IComment = {
                                 id: -1, 
-                                content: ticket.body.email_body,
-                                created_at: ticket.created_at,
+                                content: initialMessageContent,
+                                created_at: ticket.created_at, 
                                 updated_at: ticket.created_at,
-                                user: ticket.user, 
+                                user: initialMessageSender,
                                 agent: null, 
                                 ticket_id: ticket.id,
-                                workspace_id: ticket.user.workspace_id,
-                            }}
-                        />
-                    )}
-                    {/* Separator */}
-                    {ticket.body?.email_body && ticket.user && (isLoading || comments.length > 0) && (
-                        <div className="border-b my-2"></div> // Added margin for separator
-                    )}
+                                workspace_id: initialMessageSender.workspace_id,
+                                is_private: false, 
+                            };
 
-                    {/* Loading Skeletons */}
-                    {isLoading && (
+                            return (
+                                <>
+                                    <ConversationMessageItem
+                                        key="initial-message"
+                                        comment={initialComment}
+                                    />
+                                    {(isLoadingComments || comments.length > 0) && (
+                                        <div className="border-b my-2"></div>
+                                    )}
+                                </>
+                            );
+                        }
+                        return null; 
+                    })()}
+                    {isLoadingComments && (
                         <div className="space-y-4">
                             <Skeleton className="h-16 w-full" />
                             <Skeleton className="h-16 w-full" />
                         </div>
                     )}
-
-                    {/* Error Message */}
-                    {error && !isLoading && (
-                         // Display error related to fetching or sending
-                        <div className="text-center text-red-500 py-4">{error}</div>
+                    {isCommentsError && !isLoadingComments && (
+                        <div className="text-center text-red-500 py-4">
+                            Failed to load conversation: {commentsError?.message || 'Unknown error'}
+                        </div>
                     )}
 
-                    {/* Display Comments */}
-                    {!isLoading && comments.length === 0 && !(ticket.body?.email_body && ticket.user) && (
+                    {!isLoadingComments && comments.length === 0 && !ticket.description && !ticket.body?.email_body && (
                         <div className="text-center text-muted-foreground py-10">
                             No conversation history found.
                         </div>
                     )}
-                    {/* Display Comments in original order (oldest first) */}
-                    {!isLoading && comments.map((comment) => (
+                    {!isLoadingComments && comments.map((comment) => (
                         <ConversationMessageItem key={comment.id} comment={comment} />
                     ))}
                 </CardContent>
             </Card>
-
-            {/* Reply Area Section */}
             <Card>
                 <CardContent className="p-4 space-y-3">
-                    {/* Replace Textarea and static toolbar with RichTextEditor */}
                     <RichTextEditor
+                        key={editorKey} 
                         content={replyContent}
-                        onChange={setReplyContent} // Pass the state setter directly
+                        onChange={setReplyContent}
                         placeholder={isPrivateNote ? "Write a private note..." : "Type your reply here..."}
-                        disabled={isSending} // Disable editor while sending
+                        disabled={createCommentMutation.isPending} 
                     />
-                    {/* Display sending error */}
-                    {error && ( // Show error regardless of isSending state here
-                         <p className="text-xs text-red-500 pt-1">{error}</p>
+                    {createCommentMutation.isError && (
+                         <p className="text-xs text-red-500 pt-1">
+                            {createCommentMutation.error?.message || 'Failed to send reply.'}
+                         </p>
                     )}
                     <div className="flex justify-between items-center pt-2">
                         <div className="flex items-center space-x-2">
                             <Switch
                                 id="private-note"
                                 checked={isPrivateNote}
-                                onCheckedChange={setIsPrivateNote}
-                                disabled={isSending} // Disable switch while sending
+                                onCheckedChange={handlePrivateNoteChange} 
+                                disabled={createCommentMutation.isPending} 
                             />
                             <Label htmlFor="private-note">Private Note</Label>
                         </div>
-                        {/* Disable button if content is empty (check HTML for empty tags) or sending */}
-                        <Button onClick={handleSendReply} disabled={!replyContent || replyContent === '<p></p>' || isSending}>
-                            {isSending ? (
+                        <Button onClick={handleSendReply} disabled={!replyContent || replyContent === '<p></p>' || createCommentMutation.isPending}>
+                            {createCommentMutation.isPending ? (
                                 <>
-                                    {/* Loading indicator */}
-                                    <svg className="animate-spin -ml-1 mr-3 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                    </svg>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                     Sending...
                                 </>
                             ) : (

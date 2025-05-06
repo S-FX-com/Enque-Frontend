@@ -1,8 +1,8 @@
 import { getAuthToken } from '@/lib/auth';
 import { logger } from './logger';
 
-// Definición de respuesta base de servicios
-interface BaseResponse<T> {
+// Definición de respuesta base de servicios (Exported)
+export interface BaseResponse<T> {
   success: boolean;
   message?: string;
   data?: T;
@@ -58,6 +58,10 @@ export const fetchAPI = {
         throw new Error(`Error ${response.status}: ${response.statusText}`);
       }
 
+      // Removed incorrect 204 check from GET method
+      // if (response.status === 204) { ... }
+
+      // For successful GET statuses (assume JSON body)
       const data = await response.json();
       return { success: true, data };
     } catch (error) {
@@ -159,13 +163,43 @@ export const fetchAPI = {
       // Log the request result
       logger.logRequest('DELETE', url, response.status, duration);
 
+      // 1. Handle 204 No Content immediately (Success)
+      if (response.status === 204) {
+        return { success: true };
+      }
+
+      // 2. Handle non-OK statuses (Errors)
       if (!response.ok) {
+        // This catches 4xx, 5xx etc.
         throw new Error(`Error ${response.status}: ${response.statusText}`);
       }
 
-      const data = await response.json();
-      return { success: true, data };
-    } catch (error) {
+      // 3. Handle other OK statuses (e.g., 200 OK) - Try reading body
+      try {
+        const text = await response.text(); // Read body as text first
+        if (!text) {
+          // 4. OK status but empty body - Treat as success without data
+          logger.warn(`Response for DELETE ${url} (Status: ${response.status}) was OK but had an empty body.`)
+          return { success: true };
+        }
+        // 5. OK status with non-empty body - Try parsing as JSON
+        try {
+          const data = JSON.parse(text);
+          return { success: true, data };
+        } catch (parseError: unknown) { // Type as unknown
+          // JSON parsing failed
+          const parseErrorMsg = parseError instanceof Error ? parseError.message : String(parseError);
+          logger.error(`Failed to parse JSON response for DELETE ${url} (Status: ${response.status})`, parseErrorMsg); // Use string message
+          throw new Error("Failed to parse successful response body as JSON.");
+        }
+      } catch (readError: unknown) { // Type as unknown
+          // Error reading response body
+          const readErrorMsg = readError instanceof Error ? readError.message : String(readError);
+          logger.error(`Failed to read response body for DELETE ${url} (Status: ${response.status})`, readErrorMsg); // Use string message
+          throw new Error("Failed to read response body.");
+      }
+
+    } catch (error) { // Catches errors from fetch(), !response.ok, or reading/parsing body
       return handleFetchError(error, url);
     }
   },

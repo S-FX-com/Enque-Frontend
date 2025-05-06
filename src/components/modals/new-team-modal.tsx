@@ -1,5 +1,4 @@
-// frontend/src/components/modals/new-team-modal.tsx
-import React, { useState, useEffect } from 'react'; // Import useState, useEffect
+import React, { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -7,15 +6,14 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-  DialogClose, // Import DialogClose for the Cancel button
+  DialogClose, 
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Badge } from "@/components/ui/badge"; // Import Badge
-import { X as LucideX } from 'lucide-react'; // Import X icon
-// Use DropdownMenu for multi-select simulation with checkboxes
+import { Badge } from "@/components/ui/badge"; 
+import { X as LucideX } from 'lucide-react'; 
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -24,52 +22,64 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { getAgents } from '@/services/agent'; // Import agent service
-import { Agent } from '@/typescript/agent'; // Import agent type
-import { getCurrentUser } from '@/lib/auth'; // Import function to get user session
-// Import team services
+import { useMutation, useQueryClient } from '@tanstack/react-query'; 
+import { getAgents } from '@/services/agent'; 
+import { Agent } from '@/typescript/agent'; 
+import { getCurrentUser } from '@/lib/auth'; 
 import { createTeam, addTeamMember } from '@/services/team';
+import { Team } from '@/typescript/team'; 
+import { toast } from 'sonner'; 
 
 interface NewTeamModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSaveSuccess: () => void; // Callback to refresh team list on parent
+  onSaveSuccess: () => void; 
 }
 
+interface TeamCreationData {
+  name: string;
+  description: string | null;
+  workspace_id: number;
+  agentIds: number[];
+}
+
+interface TeamWithCounts extends Team {
+  agentCount: number | null;
+  ticketCount: number | null;
+}
+
+
 const NewTeamModal: React.FC<NewTeamModalProps> = ({ isOpen, onClose, onSaveSuccess }) => {
-  // State variables
+  const queryClient = useQueryClient();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [availableAgents, setAvailableAgents] = useState<Agent[]>([]);
   const [selectedAgentIds, setSelectedAgentIds] = useState<Set<number>>(new Set());
   const [isLoadingAgents, setIsLoadingAgents] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch available agents when the modal opens
   useEffect(() => {
     if (isOpen) {
-      const fetchAgents = async () => {
+      const fetchAgentsData = async () => {
         setIsLoadingAgents(true);
-        setError(null); // Clear previous errors
+        setError(null);
         try {
           const agents = await getAgents();
-          setAvailableAgents(agents);
+          setAvailableAgents(agents || []);
         } catch (err) {
           console.error("Failed to fetch agents:", err);
-          setError("Failed to load agents list."); // Set error specific to agents
+          setError("Failed to load agents list.");
         } finally {
           setIsLoadingAgents(false);
         }
       };
-      fetchAgents();
-      // Reset form fields when opening
+      fetchAgentsData();
       setName('');
       setDescription('');
       setSelectedAgentIds(new Set());
-      setIsSaving(false);
     }
   }, [isOpen]);
+
 
   const handleAgentSelect = (agentId: number) => {
     setSelectedAgentIds(prev => {
@@ -83,8 +93,66 @@ const NewTeamModal: React.FC<NewTeamModalProps> = ({ isOpen, onClose, onSaveSucc
     });
   };
 
-  // No longer needed for trigger display
-  // const getSelectedAgentNames = () => { ... };
+  const createTeamMutation = useMutation<
+    Team, 
+    Error, 
+    TeamCreationData, 
+    { previousTeams?: TeamWithCounts[] } 
+  >({
+    mutationFn: async (data: TeamCreationData) => {
+      const newTeam = await createTeam({
+        name: data.name,
+        description: data.description,
+        workspace_id: data.workspace_id,
+      });
+
+      if (newTeam && newTeam.id && data.agentIds.length > 0) {
+        const addMemberPromises = data.agentIds.map(agentId =>
+          addTeamMember(newTeam.id, agentId)
+        );
+        const results = await Promise.allSettled(addMemberPromises);
+        const failedAdditions = results.filter(r => r.status === 'rejected');
+        if (failedAdditions.length > 0) {
+          console.error("Some members could not be added:", failedAdditions);
+        }
+      }
+      return newTeam; 
+    },
+    onMutate: async (newTeamData) => {
+      await queryClient.cancelQueries({ queryKey: ['teamsWithCounts'] });
+      const previousTeams = queryClient.getQueryData<TeamWithCounts[]>(['teamsWithCounts']);
+      queryClient.setQueryData<TeamWithCounts[]>(['teamsWithCounts'], (old = []) => {
+        const optimisticTeam: TeamWithCounts = {
+          id: Date.now(), 
+          name: newTeamData.name,
+          description: newTeamData.description,
+          workspace_id: newTeamData.workspace_id,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          agentCount: newTeamData.agentIds.length, 
+          ticketCount: 0, 
+        };
+        return [optimisticTeam, ...old];
+      });
+      return { previousTeams };
+    },
+    onError: (err, _newTeam, context) => {
+      if (context?.previousTeams) {
+        queryClient.setQueryData(['teamsWithCounts'], context.previousTeams);
+      }
+      setError(err.message || "Failed to create team.");
+      toast.error(err.message || "Failed to create team.");
+    },
+    onSuccess: (data) => { // data here is the created team from mutationFn
+      toast.success(`Team "${data.name}" created successfully!`);
+      onSaveSuccess(); 
+      onClose();
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['teamsWithCounts'] });
+      queryClient.invalidateQueries({ queryKey: ['teams'] }); 
+    },
+  });
 
   const handleSave = async () => {
     if (!name.trim()) {
@@ -92,74 +160,25 @@ const NewTeamModal: React.FC<NewTeamModalProps> = ({ isOpen, onClose, onSaveSucc
       return;
     }
     setError(null);
-    setIsSaving(true);
 
-    try {
-      // Get current user session to obtain workspace_id
-      const currentUser = await getCurrentUser();
-      if (!currentUser || !currentUser.workspace_id) {
-        setError("Could not retrieve user session or workspace ID. Please log in again.");
-        setIsSaving(false);
-        return;
-      }
-      const workspaceId = currentUser.workspace_id;
-
-      // 1. Create the team
-      const newTeamData = {
-          name: name.trim(),
-          description: description.trim() || null, // Send null if empty
-          workspace_id: workspaceId
-      };
-      const newTeam = await createTeam(newTeamData);
-      console.log("Team created:", newTeam);
-
-      // 2. If team created successfully and agents selected, add members
-      if (newTeam && newTeam.id && selectedAgentIds.size > 0) {
-        console.log(`Adding ${selectedAgentIds.size} members to team ${newTeam.id}...`);
-        const addMemberPromises = Array.from(selectedAgentIds).map(agentId =>
-          addTeamMember(newTeam.id, agentId)
-        );
-        // Use allSettled to attempt adding all members even if some fail
-        const results = await Promise.allSettled(addMemberPromises);
-
-        // Log any errors from adding members
-        results.forEach((result, index) => {
-          if (result.status === 'rejected') {
-            const agentId = Array.from(selectedAgentIds)[index];
-            console.error(`Failed to add agent ${agentId} to team ${newTeam.id}:`, result.reason);
-            // Optionally, collect these errors to show a partial success message
-            setError(prevError => prevError ? `${prevError}\nFailed to add agent ID: ${agentId}` : `Failed to add agent ID: ${agentId}`);
-          } else {
-             console.log(`Successfully added agent ${Array.from(selectedAgentIds)[index]} to team ${newTeam.id}`);
-          }
-        });
-        // If there were any errors adding members, keep the modal open to show them
-        if (results.some(r => r.status === 'rejected')) {
-            setIsSaving(false); // Allow user to retry or close manually
-            return; // Stop execution here
-        }
-      }
-
-      // 3. If everything succeeded, notify parent and close
-      onSaveSuccess(); // Notify parent to refresh list
-      onClose(); // Close modal
-
-    } catch (err) {
-      console.error("Failed to save team:", err);
-      // Improve error message based on error type if possible
-      setError(err instanceof Error ? err.message : "An unknown error occurred while saving the team.");
-    } finally {
-      // Only set isSaving to false if no partial errors occurred during member addition
-       if (!error || !error.includes("Failed to add agent")) {
-           setIsSaving(false);
-       }
+    const currentUser = await getCurrentUser();
+    if (!currentUser || !currentUser.workspace_id) {
+      setError("Could not retrieve user session or workspace ID. Please log in again.");
+      toast.error("Could not retrieve user session or workspace ID.");
+      return;
     }
+
+    createTeamMutation.mutate({
+      name: name.trim(),
+      description: description.trim() || null,
+      workspace_id: currentUser.workspace_id,
+      agentIds: Array.from(selectedAgentIds),
+    });
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      {/* Apply white background to DialogContent */}
-      <DialogContent className="sm:max-w-[425px] bg-white">
+      <DialogContent className="sm:max-w-[425px] bg-white dark:bg-black">
         <DialogHeader>
           <DialogTitle>New Team</DialogTitle>
           <DialogDescription>
@@ -168,8 +187,6 @@ const NewTeamModal: React.FC<NewTeamModalProps> = ({ isOpen, onClose, onSaveSucc
         </DialogHeader>
         <div className="grid gap-4 py-4">
           {error && <p className="col-span-4 text-red-600 text-sm">{error}</p>}
-          {/* Icon Placeholder - Can be added later if needed */}
-          {/* <div className="grid grid-cols-4 items-center gap-4"> ... </div> */}
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="name" className="text-right pt-1">
               Name*
@@ -180,7 +197,7 @@ const NewTeamModal: React.FC<NewTeamModalProps> = ({ isOpen, onClose, onSaveSucc
               className="col-span-3 bg-[#F4F7FE]"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              disabled={isSaving}
+              disabled={createTeamMutation.isPending}
             />
           </div>
           <div className="grid grid-cols-4 items-start gap-4">
@@ -193,18 +210,15 @@ const NewTeamModal: React.FC<NewTeamModalProps> = ({ isOpen, onClose, onSaveSucc
               className="col-span-3 bg-[#F4F7FE]"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              disabled={isSaving}
+              disabled={createTeamMutation.isPending}
             />
           </div>
-          {/* Updated Agent Selection Section */}
-          <div className="grid grid-cols-4 items-start gap-4"> {/* Changed to items-start */}
-            <Label htmlFor="agents" className="text-right self-start pt-1"> {/* Align label top */}
+          <div className="grid grid-cols-4 items-start gap-4"> 
+            <Label htmlFor="agents" className="text-right self-start pt-1"> 
               Agents
             </Label>
-            {/* Container for Badges and Dropdown Trigger */}
             <div className="col-span-3 flex flex-col gap-2">
-              {/* Display selected agents as badges */}
-              <div className="flex flex-wrap gap-1 min-h-[2.5rem] items-center p-2 border rounded-md bg-[#F4F7FE]"> {/* Added styles */}
+              <div className="flex flex-wrap gap-1 min-h-[2.5rem] items-center p-2 border rounded-md bg-[#F4F7FE]">
                 {selectedAgentIds.size === 0 && (
                   <span className="text-sm text-muted-foreground px-1">No agents selected</span>
                 )}
@@ -217,7 +231,7 @@ const NewTeamModal: React.FC<NewTeamModalProps> = ({ isOpen, onClose, onSaveSucc
                         type="button"
                         className="rounded-full hover:bg-muted-foreground/20 p-0.5"
                         onClick={() => handleAgentSelect(agent.id)}
-                        disabled={isSaving}
+                        disabled={createTeamMutation.isPending}
                         aria-label={`Remove ${agent.name}`}
                       >
                         <LucideX className="h-3 w-3" />
@@ -226,10 +240,9 @@ const NewTeamModal: React.FC<NewTeamModalProps> = ({ isOpen, onClose, onSaveSucc
                   ) : null;
                 })}
               </div>
-              {/* Dropdown to add more agents */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="w-full justify-start font-normal" disabled={isLoadingAgents || isSaving}>
+                  <Button variant="outline" size="sm" className="w-full justify-start font-normal" disabled={isLoadingAgents || createTeamMutation.isPending}>
                     {isLoadingAgents ? 'Loading Agents...' : '+ Add / Remove Agents'}
                   </Button>
                 </DropdownMenuTrigger>
@@ -246,7 +259,7 @@ const NewTeamModal: React.FC<NewTeamModalProps> = ({ isOpen, onClose, onSaveSucc
                         key={agent.id}
                         checked={selectedAgentIds.has(agent.id)}
                         onCheckedChange={() => handleAgentSelect(agent.id)}
-                        onSelect={(e) => e.preventDefault()} // Prevent closing on select
+                        onSelect={(e) => e.preventDefault()} 
                       >
                         {agent.name} ({agent.email})
                       </DropdownMenuCheckboxItem>
@@ -259,12 +272,12 @@ const NewTeamModal: React.FC<NewTeamModalProps> = ({ isOpen, onClose, onSaveSucc
         </div>
         <DialogFooter>
           <DialogClose asChild>
-            <Button type="button" variant="outline" disabled={isSaving}>
+            <Button type="button" variant="outline" disabled={createTeamMutation.isPending}>
               Cancel
             </Button>
           </DialogClose>
-          <Button type="button" onClick={handleSave} disabled={isSaving}>
-            {isSaving ? 'Saving...' : 'Save Team'}
+          <Button type="button" onClick={handleSave} disabled={createTeamMutation.isPending || isLoadingAgents}>
+            {createTeamMutation.isPending ? 'Saving...' : 'Save Team'}
           </Button>
         </DialogFooter>
       </DialogContent>

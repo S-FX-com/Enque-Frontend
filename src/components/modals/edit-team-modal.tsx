@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import {
   Dialog,
@@ -13,64 +12,60 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Badge } from "@/components/ui/badge"; 
-import { X as LucideX } from 'lucide-react'; 
+import { Badge } from "@/components/ui/badge";
+import { X as LucideX } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query'; 
 import { getAgents } from '@/services/agent';
 import { Agent } from '@/typescript/agent';
-import { Team } from '@/typescript/team'; 
-import { getTeamMembers, updateTeam, addTeamMember, removeTeamMember } from '@/services/team'; // Import necessary services
+import { Team } from '@/typescript/team';
+import { getTeamMembers, updateTeam, addTeamMember, removeTeamMember } from '@/services/team';
 
 interface EditTeamModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSaveSuccess: () => void; 
-  teamToEdit: Team | null; 
+  onSaveSuccess: () => void;
+  teamToEdit: Team | null;
 }
 
 const EditTeamModal: React.FC<EditTeamModalProps> = ({ isOpen, onClose, onSaveSuccess, teamToEdit }) => {
-  
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [availableAgents, setAvailableAgents] = useState<Agent[]>([]);
-  const [initialAgentIds, setInitialAgentIds] = useState<Set<number>>(new Set()); // Store initial members
+  const [initialAgentIds, setInitialAgentIds] = useState<Set<number>>(new Set());
   const [selectedAgentIds, setSelectedAgentIds] = useState<Set<number>>(new Set());
-  const [isLoadingAgents, setIsLoadingAgents] = useState(false);
-  const [isLoadingMembers, setIsLoadingMembers] = useState(false);
+  const [isLoadingData, setIsLoadingData] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  
+  const queryClient = useQueryClient(); 
   useEffect(() => {
     if (isOpen && teamToEdit) {
-     
       setName(teamToEdit.name);
       setDescription(teamToEdit.description || '');
       setError(null);
       setIsSaving(false);
+      setIsLoadingData(true);
 
       const fetchData = async () => {
-        setIsLoadingAgents(true);
-        setIsLoadingMembers(true);
         try {
-          const [agents, currentMembers] = await Promise.all([
+          const [agentsResponse, currentMembersResponse] = await Promise.all([
             getAgents(),
             getTeamMembers(teamToEdit.id)
           ]);
 
-          setAvailableAgents(agents);
-
-          const currentMemberIds = new Set(currentMembers.map(member => member.agent_id));
+          setAvailableAgents(agentsResponse || []);
+          const currentMemberIds = new Set((currentMembersResponse || []).map(member => member.agent_id));
           setInitialAgentIds(currentMemberIds);
-          setSelectedAgentIds(currentMemberIds); 
-
+          setSelectedAgentIds(currentMemberIds);
         } catch (err) {
           console.error("Failed to load initial data for edit modal:", err);
           setError("Failed to load agents or team members.");
@@ -78,21 +73,21 @@ const EditTeamModal: React.FC<EditTeamModalProps> = ({ isOpen, onClose, onSaveSu
           setInitialAgentIds(new Set());
           setSelectedAgentIds(new Set());
         } finally {
-          setIsLoadingAgents(false);
-          setIsLoadingMembers(false);
+          setIsLoadingData(false);
         }
       };
       fetchData();
-    } else {
-      
-        setName('');
-        setDescription('');
-        setAvailableAgents([]);
-        setInitialAgentIds(new Set());
-        setSelectedAgentIds(new Set());
-        setError(null);
+    } else if (!isOpen) {
+      setName('');
+      setDescription('');
+      setAvailableAgents([]);
+      setInitialAgentIds(new Set());
+      setSelectedAgentIds(new Set());
+      setError(null);
+      setIsLoadingData(false);
+      setIsSaving(false);
     }
-  }, [isOpen, teamToEdit]); 
+  }, [isOpen, teamToEdit]);
 
   const handleAgentSelect = (agentId: number) => {
     setSelectedAgentIds(prev => {
@@ -121,42 +116,55 @@ const EditTeamModal: React.FC<EditTeamModalProps> = ({ isOpen, onClose, onSaveSu
           name: name.trim(),
           description: description.trim() || null,
         });
-        console.log(`Team ${teamToEdit.id} details updated.`);
       }
+
       const agentsToAdd = new Set([...selectedAgentIds].filter(id => !initialAgentIds.has(id)));
       const agentsToRemove = new Set([...initialAgentIds].filter(id => !selectedAgentIds.has(id)));
-      const addPromises = Array.from(agentsToAdd).map(agentId => addTeamMember(teamToEdit.id, agentId));
-      const removePromises = Array.from(agentsToRemove).map(agentId => removeTeamMember(teamToEdit.id, agentId));
 
-      const results = await Promise.allSettled([...addPromises, ...removePromises]);
+      const memberUpdatePromises: Promise<unknown>[] = [];
+      agentsToAdd.forEach(agentId => memberUpdatePromises.push(addTeamMember(teamToEdit.id, agentId)));
+      agentsToRemove.forEach(agentId => memberUpdatePromises.push(removeTeamMember(teamToEdit.id, agentId)));
+
+      const results = await Promise.allSettled(memberUpdatePromises);
+
       let memberUpdateError = false;
       results.forEach((result, index) => {
         if (result.status === 'rejected') {
-            memberUpdateError = true;
-            const isAdding = index < addPromises.length;
-            const agentId = isAdding ? Array.from(agentsToAdd)[index] : Array.from(agentsToRemove)[index - addPromises.length];
-            console.error(`Failed to ${isAdding ? 'add' : 'remove'} agent ${agentId} for team ${teamToEdit.id}:`, result.reason);
-            setError(prevError => prevError ? `${prevError}\nFailed to ${isAdding ? 'add' : 'remove'} agent ID: ${agentId}` : `Failed to ${isAdding ? 'add' : 'remove'} agent ID: ${agentId}`);
+          memberUpdateError = true;
+          const action = index < agentsToAdd.size ? 'add' : 'remove';
+          console.error(`Failed to ${action} a team member for team ${teamToEdit.id}:`, result.reason);
+          setError(prevError => prevError ? `${prevError}\nFailed to update a team member.` : `Failed to update a team member.`);
         }
       });
 
       if (memberUpdateError) {
-          setIsSaving(false); 
-          return;
+        setIsSaving(false);
+        toast.error("Some member updates failed. Please review and try again.");
+        return;
       }
-      onSaveSuccess();
+
+      toast.success(`Team "${name.trim()}" updated successfully!`);
+      queryClient.invalidateQueries({ queryKey: ['agentTeams'] }); 
+
+      onSaveSuccess(); 
       onClose();
 
     } catch (err) {
       console.error("Failed to save team updates:", err);
-      setError(err instanceof Error ? err.message : "An unknown error occurred while saving updates.");
-      setIsSaving(false); 
+      const errorMessage = err instanceof Error ? err.message : "An unknown error occurred while saving updates.";
+      setError(errorMessage);
+      toast.error(errorMessage);
+      setIsSaving(false);
     }
-    };
+  };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px] bg-white">
+    <Dialog open={isOpen} onOpenChange={(open) => {
+      if (!open) {
+        onClose();
+      }
+    }}>
+      <DialogContent className="sm:max-w-[425px] bg-white dark:bg-black">
         <DialogHeader>
           <DialogTitle>Edit Team: {teamToEdit?.name}</DialogTitle>
           <DialogDescription>
@@ -164,90 +172,90 @@ const EditTeamModal: React.FC<EditTeamModalProps> = ({ isOpen, onClose, onSaveSu
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
-          {error && <p className="col-span-4 text-red-600 text-sm">{error}</p>}
+          {error && <p className="col-span-4 text-red-600 text-sm px-1">{error}</p>}
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="edit-name" className="text-right pt-1">
+            <Label htmlFor="edit-team-name" className="text-right">
               Name*
             </Label>
             <Input
-              id="edit-name"
+              id="edit-team-name"
               placeholder="Enter team name"
-              className="col-span-3 bg-[#F4F7FE]" 
+              className="col-span-3"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              disabled={isSaving}
+              disabled={isSaving || isLoadingData}
             />
           </div>
           <div className="grid grid-cols-4 items-start gap-4">
-            <Label htmlFor="edit-description" className="text-right pt-1">
+            <Label htmlFor="edit-team-description" className="text-right pt-1">
               Description
             </Label>
             <Textarea
-              id="edit-description"
+              id="edit-team-description"
               placeholder="Enter team description"
-              className="col-span-3 bg-[#F4F7FE]" 
+              className="col-span-3"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              disabled={isSaving}
+              disabled={isSaving || isLoadingData}
+              rows={3}
             />
           </div>
-         
-          <div className="grid grid-cols-4 items-start gap-4"> 
-            <Label htmlFor="edit-agents" className="text-right self-start pt-1"> 
+          <div className="grid grid-cols-4 items-start gap-4">
+            <Label htmlFor="edit-team-agents" className="text-right self-start pt-1">
               Agents
             </Label>
-             <div className="col-span-3 flex flex-col gap-2">
-               <div className="flex flex-wrap gap-1 min-h-[2.5rem] items-center p-2 border rounded-md bg-[#F4F7FE]"> {/* Added styles */}
-                 {selectedAgentIds.size === 0 && (
-                   <span className="text-sm text-muted-foreground px-1">No agents selected</span>
-                 )}
-                 {Array.from(selectedAgentIds).map(agentId => {
-                   const agent = availableAgents.find(a => a.id === agentId);
-                   return agent ? (
-                     <Badge key={agent.id} variant="secondary" className="flex items-center gap-1">
-                       {agent.name}
-                       <button
-                         type="button"
-                         className="rounded-full hover:bg-muted-foreground/20 p-0.5"
-                         onClick={() => handleAgentSelect(agent.id)}
-                         disabled={isSaving}
-                         aria-label={`Remove ${agent.name}`}
-                       >
-                         <LucideX className="h-3 w-3" />
-                       </button>
-                     </Badge>
-                   ) : null;
-                 })}
-               </div>
-               <DropdownMenu>
-                 <DropdownMenuTrigger asChild>
-                   <Button variant="outline" size="sm" className="w-full justify-start font-normal" disabled={isLoadingAgents || isLoadingMembers || isSaving}>
-                     {isLoadingAgents || isLoadingMembers ? 'Loading Agents...' : '+ Add / Remove Agents'}
-                   </Button>
-                 </DropdownMenuTrigger>
-             
-                 <DropdownMenuContent className="w-56 max-h-60 overflow-y-auto" align="start" sideOffset={5}>
-                   <DropdownMenuLabel>Available Agents</DropdownMenuLabel>
-                   <DropdownMenuSeparator />
-                   {isLoadingAgents || isLoadingMembers ? (
-                     <DropdownMenuLabel>Loading...</DropdownMenuLabel>
-                   ) : availableAgents.length === 0 ? (
-                     <DropdownMenuLabel>No agents found</DropdownMenuLabel>
-                   ) : (
-                     availableAgents.map((agent) => (
-                       <DropdownMenuCheckboxItem
-                         key={agent.id}
-                         checked={selectedAgentIds.has(agent.id)}
-                         onCheckedChange={() => handleAgentSelect(agent.id)}
-                         onSelect={(e) => e.preventDefault()}
-                       >
-                         {agent.name} ({agent.email})
-                       </DropdownMenuCheckboxItem>
-                     ))
-                   )}
-                 </DropdownMenuContent>
-               </DropdownMenu>
-             </div>
+            <div className="col-span-3 flex flex-col gap-2">
+              <div className="flex flex-wrap gap-1 min-h-[2.5rem] items-center p-2 border rounded-md bg-slate-50 dark:bg-slate-800">
+                {isLoadingData && <span className="text-sm text-muted-foreground px-1">Loading members...</span>}
+                {!isLoadingData && selectedAgentIds.size === 0 && (
+                  <span className="text-sm text-muted-foreground px-1">No agents selected</span>
+                )}
+                {!isLoadingData && Array.from(selectedAgentIds).map(agentId => {
+                  const agent = availableAgents.find(a => a.id === agentId);
+                  return agent ? (
+                    <Badge key={agent.id} variant="secondary" className="flex items-center gap-1">
+                      {agent.name}
+                      <button
+                        type="button"
+                        className="rounded-full hover:bg-muted-foreground/20 p-0.5"
+                        onClick={() => handleAgentSelect(agent.id)}
+                        disabled={isSaving || isLoadingData}
+                        aria-label={`Remove ${agent.name}`}
+                      >
+                        <LucideX className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  ) : null;
+                })}
+              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="w-full justify-start font-normal" disabled={isLoadingData || isSaving}>
+                    {isLoadingData ? 'Loading Agents...' : '+ Add / Remove Agents'}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width] max-h-60 overflow-y-auto" align="start" sideOffset={5}>
+                  <DropdownMenuLabel>Available Agents</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {isLoadingData ? (
+                    <DropdownMenuItem disabled>Loading...</DropdownMenuItem>
+                  ) : availableAgents.length === 0 ? (
+                    <DropdownMenuItem disabled>No agents found</DropdownMenuItem>
+                  ) : (
+                    availableAgents.map((agent) => (
+                      <DropdownMenuCheckboxItem
+                        key={agent.id}
+                        checked={selectedAgentIds.has(agent.id)}
+                        onCheckedChange={() => handleAgentSelect(agent.id)}
+                        onSelect={(e) => e.preventDefault()} 
+                      >
+                        {agent.name} ({agent.email})
+                      </DropdownMenuCheckboxItem>
+                    ))
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
         </div>
         <DialogFooter>
@@ -256,7 +264,7 @@ const EditTeamModal: React.FC<EditTeamModalProps> = ({ isOpen, onClose, onSaveSu
               Cancel
             </Button>
           </DialogClose>
-          <Button type="button" onClick={handleSave} disabled={isSaving}>
+          <Button type="button" onClick={handleSave} disabled={isSaving || isLoadingData}>
             {isSaving ? 'Saving...' : 'Save Changes'}
           </Button>
         </DialogFooter>

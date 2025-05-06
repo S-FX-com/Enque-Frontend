@@ -1,4 +1,4 @@
-import { fetchAPI } from "@/lib/fetch-api";
+import { fetchAPI, BaseResponse } from "@/lib/fetch-api"; // Import BaseResponse
 import { ITicket, IGetTicket } from "@/typescript/ticket"; // Import IGetTicket
 import { IComment } from "@/typescript/comment"; // Import IComment
 
@@ -86,15 +86,19 @@ export async function getTicketComments(ticketId: number): Promise<IComment[]> {
  * @returns A promise that resolves to the updated ITicket object or null on failure.
  */
 // Define a type for the update payload that allows null for assignee_id
+// Define a type for the update payload that allows null for assignee_id and team_id
 type TicketUpdatePayload = {
     status?: ITicket['status'];
     priority?: ITicket['priority'];
-    assignee_id?: number | null; // Allow null here
+    assignee_id?: number | null;
+    team_id?: number | null;
+    category_id?: number | null; // Add category_id
 };
 
-export async function updateTicket(ticketId: number, updates: Partial<Pick<ITicket, 'status' | 'priority' | 'assignee_id'>>): Promise<ITicket | null> {
+// Update function signature to accept category_id in updates
+export async function updateTicket(ticketId: number, updates: Partial<Pick<ITicket, 'status' | 'priority' | 'assignee_id' | 'team_id' | 'category_id'>>): Promise<ITicket | null> {
     try {
-        const url = `${API_BASE_URL}/v1/tasks/${ticketId}`; // Endpoint for updating a task (ticket)
+        const url = `${API_BASE_URL}/v1/tasks/${ticketId}`;
 
         // Create the payload with the correct type
         const payload: TicketUpdatePayload = {};
@@ -102,18 +106,35 @@ export async function updateTicket(ticketId: number, updates: Partial<Pick<ITick
         if (updates.priority !== undefined) payload.priority = updates.priority;
 
         // Handle assignee_id specifically to allow null
-        if ('assignee_id' in updates) { // Check if the key exists, even if value is null/undefined
+        if ('assignee_id' in updates) {
             const assigneeValue = updates.assignee_id;
             payload.assignee_id = assigneeValue === null || assigneeValue === undefined ? null : Number(assigneeValue);
-             // Basic check if it's a number-like string, convert it. Handle potential NaN if needed.
              if (typeof payload.assignee_id === 'string') {
                  const parsed = parseInt(payload.assignee_id, 10);
                  payload.assignee_id = isNaN(parsed) ? null : parsed;
              }
         }
-         // If assignee_id is not in updates, it's not included in the payload.
+        // Add logic for team_id
+        if ('team_id' in updates) {
+            const teamValue = updates.team_id;
+            payload.team_id = teamValue === null || teamValue === undefined ? null : Number(teamValue);
+             if (typeof payload.team_id === 'string') {
+                 const parsed = parseInt(payload.team_id, 10);
+                  payload.team_id = isNaN(parsed) ? null : parsed;
+              }
+         }
+         // Add logic for category_id
+         if ('category_id' in updates) {
+             const categoryValue = updates.category_id;
+             payload.category_id = categoryValue === null || categoryValue === undefined ? null : Number(categoryValue);
+              if (typeof payload.category_id === 'string') {
+                  const parsed = parseInt(payload.category_id, 10);
+                  payload.category_id = isNaN(parsed) ? null : parsed;
+              }
+         }
 
-        const response = await fetchAPI.PUT<ITicket>(url, payload); // Use PUT method
+        console.log("Sending update payload:", payload); // Log the payload being sent
+        const response = await fetchAPI.PUT<ITicket>(url, payload);
 
         if (response && response.success && response.data) {
             return response.data;
@@ -128,6 +149,57 @@ export async function updateTicket(ticketId: number, updates: Partial<Pick<ITick
         // throw error; // Re-throw the error for the component to handle
         return null;
     }
+}
+
+/**
+ * Deletes a specific ticket (task).
+ * @param ticketId The ID of the ticket to delete.
+ * @returns A promise that resolves to the BaseResponse from the API.
+ */
+export async function deleteTicket(ticketId: number): Promise<BaseResponse<unknown>> {
+    const url = `${API_BASE_URL}/v1/tasks/${ticketId}`;
+    // Assuming fetchAPI.DELETE returns a BaseResponse similar to other methods
+    // Adjust the expected return type if necessary based on fetchAPI implementation
+    return fetchAPI.DELETE<unknown>(url);
+}
+
+/**
+ * Creates a new ticket (task).
+ * @param ticketData The data for the new ticket.
+ * @returns A promise that resolves to the created ITicket object or null on failure.
+ */
+// Define the expected payload type for creating a ticket
+type TicketCreatePayload = {
+  title: string;
+  description: string;
+  user_id: number;
+  status: ITicket['status'];
+  priority: ITicket['priority'];
+  team_id?: number;
+  category_id?: number;
+  workspace_id: number; // Add workspace_id as required
+  due_date?: string; // Add due_date as optional string
+  sent_from_id: number; // Add sent_from_id as required
+};
+
+export async function createTicket(ticketData: TicketCreatePayload): Promise<ITicket | null> {
+  try {
+    const url = `${API_BASE_URL}/v1/tasks/`;
+    console.log("Sending create ticket payload:", ticketData); // Log the payload
+    const response = await fetchAPI.POST<ITicket>(url, ticketData);
+
+    if (response && response.success && response.data) {
+      return response.data;
+    } else {
+      console.error("Error creating ticket:", response?.message || "Unknown API error");
+      // Throw an error to be caught by the mutation's onError
+      throw new Error(response?.message || "Failed to create ticket");
+    }
+  } catch (error) {
+    console.error("Error creating ticket (catch block):", error);
+    // Re-throw the error for the mutation's onError handler
+    throw error;
+  }
 }
 
 // You can add more ticket-related service functions

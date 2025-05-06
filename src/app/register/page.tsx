@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Brand } from "@/components/brand";
+import Image from "next/image"; // Import Image
+// Removed Brand import
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AppConfigs } from "@/configs";
@@ -144,25 +145,24 @@ export default function RegisterPage() {
   const statusInfo = getSubdomainStatusInfo();
 
   return (
-    <main className="flex flex-col items-center justify-center min-h-screen p-4 bg-white">
-      <div className="flex flex-col items-center max-w-md w-full space-y-10 py-10">
-        <div className="flex flex-col items-center space-y-2">
-          <Brand />
-          <p className="text-slate-500 text-sm">Help Desk System</p>
+    // 1. Change background color
+    <main className="flex flex-col items-center justify-center min-h-screen p-4 bg-[#F4F7FE]">
+      {/* 2. Wrap content in white box */}
+      <div className="w-full max-w-sm bg-white p-8 rounded-lg shadow-md">
+        {/* 3. Replace Brand and description with centered Image */}
+        <div className="flex justify-center mb-6"> {/* Added margin-bottom */}
+          <Image
+            src="/enque.png"
+            alt="Enque Logo"
+            width={120}
+            height={40}
+            priority
+          />
         </div>
 
-        <div className="w-full space-y-6 bg-slate-50 p-8 rounded-lg shadow-sm border border-slate-100">
-          <div className="space-y-2 text-center">
-            <h1 className="text-xl font-semibold tracking-tight">
-              {isSubdomain ? `Register to ${currentSubdomain}` : "Register Your Workspace"}
-            </h1>
-            <p className="text-sm text-slate-500">
-              {isSubdomain
-                ? `Create your account in ${currentSubdomain} workspace`
-                : "Create your account and workspace"}
-            </p>
-          </div>
-
+        {/* Removed outer space-y-10 div */}
+        <div className="w-full space-y-4"> {/* Adjusted spacing */}
+          {/* Header div already removed */}
           <form className="space-y-4" onSubmit={handleSubmit}>
             <div className="space-y-2">
               <label htmlFor="name" className="text-sm font-medium">
@@ -260,8 +260,8 @@ export default function RegisterPage() {
               </Link>
             </p>
           </div>
-        </div>
-      </div>
+        </div> {/* Close inner space-y-4 div */}
+      </div> {/* Close white box container */}
     </main>
   );
 }

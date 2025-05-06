@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react'; // Add useState
 import Link from "next/link";
-import { BellIcon, HelpCircleIcon, LogOutIcon, SearchIcon } from "lucide-react"; // Removed CheckCircle2
+import { BellIcon, HelpCircleIcon, LogOutIcon, SearchIcon, PlusCircle } from "lucide-react"; // Added PlusCircle
 import {
     Button,
     Input,
@@ -40,9 +40,10 @@ interface TopbarProps {
     title: string;
     breadcrumbs?: Breadcrumb[];
     user?: UserSession | null;
+    onNewTicketClick?: () => void; // Add optional prop for the button action
 }
 
-export function Topbar({ title = "Dashboard", breadcrumbs = [], user }: TopbarProps) {
+export function Topbar({ title = "Dashboard", breadcrumbs = [], user, onNewTicketClick }: TopbarProps) {
     const router = useRouter();
     const queryClient = useQueryClient();
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
@@ -90,9 +91,15 @@ export function Topbar({ title = "Dashboard", breadcrumbs = [], user }: TopbarPr
                         <span>&nbsp;</span> 
                     )}
                 </div>
-                {/* Title */}
+                {/* Title and optional New Ticket Button */}
                 <div className="flex items-center gap-2">
                     <h1 className="text-2xl font-semibold">{title}</h1>
+                    {/* Conditionally render the button if the handler is provided */}
+                    {onNewTicketClick && (
+                        <Button size="sm" variant="default" onClick={onNewTicketClick} className="ml-2">
+                            <PlusCircle className="mr-2 h-4 w-4" /> New
+                        </Button>
+                    )}
                 </div>
             </div>
 
@@ -112,7 +119,7 @@ export function Topbar({ title = "Dashboard", breadcrumbs = [], user }: TopbarPr
                     <PopoverTrigger asChild>
                          {/* TODO: Add indicator for unread notifications */}
                         <Button variant="ghost" size="icon" className="text-slate-400 dark:text-slate-500 mx-0.5 relative">
-                            <BellIcon className="h-5 w-5" />
+                            <BellIcon /> {/* Removed explicit size to test base style */}
                             {/* Example unread indicator - replace with actual logic */}
                             {/* {notifications.some(n => !n.is_read) && (
                                 <span className="absolute top-1 right-1 block h-2 w-2 rounded-full bg-red-500 ring-2 ring-background" />
@@ -209,17 +216,18 @@ export function Topbar({ title = "Dashboard", breadcrumbs = [], user }: TopbarPr
                     </PopoverContent>
                 </Popover>
 
-                <ModeToggle />
+                <ModeToggle /> {/* ModeToggle likely controls its own icon size internally */}
 
                 <Button variant="ghost" size="icon" className="text-slate-400 mx-0.5">
-                    <HelpCircleIcon className="h-5 w-5" />
+                    <HelpCircleIcon /> {/* Removed explicit size to test base style */}
                 </Button>
 
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
+                        {/* Restore original w-10 h-10 and remove size="icon" */}
                         <Button variant="ghost" className="rounded-full overflow-hidden p-0 w-10 h-10 mx-0.5">
                             <BoringAvatar
-                                size={40}
+                                size={40} // Restore original avatar size
                                 // Use email as primary identifier, fallback to name or empty string
                                 name={user?.email || user?.name || ""} 
                                 variant="beam"
@@ -236,7 +244,8 @@ export function Topbar({ title = "Dashboard", breadcrumbs = [], user }: TopbarPr
                         </DropdownMenuLabel>
                         <DropdownMenuSeparator />
                         <DropdownMenuGroup>
-                            <DropdownMenuItem onClick={() => router.push("/profile")}>Profile settings</DropdownMenuItem>
+                            {/* Update onClick to navigate to the new settings page */}
+                            <DropdownMenuItem onClick={() => router.push("/settings/profile")}>Profile settings</DropdownMenuItem>
                         </DropdownMenuGroup>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem

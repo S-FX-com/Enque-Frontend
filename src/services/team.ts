@@ -188,5 +188,32 @@ export const removeTeamMember = async (teamId: number, agentId: number): Promise
   }
 };
 
+/**
+ * Fetches teams associated with a specific agent.
+ * @param agentId The ID of the agent.
+ * @returns A promise that resolves to an array of teams.
+ */
+export const getAgentTeams = async (agentId: number): Promise<Team[]> => {
+  if (!agentId) {
+    console.error('getAgentTeams requires a valid agentId');
+    return []; // Return empty array if agentId is invalid
+  }
+  try {
+    // Assuming an endpoint like /v1/agents/{agent_id}/teams exists
+    // Adjust the URL if your backend endpoint is different
+    const url = `${API_BASE_URL}/v1/agents/${agentId}/teams`;
+    const response = await fetchAPI.GET<Team[]>(url);
+
+    if (!response || !response.data) {
+      console.error(`Failed to fetch teams for agent ${agentId} or data is missing`);
+      return []; // Or throw new Error('Failed to fetch agent teams');
+    }
+    return response.data;
+  } catch (error) {
+    console.error(`Error fetching teams for agent ${agentId}:`, error);
+    throw error; // Or return [];
+  }
+};
+
 
 // Add other team-related service functions here later

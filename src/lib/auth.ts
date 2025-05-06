@@ -1,3 +1,4 @@
+// frontend/src/lib/auth.ts
 import { redirect } from 'next/navigation';
 import { AppConfigs } from '@/configs';
 import { logger } from './logger';
@@ -9,10 +10,13 @@ export interface UserSession {
   id: number;
   name: string;
   email: string;
-  role: string;
-  workspace_id: number;
-  iat: number;
-  exp: number;
+  role: string; // Keep as string, validation happens elsewhere if needed
+    workspace_id: number;
+    job_title?: string | null;
+    phone_number?: string | null;
+    email_signature?: string | null; // Add email_signature
+    iat: number;
+    exp: number;
 }
 
 // Constantes para el manejo de tokens
@@ -80,14 +84,14 @@ export const removeUserData = (): void => {
 export const handleLogout = (): void => {
   // Limpiar el historial de navegación para prevenir volver al dashboard
   window.history.pushState(null, '', '/signin');
-  
+
   // Eliminar tokens y datos de usuario
   removeAuthToken();
   removeUserData();
-  
+
   // Limpiar cualquier otra data en localStorage/sessionStorage
   sessionStorage.clear();
-  
+
   // Redirigir al usuario a la página de login
   window.location.replace("/signin");
 };
@@ -97,19 +101,21 @@ export const getCurrentUser = async (): Promise<UserSession | null> => {
   try {
     const token = getAuthToken();
     if (!token) return null;
-    
+
     const userData = decodeToken(token);
     if (!userData) return null;
-    
-    // Removed console.log for Token userData
-    
+
     // Convertir UserPayload a UserSession con valores predeterminados
+    // Include new fields, defaulting to null if not present in token
     return {
       id: Number(userData.sub || 0),
-      name: userData.name || "Usuario Enque", 
-      email: userData.email || "usuario@enque.cc", 
+      name: userData.name || "Usuario Enque",
+      email: userData.email || "usuario@enque.cc",
       role: userData.role || 'user',
       workspace_id: userData.workspace_id || 0,
+      job_title: userData.job_title || null,
+      phone_number: userData.phone_number || null,
+      email_signature: userData.email_signature || null, // Add email_signature
       iat: userData.iat || 0,
       exp: userData.exp || 0
     };
@@ -122,7 +128,7 @@ export const getCurrentUser = async (): Promise<UserSession | null> => {
 // Redirect to login if not authenticated
 export const redirectToLogin = () => {
   if (typeof window === 'undefined') return;
-  
+
   if (!isAuthenticated()) {
     redirect(AppConfigs.routes.signin);
   }
@@ -131,7 +137,7 @@ export const redirectToLogin = () => {
 // Redirect to dashboard if already authenticated
 export const redirectIfAuthenticated = () => {
   if (typeof window === 'undefined') return;
-  
+
   if (isAuthenticated()) {
     redirect(AppConfigs.routes.dashboard);
   }
@@ -159,7 +165,7 @@ export const setupHistoryProtection = () => {
 
   // Limpiar los listeners anteriores para evitar duplicados
   window.removeEventListener('popstate', handlePopState);
-  
+
   // Agregar listener para navegación por historial
   window.addEventListener('popstate', handlePopState);
 
@@ -170,18 +176,12 @@ export const setupHistoryProtection = () => {
 // Decodificar token para obtener información del usuario
 export const decodeToken = (token: string): UserPayload | null => {
   try {
-    // Mejora en la decodificación con información de depuración
     const decoded = jwtDecode<UserPayload>(token);
-    
-    // Removed console.log for Raw token
-    // Removed console.log for Decoded token structure
-    
-    // Verificar campos críticos
+
     if (!decoded.sub || decoded.sub === "undefined") {
-      // Keep warning for invalid ID
       console.warn("Token decodificado con ID inválido", decoded);
     }
-    
+
     return decoded;
   } catch (error) {
     console.error("Failed to decode token:", error);

@@ -1,0 +1,243 @@
+// frontend/src/app/users-companies/company-user-view.tsx
+"use client";
+
+import React, { useState, useEffect } from 'react';
+import { ICompany, CompanyUpdatePayload } from '@/typescript/company';
+import { IUser } from '@/typescript/user';
+import { Agent as IAgent } from '@/typescript/agent';
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Loader2, PlusCircle, Trash2 } from 'lucide-react';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { deleteCompany, updateCompany } from '@/services/company';
+import { toast } from 'sonner';
+
+interface CompanyUserViewProps {
+  company: ICompany;
+  users: IUser[];
+  agents: IAgent[];
+  isLoadingUsers: boolean;
+  usersError: Error | null;
+  isLoadingAgents: boolean;
+  agentsError: Error | null;
+  onSwitchToUnassigned: () => void;
+}
+
+const CompanyUserView: React.FC<CompanyUserViewProps> = ({
+  company,
+  users,
+  agents,
+  isLoadingUsers,
+  usersError,
+  isLoadingAgents,
+  agentsError,
+  onSwitchToUnassigned,
+}) => {
+  const queryClient = useQueryClient();
+  const [selectedPrimaryContact, setSelectedPrimaryContact] = useState<string | undefined>(undefined);
+  const [selectedAccountManager, setSelectedAccountManager] = useState<string | undefined>(undefined);
+  const [editableDescription, setEditableDescription] = useState(company.description || '');
+  const [editableDomain, setEditableDomain] = useState(company.email_domain || '');
+  const descriptionMaxLength = 150;
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+
+  const updateMutation = useMutation({
+    mutationFn: (updateData: CompanyUpdatePayload) => updateCompany(company.id, updateData),
+    onSuccess: () => {
+      toast.success(`Company "${company.name}" updated.`);
+      queryClient.invalidateQueries({ queryKey: ['companies'] });
+      queryClient.invalidateQueries({ queryKey: ['company', company.id] });
+    },
+    onError: (error) => {
+      toast.error(`Failed to update company: ${error.message}`);
+      setEditableDescription(company.description || '');
+      setEditableDomain(company.email_domain || '');
+      setSelectedPrimaryContact(company.primary_contact_id?.toString() || undefined);
+      setSelectedAccountManager(company.account_manager_id?.toString() || undefined);
+    },
+  });
+
+  useEffect(() => {
+    setSelectedPrimaryContact(company.primary_contact_id?.toString() || undefined);
+    setSelectedAccountManager(company.account_manager_id?.toString() || undefined);
+    setEditableDescription(company.description || '');
+    setEditableDomain(company.email_domain || '');
+  }, [company]);
+
+  const handleFieldUpdate = (field: keyof CompanyUpdatePayload, value: string | number | null | undefined) => {
+    if (field === 'description' && value === (company.description || '')) return;
+    if (field === 'email_domain' && value === (company.email_domain || '')) return;
+    if (field === 'primary_contact_id' && value === company.primary_contact_id) return;
+    if (field === 'account_manager_id' && value === company.account_manager_id) return;
+
+    const updateData: CompanyUpdatePayload = { [field]: value };
+    console.log(`Updating ${field} to:`, value);
+    updateMutation.mutate(updateData);
+  };
+
+  const handlePrimaryContactChange = (value: string) => {
+    const idValue = value === 'null' ? null : parseInt(value, 10);
+    setSelectedPrimaryContact(value === 'null' ? undefined : value);
+    handleFieldUpdate('primary_contact_id', idValue);
+  };
+
+  const handleAccountManagerChange = (value: string) => {
+    const idValue = value === 'null' ? null : parseInt(value, 10);
+    setSelectedAccountManager(value === 'null' ? undefined : value);
+    handleFieldUpdate('account_manager_id', idValue);
+  };
+
+  const handleDescriptionChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+    if (event.target.value.length <= descriptionMaxLength) {
+      setEditableDescription(event.target.value);
+    }
+  };
+
+  const handleDomainChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setEditableDomain(event.target.value);
+  };
+
+  const handleDescriptionBlur = () => {
+    if (editableDescription !== (company.description || '')) {
+      handleFieldUpdate('description', editableDescription);
+    }
+  };
+
+  const handleDomainBlur = () => {
+    if (editableDomain !== (company.email_domain || '')) {
+      handleFieldUpdate('email_domain', editableDomain || null);
+    }
+  };
+
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteCompany(company.id),
+    onSuccess: () => {
+      toast.success(`Company "${company.name}" deleted successfully.`);
+      queryClient.invalidateQueries({ queryKey: ['companies'] });
+      setIsDeleteDialogOpen(false);
+    },
+    onError: (error) => {
+      toast.error(`Failed to delete company: ${error.message}`);
+      setIsDeleteDialogOpen(false);
+    },
+  });
+
+  const handleDeleteConfirm = () => { deleteMutation.mutate(); };
+
+  return (
+    <div className="w-full h-full flex flex-col p-6 space-y-6 overflow-hidden">
+      {/* Top Section */}
+      <div className="flex justify-between items-center flex-shrink-0">
+        <h2 className="text-xl font-semibold">{company.name}</h2>
+        <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+          <AlertDialogTrigger asChild>
+            <Button variant="destructive" size="sm" disabled={deleteMutation.isPending || updateMutation.isPending}>
+              <Trash2 className="mr-2 h-4 w-4" /> Delete
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+              <AlertDialogDescription>
+                {`This action cannot be undone. This will permanently delete the company "${company.name}". Associated users will become unassigned (if not already).`}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={deleteMutation.isPending}>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDeleteConfirm} disabled={deleteMutation.isPending} className="bg-destructive text-white hover:bg-destructive/90">
+                {deleteMutation.isPending ? 'Deleting...' : 'Yes, delete company'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+
+      {/* Company Details Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-4 flex-shrink-0">
+          {/* Column 1 */}
+          <div className="space-y-4">
+              <div className="space-y-1">
+                <Label htmlFor="primary-contact">Primary Contact</Label>
+                <Select value={selectedPrimaryContact} onValueChange={handlePrimaryContactChange} disabled={isLoadingUsers || updateMutation.isPending}>
+                  <SelectTrigger id="primary-contact"><SelectValue placeholder={isLoadingUsers ? "Loading..." : "--"} /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="null">--</SelectItem>
+                    {/* Display only user name */}
+                    {usersError ? <SelectItem value="error" disabled>Error</SelectItem> : users.map((user) => <SelectItem key={user.id} value={user.id.toString()}>{user.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="company-domain">Email domain</Label>
+                <Input id="company-domain" value={editableDomain} onChange={handleDomainChange} onBlur={handleDomainBlur} placeholder="example.com" className="text-sm" disabled={updateMutation.isPending} />
+              </div>
+          </div>
+          {/* Column 2 */}
+          <div className="space-y-4">
+              <div className="space-y-1">
+                <Label htmlFor="account-manager">Account manager</Label>
+                <Select value={selectedAccountManager} onValueChange={handleAccountManagerChange} disabled={isLoadingAgents || updateMutation.isPending}>
+                  <SelectTrigger id="account-manager"><SelectValue placeholder={isLoadingAgents ? "Loading..." : "--"} /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="null">--</SelectItem>
+                    {agentsError ? <SelectItem value="error" disabled>Error</SelectItem> : agents.map((agent) => <SelectItem key={agent.id} value={agent.id.toString()}>{agent.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+          </div>
+          {/* Column 3 */}
+          <div className="space-y-1">
+            <Label htmlFor="company-description">Description</Label>
+            <Textarea id="company-description" value={editableDescription} onChange={handleDescriptionChange} onBlur={handleDescriptionBlur} placeholder="Enter description..." rows={4} className="text-sm resize-none" maxLength={descriptionMaxLength} disabled={updateMutation.isPending} />
+            <p className="text-xs text-muted-foreground text-right">{editableDescription.length}/{descriptionMaxLength}</p>
+          </div>
+      </div>
+
+      {/* Divider */}
+      <div className="border-b flex-shrink-0"></div>
+
+      {/* Users Table Section */}
+      <div className="flex-1 flex flex-col min-h-0">
+        <div className="flex justify-between items-center mb-4 flex-shrink-0">
+          <h3 className="text-lg font-semibold">Users in {company.name}</h3>
+          <Button size="sm" onClick={onSwitchToUnassigned}>
+            <PlusCircle className="mr-2 h-4 w-4" /> Add User to Company
+          </Button>
+        </div>
+        <div className="flex-grow overflow-y-auto border rounded-md">
+          {isLoadingUsers ? <div className="flex justify-center items-center h-32"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
+           : usersError ? <p className="text-red-600 p-4">Error loading users: {usersError.message}</p>
+           : users.length === 0 ? <p className="text-muted-foreground text-center p-4">No users found for this company.</p>
+           : (<Table>
+                <TableHeader><TableRow className="border-b border-slate-200 dark:border-slate-700 hover:bg-transparent"><TableHead>Name</TableHead><TableHead>Email</TableHead><TableHead>Phone</TableHead></TableRow></TableHeader>
+                <TableBody>{users.map((user) => (<TableRow key={user.id}><TableCell className="font-medium">{user.name}</TableCell><TableCell>{user.email}</TableCell><TableCell>{user.phone || '-'}</TableCell></TableRow>))}</TableBody>
+              </Table>)}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default CompanyUserView;

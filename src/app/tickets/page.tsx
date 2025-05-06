@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback, Suspense } from 'react'; // Import Suspense
+import React, { useState, useEffect, useRef, useCallback, Suspense, useMemo } from 'react'; 
 import {
   Table,
   TableBody,
@@ -12,20 +12,41 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Settings2 } from 'lucide-react';
-import { useInfiniteQuery, useQuery, useQueryClient, InfiniteData } from '@tanstack/react-query';
-import { useSearchParams, useRouter } from 'next/navigation'; 
-import { getTickets, updateTicket } from '@/services/ticket';
+import { Card, CardContent } from "@/components/ui/card"; 
+import { Settings2, Trash2 } from 'lucide-react';
+import { MultiSelectFilter, OptionType } from '@/components/filters/multi-select-filter'; 
+import { useInfiniteQuery, useQuery, useQueryClient, InfiniteData, useMutation } from '@tanstack/react-query'; 
+import { useSearchParams, useRouter } from 'next/navigation';
+import { getTickets, updateTicket, deleteTicket } from '@/services/ticket'; 
+import { toast } from 'sonner'; 
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { useDebounce } from '@/hooks/use-debounce';
+import { motion } from 'framer-motion';
 import { getAgents } from '@/services/agent';
+import { getTeams } from '@/services/team';
+import { getUsers } from '@/services/user';
+import { getCompanies } from '@/services/company';
+import { getCategories } from '@/services/category'; 
 import { ITicket } from '@/typescript/ticket';
+import { Team } from '@/typescript/team';
+import { IUser } from '@/typescript/user';
+import { ICompany } from '@/typescript/company';
+import { ICategory } from '@/typescript/category'; 
 
-import { Agent } from '@/typescript/agent'; 
-import { formatRelativeTime, cn } from '@/lib/utils'; 
+import { Agent } from '@/typescript/agent';
+import { formatRelativeTime, cn } from '@/lib/utils';
 import { TicketDetail } from './ticket-details';
-
 const LOAD_LIMIT = 20;
 
 type TicketPage = ITicket[];
@@ -34,47 +55,201 @@ type TicketPage = ITicket[];
 function TicketsClientContent() {
   const queryClient = useQueryClient();
   const router = useRouter();
-  const searchParams = useSearchParams(); 
+  const searchParams = useSearchParams();
   const [selectedTicket, setSelectedTicket] = useState<ITicket | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const { data: agentsData = [], isLoading: isLoadingAgents } = useQuery<Agent[]>({
+  const [subjectInput, setSubjectInput] = useState('');
+  const debouncedSubjectFilter = useDebounce(subjectInput, 300);
+  const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
+  const [selectedTeams, setSelectedTeams] = useState<string[]>([]);
+  const [selectedAgents, setSelectedAgents] = useState<string[]>([]);
+  const [selectedPriorities, setSelectedPriorities] = useState<string[]>([]);
+  const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
+  const [selectedCompanies, setSelectedCompanies] = useState<string[]>([]);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [selectedTicketIds, setSelectedTicketIds] = useState<Set<number>>(new Set()); // State for selected ticket IDs
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+
+  // const [isNewTicketModalOpen, setIsNewTicketModalOpen] = useState(false);
+  const statusOptions: OptionType[] = [
+    { value: 'Unread', label: 'Unread' },
+    { value: 'Open', label: 'Open' },
+    { value: 'With User', label: 'With User' },
+    { value: 'In Progress', label: 'In Progress' },
+    { value: 'Closed', label: 'Closed' },
+  ];
+
+  const priorityOptions: OptionType[] = [
+    { value: 'Low', label: 'Low' },
+    { value: 'Medium', label: 'Medium' },
+    { value: 'High', label: 'High' },
+    { value: 'Critical', label: 'Critical' }, // Added Critical
+  ];
+
+  const { data: agentsData = [] } = useQuery<Agent[]>({
     queryKey: ['agents'],
     queryFn: getAgents,
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const agentOptions: OptionType[] = useMemo(() => {
+    return agentsData.map(agent => ({
+      value: agent.id.toString(),
+      label: agent.name,
+    }));
+  }, [agentsData]);
+
+  const { data: teamsData = [] } = useQuery<Team[]>({ 
+    queryKey: ['teams'],
+    queryFn: getTeams,
     staleTime: 1000 * 60 * 5, 
   });
+  const teamOptions: OptionType[] = useMemo(() => {
+    return teamsData.map(team => ({
+      value: team.id.toString(), 
+      label: team.name,
+    }));
+  }, [teamsData]);
+
+  const { data: usersData = [] } = useQuery<IUser[]>({ 
+    queryKey: ['users'],
+    queryFn: getUsers, 
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const userOptions: OptionType[] = useMemo(() => {
+
+    return usersData
+      .filter(user => user && user.id && user.name)
+      .map(user => ({
+        value: user.id.toString(),
+        label: user.name!, 
+    }));
+  }, [usersData]);
+
+  const { data: companiesData = [] } = useQuery<ICompany[]>({
+    queryKey: ['companies'],
+    queryFn: () => getCompanies(), 
+    staleTime: 1000 * 60 * 5,
+  });
+  const companyOptions: OptionType[] = useMemo(() => {
+    return companiesData
+      .filter(company => company && company.id && company.name)
+      .map(company => ({
+        value: company.id.toString(),
+        label: company.name!,
+    }));
+  }, [companiesData]);
+
+  const { data: categoriesData = [] } = useQuery<ICategory[]>({
+    queryKey: ['categories'],
+    queryFn: () => getCategories(), 
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const categoryOptions: OptionType[] = useMemo(() => {
+    return categoriesData
+      .filter(category => category && category.id && category.name)
+      .map(category => ({
+        value: category.id.toString(),
+        label: category.name!,
+    }));
+  }, [categoriesData]);
+
 
   const {
     data: ticketsQueryData,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
-    isLoading: isLoadingTickets, 
+    isLoading: isLoadingTickets,
     isError: isTicketsError,
     error: ticketsError,
   } = useInfiniteQuery<TicketPage, Error, InfiniteData<TicketPage, number>, readonly ["tickets"], number>({ // Explicit types
     queryKey: ['tickets'],
-    queryFn: async ({ pageParam = 0 }) => { 
+    queryFn: async ({ pageParam = 0 }) => {
       console.log(`Fetching tickets with skip: ${pageParam}`);
-     
-      const tickets = await getTickets({ skip: pageParam, limit: LOAD_LIMIT }); 
-      return tickets; 
+
+      const tickets = await getTickets({ skip: pageParam, limit: LOAD_LIMIT });
+      return tickets;
     },
     getNextPageParam: (lastPage, allPages) => {
       if (!lastPage || lastPage.length < LOAD_LIMIT) {
         console.log("No next page detected.");
-        return undefined; 
+        return undefined;
       }
-    
+
       const nextPageParam = allPages.flat().length;
       console.log(`Next page param (skip): ${nextPageParam}`);
       return nextPageParam;
     },
-    initialPageParam: 0, 
+    initialPageParam: 0,
     staleTime: 1000 * 60, 
-    refetchInterval: 30000, 
-    refetchIntervalInBackground: true, 
+    refetchInterval: 5000, 
+    refetchIntervalInBackground: true,
   });
-  const ticketsData = React.useMemo(() => ticketsQueryData?.pages?.flat() ?? [], [ticketsQueryData]);
+  const allTicketsData = React.useMemo(() => ticketsQueryData?.pages?.flat() ?? [], [ticketsQueryData]);
+
+  const filteredTicketsData = useMemo(() => {
+    let tickets = allTicketsData;
+
+    if (debouncedSubjectFilter) {
+      const lowerCaseFilter = debouncedSubjectFilter.toLowerCase();
+      tickets = tickets.filter(ticket =>
+        ticket.title.toLowerCase().includes(lowerCaseFilter)
+      );
+    }
+
+    if (selectedStatuses.length > 0) {
+      tickets = tickets.filter(ticket =>
+        selectedStatuses.includes(ticket.status)
+      );
+    }
+    if (selectedTeams.length > 0) {
+       const selectedTeamIds = selectedTeams.map(id => parseInt(id, 10));
+       tickets = tickets.filter(ticket =>
+         ticket.team_id && selectedTeamIds.includes(ticket.team_id)
+       );
+    }
+
+    if (selectedAgents.length > 0) {
+      const selectedAgentIds = selectedAgents.map(id => parseInt(id, 10));
+      tickets = tickets.filter(ticket =>
+        ticket.assignee_id && selectedAgentIds.includes(ticket.assignee_id)
+      );
+    }
+
+    if (selectedPriorities.length > 0) {
+      tickets = tickets.filter(ticket =>
+        selectedPriorities.includes(ticket.priority)
+      );
+    }
+
+    if (selectedUsers.length > 0) {
+      const selectedUserIds = selectedUsers.map(id => parseInt(id, 10));
+      tickets = tickets.filter(ticket =>
+        ticket.user_id && selectedUserIds.includes(ticket.user_id)
+      );
+    }
+
+    if (selectedCompanies.length > 0) {
+      const selectedCompanyIds = selectedCompanies.map(id => parseInt(id, 10));
+      tickets = tickets.filter(ticket =>
+        ticket.user?.company_id && selectedCompanyIds.includes(ticket.user.company_id)
+      );
+    }
+
+    if (selectedCategories.length > 0) {
+      const selectedCategoryIds = selectedCategories.map(id => parseInt(id, 10));
+      tickets = tickets.filter(ticket =>
+  
+        ticket.category_id && selectedCategoryIds.includes(ticket.category_id)
+      );
+    }
+
+    return tickets;
+  }, [allTicketsData, debouncedSubjectFilter, selectedStatuses, selectedTeams, selectedAgents, selectedPriorities, selectedUsers, selectedCompanies, selectedCategories]); // Add selectedCategories dependency
+
 
   useEffect(() => {
     const container = scrollContainerRef.current;
@@ -95,14 +270,21 @@ function TicketsClientContent() {
 
   useEffect(() => {
     const ticketIdToOpen = searchParams.get('openTicket');
-    if (ticketIdToOpen && ticketsData.length > 0) {
-      const ticket = ticketsData.find(t => t.id === parseInt(ticketIdToOpen, 10));
+    const teamIdFromQuery = searchParams.get('teamId');
+    if (ticketIdToOpen && allTicketsData.length > 0) {
+      const ticket = allTicketsData.find(t => t.id === parseInt(ticketIdToOpen, 10));
       if (ticket) {
         setSelectedTicket(ticket);
       }
     }
-  
-  }, [searchParams, ticketsData, router]); 
+
+
+    if (teamIdFromQuery) {
+      if (!selectedTeams.includes(teamIdFromQuery)) {
+        setSelectedTeams([teamIdFromQuery]);
+      }
+    }
+  }, [searchParams, allTicketsData, router, selectedTeams]); 
 
   const agentIdToNameMap = React.useMemo(() => {
     return agentsData.reduce((map, agent) => {
@@ -111,7 +293,7 @@ function TicketsClientContent() {
     }, {} as Record<number, string>);
   }, [agentsData]);
 
- 
+
   const handleTicketUpdate = useCallback((updatedTicket: ITicket) => {
     queryClient.setQueryData<InfiniteData<TicketPage, number>>(['tickets'], (oldData) => {
         if (!oldData) return oldData;
@@ -120,12 +302,120 @@ function TicketsClientContent() {
         );
         return { ...oldData, pages: newPages };
     });
-    
+
     if (selectedTicket?.id === updatedTicket.id) {
       setSelectedTicket(updatedTicket);
     }
-    
-  }, [selectedTicket, queryClient]); 
+
+  }, [selectedTicket, queryClient]);
+
+  // --- Checkbox Handlers ---
+  const handleSelectAllChange = (checked: boolean | 'indeterminate') => {
+      if (checked === true) {
+          // Select ALL loaded tickets, not just filtered ones
+          setSelectedTicketIds(new Set(allTicketsData.map(ticket => ticket.id)));
+      } else {
+          setSelectedTicketIds(new Set());
+      }
+  };
+
+  const handleRowSelectChange = (ticketId: number, checked: boolean | 'indeterminate') => {
+      setSelectedTicketIds(prev => {
+          const next = new Set(prev);
+          if (checked === true) {
+              next.add(ticketId);
+          } else {
+              next.delete(ticketId);
+          }
+          return next;
+      });
+  };
+
+  const isAllSelected = allTicketsData.length > 0 && selectedTicketIds.size === allTicketsData.length;
+  const isIndeterminate = selectedTicketIds.size > 0 && selectedTicketIds.size < allTicketsData.length;
+  const headerCheckboxState = isAllSelected ? true : (isIndeterminate ? 'indeterminate' : false);
+   const deleteTicketsMutation = useMutation({
+        mutationFn: async (ticketIds: number[]) => {
+            const results = await Promise.allSettled(
+                ticketIds.map(id => deleteTicket(id))
+            );
+            const failedDeletions = results
+                .map((result, index) => ({ result, id: ticketIds[index] }))
+                .filter(item => item.result.status === 'rejected');
+
+            if (failedDeletions.length > 0) {
+                 const errorMessages = failedDeletions.map(item => {
+                     const reason = (item.result as PromiseRejectedResult).reason;
+                     const message = (reason as { message?: string })?.message || `Ticket ID ${item.id}`;
+                     return message;
+                 }).join(', ');
+                 throw new Error(`Failed to delete: ${errorMessages}`);
+            }
+
+            const nonSuccessResponses = results
+                 .map((result, index) => ({ result, id: ticketIds[index] }))
+                
+                 .filter(item => {
+                     if (item.result.status === 'fulfilled') {
+                         const value = (item.result as PromiseFulfilledResult<{ success: boolean; message?: string }>).value;
+                         return !value.success;
+                     }
+                     return false;
+                 });
+
+             if (nonSuccessResponses.length > 0) {
+                 const errorMessages = nonSuccessResponses.map(item => {
+                     // Corrected: Type assertion for the fulfilled value
+                     const response = (item.result as PromiseFulfilledResult<{ success: boolean; message?: string }>).value;
+                     return response.message || `Ticket ID ${item.id}`;
+                 }).join(', ');
+                 throw new Error(`Failed to delete: ${errorMessages}`);
+             }
+            // Return results to check status if needed, though optimistic update handles UI
+            return results;
+        },
+        onSuccess: (data, variables) => {
+             toast.success(`${variables.length} ticket(s) deletion request sent.`); // Restore toast
+             console.log(`${variables.length} ticket(s) deletion attempted.`);
+        },
+        onMutate: async (ticketIdsToDelete) => {
+            // Cancel any outgoing refetches (so they don't overwrite our optimistic update)
+            await queryClient.cancelQueries({ queryKey: ['tickets'] }); // Use the base query key
+
+            // Snapshot the previous value
+            const previousTicketsData = queryClient.getQueryData<InfiniteData<TicketPage, number>>(['tickets']);
+
+            // Optimistically update to the new value
+            queryClient.setQueryData<InfiniteData<TicketPage, number>>(['tickets'], (oldData) => {
+                if (!oldData) return oldData;
+                const newPages = oldData.pages.map(page =>
+                    page.filter(ticket => !ticketIdsToDelete.includes(ticket.id))
+                );
+                return { ...oldData, pages: newPages };
+            });
+
+            setSelectedTicketIds(new Set());
+            setIsDeleteDialogOpen(false); 
+
+            return { previousTicketsData };
+        },
+        onError: (err: Error, ticketIdsToDelete, context: { previousTicketsData?: InfiniteData<TicketPage, number> } | undefined) => {
+            toast.error(`Error deleting tickets: ${err.message}`); // Restore toast
+            console.error(`Error deleting tickets: ${err.message}`);
+            if (context?.previousTicketsData) {
+                queryClient.setQueryData(['tickets'], context.previousTicketsData);
+            }
+        },
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: ['tickets'] });
+        },
+    });
+  const handleDeleteConfirm = () => {
+      if (selectedTicketIds.size > 0) {
+          deleteTicketsMutation.mutate(Array.from(selectedTicketIds));
+      }
+  };
+
 
    const handleTicketClick = useCallback(async (ticket: ITicket) => {
     setSelectedTicket(ticket);
@@ -144,22 +434,61 @@ function TicketsClientContent() {
 
   const handleCloseDetail = useCallback(() => {
     setSelectedTicket(null);
-  }, []); 
+  }, []);
 
   return (
     <div className="flex h-full gap-6">
-      <div className="flex-1 px-0 pb-6 flex flex-col">
-        <Card className="shadow-none border-0 flex-1 flex flex-col overflow-hidden">
-          <CardHeader className="px-6 pt-6 pb-4"> 
-            <CardTitle>All Tickets</CardTitle>
-          </CardHeader>
+      <div className="flex-1 flex flex-col h-full">
+         {selectedTicketIds.size > 0 && (
+             <div className="flex items-center justify-between py-4 px-6 flex-shrink-0 border-b"> 
+                <div className="flex items-center gap-2 ml-auto"> 
+                    <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                        <AlertDialogTrigger asChild>
+                            <Button
+                                variant="destructive"
+                                size="sm"
+                                disabled={deleteTicketsMutation.isPending}
+                            >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete ({selectedTicketIds.size})
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                This action cannot be undone. This will permanently delete the selected
+                                {selectedTicketIds.size === 1 ? ' ticket' : ' tickets'}.
+                            </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                            <AlertDialogCancel disabled={deleteTicketsMutation.isPending}>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                                onClick={handleDeleteConfirm}
+                                disabled={deleteTicketsMutation.isPending}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                                {deleteTicketsMutation.isPending ? 'Deleting...' : 'Delete'}
+                            </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                </div>
+             </div>
+         )}
+         <Card className="shadow-none border-0 flex-1 flex flex-col overflow-hidden m-0">
           <CardContent className="flex-1 overflow-hidden p-0">
             <div ref={scrollContainerRef} className="h-full overflow-y-auto px-6">
               <Table>
-                <TableHeader className="sticky top-0 bg-card z-10">
+                <TableHeader className="sticky top-0 bg-card z-10"> 
                   <TableRow className="border-b border-slate-200 dark:border-slate-700 hover:bg-transparent">
                     <TableHead className="w-[50px] p-2">
-                      <Checkbox />
+                       <Checkbox
+                          checked={headerCheckboxState}
+                          onCheckedChange={handleSelectAllChange}
+                          aria-label="Select all rows"
+                          disabled={isLoadingTickets || filteredTicketsData.length === 0}
+                       />
                     </TableHead>
                     <TableHead className="w-[100px] p-2">ID</TableHead>
                     <TableHead className="p-2 max-w-xs md:max-w-sm">Subject</TableHead>
@@ -167,11 +496,11 @@ function TicketsClientContent() {
                     <TableHead className="p-2 w-[150px]">Priority</TableHead>
                     <TableHead className="p-2 w-[150px]">Sent from</TableHead>
                     <TableHead className="p-2 w-[150px]">Assigned to</TableHead>
-                    <TableHead className="p-2 w-[150px]">Created</TableHead> {/* Removed refresh button from here */}
+                    <TableHead className="p-2 w-[150px]">Created</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {isLoadingTickets && ticketsData.length === 0 ? ( // Use isLoadingTickets
+                  {isLoadingTickets && allTicketsData.length === 0 ? ( // Check allTicketsData for initial loading
                     <TableRow>
                       <TableCell colSpan={8} className="h-24 text-center">
                         Loading tickets...
@@ -183,50 +512,75 @@ function TicketsClientContent() {
                             Error loading tickets: {ticketsError?.message || 'Unknown error'}
                         </TableCell>
                     </TableRow>
-                  ) : ticketsData.length === 0 ? (
+                  ) : filteredTicketsData.length === 0 ? ( // Check filtered data length
                      <TableRow>
                       <TableCell colSpan={8} className="h-24 text-center">
-                        No tickets found.
+                        {debouncedSubjectFilter ? 'No tickets match your filter.' : 'No tickets found.'}
                       </TableCell>
                     </TableRow>
                   ) : (
-                    ticketsData.map((ticket) => (
-                    <TableRow
+                    filteredTicketsData.map((ticket) => (
+                    <motion.tr 
                       key={ticket.id}
+                      layout 
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }} 
+                      transition={{ duration: 0.2 }} 
                       className={cn(
                         "border-0 h-14 cursor-pointer hover:bg-muted/50",
-                        ticket.status === 'Unread' && "font-semibold bg-slate-50 dark:bg-slate-800/50" // Added background
+                        ticket.status === 'Unread' && "font-semibold bg-slate-50 dark:bg-slate-800/50" 
                       )}
-                      onClick={() => handleTicketClick(ticket)}
+
+                      data-state={selectedTicketIds.has(ticket.id) ? 'selected' : ''} 
                     >
                       <TableCell className="p-2 py-4">
-                        <Checkbox onClick={(e) => e.stopPropagation()} />
+                         <Checkbox
+                            checked={selectedTicketIds.has(ticket.id)}
+                            onCheckedChange={(checked) => handleRowSelectChange(ticket.id, checked)}
+                            aria-label={`Select ticket ${ticket.id}`}
+                            onClick={(e) => e.stopPropagation()} 
+                         />
                       </TableCell>
-                      <TableCell className="font-medium p-2 py-4">{ticket.id}</TableCell>
-                      <TableCell className="p-2 py-4 max-w-xs md:max-w-sm truncate">{ticket.title}</TableCell>
+                      <TableCell className="font-medium cursor-pointer p-2 py-4" onClick={() => handleTicketClick(ticket)}>{ticket.id}</TableCell>
+                      <TableCell className="max-w-xs md:max-w-sm truncate cursor-pointer p-2 py-4" onClick={() => handleTicketClick(ticket)}>{ticket.title}</TableCell>
+                      <TableCell className="p-2 py-4">
+                        <div className="flex items-center gap-2">
+                          <div className="relative flex h-2 w-2">
+                            <span className={cn(
+                              "absolute inline-flex h-full w-full rounded-full",
+                              ticket.status === 'Open' && "bg-green-500",
+                              ticket.status === 'Closed' && "bg-slate-500",
+                              ticket.status === 'Unread' && "bg-blue-500",
+                              ticket.status === 'With User' && "bg-purple-500", 
+                              ticket.status === 'In Progress' && "bg-orange-500" 
+                            )}></span>
+                            {ticket.status === 'Unread' && (
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                            )}
+                          </div>
+                          <span className={cn("text-foreground capitalize", ticket.status === 'Unread' && "font-semibold")}>
+                            {ticket.status}
+                          </span>
+                        </div>
+                      </TableCell>
                       <TableCell className="p-2 py-4">
                         <Badge variant="outline" className={cn(
-                          "whitespace-nowrap",
-                          ticket.status === 'Open' && "bg-green-100 text-green-800 border-green-300 dark:bg-green-900/50 dark:text-green-300 dark:border-green-700",
-                          ticket.status === 'Closed' && "bg-slate-100 text-slate-600 border-slate-300 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700",
-                          ticket.status === 'Unread' && "border-blue-300 dark:border-blue-700" // Optional: different border for Unread
+                          "whitespace-nowrap capitalize", 
+                          ticket.priority === 'Low' && "bg-slate-100 text-slate-600 border-slate-300 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700", 
+                          ticket.priority === 'Medium' && "bg-green-100 text-green-800 border-green-300 dark:bg-green-900/50 dark:text-green-300 dark:border-green-700", 
+                          ticket.priority === 'High' && "bg-yellow-100 text-yellow-800 border-yellow-300 dark:bg-yellow-900/50 dark:text-yellow-300 dark:border-yellow-700", 
+                          ticket.priority === 'Critical' && "bg-red-100 text-red-800 border-red-300 dark:bg-red-900/50 dark:text-red-300 dark:border-red-700" 
                         )}>
-                          {ticket.status === 'Unread' && (
-                            <span className="relative flex h-2 w-2 mr-2">
-                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                              <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
-                            </span>
-                          )}
-                          {ticket.status}
+                          {ticket.priority}
                         </Badge>
                       </TableCell>
-                      <TableCell className={cn("p-2 py-4", ticket.status === 'Unread' && "text-foreground")}>{ticket.priority}</TableCell> {/* Ensure priority text is not muted if row is bold */}
                       <TableCell className="p-2 py-4">
                         {ticket.user?.name || ticket.email_info?.email_sender || '-'}
                       </TableCell>
                       <TableCell className="p-2 py-4">{agentIdToNameMap[ticket.assignee_id as number] || '-'}</TableCell>
                       <TableCell className="p-2 py-4">{formatRelativeTime(ticket.created_at)}</TableCell>
-                    </TableRow>
+                    </motion.tr> // Close motion.tr
                   )))}
                   {isFetchingNextPage && ( // Use isFetchingNextPage for loading more indicator
                     <TableRow>
@@ -241,7 +595,6 @@ function TicketsClientContent() {
           </CardContent>
         </Card>
       </div>
-
       <aside className="w-80 border-l p-6 space-y-6 bg-card text-card-foreground rounded-lg flex-shrink-0">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold">Filters</h2>
@@ -254,108 +607,91 @@ function TicketsClientContent() {
         <div className="space-y-4">
           <div>
             <label htmlFor="subject-filter" className="text-sm font-medium">Subject</label>
-            <Input id="subject-filter" placeholder="Search subject..." />
+            <Input
+              id="subject-filter"
+              placeholder="Search subject..."
+              value={subjectInput}
+              onChange={(e) => setSubjectInput(e.target.value)}
+            />
           </div>
           <div>
-            <label htmlFor="status-filter" className="text-sm font-medium">Statuses</label>
-            <Select>
-              <SelectTrigger id="status-filter">
-                <SelectValue placeholder="Select..." />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="open">Open</SelectItem>
-                <SelectItem value="closed">Closed</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-              </SelectContent>
-            </Select>
+            <label htmlFor="status-filter" className="text-sm font-medium">Statuses</label> 
+            <MultiSelectFilter
+              options={statusOptions}
+              selected={selectedStatuses}
+              onChange={setSelectedStatuses}
+              placeholder="Filter by status..."
+              className="mt-1" 
+            />
           </div>
           <div>
-            <label htmlFor="team-filter" className="text-sm font-medium">Teams</label>
-            <Select>
-              <SelectTrigger id="team-filter">
-                <SelectValue placeholder="Select..." />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="team1">IT Helpdesk</SelectItem>
-                <SelectItem value="team2">CMT Association</SelectItem>
-                <SelectItem value="team3">CareCentrix</SelectItem>
-              </SelectContent>
-            </Select>
+             <label htmlFor="team-filter" className="text-sm font-medium">Teams</label> 
+             <MultiSelectFilter
+              options={teamOptions}
+              selected={selectedTeams}
+              onChange={setSelectedTeams}
+              placeholder="Filter by team..."
+              className="mt-1"
+            />
           </div>
           <div>
             <label htmlFor="agent-filter" className="text-sm font-medium">Agents</label>
-            <Select>
-              <SelectTrigger id="agent-filter">
-                <SelectValue placeholder="Select..." />
-              </SelectTrigger>
-              <SelectContent>
-                {isLoadingAgents ? (
-                    <SelectItem value="loading" disabled>Loading agents...</SelectItem>
-                ) : (
-                    agentsData.map(agent => (
-                        <SelectItem key={agent.id} value={agent.id.toString()}>{agent.name}</SelectItem>
-                    ))
-                )}
-              </SelectContent>
-            </Select>
+            <MultiSelectFilter
+              options={agentOptions}
+              selected={selectedAgents}
+              onChange={setSelectedAgents}
+              placeholder="Filter by agent..."
+              className="mt-1"
+            />
           </div>
           <div>
             <label htmlFor="priority-filter" className="text-sm font-medium">Priorities</label>
-            <Select>
-              <SelectTrigger id="priority-filter">
-                <SelectValue placeholder="Select..." />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="low">Low</SelectItem>
-                <SelectItem value="standard">Standard</SelectItem>
-                <SelectItem value="high">High</SelectItem>
-                <SelectItem value="urgent">Urgent</SelectItem>
-              </SelectContent>
-            </Select>
+            <MultiSelectFilter
+              options={priorityOptions}
+              selected={selectedPriorities}
+              onChange={setSelectedPriorities}
+              placeholder="Filter by priority..."
+              className="mt-1"
+            />
           </div>
           <div>
             <label htmlFor="company-filter" className="text-sm font-medium">Companies</label>
-            <Select>
-              <SelectTrigger id="company-filter">
-                <SelectValue placeholder="Select..." />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="comp1">Company A</SelectItem>
-                <SelectItem value="comp2">Company B</SelectItem>
-              </SelectContent>
-            </Select>
+            <MultiSelectFilter
+              options={companyOptions}
+              selected={selectedCompanies}
+              onChange={setSelectedCompanies}
+              placeholder="Filter by company..."
+              className="mt-1"
+            />
           </div>
           <div>
             <label htmlFor="user-filter" className="text-sm font-medium">Users</label>
-            <Select>
-              <SelectTrigger id="user-filter">
-                <SelectValue placeholder="Select..." />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="user1">User 1</SelectItem>
-                <SelectItem value="user2">User 2</SelectItem>
-              </SelectContent>
-            </Select>
+             <MultiSelectFilter
+              options={userOptions}
+              selected={selectedUsers}
+              onChange={setSelectedUsers}
+              placeholder="Filter by user..."
+              className="mt-1"
+            />
           </div>
           <div>
             <label htmlFor="category-filter" className="text-sm font-medium">Categories</label>
-            <Select>
-              <SelectTrigger id="category-filter">
-                <SelectValue placeholder="Select..." />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="cat1">Category 1</SelectItem>
-                <SelectItem value="cat2">Category 2</SelectItem>
-              </SelectContent>
-            </Select>
+            <MultiSelectFilter
+              options={categoryOptions}
+              selected={selectedCategories}
+              onChange={setSelectedCategories}
+              placeholder="Filter by category..."
+              className="mt-1"
+            />
           </div>
         </div>
       </aside>
       <TicketDetail
         ticket={selectedTicket}
         onClose={handleCloseDetail}
-        onTicketUpdate={handleTicketUpdate} 
+        onTicketUpdate={handleTicketUpdate}
       />
+
     </div>
   );
 }

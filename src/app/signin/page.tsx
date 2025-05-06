@@ -2,21 +2,19 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Brand } from "@/components/brand";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { authService } from "@/services/auth";
 import { AppConfigs } from "@/configs";
 import { logger } from "@/lib/logger";
 import { removeAuthToken, isAuthenticated, setupHistoryProtection } from "@/lib/auth";
-import { toast } from "sonner"; // Import toast from sonner
+import { toast } from "sonner";
 
 export default function SignInPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [isSubdomain, setIsSubdomain] = useState(false);
-  const [currentSubdomain, setCurrentSubdomain] = useState("");
 
   useEffect(() => {
     const fromError = new URLSearchParams(window.location.search).get('auth_error');
@@ -32,20 +30,6 @@ export default function SignInPage() {
     }
 
     setupHistoryProtection();
-  }, []);
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const host = window.location.hostname;
-
-      const isSubdomainSite = host !== AppConfigs.baseUrl && host.endsWith(AppConfigs.domain);
-      setIsSubdomain(isSubdomainSite);
-
-      if (isSubdomainSite) {
-        const subdomain = host.replace(AppConfigs.domain, "");
-        setCurrentSubdomain(subdomain);
-      }
-    }
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -86,24 +70,19 @@ export default function SignInPage() {
   };
 
   return (
-    <main className="flex flex-col items-center justify-center min-h-screen p-4 bg-white">
-      <div className="flex flex-col items-center max-w-md w-full space-y-10 py-10">
-        <div className="flex flex-col items-center">
-          <Brand />
+    <main className="flex flex-col items-center justify-center min-h-screen p-4 bg-[#F4F7FE]">
+      <div className="w-full max-w-sm bg-white p-8 rounded-lg shadow-md">
+        <div className="flex justify-center mb-6">
+          <Image
+            src="/enque.png"
+            alt="Enque Logo"
+            width={120}
+            height={40}
+            priority
+          />
         </div>
 
-        <div className="w-full space-y-6 bg-slate-50 p-8 rounded-lg shadow-sm border border-slate-100">
-          <div className="space-y-2 text-center">
-            <h1 className="text-xl font-semibold tracking-tight">
-              {isSubdomain ? `Sign In to ${currentSubdomain}` : "Sign In"}
-            </h1>
-            <p className="text-sm text-slate-500">
-              {isSubdomain 
-                ? `Enter your credentials to access ${currentSubdomain}` 
-                : "Enter your credentials to access"}
-            </p>
-          </div>
-
+        <div className="w-full space-y-4">
           <form className="space-y-4" onSubmit={handleSubmit}>
             <div className="space-y-2">
               <label htmlFor="email" className="text-sm font-medium">
@@ -117,7 +96,7 @@ export default function SignInPage() {
                 required
               />
             </div>
-            
+
             <div className="space-y-2">
               <label htmlFor="password" className="text-sm font-medium">
                 Password
@@ -130,7 +109,7 @@ export default function SignInPage() {
                 required
               />
             </div>
-            
+
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
@@ -145,10 +124,10 @@ export default function SignInPage() {
               )}
             </Button>
           </form>
-          
+
           <div className="text-center pt-4">
             <p className="text-sm text-slate-500">
-              Don&apos;t have an account?{" "}
+              {`Don't have an account? `}
               <Link href="/register" className="text-blue-600 hover:underline font-medium">
                 Register
               </Link>

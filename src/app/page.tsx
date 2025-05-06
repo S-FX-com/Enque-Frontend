@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Brand } from "@/components/brand";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AppConfigs } from "@/configs";
-import { Loader2, AlertCircle } from "lucide-react"; // Import AlertCircle for error icon
+import { Loader2, AlertCircle } from "lucide-react";
 
 export default function Home() {
   const router = useRouter();
@@ -14,11 +14,9 @@ export default function Home() {
   const [hostname, setHostname] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [subdomain, setSubdomain] = useState("");
-  // Remove unused isNavigating state
-  const [subdomainError, setSubdomainError] = useState<string | null>(null); // State for error message
+  const [subdomainError, setSubdomainError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Check if we're on a subdomain
     if (typeof window !== "undefined") {
       const host = window.location.hostname;
       setHostname(host);
@@ -26,9 +24,7 @@ export default function Home() {
       const isSubdomainSite = host !== AppConfigs.baseUrl && host.endsWith(AppConfigs.domain);
       setIsSubdomain(isSubdomainSite);
       
-      // If we're on a subdomain, redirect to /signin after a short delay
       if (isSubdomainSite) {
-        // setIsNavigating(true); // Remove assignment
         const timer = setTimeout(() => {
           router.push("/signin");
         }, 2000);
@@ -38,15 +34,13 @@ export default function Home() {
     }
   }, [router]);
 
-  // Make handleSubmit async to await fetch
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const trimmedSubdomain = subdomain.trim();
     if (!trimmedSubdomain) return;
 
     setIsSubmitting(true);
-    setSubdomainError(null); // Clear previous errors
-    // setIsNavigating(false); // Remove assignment
+    setSubdomainError(null);
 
     const workspaceCheckUrl = `${AppConfigs.api}/workspaces/subdomain/${trimmedSubdomain}`;
 
@@ -56,22 +50,16 @@ export default function Home() {
       console.log(`Workspace check response status: ${response.status}`);
 
       if (response.ok) {
-        // Workspace exists, proceed to redirect (using hostname manipulation)
-        // setIsNavigating(true); // Remove assignment
-        const targetHostname = `${trimmedSubdomain}.${AppConfigs.domain.substring(1)}`; // Construct target hostname
-        const targetUrl = `https://${targetHostname}/signin`; // Redirect directly to signin page
+        const targetHostname = `${trimmedSubdomain}.${AppConfigs.domain.substring(1)}`;
+        const targetUrl = `https://${targetHostname}/signin`;
         console.log(`Workspace valid. Redirecting to: ${targetUrl}`);
-        // Use window.location.href for cross-origin redirection
         window.location.href = targetUrl; 
-        // Keep submitting state true during redirection attempt
-        return; // Prevent further state changes below
+        return;
 
       } else if (response.status === 404) {
-        // Workspace not found
         console.log(`Workspace '${trimmedSubdomain}' not found.`);
         setSubdomainError(`Workspace "${trimmedSubdomain}" not found. Please check the subdomain and try again.`);
       } else {
-        // Other API error
         console.error(`API error checking workspace: ${response.status} ${response.statusText}`);
         setSubdomainError("An error occurred while checking the workspace. Please try again later.");
       }
@@ -80,21 +68,17 @@ export default function Home() {
       setSubdomainError("Could not connect to the server to check the workspace. Please check your network connection.");
     }
 
-    // If we reach here, it means validation failed or redirection didn't happen
     setIsSubmitting(false);
-    // setIsNavigating(false); // Remove assignment
   };
 
-  // If we're on a subdomain (logic might need adjustment based on middleware changes)
   if (isSubdomain) {
     return (
       <main className="flex flex-col items-center justify-center min-h-screen p-4 bg-white">
         <div className="flex flex-col items-center max-w-md w-full space-y-10 py-10 text-center">
-          <Brand />
           <div className="space-y-4">
             <h1 className="text-xl font-semibold">Redirecting to login...</h1>
             <p className="text-sm text-slate-500">
-              We detected you&apos;re accessing from the subdomain <strong>{hostname}</strong>
+            We detected you&apos;re accessing from the subdomain <strong>{hostname}</strong>
             </p>
             <div className="animate-spin h-8 w-8 border-4 border-blue-600 border-t-transparent rounded-full mx-auto"></div>
           </div>
@@ -104,17 +88,25 @@ export default function Home() {
   }
 
   return (
-    <div className="flex min-h-svh flex-col items-center justify-center gap-6 bg-muted p-6 md:p-10">
-      <div className="flex w-full max-w-sm flex-col gap-6">
-          <Brand />
-        <div className="flex flex-col gap-1.5">
-          <h1 className="text-3xl font-bold tracking-tight">Go to workspace</h1>
-          <p className="text-balance text-sm text-muted-foreground">
+    <div className="flex min-h-svh flex-col items-center justify-center p-6 md:p-10 bg-[#F4F7FE]"> 
+      <div className="w-full max-w-sm bg-white p-8 rounded-lg shadow-md"> 
+        <div className="flex flex-col gap-6"> 
+          <div className="flex justify-center">
+            <Image 
+              src="/enque.png"
+              alt="Enque Logo" 
+              width={120}
+              height={40}
+              priority
+            />
+          </div>
+          <div className="flex flex-col gap-1.5 text-center"> 
+            <p className="text-balance text-sm text-muted-foreground">
               Enter your workspace subdomain
             </p>
           </div>
           
-        <form onSubmit={handleSubmit} className="space-y-8">
+          <form onSubmit={handleSubmit} className="space-y-4">
           <div className="relative w-full">
             <div className="flex">
               <Input
@@ -129,7 +121,6 @@ export default function Home() {
                 .enque.cc
               </div>
             </div>
-            {/* Display error message if it exists */}
             {subdomainError && (
               <div className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400">
                 <AlertCircle className="h-4 w-4" />
@@ -138,15 +129,14 @@ export default function Home() {
             )}
             </div>
             
-          <Button
-            type="submit"
-            className="w-full"
-            disabled={isSubmitting} // Disable button while submitting/redirecting
-          >
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={isSubmitting}
+            >
             {isSubmitting ? (
               <span className="flex items-center justify-center gap-2">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                {/* Simplified loading text */}
                 Processing... 
               </span>
             ) : (
@@ -154,9 +144,8 @@ export default function Home() {
             )}
             </Button>
           </form>
-          
-        {/* Removed the separate isNavigating message as feedback is now via button state */}
-      </div>
+        </div> 
+      </div> 
     </div>
   );
 }

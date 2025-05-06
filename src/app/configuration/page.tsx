@@ -2,21 +2,9 @@
 
 import {
 	Users,
-	Clock,
 	UserPlus,
-	Bell,
-	Users2,
-	Settings,
 	Inbox,
-	Mail,
-	FileText,
 	FolderTree,
-	Headphones,
-	User,
-	Paintbrush,
-	Building2,
-	Code,
-	Bot,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
@@ -27,35 +15,15 @@ export default function ClientPage() {
 			title: "Manage",
 			items: [
 				{ name: "Agents", icon: Users, href: "/configuration/agents" },
-				{ name: "SLAs", icon: Clock, href: "/configuration/slas" },
 				{ name: "Teams", icon: UserPlus, href: "/configuration/teams" },
-				{ name: "Notifications", icon: Bell, href: "/configuration/notifications" },
-				{ name: "Clients", icon: Users2, href: "/configuration/clients" },
-				{ name: "Automations", icon: Settings },
 			],
 		},
 		{
 			title: "Tickets",
 			items: [
-				{ name: "Mailbox", icon: Inbox },
-				{ name: "Automated Emails", icon: Mail },
-				{ name: "Canned Replies", icon: FileText },
-				{ name: "Categories", icon: FolderTree },
+				{ name: "Mailbox", icon: Inbox, href: "/configuration/mailbox" },
+				{ name: "Categories", icon: FolderTree, href: "/configuration/categories" },
 			],
-		},
-		{
-			title: "Settings",
-			items: [
-				{ name: "Help Desk", icon: Headphones },
-				{ name: "Account", icon: User },
-				{ name: "Branding", icon: Paintbrush },
-				{ name: "CRM/ME", icon: Building2 },
-				{ name: "Api Docs", icon: Code },
-			],
-		},
-		{
-			title: "AI Tools",
-			items: [{ name: "Assistant", icon: Bot, highlight: true, href: "/configuration/ai/assistant" }],
 		},
 	] as {
 		title: string;
