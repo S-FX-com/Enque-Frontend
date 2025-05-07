@@ -96,7 +96,7 @@ type TicketUpdatePayload = {
 };
 
 // Update function signature to accept category_id in updates
-export async function updateTicket(ticketId: number, updates: Partial<Pick<ITicket, 'status' | 'priority' | 'assignee_id' | 'team_id' | 'category_id'>>): Promise<ITicket | null> {
+export async function updateTicket(ticketId: number, updates: Partial<Pick<ITicket, 'status' | 'priority' | 'assignee_id' | 'team_id' | 'category_id'>>): Promise<ITicket> {
     try {
         const url = `${API_BASE_URL}/v1/tasks/${ticketId}`;
 
@@ -140,14 +140,14 @@ export async function updateTicket(ticketId: number, updates: Partial<Pick<ITick
             return response.data;
         } else {
             console.error(`Error updating ticket ${ticketId}:`, response?.message || "Unknown API error");
-            // Consider throwing an error here to be caught by the calling component
-            // throw new Error(response?.message || `Failed to update ticket ${ticketId}`);
-            return null; // Or return null/handle error as needed
+            throw new Error(response?.message || `Failed to update ticket ${ticketId}`);
         }
     } catch (error) {
         console.error(`Error updating ticket ${ticketId} (catch block):`, error);
-        // throw error; // Re-throw the error for the component to handle
-        return null;
+        if (error instanceof Error) {
+            throw error;
+        }
+        throw new Error(`An unexpected error occurred while updating ticket ${ticketId}`);
     }
 }
 

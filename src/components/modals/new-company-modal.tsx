@@ -25,7 +25,7 @@ interface NewCompanyModalProps {
 
 const NewCompanyModal: React.FC<NewCompanyModalProps> = ({ isOpen, onClose, onSaveSuccess }) => {
   const [name, setName] = useState('');
-  const [domain, setDomain] = useState('');
+  const [emailDomain, setEmailDomain] = useState(''); // Changed from domain to emailDomain
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -33,7 +33,7 @@ const NewCompanyModal: React.FC<NewCompanyModalProps> = ({ isOpen, onClose, onSa
   React.useEffect(() => {
     if (isOpen) {
       setName('');
-      setDomain('');
+      setEmailDomain(''); // Changed from setDomain
       setError(null);
       setIsSaving(false);
     }
@@ -45,7 +45,7 @@ const NewCompanyModal: React.FC<NewCompanyModalProps> = ({ isOpen, onClose, onSa
       return;
     }
     // Basic domain validation (optional, can be more robust)
-    if (domain.trim() && !domain.includes('.')) {
+    if (emailDomain.trim() && !emailDomain.includes('.')) { // Changed from domain to emailDomain
         setError("Please enter a valid domain name (e.g., example.com).");
         return;
     }
@@ -56,7 +56,7 @@ const NewCompanyModal: React.FC<NewCompanyModalProps> = ({ isOpen, onClose, onSa
     try {
       const companyData = {
         name: name.trim(),
-        domain: domain.trim() || null, // Send null if domain is empty
+        email_domain: emailDomain.trim() || null, // Changed from domain to email_domain and used emailDomain state
       };
       console.log("Attempting to save Company:", companyData);
 
@@ -111,8 +111,8 @@ const NewCompanyModal: React.FC<NewCompanyModalProps> = ({ isOpen, onClose, onSa
             <Label htmlFor="company-domain">Email domain</Label>
             <Input
               id="company-domain"
-              value={domain}
-              onChange={(e) => setDomain(e.target.value.toLowerCase())}
+              value={emailDomain} // Changed from domain to emailDomain
+              onChange={(e) => setEmailDomain(e.target.value.toLowerCase())} // Changed from setDomain
               placeholder="example.com"
               disabled={isSaving}
             />

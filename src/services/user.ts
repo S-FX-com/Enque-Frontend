@@ -92,3 +92,21 @@ export async function getUnassignedUsers(params?: { skip?: number; limit?: numbe
     return [];
   }
 }
+
+/**
+ * Deletes a user by their ID.
+ * @param userId The ID of the user to delete.
+ * @returns A promise that resolves to the API response.
+ */
+export async function deleteUser(userId: number | string): Promise<BaseResponse<null>> { // Assuming successful delete returns no specific data object, just success status
+  try {
+    const url = `${API_BASE_URL}/v1/users/${userId}`;
+    // The DELETE method in fetchAPI might not expect a type argument for the data part of the response if it's truly null or empty.
+    // Adjusting to expect BaseResponse<null> or BaseResponse<void> if the API returns nothing in `data` on success.
+    const response = await fetchAPI.DELETE<null>(url);
+    return response;
+  } catch (error) {
+    console.error(`Error deleting user ${userId} (catch block):`, error);
+    return { success: false, message: error instanceof Error ? error.message : 'Failed to delete user', data: null };
+  }
+}

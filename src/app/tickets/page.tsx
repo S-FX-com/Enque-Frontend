@@ -434,7 +434,14 @@ function TicketsClientContent() {
 
   const handleCloseDetail = useCallback(() => {
     setSelectedTicket(null);
-  }, []);
+    // Create a new URLSearchParams object from the current search params
+    const newSearchParams = new URLSearchParams(searchParams.toString());
+    // Remove the 'openTicket' parameter
+    newSearchParams.delete('openTicket');
+    // Push the new URL without the 'openTicket' parameter
+    // Preserving other existing query parameters
+    router.push(`${window.location.pathname}?${newSearchParams.toString()}`);
+  }, [searchParams, router]);
 
   return (
     <div className="flex h-full gap-6">
@@ -532,18 +539,19 @@ function TicketsClientContent() {
                         ticket.status === 'Unread' && "font-semibold bg-slate-50 dark:bg-slate-800/50" 
                       )}
 
-                      data-state={selectedTicketIds.has(ticket.id) ? 'selected' : ''} 
+                      data-state={selectedTicketIds.has(ticket.id) ? 'selected' : ''}
+                      onClick={() => handleTicketClick(ticket)} // Moved onClick here
                     >
                       <TableCell className="p-2 py-4">
                          <Checkbox
                             checked={selectedTicketIds.has(ticket.id)}
                             onCheckedChange={(checked) => handleRowSelectChange(ticket.id, checked)}
                             aria-label={`Select ticket ${ticket.id}`}
-                            onClick={(e) => e.stopPropagation()} 
+                             onClick={(e) => e.stopPropagation()}
                          />
                       </TableCell>
-                      <TableCell className="font-medium cursor-pointer p-2 py-4" onClick={() => handleTicketClick(ticket)}>{ticket.id}</TableCell>
-                      <TableCell className="max-w-xs md:max-w-sm truncate cursor-pointer p-2 py-4" onClick={() => handleTicketClick(ticket)}>{ticket.title}</TableCell>
+                      <TableCell className="font-medium p-2 py-4">{ticket.id}</TableCell> {/* Removed onClick and cursor-pointer */}
+                      <TableCell className="max-w-xs md:max-w-sm truncate p-2 py-4">{ticket.title}</TableCell> {/* Removed onClick and cursor-pointer */}
                       <TableCell className="p-2 py-4">
                         <div className="flex items-center gap-2">
                           <div className="relative flex h-2 w-2">

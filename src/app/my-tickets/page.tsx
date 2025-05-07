@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'; 
+import React, { useState, useEffect, useRef, useCallback, useMemo, Suspense } from 'react';
 import {
   Table,
   TableBody,
@@ -39,13 +39,16 @@ import { getUsers } from '@/services/user';
 import { formatRelativeTime, cn } from '@/lib/utils';
 import { TicketDetail } from '@/app/tickets/ticket-details';
 import { getCurrentUser, UserSession } from '@/lib/auth';
+import { useSearchParams, useRouter } from 'next/navigation';
 
 const LOAD_LIMIT = 20;
 
 type TicketPage = ITicket[];
 
-export default function MyTicketsPage() {
+function MyTicketsClientContent() {
   const queryClient = useQueryClient();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [selectedTicket, setSelectedTicket] = useState<ITicket | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [currentUser, setCurrentUser] = useState<UserSession | null>(null);
@@ -127,6 +130,21 @@ export default function MyTicketsPage() {
   });
 
   const allTicketsData = React.useMemo(() => ticketsQueryData?.pages?.flat() ?? [], [ticketsQueryData]);
+
+  useEffect(() => {
+    const ticketIdToOpen = searchParams.get('openTicket');
+    if (ticketIdToOpen && allTicketsData.length > 0) {
+      const ticket = allTicketsData.find(t => t.id === parseInt(ticketIdToOpen, 10));
+      if (ticket) {
+        setSelectedTicket(ticket);
+      } else {
+        const newSearchParams = new URLSearchParams(searchParams.toString());
+        newSearchParams.delete('openTicket');
+        router.replace(`${window.location.pathname}?${newSearchParams.toString()}`, { scroll: false });
+      }
+    }
+  }, [searchParams, allTicketsData, router]);
+
   const filteredTicketsData = useMemo(() => {
     let tickets = allTicketsData;
 
@@ -280,38 +298,50 @@ export default function MyTicketsPage() {
         const newPages = oldData.pages.map((page: ITicket[]) =>
             page.map((t) => (t.id === updatedTicket.id ? updatedTicket : t))
         );
-        const filteredPages = newPages.map(page =>
-            page.filter(t => t.assignee_id === currentUser?.id)
-        );
-        return { ...oldData, pages: filteredPages };
+        return { ...oldData, pages: newPages };
     });
-    queryClient.invalidateQueries({ queryKey: ['tickets'] });
+
+    queryClient.setQueryData<InfiniteData<TicketPage, number>>(['tickets'], (oldData) => {
+        if (!oldData) return oldData;
+        const newPages = oldData.pages.map((page: ITicket[]) =>
+            page.map((t) => (t.id === updatedTicket.id ? updatedTicket : t))
+        );
+        return { ...oldData, pages: newPages };
+    });
 
     if (selectedTicket?.id === updatedTicket.id) {
-        if (updatedTicket.assignee_id !== currentUser?.id) {
-            setSelectedTicket(null);
-        } else {
-            setSelectedTicket(updatedTicket);
-        }
+        setSelectedTicket(updatedTicket);
     }
   }, [selectedTicket, queryClient, currentUser?.id]);
 
   const handleTicketClick = useCallback(async (ticket: ITicket) => {
     setSelectedTicket(ticket);
+    const newSearchParams = new URLSearchParams(searchParams.toString());
+    newSearchParams.set('openTicket', ticket.id.toString());
+    router.push(`${window.location.pathname}?${newSearchParams.toString()}`);
+
     if (ticket.status === 'Unread') {
+      console.log(`Ticket ${ticket.id} is Unread, updating to Open.`);
       const optimisticUpdate = { ...ticket, status: 'Open' as const };
       handleTicketUpdate(optimisticUpdate);
       try {
         await updateTicket(ticket.id, { status: 'Open' });
+        console.log(`Backend updated successfully for ticket ${ticket.id}`);
+        queryClient.invalidateQueries({ queryKey: ['tickets', 'my', currentUser?.id] });
+        queryClient.invalidateQueries({ queryKey: ['tickets'] });
       } catch (error) {
         console.error(`Failed to update ticket ${ticket.id} status to Open in backend:`, error);
+        toast.error(`Failed to mark ticket #${ticket.id} as Open.`);
       }
     }
-  }, [handleTicketUpdate]);
+  }, [searchParams, router, handleTicketUpdate, queryClient, currentUser?.id]);
 
   const handleCloseDetail = useCallback(() => {
     setSelectedTicket(null);
-  }, []);
+    const newSearchParams = new URLSearchParams(searchParams.toString());
+    newSearchParams.delete('openTicket');
+    router.push(`${window.location.pathname}?${newSearchParams.toString()}`);
+  }, [searchParams, router]);
 
   return (
     <div className="flex h-full gap-6">
@@ -395,7 +425,7 @@ export default function MyTicketsPage() {
                           "border-0 h-14 cursor-pointer hover:bg-muted/50",
                           ticket.status === 'Unread' && "font-semibold bg-slate-50 dark:bg-slate-800/50"
                         )}
-                        // Removed direct onClick from row
+                        onClick={() => handleTicketClick(ticket)} // Moved onClick here
                         data-state={selectedTicketIds.has(ticket.id) ? 'selected' : ''}
                       >
                         <TableCell className="p-2 py-4">
@@ -406,8 +436,8 @@ export default function MyTicketsPage() {
                                 onClick={(e) => e.stopPropagation()}
                             />
                         </TableCell>
-                        <TableCell className="font-medium cursor-pointer p-2 py-4" onClick={() => handleTicketClick(ticket)}>{ticket.id}</TableCell>
-                        <TableCell className="max-w-xs md:max-w-sm truncate cursor-pointer p-2 py-4" onClick={() => handleTicketClick(ticket)}>{ticket.title}</TableCell>
+                        <TableCell className="font-medium p-2 py-4">{ticket.id}</TableCell> {/* Removed onClick and cursor-pointer */}
+                        <TableCell className="max-w-xs md:max-w-sm truncate p-2 py-4">{ticket.title}</TableCell> {/* Removed onClick and cursor-pointer */}
                         <TableCell className="p-2 py-4">
                           <div className="flex items-center gap-2">
                             <div className="relative flex h-2 w-2">
@@ -502,11 +532,21 @@ export default function MyTicketsPage() {
         </div>
       </aside>
 
-      <TicketDetail
-        ticket={selectedTicket}
-        onClose={handleCloseDetail}
-        onTicketUpdate={handleTicketUpdate}
-      />
+      {selectedTicket && (
+        <TicketDetail
+          ticket={selectedTicket}
+          onClose={handleCloseDetail}
+          onTicketUpdate={handleTicketUpdate}
+        />
+      )}
     </div>
+  );
+}
+
+export default function MyTicketsPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center h-full">Loading your tickets...</div>}>
+      <MyTicketsClientContent />
+    </Suspense>
   );
 }

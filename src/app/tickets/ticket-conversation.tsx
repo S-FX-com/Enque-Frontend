@@ -27,10 +27,10 @@ export function TicketConversation({ ticket }: Props) {
     const { user: currentUser } = useAuth(); 
     const [replyContent, setReplyContent] = useState('');
     const [isPrivateNote, setIsPrivateNote] = useState(false);
-    const [editorKey, setEditorKey] = useState(0); 
-    const prevTicketIdRef = useRef<number | null>(null); 
+    const [editorKey, setEditorKey] = useState(0);
+    const prevTicketIdRef = useRef<number | null>(null);
     const {
-        data: comments = [], 
+        data: comments = [],
         isLoading: isLoadingComments,
         error: commentsError,
         isError: isCommentsError,
@@ -40,15 +40,54 @@ export function TicketConversation({ ticket }: Props) {
         enabled: !!ticket?.id,
         staleTime: 1 * 60 * 1000, 
         refetchInterval: 5000, 
-        refetchIntervalInBackground: true, 
+        refetchIntervalInBackground: true,
     });
     const currentAgentId = currentUser?.id;
     const { data: currentAgentData } = useQuery<Agent>({
         queryKey: ['agent', currentAgentId], 
         queryFn: () => getAgentById(currentAgentId!),
         enabled: !!currentAgentId, 
-        staleTime: 5 * 60 * 1000, 
+        staleTime: 5 * 60 * 1000,
     });
+
+    // --- Combine initial message and comments ---
+    const conversationItems = React.useMemo(() => {
+        const items: IComment[] = [...comments];
+
+        let initialMessageContent: string | null | undefined = null;
+        let initialMessageSender: IComment['user'] = null; // Esto es IUser | null
+
+        if (ticket.description) {
+            initialMessageContent = ticket.description;
+            initialMessageSender = ticket.user; 
+        } else if (ticket.body?.email_body) {
+            initialMessageContent = ticket.body.email_body;
+            initialMessageSender = ticket.user; 
+        }
+
+        // Modificación: Crear el mensaje inicial si hay contenido, incluso si initialMessageSender es null.
+        if (initialMessageContent && ticket.created_at) { 
+            const initialComment: IComment = {
+                id: -1, 
+                content: initialMessageContent,
+                created_at: ticket.created_at, 
+                updated_at: ticket.created_at,
+                user: initialMessageSender, // Puede ser null, ConversationMessageItem debería manejarlo
+                agent: null,
+                ticket_id: ticket.id,
+                // Usar ticket.workspace_id de forma segura. Asumiendo que ITicket tiene workspace_id no nulo.
+                // Si initialMessageSender existe, su workspace_id debería coincidir con ticket.workspace_id.
+                workspace_id: ticket.workspace_id, 
+                is_private: false, 
+            };
+            items.push(initialComment);
+        }
+
+        items.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+        return items;
+
+    }, [comments, ticket]);
 
     useEffect(() => {
         const currentSignature = currentAgentData?.email_signature || ''; 
@@ -123,66 +162,7 @@ export function TicketConversation({ ticket }: Props) {
                     <CardTitle className="text-lg">Conversation</CardTitle>
                 </CardHeader>
                 <CardContent className="flex-1 overflow-y-auto space-y-4">
-                    {(() => {
-                        console.log("[TicketConversation] Rendering initial message check for ticket:", ticket?.id);
-                        console.log("  - ticket.description:", ticket?.description);
-                        console.log("  - ticket.body?.email_body:", ticket?.body?.email_body);
-                        console.log("  - currentUser:", currentUser);
-                        let initialMessageContent: string | null | undefined = null;
-                        let initialMessageSender: IComment['user'] = null; 
-
-                        if (ticket.description) {
-                            initialMessageContent = ticket.description;
-                            if (currentUser) {
-                                initialMessageSender = {
-                                    id: currentUser.id,
-                                    name: currentUser.name || '',
-                                    email: currentUser.email,
-                                    company_id: 'company_id' in currentUser ? currentUser.company_id as (number | null | undefined) : null,
-                                    phone: 'phone' in currentUser ? currentUser.phone as (string | null | undefined) : null,
-                                    created_at: ticket.created_at || new Date().toISOString(),
-                                    updated_at: ticket.updated_at || new Date().toISOString(),
-                                    workspace_id: currentUser.workspace_id,
-                                };
-                            } else {
-                                initialMessageSender = null;
-                            }
-                        } else if (ticket.body?.email_body) {
-                            initialMessageContent = ticket.body.email_body;
-                            initialMessageSender = ticket.user; 
-                        }
-
-                        console.log("  - Determined initialMessageContent:", initialMessageContent);
-                        console.log("  - Determined initialMessageSender:", initialMessageSender);
-
-
-                        if (initialMessageContent && initialMessageSender) {
-                            const initialComment: IComment = {
-                                id: -1, 
-                                content: initialMessageContent,
-                                created_at: ticket.created_at, 
-                                updated_at: ticket.created_at,
-                                user: initialMessageSender,
-                                agent: null, 
-                                ticket_id: ticket.id,
-                                workspace_id: initialMessageSender.workspace_id,
-                                is_private: false, 
-                            };
-
-                            return (
-                                <>
-                                    <ConversationMessageItem
-                                        key="initial-message"
-                                        comment={initialComment}
-                                    />
-                                    {(isLoadingComments || comments.length > 0) && (
-                                        <div className="border-b my-2"></div>
-                                    )}
-                                </>
-                            );
-                        }
-                        return null; 
-                    })()}
+                    {/* Render based on loading/error state first */}
                     {isLoadingComments && (
                         <div className="space-y-4">
                             <Skeleton className="h-16 w-full" />
@@ -195,14 +175,19 @@ export function TicketConversation({ ticket }: Props) {
                         </div>
                     )}
 
-                    {!isLoadingComments && comments.length === 0 && !ticket.description && !ticket.body?.email_body && (
-                        <div className="text-center text-muted-foreground py-10">
-                            No conversation history found.
-                        </div>
+                    {/* Render conversation items if not loading and no error */}
+                    {!isLoadingComments && !isCommentsError && (
+                        conversationItems.length === 0 ? (
+                            <div className="text-center text-muted-foreground py-10">
+                                No conversation history found.
+                            </div>
+                        ) : (
+                            conversationItems.map((item) => (
+                                // Use item.id for real comments, and a stable key for the initial message
+                                <ConversationMessageItem key={item.id === -1 ? 'initial-message' : item.id} comment={item} />
+                            ))
+                        )
                     )}
-                    {!isLoadingComments && comments.map((comment) => (
-                        <ConversationMessageItem key={comment.id} comment={comment} />
-                    ))}
                 </CardContent>
             </Card>
             <Card>

@@ -5,17 +5,6 @@ import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
 import { X } from "lucide-react"; 
 import BoringAvatar from 'boring-avatars';
 import { Button } from "@/components/ui/button";
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-    AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"; 
 import { motion, AnimatePresence } from "framer-motion";
 import { ITicket, TicketStatus, TicketPriority } from "@/typescript/ticket";
 import { Agent } from "@/typescript/agent";
@@ -27,7 +16,7 @@ import { getAgents } from "@/services/agent";
 import { getTeams } from "@/services/team";
 import { getCategories } from "@/services/category";
 import { Team } from "@/typescript/team";
-import { updateTicket, deleteTicket } from "@/services/ticket"; 
+import { updateTicket } from "@/services/ticket";
 import { toast } from "sonner"; 
 import { getCurrentUser } from "@/lib/auth";
 
@@ -46,8 +35,7 @@ export function TicketDetail({ ticket, onClose, onTicketUpdate }: Props) {
     const [isUpdatingTeam, setIsUpdatingTeam] = useState(false);
     const [isUpdatingCategory, setIsUpdatingCategory] = useState(false);
     const [isClosingTicket, setIsClosingTicket] = useState(false);
-    const [isDeletingTicket, setIsDeletingTicket] = useState(false);
-    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [isResolvingTicket, setIsResolvingTicket] = useState(false);
     useEffect(() => {
         const fetchAgents = async () => {
             setIsLoadingAgents(true);
@@ -201,57 +189,101 @@ export function TicketDetail({ ticket, onClose, onTicketUpdate }: Props) {
         const originalFieldValue = ticket[field] ?? null;
         updateFieldMutation.mutate({ field, value, originalFieldValue });
     };
-    const closeTicketMutation = useMutation({
+    const closeTicketMutation = useMutation<ITicket, Error, void, { previousTicket: ITicket | null }>({
         mutationFn: async () => {
             if (!ticket) throw new Error("No ticket selected");
             setIsClosingTicket(true);
             return updateTicket(ticket.id, { status: 'Closed' });
         },
-        onSuccess: (updatedTicketData) => {
-            if (updatedTicketData) {
-                queryClient.invalidateQueries({ queryKey: ['tickets'] }); // Invalidate all tickets
-                queryClient.invalidateQueries({ queryKey: ['tickets', 'my'] }); // Invalidate my tickets specifically
-                if (onTicketUpdate) {
-                    onTicketUpdate(updatedTicketData);
-                }
-                onClose(); 
-                console.log(`Ticket ${updatedTicketData.id} closed successfully.`);
-            } else {
-                 console.error(`API failed to close ticket ${ticket?.id}`);
+        onMutate: async () => {
+            if (!ticket) return { previousTicket: null };
+            await queryClient.cancelQueries({ queryKey: ['tickets', ticket.id] }); // Cancelar consultas para este ticket
+            const previousTicket = queryClient.getQueryData<ITicket>(['tickets', ticket.id]) || ticket;
+            
+            const optimisticTicket: ITicket = {
+                ...previousTicket,
+                status: 'Closed' as TicketStatus,
+            };
+
+            queryClient.setQueryData(['tickets', ticket.id], optimisticTicket); // Actualización optimista en caché individual
+            if (onTicketUpdate) {
+                onTicketUpdate(optimisticTicket);
             }
+            return { previousTicket };
         },
-        onError: (error) => {
-            console.error(`Error closing ticket ${ticket?.id}:`, error);
+        onSuccess: (updatedTicketData) => { // Removido _variables, _context ya que no se usan aquí explícitamente
+            // updatedTicketData ya es el dato correcto del servidor
+            queryClient.invalidateQueries({ queryKey: ['tickets'] }); 
+            queryClient.invalidateQueries({ queryKey: ['tickets', 'my'] }); 
+            if (onTicketUpdate) {
+                onTicketUpdate(updatedTicketData); // Asegurar que el padre recibe los datos finales
+            }
+            onClose(); 
+            toast.success(`Ticket #${updatedTicketData.id} closed successfully.`);
+        },
+        onError: (error, _variables, context) => {
+            toast.error(`Error closing ticket #${ticket?.id}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            if (context?.previousTicket) {
+                queryClient.setQueryData(['tickets', ticket!.id], context.previousTicket); // Revertir caché individual
+                if (onTicketUpdate) {
+                    onTicketUpdate(context.previousTicket);
+                }
+            }
         },
         onSettled: () => {
             setIsClosingTicket(false);
-        },
-    });
-     const deleteTicketMutation = useMutation({
-        mutationFn: async () => {
-            if (!ticket) throw new Error("No ticket selected");
-            setIsDeletingTicket(true);
-            return deleteTicket(ticket.id);
-        },
-        onSuccess: (response) => {
-            if (response.success) {
-                queryClient.invalidateQueries({ queryKey: ['tickets'] });
-                queryClient.invalidateQueries({ queryKey: ['tickets', 'my'] });
-                console.log(`Ticket ${ticket?.id} deleted successfully.`);
-                onClose(); 
-            } else {
-                 console.error(`API failed to delete ticket ${ticket?.id}: ${response.message}`);
-            }
-        },
-        onError: (error) => {
-            console.error(`Error deleting ticket ${ticket?.id}:`, error);
-        },
-        onSettled: () => {
-            setIsDeletingTicket(false);
-            setIsDeleteDialogOpen(false); 
+            // Invalidar para asegurar consistencia después de éxito o error si no se hizo ya o si el panel no se cierra
+            // Sin embargo, con onClose() en onSuccess y la reversión en onError, esto podría ser redundante aquí
+            // a menos que queramos asegurar refetch incluso si onTicketUpdate no actualiza el estado correctamente.
+            // queryClient.invalidateQueries({ queryKey: ['tickets', ticket?.id] });
         },
     });
 
+    const resolveTicketMutation = useMutation<ITicket, Error, void, { previousTicket: ITicket | null }>({
+        mutationFn: async () => {
+            if (!ticket) throw new Error("No ticket selected");
+            setIsResolvingTicket(true);
+            return updateTicket(ticket.id, { status: 'Resolved' });
+        },
+        onMutate: async () => {
+            if (!ticket) return { previousTicket: null };
+            await queryClient.cancelQueries({ queryKey: ['tickets', ticket.id] });
+            const previousTicket = queryClient.getQueryData<ITicket>(['tickets', ticket.id]) || ticket;
+
+            const optimisticTicket: ITicket = {
+                ...previousTicket,
+                status: 'Resolved' as TicketStatus,
+            };
+
+            queryClient.setQueryData(['tickets', ticket.id], optimisticTicket);
+            if (onTicketUpdate) {
+                onTicketUpdate(optimisticTicket);
+            }
+            return { previousTicket };
+        },
+        onSuccess: (updatedTicketData) => {
+                queryClient.invalidateQueries({ queryKey: ['tickets'] });
+                queryClient.invalidateQueries({ queryKey: ['tickets', 'my'] });
+            if (onTicketUpdate) {
+                onTicketUpdate(updatedTicketData);
+            }
+            onClose();
+            toast.success(`Ticket #${updatedTicketData.id} resolved successfully.`);
+        },
+        onError: (error, _variables, context) => {
+            toast.error(`Error resolving ticket #${ticket?.id}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            if (context?.previousTicket) {
+                queryClient.setQueryData(['tickets', ticket!.id], context.previousTicket);
+                if (onTicketUpdate) {
+                    onTicketUpdate(context.previousTicket);
+                }
+            }
+        },
+        onSettled: () => {
+            setIsResolvingTicket(false);
+            // queryClient.invalidateQueries({ queryKey: ['tickets', ticket?.id] });
+        },
+    });
 
     if (!ticket) {
         return null; 
@@ -312,7 +344,7 @@ export function TicketDetail({ ticket, onClose, onTicketUpdate }: Props) {
                             <div>
                                 <h3 className="text-sm font-medium text-muted-foreground mb-1">Assigned to</h3>
                                 <Select
-                                    value={ticket.assignee_id?.toString() ?? 'null'} // Use 'null' string for unassigned option value
+                                    value={ticket.assignee_id?.toString() ?? 'null'}
                                     onValueChange={(value) => handleUpdateField('assignee_id', value)}
                                     disabled={isLoadingAgents || isUpdatingAssignee} 
                                 >
@@ -387,49 +419,27 @@ export function TicketDetail({ ticket, onClose, onTicketUpdate }: Props) {
                                 <h3 className="text-sm font-medium text-muted-foreground mb-1">Created</h3>
                                 <p className="text-sm">{formatRelativeTime(ticket.created_at)}</p>
                             </div>
-                       </div>
-                       <div className="pt-4 border-t mt-auto flex-shrink-0">
-                            <div className="flex flex-col items-center gap-2">
+                            <div className="mt-4 pt-4 border-t">
+                                <div className="flex items-center gap-2">
                                 <Button
                                     size="sm"
                                     variant="outline"
-                                    onClick={() => closeTicketMutation.mutate()}
-                                    disabled={isClosingTicket || ticket.status === 'Closed'} 
-                                    className="w-fit"
+                                        onClick={() => resolveTicketMutation.mutate()}
+                                        disabled={isResolvingTicket} 
+                                        className="flex-1"
                                 >
-                                    {isClosingTicket ? "Closing..." : "Close Ticket"}
+                                        {isResolvingTicket ? "Resolving..." : "Resolved"}
                                 </Button>
-
-                                <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-                                    <AlertDialogTrigger asChild>
                                         <Button
                                             size="sm"
-                                            variant="link"
-                                            className="text-destructive h-auto p-0 w-fit" 
-                                            disabled={isDeletingTicket} 
+                                        variant="outline"
+                                        onClick={() => closeTicketMutation.mutate()}
+                                        disabled={isClosingTicket} 
+                                        className="flex-1"
                                         >
-                                            {isDeletingTicket ? "Deleting..." : "Delete"}
+                                        {isClosingTicket ? "Closing..." : "Closed"}
                                         </Button>
-                                    </AlertDialogTrigger>
-                                    <AlertDialogContent className="bg-white">
-                                        <AlertDialogHeader>
-                                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                            <AlertDialogDescription>
-                                                This action cannot be undone. This will permanently delete ticket #{ticket.id}.
-                                            </AlertDialogDescription>
-                                        </AlertDialogHeader>
-                                        <AlertDialogFooter>
-                                            <AlertDialogCancel disabled={isDeletingTicket}>Cancel</AlertDialogCancel>
-                                            <AlertDialogAction
-                                                onClick={() => deleteTicketMutation.mutate()}
-                                                disabled={isDeletingTicket}
-                                                className="bg-destructive text-white hover:bg-destructive/90"
-                                            >
-                                                {isDeletingTicket ? 'Deleting...' : 'Delete'}
-                                            </AlertDialogAction>
-                                        </AlertDialogFooter>
-                                    </AlertDialogContent>
-                                </AlertDialog>
+                                </div>
                             </div>
                        </div>
                     </div> 

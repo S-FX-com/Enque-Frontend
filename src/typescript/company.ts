@@ -20,7 +20,7 @@ export interface ICompany {
 // If create fails, we'll need to adjust this and the createCompany service/modal.
 export interface CompanyCreate {
   name: string;
-  domain?: string | null; // Keep as domain for create for now
+  email_domain?: string | null; // Changed from domain to email_domain
   // workspace_id is handled by the backend
 }
 
