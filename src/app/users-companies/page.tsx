@@ -129,8 +129,9 @@ export default function UsersCompaniesPage() {
   };
 
   const handleCompanySaveSuccess = () => {
-    console.log('Company saved, invalidating companies query...');
+    console.log('Company saved, invalidating companies AND unassigned users query...');
     queryClient.invalidateQueries({ queryKey: ['companies'] });
+    queryClient.invalidateQueries({ queryKey: ['unassignedUsers'] });
   };
 
   return (
