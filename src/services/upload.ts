@@ -2,7 +2,8 @@
 import { getAuthToken } from '@/lib/auth'; // Need token for potential auth on upload endpoint
 import { logger } from '@/lib/logger';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://enque-backend-production.up.railway.app';
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || 'https://enque-backend-production.up.railway.app';
 const UPLOAD_ENDPOINT = `${API_BASE_URL}/v1/uploads/image`;
 
 interface UploadResponse {
@@ -50,11 +51,10 @@ export async function uploadImage(file: File): Promise<UploadResponse> {
     // IMPORTANT: Prepend the API base URL if the backend returns a relative URL
     // Adjust this logic if your backend returns an absolute URL
     if (result.url && result.url.startsWith('/static')) {
-        return { url: `${API_BASE_URL}${result.url}` };
+      return { url: `${API_BASE_URL}${result.url}` };
     }
 
     return result; // Assuming backend returns the full URL or just the path needed
-
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     logger.error('Error during image upload request:', errorMessage);

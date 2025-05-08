@@ -1,16 +1,16 @@
-import { NextRequest, NextResponse } from "next/server";
-import { AppConfigs } from "@/configs";
+import { NextRequest, NextResponse } from 'next/server';
+import { AppConfigs } from '@/configs';
 
 // Make the middleware async to use await for fetch
 export async function middleware(request: NextRequest) {
   const url = request.nextUrl;
-  const hostname = request.headers.get("host") || "";
+  const hostname = request.headers.get('host') || '';
   const pathname = url.pathname;
 
   // Extract potential subdomain
   const subdomainMatch = hostname.match(`^(.*)\\.${AppConfigs.domain.replace('.', '\\.')}`);
   const subdomain = subdomainMatch ? subdomainMatch[1] : null;
-  
+
   // Check if we are on the base URL or a subdomain
   const isBaseUrl = hostname === AppConfigs.baseUrl;
   const isSubdomain = subdomain !== null && subdomain !== 'app'; // Ensure 'app' is not treated as a workspace subdomain
@@ -19,7 +19,7 @@ export async function middleware(request: NextRequest) {
   if (isSubdomain) {
     console.log(`Detected subdomain: ${subdomain}`);
     const workspaceCheckUrl = `${AppConfigs.api}/workspaces/subdomain/${subdomain}`;
-    
+
     try {
       const response = await fetch(workspaceCheckUrl, { method: 'GET' });
       console.log(`Workspace check for ${subdomain} status: ${response.status}`);
@@ -37,14 +37,13 @@ export async function middleware(request: NextRequest) {
         }
         // Handle other potential errors if needed, otherwise let it pass for now
       }
-      
+
       // Workspace exists, proceed with subdomain logic
       // If at the root of a VALID subdomain, redirect to its signin page
-      if (pathname === "/") {
+      if (pathname === '/') {
         console.log(`Redirecting root of valid subdomain ${subdomain} to /signin`);
-        return NextResponse.redirect(new URL("/signin", request.url));
+        return NextResponse.redirect(new URL('/signin', request.url));
       }
-
     } catch (error) {
       console.error(`Error checking workspace ${subdomain}:`, error);
       // Optional: Redirect to an error page or the base URL on fetch failure
@@ -54,10 +53,10 @@ export async function middleware(request: NextRequest) {
       errorRedirectUrl.searchParams.set('error', 'workspace_check_failed');
       return NextResponse.redirect(errorRedirectUrl);
     }
-  } else if (isBaseUrl && pathname === "/") {
-     // If on the base URL root (app.enque.cc/), maybe redirect to workspace selection or a landing page?
-     // For now, just let it pass to the default page handler for app.enque.cc/
-     console.log("On base URL root, allowing request.");
+  } else if (isBaseUrl && pathname === '/') {
+    // If on the base URL root (app.enque.cc/), maybe redirect to workspace selection or a landing page?
+    // For now, just let it pass to the default page handler for app.enque.cc/
+    console.log('On base URL root, allowing request.');
   }
 
   // Allow other requests (e.g., specific pages on valid subdomains, base URL pages) to continue
@@ -74,6 +73,6 @@ export const config = {
      * 2. Image files (/favicon.ico, etc.)
      * 3. API routes (/api/)
      */
-    "/((?!api|_next/static|_next/image|favicon.ico).*)",
+    '/((?!api|_next/static|_next/image|favicon.ico).*)',
   ],
 };

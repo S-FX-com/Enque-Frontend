@@ -41,13 +41,14 @@ const NewCompanyModal: React.FC<NewCompanyModalProps> = ({ isOpen, onClose, onSa
 
   const handleSave = async () => {
     if (!name.trim()) {
-      setError("Company name is required.");
+      setError('Company name is required.');
       return;
     }
     // Basic domain validation (optional, can be more robust)
-    if (emailDomain.trim() && !emailDomain.includes('.')) { // Changed from domain to emailDomain
-        setError("Please enter a valid domain name (e.g., example.com).");
-        return;
+    if (emailDomain.trim() && !emailDomain.includes('.')) {
+      // Changed from domain to emailDomain
+      setError('Please enter a valid domain name (e.g., example.com).');
+      return;
     }
 
     setError(null);
@@ -58,7 +59,7 @@ const NewCompanyModal: React.FC<NewCompanyModalProps> = ({ isOpen, onClose, onSa
         name: name.trim(),
         email_domain: emailDomain.trim() || null, // Changed from domain to email_domain and used emailDomain state
       };
-      console.log("Attempting to save Company:", companyData);
+      console.log('Attempting to save Company:', companyData);
 
       const response = await createCompany(companyData);
 
@@ -68,12 +69,12 @@ const NewCompanyModal: React.FC<NewCompanyModalProps> = ({ isOpen, onClose, onSa
         onClose(); // Close modal
       } else {
         // Handle API error message
-        setError(response.message || "Failed to create company. Please try again.");
+        setError(response.message || 'Failed to create company. Please try again.');
       }
-
-    } catch (err) { // Catch network errors or unexpected issues
-      console.error("Failed to save company (catch block):", err);
-      setError(err instanceof Error ? err.message : "An unexpected error occurred.");
+    } catch (err) {
+      // Catch network errors or unexpected issues
+      console.error('Failed to save company (catch block):', err);
+      setError(err instanceof Error ? err.message : 'An unexpected error occurred.');
     } finally {
       setIsSaving(false);
     }
@@ -84,15 +85,16 @@ const NewCompanyModal: React.FC<NewCompanyModalProps> = ({ isOpen, onClose, onSa
   return (
     // Removed AnimatePresence wrapper
     // {isOpen && ( // No longer need conditional render here if Dialog handles it
-      <Dialog open={isOpen} onOpenChange={onClose}>
-        {/* Removed motion props from DialogContent */}
-        <DialogContent className="sm:max-w-[425px] bg-white dark:bg-black">
-          {/* Removed motion.div wrapper */}
-          {/* <motion.div ... > */}
-            <DialogHeader>
-              <DialogTitle>New Company</DialogTitle>
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      {/* Removed motion props from DialogContent */}
+      <DialogContent className="sm:max-w-[425px] bg-white dark:bg-black">
+        {/* Removed motion.div wrapper */}
+        {/* <motion.div ... > */}
+        <DialogHeader>
+          <DialogTitle>New Company</DialogTitle>
           <DialogDescription>
-            Enter the details for the new company. Users with matching email domains can be automatically associated.
+            Enter the details for the new company. Users with matching email domains can be
+            automatically associated.
           </DialogDescription>
         </DialogHeader>
         {/* Changed grid layout to simple vertical stack */}
@@ -103,7 +105,7 @@ const NewCompanyModal: React.FC<NewCompanyModalProps> = ({ isOpen, onClose, onSa
             <Input
               id="company-name"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={e => setName(e.target.value)}
               disabled={isSaving}
             />
           </div>
@@ -112,13 +114,13 @@ const NewCompanyModal: React.FC<NewCompanyModalProps> = ({ isOpen, onClose, onSa
             <Input
               id="company-domain"
               value={emailDomain} // Changed from domain to emailDomain
-              onChange={(e) => setEmailDomain(e.target.value.toLowerCase())} // Changed from setDomain
+              onChange={e => setEmailDomain(e.target.value.toLowerCase())} // Changed from setDomain
               placeholder="example.com"
               disabled={isSaving}
             />
-             <p className="text-xs text-muted-foreground px-1">
-               New users with this domain in their email addresses will be added to this company.
-             </p>
+            <p className="text-xs text-muted-foreground px-1">
+              New users with this domain in their email addresses will be added to this company.
+            </p>
           </div>
         </div>
         <DialogFooter>
@@ -130,10 +132,10 @@ const NewCompanyModal: React.FC<NewCompanyModalProps> = ({ isOpen, onClose, onSa
           <Button type="button" onClick={handleSave} disabled={isSaving}>
             {isSaving ? 'Saving...' : 'Save Company'}
           </Button>
-            </DialogFooter>
-          {/* </motion.div> */}
-        </DialogContent>
-      </Dialog>
+        </DialogFooter>
+        {/* </motion.div> */}
+      </DialogContent>
+    </Dialog>
     // )}
   );
 };

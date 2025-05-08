@@ -10,7 +10,10 @@ export interface BaseResponse<T> {
 
 // Función genérica para manejar errores de fetching
 const handleFetchError = <T>(error: unknown, url: string): BaseResponse<T> => {
-  logger.error(`Error en la llamada a la API: ${url}`, error instanceof Error ? error.message : 'Error desconocido');
+  logger.error(
+    `Error en la llamada a la API: ${url}`,
+    error instanceof Error ? error.message : 'Error desconocido'
+  );
   const message = error instanceof Error ? error.message : 'Error desconocido';
   return { success: false, message };
 };
@@ -50,7 +53,7 @@ export const fetchAPI = {
 
       const endTime = performance.now();
       const duration = Math.round(endTime - startTime);
-      
+
       // Log the request result
       logger.logRequest('GET', url, response.status, duration);
 
@@ -70,7 +73,11 @@ export const fetchAPI = {
   },
 
   // POST
-  async POST<T>(url: string, body: Record<string, unknown>, includeAuth: boolean = true): Promise<BaseResponse<T>> {
+  async POST<T>(
+    url: string,
+    body: Record<string, unknown>,
+    includeAuth: boolean = true
+  ): Promise<BaseResponse<T>> {
     const startTime = performance.now();
     try {
       const options = getBaseOptions(includeAuth);
@@ -82,7 +89,7 @@ export const fetchAPI = {
 
       const endTime = performance.now();
       const duration = Math.round(endTime - startTime);
-      
+
       // Log the request result
       logger.logRequest('POST', url, response.status, duration);
 
@@ -94,7 +101,7 @@ export const fetchAPI = {
           const errorData = await response.json();
           if (errorData && errorData.detail) {
             // FastAPI often puts validation errors in 'detail'
-            errorDetails = JSON.stringify(errorData.detail); 
+            errorDetails = JSON.stringify(errorData.detail);
             errorMessage += ` - Details: ${errorDetails}`;
           } else {
             // Log the whole error data if 'detail' is not found
@@ -102,7 +109,8 @@ export const fetchAPI = {
             errorMessage += ` - Body: ${errorDetails}`;
           }
           // Removed console log for errorData
-        } catch { // Remove unused 'parseError' variable
+        } catch {
+          // Remove unused 'parseError' variable
           // If parsing fails, log that too
           // Removed console log for parsing failure
         }
@@ -115,12 +123,16 @@ export const fetchAPI = {
     } catch (error) {
       // Removed detailed error logging from catch block, handleFetchError already logs
       // Return the standardized error response
-      return handleFetchError(error, url); 
+      return handleFetchError(error, url);
     }
   },
 
   // PUT
-  async PUT<T>(url: string, body: Record<string, unknown>, includeAuth: boolean = true): Promise<BaseResponse<T>> {
+  async PUT<T>(
+    url: string,
+    body: Record<string, unknown>,
+    includeAuth: boolean = true
+  ): Promise<BaseResponse<T>> {
     const startTime = performance.now();
     try {
       const options = getBaseOptions(includeAuth);
@@ -132,7 +144,7 @@ export const fetchAPI = {
 
       const endTime = performance.now();
       const duration = Math.round(endTime - startTime);
-      
+
       // Log the request result
       logger.logRequest('PUT', url, response.status, duration);
 
@@ -159,7 +171,7 @@ export const fetchAPI = {
 
       const endTime = performance.now();
       const duration = Math.round(endTime - startTime);
-      
+
       // Log the request result
       logger.logRequest('DELETE', url, response.status, duration);
 
@@ -179,27 +191,38 @@ export const fetchAPI = {
         const text = await response.text(); // Read body as text first
         if (!text) {
           // 4. OK status but empty body - Treat as success without data
-          logger.warn(`Response for DELETE ${url} (Status: ${response.status}) was OK but had an empty body.`)
+          logger.warn(
+            `Response for DELETE ${url} (Status: ${response.status}) was OK but had an empty body.`
+          );
           return { success: true };
         }
         // 5. OK status with non-empty body - Try parsing as JSON
         try {
           const data = JSON.parse(text);
           return { success: true, data };
-        } catch (parseError: unknown) { // Type as unknown
+        } catch (parseError: unknown) {
+          // Type as unknown
           // JSON parsing failed
-          const parseErrorMsg = parseError instanceof Error ? parseError.message : String(parseError);
-          logger.error(`Failed to parse JSON response for DELETE ${url} (Status: ${response.status})`, parseErrorMsg); // Use string message
-          throw new Error("Failed to parse successful response body as JSON.");
+          const parseErrorMsg =
+            parseError instanceof Error ? parseError.message : String(parseError);
+          logger.error(
+            `Failed to parse JSON response for DELETE ${url} (Status: ${response.status})`,
+            parseErrorMsg
+          ); // Use string message
+          throw new Error('Failed to parse successful response body as JSON.');
         }
-      } catch (readError: unknown) { // Type as unknown
-          // Error reading response body
-          const readErrorMsg = readError instanceof Error ? readError.message : String(readError);
-          logger.error(`Failed to read response body for DELETE ${url} (Status: ${response.status})`, readErrorMsg); // Use string message
-          throw new Error("Failed to read response body.");
+      } catch (readError: unknown) {
+        // Type as unknown
+        // Error reading response body
+        const readErrorMsg = readError instanceof Error ? readError.message : String(readError);
+        logger.error(
+          `Failed to read response body for DELETE ${url} (Status: ${response.status})`,
+          readErrorMsg
+        ); // Use string message
+        throw new Error('Failed to read response body.');
       }
-
-    } catch (error) { // Catches errors from fetch(), !response.ok, or reading/parsing body
+    } catch (error) {
+      // Catches errors from fetch(), !response.ok, or reading/parsing body
       return handleFetchError(error, url);
     }
   },

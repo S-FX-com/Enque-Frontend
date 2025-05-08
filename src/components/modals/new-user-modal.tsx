@@ -13,7 +13,13 @@ import {
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { toast } from 'sonner';
 import { createUser } from '@/services/user';
 import { useAuth } from '@/hooks/use-auth';
@@ -66,20 +72,19 @@ const NewUserModal: React.FC<NewUserModalProps> = ({ isOpen, onClose, onSaveSucc
 
   const handleSave = async () => {
     if (!name.trim() || !email.trim()) {
-      setError("Name and Email are required.");
+      setError('Name and Email are required.');
       return;
     }
     // Basic email validation
     if (!/\S+@\S+\.\S+/.test(email)) {
-        setError("Please enter a valid email address.");
+      setError('Please enter a valid email address.');
       return;
     }
     // Ensure we have the workspace_id from the current agent
     if (!currentAgent?.workspace_id) {
-        setError("Could not determine the current workspace. Please refresh and try again.");
-        return;
+      setError('Could not determine the current workspace. Please refresh and try again.');
+      return;
     }
-
 
     setError(null);
     setIsSaving(true);
@@ -87,17 +92,18 @@ const NewUserModal: React.FC<NewUserModalProps> = ({ isOpen, onClose, onSaveSucc
     try {
       // Include workspace_id in the payload
       const userData = {
-          name: name.trim(),
-          email: email.trim(),
-          company_id: companyId && companyId !== "null" ? parseInt(companyId, 10) : null,
-          phone: phoneNumber.trim() || null,
-          workspace_id: currentAgent.workspace_id // Add workspace_id from agent
+        name: name.trim(),
+        email: email.trim(),
+        company_id: companyId && companyId !== 'null' ? parseInt(companyId, 10) : null,
+        phone: phoneNumber.trim() || null,
+        workspace_id: currentAgent.workspace_id, // Add workspace_id from agent
       };
-      console.log("Attempting to save User:", userData);
+      console.log('Attempting to save User:', userData);
 
       // Call createUser with the correctly typed userData
       // Ensure company_id is number or null, not string "null"
-      const finalCompanyId = companyId === 'null' ? null : (companyId ? parseInt(companyId, 10) : null);
+      const finalCompanyId =
+        companyId === 'null' ? null : companyId ? parseInt(companyId, 10) : null;
       const response = await createUser({ ...userData, company_id: finalCompanyId });
 
       if (response.success && response.data) {
@@ -106,12 +112,12 @@ const NewUserModal: React.FC<NewUserModalProps> = ({ isOpen, onClose, onSaveSucc
         onClose(); // Close modal
       } else {
         // Handle API error message
-        setError(response.message || "Failed to create user. Please try again.");
+        setError(response.message || 'Failed to create user. Please try again.');
       }
-
-    } catch (err) { // Catch network errors or unexpected issues
-      console.error("Failed to save user (catch block):", err);
-      setError(err instanceof Error ? err.message : "An unexpected error occurred.");
+    } catch (err) {
+      // Catch network errors or unexpected issues
+      console.error('Failed to save user (catch block):', err);
+      setError(err instanceof Error ? err.message : 'An unexpected error occurred.');
     } finally {
       setIsSaving(false);
     }
@@ -122,15 +128,13 @@ const NewUserModal: React.FC<NewUserModalProps> = ({ isOpen, onClose, onSaveSucc
   return (
     // Removed AnimatePresence wrapper
     // {isOpen && (
-      <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="sm:max-w-[425px] bg-white dark:bg-black">
-          {/* Removed motion.div wrapper */}
-          {/* <motion.div ... > */}
-            <DialogHeader>
-              <DialogTitle>New User</DialogTitle>
-          <DialogDescription>
-            Enter the details for the new user.
-          </DialogDescription>
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[425px] bg-white dark:bg-black">
+        {/* Removed motion.div wrapper */}
+        {/* <motion.div ... > */}
+        <DialogHeader>
+          <DialogTitle>New User</DialogTitle>
+          <DialogDescription>Enter the details for the new user.</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           {error && <p className="col-span-4 text-red-600 text-sm">{error}</p>}
@@ -142,7 +146,7 @@ const NewUserModal: React.FC<NewUserModalProps> = ({ isOpen, onClose, onSaveSucc
             <Input
               id="user-name"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={e => setName(e.target.value)}
               className="col-span-3"
               disabled={isSaving}
             />
@@ -155,35 +159,41 @@ const NewUserModal: React.FC<NewUserModalProps> = ({ isOpen, onClose, onSaveSucc
               id="user-email"
               type="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={e => setEmail(e.target.value)}
               className="col-span-3"
               disabled={isSaving}
             />
           </div>
-           <div className="grid grid-cols-4 items-center gap-4">
+          <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="user-company" className="self-center">
               Company
             </Label>
-             <Select
-                value={companyId}
-                onValueChange={setCompanyId}
-                disabled={isLoadingCompanies || isSaving}
-             >
-                <SelectTrigger id="user-company" className="col-span-3">
-                    <SelectValue placeholder={isLoadingCompanies ? "Loading..." : "Select company..."} />
-                </SelectTrigger>
-                 <SelectContent>
-                    <SelectItem value="null">-- No Company --</SelectItem>
-                    {companiesError ? (
-                        <SelectItem value="error" disabled>Error loading companies</SelectItem>
-                    ) : (
-                        companies.map((company) => (
-                            <SelectItem key={company.id} value={company.id.toString()}> {/* Ensure value is string */}
-                                {company.name}
-                            </SelectItem>
-                        ))
-                    )}
-                </SelectContent>
+            <Select
+              value={companyId}
+              onValueChange={setCompanyId}
+              disabled={isLoadingCompanies || isSaving}
+            >
+              <SelectTrigger id="user-company" className="col-span-3">
+                <SelectValue
+                  placeholder={isLoadingCompanies ? 'Loading...' : 'Select company...'}
+                />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="null">-- No Company --</SelectItem>
+                {companiesError ? (
+                  <SelectItem value="error" disabled>
+                    Error loading companies
+                  </SelectItem>
+                ) : (
+                  companies.map(company => (
+                    <SelectItem key={company.id} value={company.id.toString()}>
+                      {' '}
+                      {/* Ensure value is string */}
+                      {company.name}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
             </Select>
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
@@ -193,7 +203,7 @@ const NewUserModal: React.FC<NewUserModalProps> = ({ isOpen, onClose, onSaveSucc
             <Input
               id="user-phone"
               value={phoneNumber}
-              onChange={(e) => setPhoneNumber(e.target.value)}
+              onChange={e => setPhoneNumber(e.target.value)}
               className="col-span-3"
               disabled={isSaving}
             />
@@ -208,10 +218,10 @@ const NewUserModal: React.FC<NewUserModalProps> = ({ isOpen, onClose, onSaveSucc
           <Button type="button" onClick={handleSave} disabled={isSaving}>
             {isSaving ? 'Saving...' : 'Save User'}
           </Button>
-            </DialogFooter>
-          {/* </motion.div> */}
-        </DialogContent>
-      </Dialog>
+        </DialogFooter>
+        {/* </motion.div> */}
+      </DialogContent>
+    </Dialog>
     // )}
   );
 };

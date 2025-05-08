@@ -1,29 +1,36 @@
-"use client";
+'use client';
 
 import React, { useState } from 'react';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from "@/components/ui/checkbox";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { Card, CardContent } from '@/components/ui/card';
 import { Pencil, Trash2 } from 'lucide-react';
 import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-    AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import NewTeamModal from '@/components/modals/new-team-modal';
 import EditTeamModal from '@/components/modals/edit-team-modal';
 import { getTeams, getTeamMembers, deleteTeam } from '@/services/team';
 import { getTeamTasks } from '@/services/task';
 import { Team } from '@/typescript/team';
-import { toast } from "sonner";
+import { toast } from 'sonner';
 import { getCurrentUser } from '@/lib/auth';
 
 interface TeamWithCounts extends Team {
@@ -32,52 +39,51 @@ interface TeamWithCounts extends Team {
 }
 
 const fetchTeamsWithCounts = async (): Promise<TeamWithCounts[]> => {
-    const initialTeams = await getTeams();
-    if (!initialTeams) {
-        throw new Error("Initial teams fetch returned undefined");
+  const initialTeams = await getTeams();
+  if (!initialTeams) {
+    throw new Error('Initial teams fetch returned undefined');
+  }
+
+  if (initialTeams.length === 0) {
+    return [];
+  }
+
+  const teamsWithInitialCounts: TeamWithCounts[] = initialTeams.map(team => ({
+    ...team,
+    agentCount: null,
+    ticketCount: null,
+  }));
+
+  const countPromises = initialTeams.flatMap(team => [
+    getTeamMembers(team.id),
+    getTeamTasks(team.id),
+  ]);
+
+  const countResults = await Promise.allSettled(countPromises);
+
+  const enrichedTeams = teamsWithInitialCounts.map((team, index) => {
+    const membersResult = countResults[index * 2];
+    const tasksResult = countResults[index * 2 + 1];
+
+    const agentCount = membersResult.status === 'fulfilled' ? membersResult.value.length : null;
+    const ticketCount = tasksResult.status === 'fulfilled' ? tasksResult.value.length : null;
+
+    if (membersResult.status === 'rejected') {
+      console.error(`Failed to fetch members for team ${team.id}:`, membersResult.reason);
+    }
+    if (tasksResult.status === 'rejected') {
+      console.error(`Failed to fetch tasks for team ${team.id}:`, tasksResult.reason);
     }
 
-    if (initialTeams.length === 0) {
-        return [];
-    }
+    return {
+      ...team,
+      agentCount,
+      ticketCount,
+    };
+  });
 
-    const teamsWithInitialCounts: TeamWithCounts[] = initialTeams.map(team => ({
-        ...team,
-        agentCount: null,
-        ticketCount: null,
-    }));
-
-    const countPromises = initialTeams.flatMap(team => [
-        getTeamMembers(team.id),
-        getTeamTasks(team.id)
-    ]);
-
-    const countResults = await Promise.allSettled(countPromises);
-
-    const enrichedTeams = teamsWithInitialCounts.map((team, index) => {
-          const membersResult = countResults[index * 2];
-          const tasksResult = countResults[index * 2 + 1];
-
-          const agentCount = membersResult.status === 'fulfilled' ? membersResult.value.length : null;
-          const ticketCount = tasksResult.status === 'fulfilled' ? tasksResult.value.length : null;
-
-          if (membersResult.status === 'rejected') {
-              console.error(`Failed to fetch members for team ${team.id}:`, membersResult.reason);
-          }
-          if (tasksResult.status === 'rejected') {
-              console.error(`Failed to fetch tasks for team ${team.id}:`, tasksResult.reason);
-          }
-
-          return {
-            ...team,
-            agentCount,
-            ticketCount,
-          };
-    });
-
-    return enrichedTeams;
+  return enrichedTeams;
 };
-
 
 const TeamsPage = () => {
   const queryClient = useQueryClient();
@@ -87,14 +93,14 @@ const TeamsPage = () => {
   const [selectedTeamIds, setSelectedTeamIds] = useState<Set<number>>(new Set());
   const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
   const {
-      data: teams = [],
-      isLoading,
-      error,
+    data: teams = [],
+    isLoading,
+    error,
   } = useQuery<TeamWithCounts[], Error>({
-      queryKey: ['teamsWithCounts'],
-      queryFn: fetchTeamsWithCounts,
-      staleTime: 1000 * 60 * 5,
-      refetchOnWindowFocus: true,
+    queryKey: ['teamsWithCounts'],
+    queryFn: fetchTeamsWithCounts,
+    staleTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: true,
   });
 
   const handleEdit = (team: TeamWithCounts) => {
@@ -104,100 +110,95 @@ const TeamsPage = () => {
 
   // --- Checkbox Handlers ---
   const handleSelectAllChange = (checked: boolean | 'indeterminate') => {
-      if (checked === true) {
-          setSelectedTeamIds(new Set(teams.map(team => team.id)));
-      } else {
-          setSelectedTeamIds(new Set());
-      }
+    if (checked === true) {
+      setSelectedTeamIds(new Set(teams.map(team => team.id)));
+    } else {
+      setSelectedTeamIds(new Set());
+    }
   };
 
   const handleRowSelectChange = (teamId: number, checked: boolean | 'indeterminate') => {
-      setSelectedTeamIds(prev => {
-          const next = new Set(prev);
-          if (checked === true) {
-              next.add(teamId);
-          } else {
-              next.delete(teamId);
-          }
-          return next;
-      });
+    setSelectedTeamIds(prev => {
+      const next = new Set(prev);
+      if (checked === true) {
+        next.add(teamId);
+      } else {
+        next.delete(teamId);
+      }
+      return next;
+    });
   };
 
- 
   const isAllSelected = teams.length > 0 && selectedTeamIds.size === teams.length;
   const isIndeterminate = selectedTeamIds.size > 0 && selectedTeamIds.size < teams.length;
-  const headerCheckboxState = isAllSelected ? true : (isIndeterminate ? 'indeterminate' : false);
-   const deleteTeamsMutation = useMutation({
-        mutationFn: async (teamIds: number[]) => {
-            const results = await Promise.allSettled(
-                teamIds.map(id => deleteTeam(id))
-            );
-            const failed = results.filter(r => r.status === 'rejected');
-            if (failed.length > 0) {
-                console.error("Failed deletions:", failed);
-                throw new Error(`Failed to delete ${failed.length} team(s).`);
-            }
-            return results;
-        },
-        onSuccess: (data, variables) => {
-             toast.success(`${variables.length} team(s) deleted successfully.`);
-             setSelectedTeamIds(new Set()); 
-             setIsBulkDeleteDialogOpen(false); 
-             queryClient.invalidateQueries({ queryKey: ['teamsWithCounts'] });
-        },
-        onError: (err: Error) => {
-            toast.error(`Error deleting teams: ${err.message}`);
-            setIsBulkDeleteDialogOpen(false); 
-        },
-    });
+  const headerCheckboxState = isAllSelected ? true : isIndeterminate ? 'indeterminate' : false;
+  const deleteTeamsMutation = useMutation({
+    mutationFn: async (teamIds: number[]) => {
+      const results = await Promise.allSettled(teamIds.map(id => deleteTeam(id)));
+      const failed = results.filter(r => r.status === 'rejected');
+      if (failed.length > 0) {
+        console.error('Failed deletions:', failed);
+        throw new Error(`Failed to delete ${failed.length} team(s).`);
+      }
+      return results;
+    },
+    onSuccess: (data, variables) => {
+      toast.success(`${variables.length} team(s) deleted successfully.`);
+      setSelectedTeamIds(new Set());
+      setIsBulkDeleteDialogOpen(false);
+      queryClient.invalidateQueries({ queryKey: ['teamsWithCounts'] });
+    },
+    onError: (err: Error) => {
+      toast.error(`Error deleting teams: ${err.message}`);
+      setIsBulkDeleteDialogOpen(false);
+    },
+  });
 
   const handleBulkDeleteConfirm = () => {
-      if (selectedTeamIds.size > 0) {
-          deleteTeamsMutation.mutate(Array.from(selectedTeamIds));
-      }
+    if (selectedTeamIds.size > 0) {
+      deleteTeamsMutation.mutate(Array.from(selectedTeamIds));
+    }
   };
 
   return (
     <div className="flex flex-col gap-4 p-4 md:p-6">
-       <div className="flex items-center justify-between mb-4">
-         <div className="flex items-center gap-4">
-           <h1 className="text-2xl font-semibold">Teams</h1>
-           {selectedTeamIds.size > 0 && (
-             <AlertDialog open={isBulkDeleteDialogOpen} onOpenChange={setIsBulkDeleteDialogOpen}>
-               <AlertDialogTrigger asChild>
-                 <Button
-                   variant="destructive"
-                   size="sm"
-                   disabled={deleteTeamsMutation.isPending}
-                 >
-                   <Trash2 className="mr-2 h-4 w-4" />
-                   Delete ({selectedTeamIds.size})
-                 </Button>
-               </AlertDialogTrigger>
-               <AlertDialogContent>
-                 <AlertDialogHeader>
-                   <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                   <AlertDialogDescription>
-                     This action cannot be undone. This will permanently delete the selected
-                     {selectedTeamIds.size === 1 ? ' team' : ` ${selectedTeamIds.size} teams`}.
-                   </AlertDialogDescription>
-                 </AlertDialogHeader>
-                 <AlertDialogFooter>
-                   <AlertDialogCancel disabled={deleteTeamsMutation.isPending}>Cancel</AlertDialogCancel>
-                   <AlertDialogAction
-                     onClick={handleBulkDeleteConfirm}
-                     disabled={deleteTeamsMutation.isPending}
-                     className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                   >
-                     {deleteTeamsMutation.isPending ? 'Deleting...' : 'Delete'}
-                   </AlertDialogAction>
-                 </AlertDialogFooter>
-               </AlertDialogContent>
-             </AlertDialog>
-           )}
-         </div>
-         <Button onClick={() => setIsNewModalOpen(true)}>+ New Team</Button>
-       </div>
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-4">
+          <h1 className="text-2xl font-semibold">Teams</h1>
+          {selectedTeamIds.size > 0 && (
+            <AlertDialog open={isBulkDeleteDialogOpen} onOpenChange={setIsBulkDeleteDialogOpen}>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" size="sm" disabled={deleteTeamsMutation.isPending}>
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete ({selectedTeamIds.size})
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This action cannot be undone. This will permanently delete the selected
+                    {selectedTeamIds.size === 1 ? ' team' : ` ${selectedTeamIds.size} teams`}.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={deleteTeamsMutation.isPending}>
+                    Cancel
+                  </AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleBulkDeleteConfirm}
+                    disabled={deleteTeamsMutation.isPending}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    {deleteTeamsMutation.isPending ? 'Deleting...' : 'Delete'}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
+        </div>
+        <Button onClick={() => setIsNewModalOpen(true)}>+ New Team</Button>
+      </div>
 
       <Card className="shadow-none border-0">
         <CardContent className="pt-0">
@@ -222,46 +223,52 @@ const TeamsPage = () => {
             <TableBody>
               {isLoading && (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center">Loading teams...</TableCell>
+                  <TableCell colSpan={6} className="text-center">
+                    Loading teams...
+                  </TableCell>
                 </TableRow>
               )}
               {error && (
-                 <TableRow>
-                   <TableCell colSpan={6} className="text-center text-red-600">{error?.message || 'An error occurred'}</TableCell>
-                 </TableRow>
-              )}
-              {!isLoading && !error && teams.map((team) => (
-                <TableRow
-                  key={team.id}
-                  className="hover:bg-card"
-                  data-state={selectedTeamIds.has(team.id) ? 'selected' : ''}
-                >
-                   <TableCell className="p-2 py-4">
-                     <Checkbox
-                        checked={selectedTeamIds.has(team.id)}
-                        onCheckedChange={(checked) => handleRowSelectChange(team.id, checked)}
-                        aria-label={`Select team ${team.name}`}
-                        onClick={(e) => e.stopPropagation()} 
-                     />
-                  </TableCell>
-                  <TableCell className="font-medium">{team.name}</TableCell>
-                  <TableCell>{team.description || '-'}</TableCell>
-                  <TableCell className="text-center">{team.ticketCount ?? '?'}</TableCell>
-                  <TableCell className="text-center">{team.agentCount ?? '?'}</TableCell>
-                  <TableCell className="text-right">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 w-8 p-0"
-                      onClick={() => handleEdit(team)}
-                      disabled={deleteTeamsMutation.isPending}
-                      aria-label="Edit Team"
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center text-red-600">
+                    {error?.message || 'An error occurred'}
                   </TableCell>
                 </TableRow>
-              ))}
+              )}
+              {!isLoading &&
+                !error &&
+                teams.map(team => (
+                  <TableRow
+                    key={team.id}
+                    className="hover:bg-card"
+                    data-state={selectedTeamIds.has(team.id) ? 'selected' : ''}
+                  >
+                    <TableCell className="p-2 py-4">
+                      <Checkbox
+                        checked={selectedTeamIds.has(team.id)}
+                        onCheckedChange={checked => handleRowSelectChange(team.id, checked)}
+                        aria-label={`Select team ${team.name}`}
+                        onClick={e => e.stopPropagation()}
+                      />
+                    </TableCell>
+                    <TableCell className="font-medium">{team.name}</TableCell>
+                    <TableCell>{team.description || '-'}</TableCell>
+                    <TableCell className="text-center">{team.ticketCount ?? '?'}</TableCell>
+                    <TableCell className="text-center">{team.agentCount ?? '?'}</TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0"
+                        onClick={() => handleEdit(team)}
+                        disabled={deleteTeamsMutation.isPending}
+                        aria-label="Edit Team"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
             </TableBody>
           </Table>
         </CardContent>
@@ -271,41 +278,41 @@ const TeamsPage = () => {
         isOpen={isNewModalOpen}
         onClose={() => setIsNewModalOpen(false)}
         onSaveSuccess={async () => {
-          console.log("New team saved successfully, invalidating queries.");
+          console.log('New team saved successfully, invalidating queries.');
           queryClient.invalidateQueries({ queryKey: ['teamsWithCounts'] });
           queryClient.invalidateQueries({ queryKey: ['teams'] });
           const user = await getCurrentUser();
           if (user?.id) {
-              queryClient.invalidateQueries({ queryKey: ['userTeams', user.id] });
-              queryClient.invalidateQueries({ queryKey: ['teamTasks'] });
-              queryClient.invalidateQueries({ queryKey: ['agentTeams', user.id] });
+            queryClient.invalidateQueries({ queryKey: ['userTeams', user.id] });
+            queryClient.invalidateQueries({ queryKey: ['teamTasks'] });
+            queryClient.invalidateQueries({ queryKey: ['agentTeams', user.id] });
           } else {
-              queryClient.invalidateQueries({ queryKey: ['agentTeams'] });
+            queryClient.invalidateQueries({ queryKey: ['agentTeams'] });
           }
         }}
       />
       {teamToEdit && (
-          <EditTeamModal
-            isOpen={isEditModalOpen}
-            onClose={() => {
-                setIsEditModalOpen(false);
-                setTeamToEdit(null);
-            }}
-            onSaveSuccess={async () => {
-              console.log("Team updated successfully, invalidating queries.");
-              queryClient.invalidateQueries({ queryKey: ['teamsWithCounts'] });
-              queryClient.invalidateQueries({ queryKey: ['teams'] });
-              const user = await getCurrentUser();
-              if (user?.id) {
-                  queryClient.invalidateQueries({ queryKey: ['userTeams', user.id] });
-                  queryClient.invalidateQueries({ queryKey: ['teamTasks'] });
-                  queryClient.invalidateQueries({ queryKey: ['agentTeams', user.id] });
-              } else {
-                  queryClient.invalidateQueries({ queryKey: ['agentTeams'] });
-              }
-            }}
-            teamToEdit={teamToEdit}
-          />
+        <EditTeamModal
+          isOpen={isEditModalOpen}
+          onClose={() => {
+            setIsEditModalOpen(false);
+            setTeamToEdit(null);
+          }}
+          onSaveSuccess={async () => {
+            console.log('Team updated successfully, invalidating queries.');
+            queryClient.invalidateQueries({ queryKey: ['teamsWithCounts'] });
+            queryClient.invalidateQueries({ queryKey: ['teams'] });
+            const user = await getCurrentUser();
+            if (user?.id) {
+              queryClient.invalidateQueries({ queryKey: ['userTeams', user.id] });
+              queryClient.invalidateQueries({ queryKey: ['teamTasks'] });
+              queryClient.invalidateQueries({ queryKey: ['agentTeams', user.id] });
+            } else {
+              queryClient.invalidateQueries({ queryKey: ['agentTeams'] });
+            }
+          }}
+          teamToEdit={teamToEdit}
+        />
       )}
     </div>
   );

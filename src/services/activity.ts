@@ -2,7 +2,8 @@ import { fetchAPI } from '@/lib/fetch-api';
 import { Activity } from '../typescript/activity'; // Use relative path
 
 // Use the production URL directly. Ensure NEXT_PUBLIC_API_BASE_URL is set in the production environment.
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://enque-backend-production.up.railway.app';
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL || 'https://enque-backend-production.up.railway.app';
 
 /**
  * Fetches recent notifications (activities).

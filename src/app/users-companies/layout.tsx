@@ -1,15 +1,11 @@
-"use client";
+'use client';
 
-import AppLayout from "@/components/layouts/app-layout";
+import AppLayout from '@/components/layouts/app-layout';
 
-export default function UsersCompaniesPage({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function UsersCompaniesPage({ children }: { children: React.ReactNode }) {
   const breadcrumbs = [
-    { label: "Dashboard", href: "/users & companies" },
-    { label: "users & companies", href: "/users & companies" },
+    { label: 'Dashboard', href: '/users & companies' },
+    { label: 'users & companies', href: '/users & companies' },
   ];
 
   return (

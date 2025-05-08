@@ -6,14 +6,14 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-  DialogClose, 
+  DialogClose,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Badge } from "@/components/ui/badge"; 
-import { X as LucideX } from 'lucide-react'; 
+import { Badge } from '@/components/ui/badge';
+import { X as LucideX } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -21,19 +21,19 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { useMutation, useQueryClient } from '@tanstack/react-query'; 
-import { getAgents } from '@/services/agent'; 
-import { Agent } from '@/typescript/agent'; 
-import { getCurrentUser } from '@/lib/auth'; 
+} from '@/components/ui/dropdown-menu';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { getAgents } from '@/services/agent';
+import { Agent } from '@/typescript/agent';
+import { getCurrentUser } from '@/lib/auth';
 import { createTeam, addTeamMember } from '@/services/team';
-import { Team } from '@/typescript/team'; 
-import { toast } from 'sonner'; 
+import { Team } from '@/typescript/team';
+import { toast } from 'sonner';
 
 interface NewTeamModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSaveSuccess: () => void; 
+  onSaveSuccess: () => void;
 }
 
 interface TeamCreationData {
@@ -47,7 +47,6 @@ interface TeamWithCounts extends Team {
   agentCount: number | null;
   ticketCount: number | null;
 }
-
 
 const NewTeamModal: React.FC<NewTeamModalProps> = ({ isOpen, onClose, onSaveSuccess }) => {
   const queryClient = useQueryClient();
@@ -67,8 +66,8 @@ const NewTeamModal: React.FC<NewTeamModalProps> = ({ isOpen, onClose, onSaveSucc
           const agents = await getAgents();
           setAvailableAgents(agents || []);
         } catch (err) {
-          console.error("Failed to fetch agents:", err);
-          setError("Failed to load agents list.");
+          console.error('Failed to fetch agents:', err);
+          setError('Failed to load agents list.');
         } finally {
           setIsLoadingAgents(false);
         }
@@ -79,7 +78,6 @@ const NewTeamModal: React.FC<NewTeamModalProps> = ({ isOpen, onClose, onSaveSucc
       setSelectedAgentIds(new Set());
     }
   }, [isOpen]);
-
 
   const handleAgentSelect = (agentId: number) => {
     setSelectedAgentIds(prev => {
@@ -94,10 +92,10 @@ const NewTeamModal: React.FC<NewTeamModalProps> = ({ isOpen, onClose, onSaveSucc
   };
 
   const createTeamMutation = useMutation<
-    Team, 
-    Error, 
-    TeamCreationData, 
-    { previousTeams?: TeamWithCounts[] } 
+    Team,
+    Error,
+    TeamCreationData,
+    { previousTeams?: TeamWithCounts[] }
   >({
     mutationFn: async (data: TeamCreationData) => {
       const newTeam = await createTeam({
@@ -107,30 +105,28 @@ const NewTeamModal: React.FC<NewTeamModalProps> = ({ isOpen, onClose, onSaveSucc
       });
 
       if (newTeam && newTeam.id && data.agentIds.length > 0) {
-        const addMemberPromises = data.agentIds.map(agentId =>
-          addTeamMember(newTeam.id, agentId)
-        );
+        const addMemberPromises = data.agentIds.map(agentId => addTeamMember(newTeam.id, agentId));
         const results = await Promise.allSettled(addMemberPromises);
         const failedAdditions = results.filter(r => r.status === 'rejected');
         if (failedAdditions.length > 0) {
-          console.error("Some members could not be added:", failedAdditions);
+          console.error('Some members could not be added:', failedAdditions);
         }
       }
-      return newTeam; 
+      return newTeam;
     },
-    onMutate: async (newTeamData) => {
+    onMutate: async newTeamData => {
       await queryClient.cancelQueries({ queryKey: ['teamsWithCounts'] });
       const previousTeams = queryClient.getQueryData<TeamWithCounts[]>(['teamsWithCounts']);
       queryClient.setQueryData<TeamWithCounts[]>(['teamsWithCounts'], (old = []) => {
         const optimisticTeam: TeamWithCounts = {
-          id: Date.now(), 
+          id: Date.now(),
           name: newTeamData.name,
           description: newTeamData.description,
           workspace_id: newTeamData.workspace_id,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-          agentCount: newTeamData.agentIds.length, 
-          ticketCount: 0, 
+          agentCount: newTeamData.agentIds.length,
+          ticketCount: 0,
         };
         return [optimisticTeam, ...old];
       });
@@ -140,31 +136,32 @@ const NewTeamModal: React.FC<NewTeamModalProps> = ({ isOpen, onClose, onSaveSucc
       if (context?.previousTeams) {
         queryClient.setQueryData(['teamsWithCounts'], context.previousTeams);
       }
-      setError(err.message || "Failed to create team.");
-      toast.error(err.message || "Failed to create team.");
+      setError(err.message || 'Failed to create team.');
+      toast.error(err.message || 'Failed to create team.');
     },
-    onSuccess: (data) => { // data here is the created team from mutationFn
+    onSuccess: data => {
+      // data here is the created team from mutationFn
       toast.success(`Team "${data.name}" created successfully!`);
-      onSaveSuccess(); 
+      onSaveSuccess();
       onClose();
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['teamsWithCounts'] });
-      queryClient.invalidateQueries({ queryKey: ['teams'] }); 
+      queryClient.invalidateQueries({ queryKey: ['teams'] });
     },
   });
 
   const handleSave = async () => {
     if (!name.trim()) {
-      setError("Team name is required.");
+      setError('Team name is required.');
       return;
     }
     setError(null);
 
     const currentUser = await getCurrentUser();
     if (!currentUser || !currentUser.workspace_id) {
-      setError("Could not retrieve user session or workspace ID. Please log in again.");
-      toast.error("Could not retrieve user session or workspace ID.");
+      setError('Could not retrieve user session or workspace ID. Please log in again.');
+      toast.error('Could not retrieve user session or workspace ID.');
       return;
     }
 
@@ -196,7 +193,7 @@ const NewTeamModal: React.FC<NewTeamModalProps> = ({ isOpen, onClose, onSaveSucc
               placeholder="Enter team name"
               className="col-span-3 bg-[#F4F7FE]"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={e => setName(e.target.value)}
               disabled={createTeamMutation.isPending}
             />
           </div>
@@ -209,12 +206,12 @@ const NewTeamModal: React.FC<NewTeamModalProps> = ({ isOpen, onClose, onSaveSucc
               placeholder="Enter team description"
               className="col-span-3 bg-[#F4F7FE]"
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              onChange={e => setDescription(e.target.value)}
               disabled={createTeamMutation.isPending}
             />
           </div>
-          <div className="grid grid-cols-4 items-start gap-4"> 
-            <Label htmlFor="agents" className="text-right self-start pt-1"> 
+          <div className="grid grid-cols-4 items-start gap-4">
+            <Label htmlFor="agents" className="text-right self-start pt-1">
               Agents
             </Label>
             <div className="col-span-3 flex flex-col gap-2">
@@ -242,11 +239,20 @@ const NewTeamModal: React.FC<NewTeamModalProps> = ({ isOpen, onClose, onSaveSucc
               </div>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="w-full justify-start font-normal" disabled={isLoadingAgents || createTeamMutation.isPending}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full justify-start font-normal"
+                    disabled={isLoadingAgents || createTeamMutation.isPending}
+                  >
                     {isLoadingAgents ? 'Loading Agents...' : '+ Add / Remove Agents'}
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56 max-h-60 overflow-y-auto" align="start" sideOffset={5}>
+                <DropdownMenuContent
+                  className="w-56 max-h-60 overflow-y-auto"
+                  align="start"
+                  sideOffset={5}
+                >
                   <DropdownMenuLabel>Available Agents</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   {isLoadingAgents ? (
@@ -254,12 +260,12 @@ const NewTeamModal: React.FC<NewTeamModalProps> = ({ isOpen, onClose, onSaveSucc
                   ) : availableAgents.length === 0 ? (
                     <DropdownMenuLabel>No agents found</DropdownMenuLabel>
                   ) : (
-                    availableAgents.map((agent) => (
+                    availableAgents.map(agent => (
                       <DropdownMenuCheckboxItem
                         key={agent.id}
                         checked={selectedAgentIds.has(agent.id)}
                         onCheckedChange={() => handleAgentSelect(agent.id)}
-                        onSelect={(e) => e.preventDefault()} 
+                        onSelect={e => e.preventDefault()}
                       >
                         {agent.name} ({agent.email})
                       </DropdownMenuCheckboxItem>
@@ -276,7 +282,11 @@ const NewTeamModal: React.FC<NewTeamModalProps> = ({ isOpen, onClose, onSaveSucc
               Cancel
             </Button>
           </DialogClose>
-          <Button type="button" onClick={handleSave} disabled={createTeamMutation.isPending || isLoadingAgents}>
+          <Button
+            type="button"
+            onClick={handleSave}
+            disabled={createTeamMutation.isPending || isLoadingAgents}
+          >
             {createTeamMutation.isPending ? 'Saving...' : 'Save Team'}
           </Button>
         </DialogFooter>

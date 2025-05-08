@@ -2,7 +2,8 @@ import { fetchAPI } from '@/lib/fetch-api'; // Corrected import name
 import { Team, TeamMember } from '../typescript/team'; // Using relative path and adding TeamMember import
 
 // Use the production URL directly. Ensure NEXT_PUBLIC_API_BASE_URL is set in the production environment.
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://enque-backend-production.up.railway.app';
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL || 'https://enque-backend-production.up.railway.app';
 
 export const getTeams = async (): Promise<Team[]> => {
   try {
@@ -23,9 +24,10 @@ export const getTeams = async (): Promise<Team[]> => {
     */
 
     // If fetchAPI.GET returns the parsed data directly on success:
-    if (!response || !response.data) { // Adjust based on actual return structure
-        console.error('Failed to fetch teams or data is missing');
-        throw new Error('Failed to fetch teams');
+    if (!response || !response.data) {
+      // Adjust based on actual return structure
+      console.error('Failed to fetch teams or data is missing');
+      throw new Error('Failed to fetch teams');
     }
 
     return response.data; // Adjust based on actual return structure
@@ -69,7 +71,11 @@ export const getTeamMembers = async (teamId: number): Promise<TeamMember[]> => {
  * @param teamData The data for the new team (name, description, workspace_id).
  * @returns A promise that resolves to the newly created team object.
  */
-export const createTeam = async (teamData: { name: string; description?: string | null; workspace_id: number }): Promise<Team> => {
+export const createTeam = async (teamData: {
+  name: string;
+  description?: string | null;
+  workspace_id: number;
+}): Promise<Team> => {
   try {
     const url = `${API_BASE_URL}/v1/teams/`;
     // Assuming fetchAPI.POST handles sending the body and returns the created object
@@ -93,16 +99,16 @@ export const createTeam = async (teamData: { name: string; description?: string 
  * @returns A promise that resolves to the created team member object (or void/boolean depending on API).
  */
 export const addTeamMember = async (teamId: number, agentId: number): Promise<TeamMember> => {
-   if (!teamId || !agentId) {
-     console.error('addTeamMember requires valid teamId and agentId');
-     throw new Error('Invalid IDs provided for adding team member');
-   }
+  if (!teamId || !agentId) {
+    console.error('addTeamMember requires valid teamId and agentId');
+    throw new Error('Invalid IDs provided for adding team member');
+  }
   try {
     const url = `${API_BASE_URL}/v1/teams/${teamId}/members`;
     // The body should match the TeamMemberCreate schema from the backend
     const body = {
-        team_id: teamId,
-        agent_id: agentId
+      team_id: teamId,
+      agent_id: agentId,
     };
     const response = await fetchAPI.POST<TeamMember>(url, body);
 
@@ -145,7 +151,10 @@ export const deleteTeam = async (teamId: number): Promise<void> => {
  * @param teamData The data to update (using TeamUpdate type).
  * @returns A promise that resolves to the updated team object.
  */
-export const updateTeam = async (teamId: number, teamData: { name?: string | null; description?: string | null; logo_url?: string | null }): Promise<Team> => {
+export const updateTeam = async (
+  teamId: number,
+  teamData: { name?: string | null; description?: string | null; logo_url?: string | null }
+): Promise<Team> => {
   if (!teamId) {
     console.error('updateTeam requires a valid teamId');
     throw new Error('Invalid ID provided for updating team');
@@ -214,6 +223,5 @@ export const getAgentTeams = async (agentId: number): Promise<Team[]> => {
     throw error; // Or return [];
   }
 };
-
 
 // Add other team-related service functions here later

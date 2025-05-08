@@ -1,17 +1,23 @@
 // frontend/src/app/users-companies/company-user-view.tsx
-"use client";
+'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { ICompany, CompanyUpdatePayload } from '@/typescript/company';
 import { IUser } from '@/typescript/user';
 import { Agent as IAgent } from '@/typescript/agent';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2, PlusCircle, Trash2 } from 'lucide-react';
-import { Checkbox } from "@/components/ui/checkbox";
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Table,
   TableBody,
@@ -19,7 +25,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from '@/components/ui/table';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,12 +36,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+} from '@/components/ui/alert-dialog';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { deleteCompany, updateCompany } from '@/services/company';
 import { updateUser } from '@/services/user';
 import { toast } from 'sonner';
-import type { BaseResponse } from "@/lib/fetch-api";
+import type { BaseResponse } from '@/lib/fetch-api';
 
 interface CompanyUserViewProps {
   company: ICompany;
@@ -59,8 +65,12 @@ const CompanyUserView: React.FC<CompanyUserViewProps> = ({
   onSwitchToUnassigned,
 }) => {
   const queryClient = useQueryClient();
-  const [selectedPrimaryContact, setSelectedPrimaryContact] = useState<string | undefined>(undefined);
-  const [selectedAccountManager, setSelectedAccountManager] = useState<string | undefined>(undefined);
+  const [selectedPrimaryContact, setSelectedPrimaryContact] = useState<string | undefined>(
+    undefined
+  );
+  const [selectedAccountManager, setSelectedAccountManager] = useState<string | undefined>(
+    undefined
+  );
   const [editableDescription, setEditableDescription] = useState(company.description || '');
   const [editableDomain, setEditableDomain] = useState(company.email_domain || '');
   const descriptionMaxLength = 150;
@@ -70,17 +80,39 @@ const CompanyUserView: React.FC<CompanyUserViewProps> = ({
 
   const updateMutation = useMutation({
     mutationFn: (updateData: CompanyUpdatePayload) => updateCompany(company.id, updateData),
-    onSuccess: () => {
-      toast.success(`Company "${company.name}" updated.`);
-      queryClient.invalidateQueries({ queryKey: ['companies'] });
-      queryClient.invalidateQueries({ queryKey: ['company', company.id] });
+    onSuccess: (response: BaseResponse<ICompany>) => {
+      if (response.success && response.data) {
+        const updatedCompany = response.data;
+        toast.success(`Company "${updatedCompany.name}" updated.`);
+        const companyIdStr = updatedCompany.id.toString();
+
+        queryClient.invalidateQueries({ queryKey: ['companies'] });
+        queryClient.invalidateQueries({ queryKey: ['company', companyIdStr] });
+        queryClient.invalidateQueries({ queryKey: ['companyUsers', companyIdStr] });
+        queryClient.invalidateQueries({ queryKey: ['unassignedUsers'] });
+      } else {
+        toast.error(response.message || 'Failed to update company. Please try again.');
+      }
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       toast.error(`Failed to update company: ${error.message}`);
       setEditableDescription(company.description || '');
       setEditableDomain(company.email_domain || '');
       setSelectedPrimaryContact(company.primary_contact_id?.toString() || undefined);
       setSelectedAccountManager(company.account_manager_id?.toString() || undefined);
+    },
+    onSettled: (response: BaseResponse<ICompany> | undefined) => {
+      let companyIdForInvalidation: string;
+      if (response && response.success && response.data) {
+        companyIdForInvalidation = response.data.id.toString();
+      } else {
+        companyIdForInvalidation = company.id.toString();
+      }
+
+      queryClient.invalidateQueries({ queryKey: ['companies'] });
+      queryClient.invalidateQueries({ queryKey: ['company', companyIdForInvalidation] });
+      queryClient.invalidateQueries({ queryKey: ['companyUsers', companyIdForInvalidation] });
+      queryClient.invalidateQueries({ queryKey: ['unassignedUsers'] });
     },
   });
 
@@ -92,13 +124,15 @@ const CompanyUserView: React.FC<CompanyUserViewProps> = ({
       onSwitchToUnassigned();
       setIsCompanyDeleteDialogOpen(false);
     },
-    onError: (error) => {
+    onError: error => {
       toast.error(`Failed to delete company: ${error.message}`);
       setIsCompanyDeleteDialogOpen(false);
     },
   });
 
-  const handleDeleteCompanyConfirm = () => { deleteCompanyMutation.mutate(); };
+  const handleDeleteCompanyConfirm = () => {
+    deleteCompanyMutation.mutate();
+  };
 
   const unassignUsersMutation = useMutation({
     mutationFn: async (userIds: number[]) => {
@@ -107,29 +141,40 @@ const CompanyUserView: React.FC<CompanyUserViewProps> = ({
       );
       const failedAssignments = results
         .map((result, index) => ({ result, id: userIds[index] }))
-        .filter(item => item.result.status === 'rejected' || 
-                       (item.result.status === 'fulfilled' && !(item.result as PromiseFulfilledResult<BaseResponse<IUser>>).value.success));
+        .filter(
+          item =>
+            item.result.status === 'rejected' ||
+            (item.result.status === 'fulfilled' &&
+              !(item.result as PromiseFulfilledResult<BaseResponse<IUser>>).value.success)
+        );
 
       if (failedAssignments.length > 0) {
-        const errorMessages = failedAssignments.map(item => {
-          let message = 'Unknown error';
-          if (item.result.status === 'rejected') {
-            message = (item.result as PromiseRejectedResult).reason?.message || 'Network error';
-          } else if (item.result.status === 'fulfilled') {
-            message = (item.result as PromiseFulfilledResult<BaseResponse<IUser>>).value.message || 'API error without message';
-          }
-          return `User ID ${item.id}: ${message}`;
-        }).join(', ');
+        const errorMessages = failedAssignments
+          .map(item => {
+            let message = 'Unknown error';
+            if (item.result.status === 'rejected') {
+              message = (item.result as PromiseRejectedResult).reason?.message || 'Network error';
+            } else if (item.result.status === 'fulfilled') {
+              message =
+                (item.result as PromiseFulfilledResult<BaseResponse<IUser>>).value.message ||
+                'API error without message';
+            }
+            return `User ID ${item.id}: ${message}`;
+          })
+          .join(', ');
         throw new Error(`Failed to unassign some users: ${errorMessages}`);
       }
       return results;
     },
-    onMutate: async (userIdsToUnassign) => {
+    onMutate: async userIdsToUnassign => {
       const companyIdStr = company.id.toString();
       await queryClient.cancelQueries({ queryKey: ['companyUsers', companyIdStr] });
-      const previousCompanyUsers = queryClient.getQueryData<IUser[]>(['companyUsers', companyIdStr]);
+      const previousCompanyUsers = queryClient.getQueryData<IUser[]>([
+        'companyUsers',
+        companyIdStr,
+      ]);
 
-      queryClient.setQueryData<IUser[]>(['companyUsers', companyIdStr], (oldUsers) => {
+      queryClient.setQueryData<IUser[]>(['companyUsers', companyIdStr], oldUsers => {
         if (!oldUsers) return [];
         return oldUsers.filter(user => !userIdsToUnassign.includes(user.id));
       });
@@ -143,7 +188,11 @@ const CompanyUserView: React.FC<CompanyUserViewProps> = ({
       queryClient.invalidateQueries({ queryKey: ['companyUsers', companyIdStr] });
       queryClient.invalidateQueries({ queryKey: ['unassignedUsers'] });
     },
-    onError: (error: Error, _variables, context: { previousCompanyUsers?: IUser[] } | undefined) => {
+    onError: (
+      error: Error,
+      _variables,
+      context: { previousCompanyUsers?: IUser[] } | undefined
+    ) => {
       const companyIdStr = company.id.toString();
       toast.error(`Error unassigning users: ${error.message}`);
       if (context?.previousCompanyUsers) {
@@ -171,7 +220,10 @@ const CompanyUserView: React.FC<CompanyUserViewProps> = ({
     setSelectedUserIds(new Set());
   }, [company]);
 
-  const handleFieldUpdate = (field: keyof CompanyUpdatePayload, value: string | number | null | undefined) => {
+  const handleFieldUpdate = (
+    field: keyof CompanyUpdatePayload,
+    value: string | number | null | undefined
+  ) => {
     if (field === 'description' && value === (company.description || '')) return;
     if (field === 'email_domain' && value === (company.email_domain || '')) return;
     if (field === 'primary_contact_id' && value === company.primary_contact_id) return;
@@ -216,29 +268,41 @@ const CompanyUserView: React.FC<CompanyUserViewProps> = ({
     }
   };
 
-  const handleSelectAllUsersChange = useCallback((checked: boolean | 'indeterminate') => {
-    if (checked === true) {
-      setSelectedUserIds(new Set(users.map(user => user.id)));
-    } else {
-      setSelectedUserIds(new Set());
-    }
-  }, [users]);
-
-  const handleUserRowSelectChange = useCallback((userId: number, checked: boolean | 'indeterminate') => {
-    setSelectedUserIds(prev => {
-      const next = new Set(prev);
+  const handleSelectAllUsersChange = useCallback(
+    (checked: boolean | 'indeterminate') => {
       if (checked === true) {
-        next.add(userId);
+        setSelectedUserIds(new Set(users.map(user => user.id)));
       } else {
-        next.delete(userId);
+        setSelectedUserIds(new Set());
       }
-      return next;
-    });
-  }, []);
+    },
+    [users]
+  );
+
+  const handleUserRowSelectChange = useCallback(
+    (userId: number, checked: boolean | 'indeterminate') => {
+      setSelectedUserIds(prev => {
+        const next = new Set(prev);
+        if (checked === true) {
+          next.add(userId);
+        } else {
+          next.delete(userId);
+        }
+        return next;
+      });
+    },
+    []
+  );
 
   const isAllUsersSelected = users.length > 0 && selectedUserIds.size === users.length;
   const isIndeterminateUsers = selectedUserIds.size > 0 && selectedUserIds.size < users.length;
-  const usersHeaderCheckboxState = isAllUsersSelected ? true : (isIndeterminateUsers ? 'indeterminate' : false);
+  const usersHeaderCheckboxState = isAllUsersSelected
+    ? true
+    : isIndeterminateUsers
+      ? 'indeterminate'
+      : false;
+
+  const canDeleteCompany = users.length === 0;
 
   return (
     <div className="w-full h-full flex flex-col p-6 space-y-6 overflow-hidden">
@@ -247,7 +311,16 @@ const CompanyUserView: React.FC<CompanyUserViewProps> = ({
         <h2 className="text-xl font-semibold">{company.name}</h2>
         <AlertDialog open={isCompanyDeleteDialogOpen} onOpenChange={setIsCompanyDeleteDialogOpen}>
           <AlertDialogTrigger asChild>
-            <Button variant="destructive" size="sm" disabled={deleteCompanyMutation.isPending || updateMutation.isPending}>
+            <Button
+              variant="destructive"
+              size="sm"
+              disabled={
+                deleteCompanyMutation.isPending || updateMutation.isPending || !canDeleteCompany
+              }
+              title={
+                !canDeleteCompany ? 'Cannot delete company with associated users' : 'Delete Company'
+              }
+            >
               <Trash2 className="mr-2 h-4 w-4" /> Delete Company
             </Button>
           </AlertDialogTrigger>
@@ -259,8 +332,14 @@ const CompanyUserView: React.FC<CompanyUserViewProps> = ({
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel disabled={deleteCompanyMutation.isPending}>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={handleDeleteCompanyConfirm} disabled={deleteCompanyMutation.isPending} className="bg-destructive text-white hover:bg-destructive/90">
+              <AlertDialogCancel disabled={deleteCompanyMutation.isPending}>
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDeleteCompanyConfirm}
+                disabled={deleteCompanyMutation.isPending}
+                className="bg-destructive text-white hover:bg-destructive/90"
+              >
                 {deleteCompanyMutation.isPending ? 'Deleting...' : 'Yes, delete company'}
               </AlertDialogAction>
             </AlertDialogFooter>
@@ -270,43 +349,95 @@ const CompanyUserView: React.FC<CompanyUserViewProps> = ({
 
       {/* Company Details Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-4 flex-shrink-0">
-          {/* Column 1 */}
-          <div className="space-y-4">
-              <div className="space-y-1">
-                <Label htmlFor="primary-contact">Primary Contact</Label>
-                <Select value={selectedPrimaryContact} onValueChange={handlePrimaryContactChange} disabled={isLoadingUsers || updateMutation.isPending}>
-                  <SelectTrigger id="primary-contact"><SelectValue placeholder={isLoadingUsers ? "Loading..." : "--"} /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="null">--</SelectItem>
-                    {/* Display only user name */}
-                    {usersError ? <SelectItem value="error" disabled>Error</SelectItem> : users.map((user) => <SelectItem key={user.id} value={user.id.toString()}>{user.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="company-domain">Email domain</Label>
-                <Input id="company-domain" value={editableDomain} onChange={handleDomainChange} onBlur={handleDomainBlur} placeholder="example.com" className="text-sm" disabled={updateMutation.isPending} />
-              </div>
-          </div>
-          {/* Column 2 */}
-          <div className="space-y-4">
-              <div className="space-y-1">
-                <Label htmlFor="account-manager">Account manager</Label>
-                <Select value={selectedAccountManager} onValueChange={handleAccountManagerChange} disabled={isLoadingAgents || updateMutation.isPending}>
-                  <SelectTrigger id="account-manager"><SelectValue placeholder={isLoadingAgents ? "Loading..." : "--"} /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="null">--</SelectItem>
-                    {agentsError ? <SelectItem value="error" disabled>Error</SelectItem> : agents.map((agent) => <SelectItem key={agent.id} value={agent.id.toString()}>{agent.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-          </div>
-          {/* Column 3 */}
+        {/* Column 1 */}
+        <div className="space-y-4">
           <div className="space-y-1">
-            <Label htmlFor="company-description">Description</Label>
-            <Textarea id="company-description" value={editableDescription} onChange={handleDescriptionChange} onBlur={handleDescriptionBlur} placeholder="Enter description..." rows={4} className="text-sm resize-none" maxLength={descriptionMaxLength} disabled={updateMutation.isPending} />
-            <p className="text-xs text-muted-foreground text-right">{editableDescription.length}/{descriptionMaxLength}</p>
+            <Label htmlFor="primary-contact">Primary Contact</Label>
+            <Select
+              value={selectedPrimaryContact}
+              onValueChange={handlePrimaryContactChange}
+              disabled={isLoadingUsers || updateMutation.isPending}
+            >
+              <SelectTrigger id="primary-contact">
+                <SelectValue placeholder={isLoadingUsers ? 'Loading...' : '--'} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="null">--</SelectItem>
+                {/* Display only user name */}
+                {usersError ? (
+                  <SelectItem value="error" disabled>
+                    Error
+                  </SelectItem>
+                ) : (
+                  users.map(user => (
+                    <SelectItem key={user.id} value={user.id.toString()}>
+                      {user.name}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
           </div>
+          <div className="space-y-1">
+            <Label htmlFor="company-domain">Email domain</Label>
+            <Input
+              id="company-domain"
+              value={editableDomain}
+              onChange={handleDomainChange}
+              onBlur={handleDomainBlur}
+              placeholder="example.com"
+              className="text-sm"
+              disabled={updateMutation.isPending}
+            />
+          </div>
+        </div>
+        {/* Column 2 */}
+        <div className="space-y-4">
+          <div className="space-y-1">
+            <Label htmlFor="account-manager">Account manager</Label>
+            <Select
+              value={selectedAccountManager}
+              onValueChange={handleAccountManagerChange}
+              disabled={isLoadingAgents || updateMutation.isPending}
+            >
+              <SelectTrigger id="account-manager">
+                <SelectValue placeholder={isLoadingAgents ? 'Loading...' : '--'} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="null">--</SelectItem>
+                {agentsError ? (
+                  <SelectItem value="error" disabled>
+                    Error
+                  </SelectItem>
+                ) : (
+                  agents.map(agent => (
+                    <SelectItem key={agent.id} value={agent.id.toString()}>
+                      {agent.name}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        {/* Column 3 */}
+        <div className="space-y-1">
+          <Label htmlFor="company-description">Description</Label>
+          <Textarea
+            id="company-description"
+            value={editableDescription}
+            onChange={handleDescriptionChange}
+            onBlur={handleDescriptionBlur}
+            placeholder="Enter description..."
+            rows={4}
+            className="text-sm resize-none"
+            maxLength={descriptionMaxLength}
+            disabled={updateMutation.isPending}
+          />
+          <p className="text-xs text-muted-foreground text-right">
+            {editableDescription.length}/{descriptionMaxLength}
+          </p>
+        </div>
       </div>
 
       {/* Divider */}
@@ -318,15 +449,18 @@ const CompanyUserView: React.FC<CompanyUserViewProps> = ({
           <div className="flex items-center gap-4">
             <h3 className="text-lg font-semibold">Users in {company.name}</h3>
             {selectedUserIds.size > 0 && (
-              <AlertDialog open={isUserUnassignDialogOpen} onOpenChange={setIsUserUnassignDialogOpen}>
+              <AlertDialog
+                open={isUserUnassignDialogOpen}
+                onOpenChange={setIsUserUnassignDialogOpen}
+              >
                 <AlertDialogTrigger asChild>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    disabled={unassignUsersMutation.isPending} 
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={unassignUsersMutation.isPending}
                     className="border-red-500 text-red-500 hover:bg-red-50 hover:text-red-600 dark:border-red-700 dark:text-red-500 dark:hover:bg-red-900/30 dark:hover:text-red-400"
                   >
-                    <Trash2 className="mr-2 h-4 w-4" /> 
+                    <Trash2 className="mr-2 h-4 w-4" />
                     Unassign ({selectedUserIds.size})
                   </Button>
                 </AlertDialogTrigger>
@@ -334,11 +468,14 @@ const CompanyUserView: React.FC<CompanyUserViewProps> = ({
                   <AlertDialogHeader>
                     <AlertDialogTitle>Unassign Selected Users?</AlertDialogTitle>
                     <AlertDialogDescription>
-                      This will remove {selectedUserIds.size} user(s) from the company &quot;{company.name}&quot;. They will not be deleted from the system.
+                      This will remove {selectedUserIds.size} user(s) from the company &quot;
+                      {company.name}&quot;. They will not be deleted from the system.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel disabled={unassignUsersMutation.isPending}>Cancel</AlertDialogCancel>
+                    <AlertDialogCancel disabled={unassignUsersMutation.isPending}>
+                      Cancel
+                    </AlertDialogCancel>
                     <AlertDialogAction
                       onClick={handleUnassignSelectedUsers}
                       disabled={unassignUsersMutation.isPending}
@@ -351,47 +488,63 @@ const CompanyUserView: React.FC<CompanyUserViewProps> = ({
               </AlertDialog>
             )}
           </div>
-          <Button size="sm" onClick={onSwitchToUnassigned} disabled={unassignUsersMutation.isPending}>
+          <Button
+            size="sm"
+            onClick={onSwitchToUnassigned}
+            disabled={unassignUsersMutation.isPending}
+          >
             <PlusCircle className="mr-2 h-4 w-4" /> Add User to Company
           </Button>
         </div>
         <div className="flex-grow overflow-y-auto border rounded-md">
-          {isLoadingUsers ? <div className="flex justify-center items-center h-32"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
-           : usersError ? <p className="text-red-600 p-4">Error loading users: {usersError.message}</p>
-           : users.length === 0 ? <p className="text-muted-foreground text-center p-4">No users found for this company.</p>
-           : (<Table>
-                <TableHeader>
-                  <TableRow className="border-b border-slate-200 dark:border-slate-700 hover:bg-transparent">
-                    <TableHead className="w-[50px] p-2">
+          {isLoadingUsers ? (
+            <div className="flex justify-center items-center h-32">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : usersError ? (
+            <p className="text-red-600 p-4">Error loading users: {usersError.message}</p>
+          ) : users.length === 0 ? (
+            <p className="text-muted-foreground text-center p-4">
+              No users found for this company.
+            </p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow className="border-b border-slate-200 dark:border-slate-700 hover:bg-transparent">
+                  <TableHead className="w-[50px] p-2">
+                    <Checkbox
+                      checked={usersHeaderCheckboxState}
+                      onCheckedChange={handleSelectAllUsersChange}
+                      aria-label="Select all users"
+                      disabled={isLoadingUsers || users.length === 0}
+                    />
+                  </TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Phone</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {users.map(user => (
+                  <TableRow
+                    key={user.id}
+                    data-state={selectedUserIds.has(user.id) ? 'selected' : ''}
+                  >
+                    <TableCell className="p-2">
                       <Checkbox
-                        checked={usersHeaderCheckboxState}
-                        onCheckedChange={handleSelectAllUsersChange}
-                        aria-label="Select all users"
-                        disabled={isLoadingUsers || users.length === 0}
+                        checked={selectedUserIds.has(user.id)}
+                        onCheckedChange={checked => handleUserRowSelectChange(user.id, checked)}
+                        aria-label={`Select user ${user.name}`}
                       />
-                    </TableHead>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Phone</TableHead>
+                    </TableCell>
+                    <TableCell className="font-medium">{user.name}</TableCell>
+                    <TableCell>{user.email}</TableCell>
+                    <TableCell>{user.phone || '-'}</TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {users.map((user) => (
-                    <TableRow key={user.id} data-state={selectedUserIds.has(user.id) ? 'selected' : ''}>
-                      <TableCell className="p-2">
-                        <Checkbox
-                          checked={selectedUserIds.has(user.id)}
-                          onCheckedChange={(checked) => handleUserRowSelectChange(user.id, checked)}
-                          aria-label={`Select user ${user.name}`}
-                        />
-                      </TableCell>
-                      <TableCell className="font-medium">{user.name}</TableCell>
-                      <TableCell>{user.email}</TableCell>
-                      <TableCell>{user.phone || '-'}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>)}
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </div>
       </div>
     </div>

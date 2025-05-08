@@ -13,12 +13,13 @@
   cursor: pointer;
 }
 .dark .ProseMirror a {
-    color: theme('colors.blue.400');
+  color: theme('colors.blue.400');
 }
 
 /* Override ANY styles for images within the editor to force fixed size */
-.ProseMirror img[width][height] { /* Target images specifically having width/height attributes */
-  width: var(--img-width, 150px) !important;  /* Use CSS variable or fallback */
+.ProseMirror img[width][height] {
+  /* Target images specifically having width/height attributes */
+  width: var(--img-width, 150px) !important; /* Use CSS variable or fallback */
   height: var(--img-height, 92px) !important; /* Use CSS variable or fallback */
   max-width: var(--img-width, 150px) !important; /* Ensure max-width matches */
   object-fit: contain; /* Optional: control how image fits if aspect ratio differs */
@@ -28,10 +29,10 @@
 
 /* Reset width/height for images *without* explicit dimensions if needed */
 .ProseMirror img:not([width]):not([height]) {
-    max-width: 100%;
-    height: auto;
-    margin-top: 1em; /* Default prose margins */
-    margin-bottom: 1em;
+  max-width: 100%;
+  height: auto;
+  margin-top: 1em; /* Default prose margins */
+  margin-bottom: 1em;
 }
 
 /* Add any other custom styles for Tiptap elements here */

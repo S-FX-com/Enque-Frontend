@@ -5,7 +5,7 @@ import { useForm, Controller, SubmitHandler } from 'react-hook-form'; // Import 
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Button } from "@/components/ui/button";
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -13,16 +13,16 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from '@/components/ui/select';
 import { RichTextEditor } from '@/components/tiptap/RichTextEditor'; // Assuming Tiptap editor path
 import { createTicket } from '@/services/ticket'; // Assuming createTicket service function exists
 import { getUsers } from '@/services/user';
@@ -51,16 +51,15 @@ const TicketPriorityEnum = {
 
 // Define Zod schema for validation using local enums
 const ticketSchema = z.object({
-  title: z.string().min(1, "Subject is required"),
-  user_id: z.string().min(1, "User is required"), // Keep as string for form select
-  description: z.string().min(1, "Body is required"),
+  title: z.string().min(1, 'Subject is required'),
+  user_id: z.string().min(1, 'User is required'), // Keep as string for form select
+  description: z.string().min(1, 'Body is required'),
   team_id: z.string().optional(), // Keep as string for form select
   // Use the local enums for validation, remove .default() here
   status: z.nativeEnum(TicketStatusEnum),
   priority: z.nativeEnum(TicketPriorityEnum),
   category_id: z.string().optional(), // Keep as string for form select
 });
-
 
 type TicketFormData = z.infer<typeof ticketSchema>; // Type derived from schema
 
@@ -81,13 +80,19 @@ const priorityOptions = Object.entries(TicketPriorityEnum).map(([key, value]) =>
   label: key,
 }));
 
-
 export function NewTicketModal({ open, onOpenChange }: NewTicketModalProps) {
   const queryClient = useQueryClient();
   const { user: currentUser } = useAuth(); // Get current user from useAuth
   const [editorContent, setEditorContent] = useState('');
 
-  const { register, handleSubmit, control, reset, setValue, formState: { errors } } = useForm<TicketFormData>({
+  const {
+    register,
+    handleSubmit,
+    control,
+    reset,
+    setValue,
+    formState: { errors },
+  } = useForm<TicketFormData>({
     resolver: zodResolver(ticketSchema),
     defaultValues: {
       title: '',
@@ -97,7 +102,7 @@ export function NewTicketModal({ open, onOpenChange }: NewTicketModalProps) {
       status: TicketStatusEnum.Open, // Use renamed enum default
       priority: TicketPriorityEnum.Medium, // Use renamed enum default
       category_id: '',
-    }
+    },
   });
 
   // Fetch data for dropdowns
@@ -121,36 +126,53 @@ export function NewTicketModal({ open, onOpenChange }: NewTicketModalProps) {
   });
 
   // Prepare options for selects
-  const userOptions = useMemo(() => usersData.map((user: IUser) => ({ value: user.id.toString(), label: user.name || `User ${user.id}` })), [usersData]);
-  const teamOptions = useMemo(() => teamsData.map((team: Team) => ({ value: team.id.toString(), label: team.name })), [teamsData]);
+  const userOptions = useMemo(
+    () =>
+      usersData.map((user: IUser) => ({
+        value: user.id.toString(),
+        label: user.name || `User ${user.id}`,
+      })),
+    [usersData]
+  );
+  const teamOptions = useMemo(
+    () => teamsData.map((team: Team) => ({ value: team.id.toString(), label: team.name })),
+    [teamsData]
+  );
   // Add explicit type for cat parameter
-  const categoryOptions = useMemo(() => categoriesData.map((cat: ICategory) => ({ value: cat.id.toString(), label: cat.name })), [categoriesData]);
+  const categoryOptions = useMemo(
+    () => categoriesData.map((cat: ICategory) => ({ value: cat.id.toString(), label: cat.name })),
+    [categoriesData]
+  );
 
   // Define the mutation with correct payload type
   const createTicketMutation = useMutation({
     // Ensure the payload type matches the one expected by createTicket service function
     mutationFn: (payload: Parameters<typeof createTicket>[0]) => createTicket(payload),
     onSuccess: () => {
-      toast.success("Ticket created successfully!");
+      toast.success('Ticket created successfully!');
       queryClient.invalidateQueries({ queryKey: ['tickets'] }); // Invalidate tickets query
       reset(); // Reset form
       setEditorContent(''); // Clear editor
       onOpenChange(false); // Close modal
     },
-    onError: (error) => {
+    onError: error => {
       // Display a more specific error if available, otherwise generic message
-      const message = error instanceof Error ? error.message : "An unknown error occurred";
+      const message = error instanceof Error ? error.message : 'An unknown error occurred';
       toast.error(`Failed to create ticket: ${message}`);
-      console.error("Ticket creation error:", error);
+      console.error('Ticket creation error:', error);
     },
   });
 
   // Add SubmitHandler type to onSubmit
-  const onSubmit: SubmitHandler<TicketFormData> = (data) => {
+  const onSubmit: SubmitHandler<TicketFormData> = data => {
     // Ensure currentUser and workspace_id exist before proceeding
-    if (!currentUser || typeof currentUser.workspace_id !== 'number') { // Check type too
-      toast.error("Could not identify user workspace. Please try logging in again.");
-      console.error("Missing currentUser or valid workspace_id in NewTicketModal onSubmit", currentUser);
+    if (!currentUser || typeof currentUser.workspace_id !== 'number') {
+      // Check type too
+      toast.error('Could not identify user workspace. Please try logging in again.');
+      console.error(
+        'Missing currentUser or valid workspace_id in NewTicketModal onSubmit',
+        currentUser
+      );
       return;
     }
 
@@ -169,7 +191,7 @@ export function NewTicketModal({ open, onOpenChange }: NewTicketModalProps) {
       due_date: new Date().toISOString(), // Add current date as default due_date
       sent_from_id: currentUser.id, // Add the current user's ID as sent_from_id
     };
-    console.log("Submitting payload:", payload);
+    console.log('Submitting payload:', payload);
     createTicketMutation.mutate(payload);
   };
 
@@ -186,7 +208,6 @@ export function NewTicketModal({ open, onOpenChange }: NewTicketModalProps) {
     }
   }, [open, reset]);
 
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px] bg-white">
@@ -197,7 +218,9 @@ export function NewTicketModal({ open, onOpenChange }: NewTicketModalProps) {
           </DialogDescription>
         </DialogHeader>
         {/* Pass the correctly typed onSubmit to handleSubmit */}
-        <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4 py-4"> {/* Removed unnecessary type assertion */}
+        <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4 py-4">
+          {' '}
+          {/* Removed unnecessary type assertion */}
           {/* Subject */}
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="title" className="text-right">
@@ -206,13 +229,12 @@ export function NewTicketModal({ open, onOpenChange }: NewTicketModalProps) {
             <div className="col-span-3">
               <Input
                 id="title"
-                {...register("title")}
+                {...register('title')}
                 className={errors.title ? 'border-red-500' : ''}
               />
               {errors.title && <p className="text-xs text-red-500 mt-1">{errors.title.message}</p>}
             </div>
           </div>
-
           {/* User */}
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="user_id" className="text-right">
@@ -223,7 +245,11 @@ export function NewTicketModal({ open, onOpenChange }: NewTicketModalProps) {
                 name="user_id"
                 control={control}
                 render={({ field }) => (
-                  <Select onValueChange={field.onChange} value={field.value} disabled={isLoadingUsers}>
+                  <Select
+                    onValueChange={field.onChange}
+                    value={field.value}
+                    disabled={isLoadingUsers}
+                  >
                     <SelectTrigger className={errors.user_id ? 'border-red-500' : ''}>
                       <SelectValue placeholder="Select a user..." />
                     </SelectTrigger>
@@ -238,10 +264,11 @@ export function NewTicketModal({ open, onOpenChange }: NewTicketModalProps) {
                   </Select>
                 )}
               />
-              {errors.user_id && <p className="text-xs text-red-500 mt-1">{errors.user_id.message}</p>}
+              {errors.user_id && (
+                <p className="text-xs text-red-500 mt-1">{errors.user_id.message}</p>
+              )}
             </div>
           </div>
-
           {/* Body */}
           <div className="grid grid-cols-4 items-start gap-4">
             <Label htmlFor="description" className="text-right pt-2">
@@ -250,10 +277,11 @@ export function NewTicketModal({ open, onOpenChange }: NewTicketModalProps) {
             <div className="col-span-3">
               {/* Pass setEditorContent to update state */}
               <RichTextEditor content={editorContent} onChange={setEditorContent} />
-              {errors.description && <p className="text-xs text-red-500 mt-1">{errors.description.message}</p>}
+              {errors.description && (
+                <p className="text-xs text-red-500 mt-1">{errors.description.message}</p>
+              )}
             </div>
           </div>
-
           {/* Team */}
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="team_id" className="text-right">
@@ -264,12 +292,18 @@ export function NewTicketModal({ open, onOpenChange }: NewTicketModalProps) {
                 name="team_id"
                 control={control}
                 render={({ field }) => (
-                  <Select onValueChange={field.onChange} value={field.value || ''} disabled={isLoadingTeams}> {/* Handle undefined value */}
+                  <Select
+                    onValueChange={field.onChange}
+                    value={field.value || ''}
+                    disabled={isLoadingTeams}
+                  >
+                    {' '}
+                    {/* Handle undefined value */}
                     <SelectTrigger>
                       <SelectValue placeholder="Select a team (optional)..." />
                     </SelectTrigger>
                     <SelectContent>
-                       {/* Add explicit type for option */}
+                      {/* Add explicit type for option */}
                       {teamOptions.map((option: { value: string; label: string }) => (
                         <SelectItem key={option.value} value={option.value}>
                           {option.label}
@@ -282,7 +316,6 @@ export function NewTicketModal({ open, onOpenChange }: NewTicketModalProps) {
               {/* No error message needed as it's optional */}
             </div>
           </div>
-
           {/* Status */}
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="status" className="text-right">
@@ -298,7 +331,7 @@ export function NewTicketModal({ open, onOpenChange }: NewTicketModalProps) {
                       <SelectValue placeholder="Select status..." />
                     </SelectTrigger>
                     <SelectContent>
-                       {/* Add explicit type for option */}
+                      {/* Add explicit type for option */}
                       {statusOptions.map((option: { value: string; label: string }) => (
                         <SelectItem key={option.value} value={option.value}>
                           {option.label}
@@ -308,10 +341,11 @@ export function NewTicketModal({ open, onOpenChange }: NewTicketModalProps) {
                   </Select>
                 )}
               />
-              {errors.status && <p className="text-xs text-red-500 mt-1">{errors.status.message}</p>}
+              {errors.status && (
+                <p className="text-xs text-red-500 mt-1">{errors.status.message}</p>
+              )}
             </div>
           </div>
-
           {/* Priority */}
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="priority" className="text-right">
@@ -327,7 +361,7 @@ export function NewTicketModal({ open, onOpenChange }: NewTicketModalProps) {
                       <SelectValue placeholder="Select priority..." />
                     </SelectTrigger>
                     <SelectContent>
-                       {/* Add explicit type for option */}
+                      {/* Add explicit type for option */}
                       {priorityOptions.map((option: { value: string; label: string }) => (
                         <SelectItem key={option.value} value={option.value}>
                           {option.label}
@@ -337,10 +371,11 @@ export function NewTicketModal({ open, onOpenChange }: NewTicketModalProps) {
                   </Select>
                 )}
               />
-              {errors.priority && <p className="text-xs text-red-500 mt-1">{errors.priority.message}</p>}
+              {errors.priority && (
+                <p className="text-xs text-red-500 mt-1">{errors.priority.message}</p>
+              )}
             </div>
           </div>
-
           {/* Category */}
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="category_id" className="text-right">
@@ -351,12 +386,18 @@ export function NewTicketModal({ open, onOpenChange }: NewTicketModalProps) {
                 name="category_id"
                 control={control}
                 render={({ field }) => (
-                  <Select onValueChange={field.onChange} value={field.value || ''} disabled={isLoadingCategories}> {/* Handle undefined value */}
+                  <Select
+                    onValueChange={field.onChange}
+                    value={field.value || ''}
+                    disabled={isLoadingCategories}
+                  >
+                    {' '}
+                    {/* Handle undefined value */}
                     <SelectTrigger>
                       <SelectValue placeholder="Select a category (optional)..." />
                     </SelectTrigger>
                     <SelectContent>
-                       {/* Add explicit type for option */}
+                      {/* Add explicit type for option */}
                       {categoryOptions.map((option: { value: string; label: string }) => (
                         <SelectItem key={option.value} value={option.value}>
                           {option.label}
@@ -366,12 +407,16 @@ export function NewTicketModal({ open, onOpenChange }: NewTicketModalProps) {
                   </Select>
                 )}
               />
-               {/* No error message needed as it's optional */}
+              {/* No error message needed as it's optional */}
             </div>
           </div>
-
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={createTicketMutation.isPending}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={createTicketMutation.isPending}
+            >
               Cancel
             </Button>
             <Button type="submit" disabled={createTicketMutation.isPending}>

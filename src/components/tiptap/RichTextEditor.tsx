@@ -48,14 +48,15 @@ export function RichTextEditor({ content, onChange, placeholder, disabled = fals
       // Add HardBreak extension separately
       // This handles Shift+Enter and might influence Enter behavior in lists
       HardBreak.configure(),
-      Link.configure({ // Enables link commands
+      Link.configure({
+        // Enables link commands
         openOnClick: false,
         autolink: true,
         linkOnPaste: true,
         HTMLAttributes: {
-           // Add attributes for security and usability
-           target: '_blank',
-           rel: 'noopener noreferrer nofollow',
+          // Add attributes for security and usability
+          target: '_blank',
+          rel: 'noopener noreferrer nofollow',
         },
       }),
       Placeholder.configure({
@@ -67,7 +68,8 @@ export function RichTextEditor({ content, onChange, placeholder, disabled = fals
         HTMLAttributes: {
           // No default classes needed here now
         },
-      }).extend({ // Extend the Image extension to add custom attribute handling
+      }).extend({
+        // Extend the Image extension to add custom attribute handling
         addAttributes() {
           return {
             ...this.parent?.(), // Keep existing attributes like src, alt, title
@@ -96,16 +98,16 @@ export function RichTextEditor({ content, onChange, placeholder, disabled = fals
               },
             },
             // Keep style attribute handling if we decide to use it later, otherwise remove
-             style: {
-               default: null,
-               parseHTML: element => element.getAttribute('style'),
-               renderHTML: attributes => {
-                 if (!attributes.style) {
-                   return {};
-                 }
-                 return { style: attributes.style };
-               },
-             },
+            style: {
+              default: null,
+              parseHTML: element => element.getAttribute('style'),
+              renderHTML: attributes => {
+                if (!attributes.style) {
+                  return {};
+                }
+                return { style: attributes.style };
+              },
+            },
           };
         },
       }),
@@ -120,7 +122,8 @@ export function RichTextEditor({ content, onChange, placeholder, disabled = fals
     editorProps: {
       attributes: {
         // Remove prose classes, keep basic styling and dimensions/scroll
-        class: 'max-w-none focus:outline-none p-2 border rounded-md min-h-[80px] max-h-[300px] overflow-y-auto',
+        class:
+          'max-w-none focus:outline-none p-2 border rounded-md min-h-[80px] max-h-[300px] overflow-y-auto',
       },
     },
   });
@@ -137,12 +140,11 @@ export function RichTextEditor({ content, onChange, placeholder, disabled = fals
   }, [content, editor]);
 
   // Update editable state if disabled prop changes
-   React.useEffect(() => {
+  React.useEffect(() => {
     if (editor) {
       editor.setEditable(!disabled);
     }
   }, [disabled, editor]);
-
 
   return (
     <div className="flex flex-col">

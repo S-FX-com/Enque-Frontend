@@ -2,7 +2,8 @@ import { fetchAPI } from '@/lib/fetch-api';
 import { Task } from '../typescript/task'; // Using relative path
 
 // Use the production URL directly. Ensure NEXT_PUBLIC_API_BASE_URL is set in the production environment.
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://enque-backend-production.up.railway.app';
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL || 'https://enque-backend-production.up.railway.app';
 
 /**
  * Fetches tasks assigned to a specific team.

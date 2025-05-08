@@ -31,4 +31,4 @@ export interface IUpdateWorkspace {
 export interface IGetWorkspace extends BaseFilters {
   id?: number;
   subdomain?: string;
-} 
+}

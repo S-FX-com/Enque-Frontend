@@ -5,7 +5,7 @@
 
 interface LogEntry {
   timestamp: string;
-  level: "info" | "error" | "warn";
+  level: 'info' | 'error' | 'warn';
   message: string;
   details?: string;
 }
@@ -39,24 +39,24 @@ const saveLogs = (logs: LogEntry[]): void => {
 };
 
 // Add a log entry
-const addLog = (level: "info" | "error" | "warn", message: string, details?: string): void => {
+const addLog = (level: 'info' | 'error' | 'warn', message: string, details?: string): void => {
   try {
     const newLog: LogEntry = {
       timestamp: new Date().toISOString(),
       level,
       message,
-      details
+      details,
     };
-    
+
     // Get current logs and add new entry
     const logs = getLogs();
     logs.unshift(newLog);
-    
+
     // Limit the number of logs
     if (logs.length > MAX_LOGS) {
       logs.length = MAX_LOGS;
     }
-    
+
     // Save back to storage
     saveLogs(logs);
   } catch (error) {
@@ -79,30 +79,30 @@ export const logger = {
     console.info(message);
     addLog('info', message, details);
   },
-  
+
   warn: (message: string, details?: string) => {
     console.warn(message);
     addLog('warn', message, details);
   },
-  
+
   error: (message: string, details?: string) => {
     console.error(message);
     addLog('error', message, details);
   },
-  
+
   // API request logging
   logRequest: (method: string, url: string, status: number, time: number) => {
     const isError = status >= 400;
-    const level = isError ? 'error' : (time > 1000 ? 'warn' : 'info');
+    const level = isError ? 'error' : time > 1000 ? 'warn' : 'info';
     const message = `${method} ${url} - ${status}`;
     const details = `Response time: ${time}ms`;
-    
+
     addLog(level, message, details);
   },
-  
+
   // Get all logs
   getLogs,
-  
+
   // Clear logs
-  clearLogs
-}; 
+  clearLogs,
+};
