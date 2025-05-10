@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { getCurrentUser } from "@/lib/auth";
-import { UserSession } from "@/lib/auth";
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { getCurrentUser } from '@/lib/auth';
+import { UserSession } from '@/lib/auth';
 
 export default function WorkspaceDashboard() {
   const router = useRouter();
@@ -15,13 +15,13 @@ export default function WorkspaceDashboard() {
       try {
         const currentUser = await getCurrentUser();
         if (!currentUser) {
-          router.push("/main");
+          router.push('/main');
           return;
         }
         setUser(currentUser);
       } catch (error) {
-        console.error("Error al verificar autenticación:", error);
-        router.push("/main");
+        console.error('Error al verificar autenticación:', error);
+        router.push('/main');
       } finally {
         setLoading(false);
       }
@@ -51,18 +51,14 @@ export default function WorkspaceDashboard() {
             </h1>
             <span className="text-sm text-slate-500">Dashboard</span>
           </div>
-          
+
           <div className="flex items-center space-x-4">
-            {user && (
-              <div className="text-sm font-medium">
-                Hola, {user.name}
-              </div>
-            )}
+            {user && <div className="text-sm font-medium">Hola, {user.name}</div>}
             <button
               className="text-sm text-red-600 hover:underline"
               onClick={() => {
-                localStorage.removeItem("auth_token");
-                router.push("/main");
+                localStorage.removeItem('auth_token');
+                router.push('/main');
               }}
             >
               Cerrar sesión
@@ -70,16 +66,16 @@ export default function WorkspaceDashboard() {
           </div>
         </div>
       </header>
-      
+
       <main className="container mx-auto py-8 px-6">
         <h2 className="text-2xl font-bold mb-6">Bienvenido a tu workspace</h2>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="bg-white border border-slate-200 rounded-lg p-6 shadow-sm">
             <h3 className="text-lg font-semibold mb-4">Tickets recientes</h3>
             <p className="text-slate-500">Aún no hay tickets disponibles.</p>
           </div>
-          
+
           <div className="bg-white border border-slate-200 rounded-lg p-6 shadow-sm">
             <h3 className="text-lg font-semibold mb-4">Estadísticas</h3>
             <p className="text-slate-500">No hay datos disponibles.</p>

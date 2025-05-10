@@ -2,8 +2,8 @@
 import { redirect } from 'next/navigation';
 import { AppConfigs } from '@/configs';
 import { logger } from './logger';
-import { jwtDecode } from "jwt-decode";
-import { UserPayload } from "@/types/auth";
+import { jwtDecode } from 'jwt-decode';
+import { UserPayload } from '@/types/auth';
 
 // Tipos
 export interface UserSession {
@@ -11,12 +11,12 @@ export interface UserSession {
   name: string;
   email: string;
   role: string; // Keep as string, validation happens elsewhere if needed
-    workspace_id: number;
-    job_title?: string | null;
-    phone_number?: string | null;
-    email_signature?: string | null; // Add email_signature
-    iat: number;
-    exp: number;
+  workspace_id: number;
+  job_title?: string | null;
+  phone_number?: string | null;
+  email_signature?: string | null; // Add email_signature
+  iat: number;
+  exp: number;
 }
 
 // Constantes para el manejo de tokens
@@ -93,7 +93,7 @@ export const handleLogout = (): void => {
   sessionStorage.clear();
 
   // Redirigir al usuario a la página de login
-  window.location.replace("/signin");
+  window.location.replace('/signin');
 };
 
 // Obtener usuario actual
@@ -109,18 +109,21 @@ export const getCurrentUser = async (): Promise<UserSession | null> => {
     // Include new fields, defaulting to null if not present in token
     return {
       id: Number(userData.sub || 0),
-      name: userData.name || "Usuario Enque",
-      email: userData.email || "usuario@enque.cc",
+      name: userData.name || 'Usuario Enque',
+      email: userData.email || 'usuario@enque.cc',
       role: userData.role || 'user',
       workspace_id: userData.workspace_id || 0,
       job_title: userData.job_title || null,
       phone_number: userData.phone_number || null,
       email_signature: userData.email_signature || null, // Add email_signature
       iat: userData.iat || 0,
-      exp: userData.exp || 0
+      exp: userData.exp || 0,
     };
   } catch (error) {
-    logger.error('Error getting current user', error instanceof Error ? error.message : 'Unknown error');
+    logger.error(
+      'Error getting current user',
+      error instanceof Error ? error.message : 'Unknown error'
+    );
     return null;
   }
 };
@@ -150,7 +153,10 @@ export const setupHistoryProtection = () => {
 
   const checkAndRedirect = () => {
     // Si estamos autenticados y en una página de auth, redirigir al dashboard
-    if (isAuthenticated() && (window.location.pathname === '/signin' || window.location.pathname === '/register')) {
+    if (
+      isAuthenticated() &&
+      (window.location.pathname === '/signin' || window.location.pathname === '/register')
+    ) {
       console.log('Redirecting from auth page to dashboard due to active session');
       window.location.replace(AppConfigs.routes.dashboard);
       return true;
@@ -178,13 +184,13 @@ export const decodeToken = (token: string): UserPayload | null => {
   try {
     const decoded = jwtDecode<UserPayload>(token);
 
-    if (!decoded.sub || decoded.sub === "undefined") {
-      console.warn("Token decodificado con ID inválido", decoded);
+    if (!decoded.sub || decoded.sub === 'undefined') {
+      console.warn('Token decodificado con ID inválido', decoded);
     }
 
     return decoded;
   } catch (error) {
-    console.error("Failed to decode token:", error);
+    console.error('Failed to decode token:', error);
     return null;
   }
 };

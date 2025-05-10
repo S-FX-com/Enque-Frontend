@@ -6,7 +6,7 @@ export interface IUser {
   name: string;
   email: string;
   company_id?: number | null; // Optional or null based on backend logic
-  phone?: string | null;      // Optional or null
+  phone?: string | null; // Optional or null
   created_at: string;
   updated_at: string;
   workspace_id: number;

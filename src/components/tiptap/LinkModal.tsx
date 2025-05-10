@@ -8,10 +8,10 @@ import {
   DialogTitle,
   DialogFooter,
   DialogClose, // Import DialogClose
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
 
 interface Props {
   isOpen: boolean;
@@ -57,7 +57,7 @@ export function LinkModal({ isOpen, onOpenChange, initialUrl = '', onSetLink }: 
             <Input
               id="link-url"
               value={url}
-              onChange={(e) => setUrl(e.target.value)}
+              onChange={e => setUrl(e.target.value)}
               onKeyDown={handleKeyDown} // Add keydown handler
               className="col-span-3"
               placeholder="https://example.com"
@@ -66,12 +66,12 @@ export function LinkModal({ isOpen, onOpenChange, initialUrl = '', onSetLink }: 
           </div>
         </div>
         <DialogFooter>
-           {/* Add a Cancel button */}
-           <DialogClose asChild>
-             <Button type="button" variant="outline">
-               Cancel
-             </Button>
-           </DialogClose>
+          {/* Add a Cancel button */}
+          <DialogClose asChild>
+            <Button type="button" variant="outline">
+              Cancel
+            </Button>
+          </DialogClose>
           <Button type="button" onClick={handleConfirm}>
             {initialUrl ? 'Update' : 'Add'}
           </Button>

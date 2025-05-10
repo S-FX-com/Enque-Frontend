@@ -1,10 +1,10 @@
-"use client";
+'use client';
 
-import { Sidebar } from "@/components/sidebar";
-import { Topbar } from "@/components/topbar";
-import { useEffect, useState } from "react";
-import { getCurrentUser, redirectToLogin, UserSession } from "@/lib/auth";
-import { NewTicketModal } from "@/components/modals/new-ticket-modal"; // Import the modal
+import { Sidebar } from '@/components/sidebar';
+import { Topbar } from '@/components/topbar';
+import { useEffect, useState } from 'react';
+import { getCurrentUser, redirectToLogin, UserSession } from '@/lib/auth';
+import { NewTicketModal } from '@/components/modals/new-ticket-modal'; // Import the modal
 import { usePathname } from 'next/navigation'; // Import usePathname
 
 interface Breadcrumb {
@@ -15,12 +15,12 @@ interface Breadcrumb {
 interface AppLayoutProps {
   children: React.ReactNode;
   title?: string;
-  breadcrumbs?: Breadcrumb[]; 
+  breadcrumbs?: Breadcrumb[];
 }
 
 export default function AppLayout({
   children,
-  title = "Dashboard",
+  title = 'Dashboard',
   breadcrumbs = [],
 }: AppLayoutProps) {
   const [user, setUser] = useState<UserSession | null>(null);
@@ -33,20 +33,18 @@ export default function AppLayout({
   };
 
   useEffect(() => {
-    
     redirectToLogin();
-    
-   
+
     const fetchUser = async () => {
       const currentUser = await getCurrentUser();
       if (currentUser) {
         setUser(currentUser);
       }
     };
-    
+
     fetchUser();
   }, []);
-  
+
   return (
     <div className="flex h-screen overflow-hidden">
       <aside className="fixed h-screen">
@@ -62,9 +60,7 @@ export default function AppLayout({
             onNewTicketClick={pathname === '/tickets' ? handleNewTicketClick : undefined}
           />
         </div>
-        <main className="flex-1 overflow-y-auto px-6 pb-6 pt-2">
-          {children}
-        </main>
+        <main className="flex-1 overflow-y-auto px-6 pb-6 pt-2">{children}</main>
       </div>
       {/* Render the modal outside the main content flow */}
       <NewTicketModal open={isNewTicketModalOpen} onOpenChange={setIsNewTicketModalOpen} />

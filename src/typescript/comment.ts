@@ -14,8 +14,8 @@ export interface IComment {
 
 // Optional: Interface for creating comments if needed later
 export interface ICreateComment {
-    ticket_id: number;
-    content: string;
-    is_private?: boolean;
-    // user_id will likely be inferred from the authenticated session backend-side
+  ticket_id: number;
+  content: string;
+  is_private?: boolean;
+  // user_id will likely be inferred from the authenticated session backend-side
 }

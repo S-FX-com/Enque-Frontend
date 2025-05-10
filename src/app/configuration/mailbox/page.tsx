@@ -37,7 +37,8 @@ export default function MailboxPage() {
     setIsLoadingList(true);
     setError(null);
     try {
-      const apiUrlBase = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://enque-backend-production.up.railway.app';
+      const apiUrlBase =
+        process.env.NEXT_PUBLIC_API_BASE_URL || 'https://enque-backend-production.up.railway.app';
       const connectionsUrl = `${apiUrlBase}/v1/microsoft/connections`;
       const response = await fetchAPI.GET<MailboxConnection[]>(connectionsUrl);
 
@@ -46,14 +47,16 @@ export default function MailboxPage() {
       } else {
         setConnections([]);
         if (!response.success) {
-           setError(response.message || "Failed to fetch connections.");
-           toast.error(response.message || "Failed to fetch connections.");
+          setError(response.message || 'Failed to fetch connections.');
+          toast.error(response.message || 'Failed to fetch connections.');
         }
       }
     } catch (err) {
-      console.error("Failed to fetch connections:", err);
-      setError(err instanceof Error ? err.message : "An unknown error occurred while fetching connections.");
-      toast.error("Failed to fetch connections.");
+      console.error('Failed to fetch connections:', err);
+      setError(
+        err instanceof Error ? err.message : 'An unknown error occurred while fetching connections.'
+      );
+      toast.error('Failed to fetch connections.');
       setConnections([]);
     } finally {
       setIsLoadingList(false);
@@ -88,12 +91,11 @@ export default function MailboxPage() {
       let base64State = Buffer.from(stateJsonString).toString('base64');
       base64State = base64State.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 
-      const apiUrlBase = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://enque-backend-production.up.railway.app';
+      const apiUrlBase =
+        process.env.NEXT_PUBLIC_API_BASE_URL || 'https://enque-backend-production.up.railway.app';
       const fullApiUrl = `${apiUrlBase}/v1/microsoft/auth/authorize?state=${base64State}`;
 
-      const response = await fetchAPI.GET<{ auth_url: string }>(
-        fullApiUrl,
-      );
+      const response = await fetchAPI.GET<{ auth_url: string }>(fullApiUrl);
 
       if (response.data?.auth_url) {
         window.location.href = response.data.auth_url;
@@ -102,7 +104,8 @@ export default function MailboxPage() {
       }
     } catch (err: unknown) {
       console.error('Failed to get Microsoft auth URL:', err);
-      const errorMsg = err instanceof Error ? err.message : 'Failed to initiate Microsoft connection.';
+      const errorMsg =
+        err instanceof Error ? err.message : 'Failed to initiate Microsoft connection.';
       toast.error(errorMsg);
       setError(errorMsg);
       setIsLoadingConnect(false);
@@ -122,32 +125,34 @@ export default function MailboxPage() {
       toast.error(message || 'Failed to connect Microsoft account.');
       fetchConnections();
       setError(message || 'Failed to connect Microsoft account.');
-       window.history.replaceState({}, document.title, window.location.pathname);
+      window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, [fetchConnections]);
 
   const handleDisconnect = async (connectionId: number) => {
-     setDisconnectingId(connectionId);
-     setError(null);
-     try {
-       const apiUrlBase = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://enque-backend-production.up.railway.app';
-       const disconnectUrl = `${apiUrlBase}/v1/microsoft/connection/${connectionId}`;
-       const response = await fetchAPI.DELETE(disconnectUrl);
+    setDisconnectingId(connectionId);
+    setError(null);
+    try {
+      const apiUrlBase =
+        process.env.NEXT_PUBLIC_API_BASE_URL || 'https://enque-backend-production.up.railway.app';
+      const disconnectUrl = `${apiUrlBase}/v1/microsoft/connection/${connectionId}`;
+      const response = await fetchAPI.DELETE(disconnectUrl);
 
-       if (response.success) {
-         toast.success("Mailbox disconnected successfully!");
-         fetchConnections();
-       } else {
-         throw new Error(response.message || "Failed to disconnect mailbox.");
-       }
-     } catch (err) {
-       console.error(`Failed to disconnect mailbox ${connectionId}:`, err);
-       const errorMsg = err instanceof Error ? err.message : "An unknown error occurred during disconnection.";
-       toast.error(errorMsg);
-       setError(errorMsg);
-     } finally {
-       setDisconnectingId(null);
-     }
+      if (response.success) {
+        toast.success('Mailbox disconnected successfully!');
+        fetchConnections();
+      } else {
+        throw new Error(response.message || 'Failed to disconnect mailbox.');
+      }
+    } catch (err) {
+      console.error(`Failed to disconnect mailbox ${connectionId}:`, err);
+      const errorMsg =
+        err instanceof Error ? err.message : 'An unknown error occurred during disconnection.';
+      toast.error(errorMsg);
+      setError(errorMsg);
+    } finally {
+      setDisconnectingId(null);
+    }
   };
 
   return (
@@ -171,14 +176,17 @@ export default function MailboxPage() {
               </div>
             ) : connections.length > 0 ? (
               <ul className="space-y-3">
-                {connections.map((conn) => (
-                  <li key={conn.id} className="flex items-center justify-between p-3 border rounded-md bg-muted/30">
+                {connections.map(conn => (
+                  <li
+                    key={conn.id}
+                    className="flex items-center justify-between p-3 border rounded-md bg-muted/30"
+                  >
                     <div className="flex items-center space-x-3">
-                       <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0" />
-                       <div>
-                         <p className="font-medium text-sm">{conn.display_name || conn.email}</p>
-                         <p className="text-xs text-muted-foreground">{conn.email}</p>
-                       </div>
+                      <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0" />
+                      <div>
+                        <p className="font-medium text-sm">{conn.display_name || conn.email}</p>
+                        <p className="text-xs text-muted-foreground">{conn.email}</p>
+                      </div>
                     </div>
                     <Button
                       variant="ghost"
@@ -202,25 +210,21 @@ export default function MailboxPage() {
           </div>
 
           <div className="pt-6 border-t">
-             <h3 className="text-md font-semibold mb-3">Add New Connection</h3>
-             <Button
-                onClick={handleConnectMicrosoft}
-                disabled={isLoadingConnect}
-              >
-                {isLoadingConnect ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Connecting...
-                  </>
-                ) : (
-                  'Connect Microsoft Account'
-                )}
-              </Button>
-              <p className="text-xs text-muted-foreground mt-2">
-                 Connect a new Microsoft 365 account to this workspace.
-              </p>
+            <h3 className="text-md font-semibold mb-3">Add New Connection</h3>
+            <Button onClick={handleConnectMicrosoft} disabled={isLoadingConnect}>
+              {isLoadingConnect ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Connecting...
+                </>
+              ) : (
+                'Connect Microsoft Account'
+              )}
+            </Button>
+            <p className="text-xs text-muted-foreground mt-2">
+              Connect a new Microsoft 365 account to this workspace.
+            </p>
           </div>
-
         </CardContent>
       </Card>
     </div>

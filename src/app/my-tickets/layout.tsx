@@ -1,15 +1,11 @@
-"use client";
+'use client';
 
-import AppLayout from "@/components/layouts/app-layout";
+import AppLayout from '@/components/layouts/app-layout';
 
-export default function ConfigurationLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function ConfigurationLayout({ children }: { children: React.ReactNode }) {
   const breadcrumbs = [
-    { label: "Dashboard", href: "/dashboard" },
-    { label: "My Tickets", href: "/my-tickets" }, 
+    { label: 'Dashboard', href: '/dashboard' },
+    { label: 'My Tickets', href: '/my-tickets' },
   ];
 
   return (

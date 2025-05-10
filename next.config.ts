@@ -1,9 +1,9 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   /* config options here */
   env: {
-    NEXT_PUBLIC_JWT_SECRET: "temporarysecret",
+    NEXT_PUBLIC_JWT_SECRET: 'temporarysecret',
   },
 };
 

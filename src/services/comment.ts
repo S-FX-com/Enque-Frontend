@@ -15,11 +15,12 @@ export const getCommentsByTaskId = async (
   // token: string, // Removed token parameter
   skip: number = 0,
   limit: number = 100
-): Promise<IComment[]> => { // Return IComment[] directly or throw error
+): Promise<IComment[]> => {
+  // Return IComment[] directly or throw error
   try {
     // Construct the full URL
     const url = `${AppConfigs.api}/tasks/${taskId}/comments?skip=${skip}&limit=${limit}`;
-    
+
     // Use fetchAPI.GET and expect BaseResponse<IComment[]>
     const response = await fetchAPI.GET<IComment[]>(url); // Use GET method, no token needed
 
@@ -33,16 +34,15 @@ export const getCommentsByTaskId = async (
 
     // Return the data array directly from BaseResponse
     return response.data;
-
   } catch (error) {
     console.error('Error fetching comments:', error);
     // Re-throw the error or return an empty array
     // Ensure the error is an instance of Error for consistent handling upstream
     if (error instanceof Error) {
-        throw error;
+      throw error;
     } else {
-        // Wrap non-Error exceptions if necessary
-        throw new Error('An unknown error occurred while fetching comments.');
+      // Wrap non-Error exceptions if necessary
+      throw new Error('An unknown error occurred while fetching comments.');
     }
     // Or return [];
   }
@@ -69,15 +69,16 @@ export interface CreateCommentPayload {
 export const createComment = async (
   taskId: number,
   payload: CreateCommentPayload
-): Promise<IComment> => { // Return the created IComment on success
+): Promise<IComment> => {
+  // Return the created IComment on success
   try {
     // Construct the full URL
     const url = `${AppConfigs.api}/tasks/${taskId}/comments`;
-    
+
     // Use fetchAPI.POST and expect BaseResponse<IComment>
     // The backend likely infers agent_id and workspace_id from the token
     // No need for 'as any' now that CreateCommentPayload is compatible
-    const response = await fetchAPI.POST<IComment>(url, payload); 
+    const response = await fetchAPI.POST<IComment>(url, payload);
 
     if (!response.success || !response.data) {
       // Handle API error response
@@ -88,14 +89,13 @@ export const createComment = async (
 
     // Return the newly created comment data
     return response.data;
-
   } catch (error) {
     console.error('Error creating comment:', error);
     // Re-throw the error
     if (error instanceof Error) {
-        throw error;
+      throw error;
     } else {
-        throw new Error('An unknown error occurred while creating the comment.');
+      throw new Error('An unknown error occurred while creating the comment.');
     }
   }
 };

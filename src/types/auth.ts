@@ -3,12 +3,12 @@ export interface UserPayload {
   email: string;
   name: string;
   role: string;
-    workspace_id: number;
-    job_title?: string | null;
-    phone_number?: string | null;
-    email_signature?: string | null; // Add email_signature
-    iat: number;
-    exp: number;
+  workspace_id: number;
+  job_title?: string | null;
+  phone_number?: string | null;
+  email_signature?: string | null; // Add email_signature
+  iat: number;
+  exp: number;
 }
 
 export interface RegisterData {

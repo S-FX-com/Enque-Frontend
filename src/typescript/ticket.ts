@@ -3,7 +3,7 @@ import { IUser } from './user'; // Import IUser
 import { ICategory } from './category'; // Import ICategory
 
 // Define and export Ticket Status type (matching backend TaskStatus)
-export type TicketStatus = 'Unread' | 'Open' | 'With User' | 'In Progress' | 'Closed'; // Added 'With User' and 'In Progress'
+export type TicketStatus = 'Unread' | 'Open' | 'With User' | 'In Progress' | 'Closed' | 'Resolved'; // Added 'Resolved'
 
 // Define and export Ticket Priority type (matching backend TaskPriority)
 export type TicketPriority = 'Low' | 'Medium' | 'High' | 'Critical'; // Added Critical
@@ -29,7 +29,7 @@ export interface ITicket {
   status: TicketStatus; // Use the exported type
   priority: TicketPriority; // Use the exported type
   type: TicketType; // Use the exported type
-  user_id: number; // Keep user_id if needed, but also add the user object
+  user_id: number | null; // user_id puede ser null
   user?: IUser | null; // Add the user object (original sender)
   assignee_id?: number; // ID of the assigned agent/user
   team_id?: number; // Consider changing this to ITeam if backend sends object
@@ -48,6 +48,7 @@ export interface ITicket {
   } | null;
   category_id?: number | null; // Add category_id
   category?: ICategory | null; // Add category object
+  workspace_id: number; // Añadido workspace_id
 }
 
 // Interfaz para crear tickets

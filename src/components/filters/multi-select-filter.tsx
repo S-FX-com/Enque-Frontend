@@ -14,11 +14,7 @@ import {
   CommandList,
   CommandSeparator,
 } from '@/components/ui/command';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge'; // Restore Badge import
 
 export type OptionType = {
@@ -49,7 +45,7 @@ function MultiSelectFilter({
 
   // Restore handleUnselect function
   const handleUnselect = (item: string) => {
-    onChange(selected.filter((i) => i !== item));
+    onChange(selected.filter(i => i !== item));
   };
 
   // No need for buttonText anymore
@@ -63,54 +59,63 @@ function MultiSelectFilter({
           aria-controls={popoverContentId}
           aria-expanded={open}
           // Explicitly set bg-white dark:bg-black, remove hover effect for trigger area
-          className={cn('w-full justify-between border border-input bg-white dark:bg-black rounded-md text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 min-h-[calc(theme(height.10))] px-3 py-2 flex items-center cursor-pointer', className)}
+          className={cn(
+            'w-full justify-between border border-input bg-white dark:bg-black rounded-md text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 min-h-[calc(theme(height.10))] px-3 py-2 flex items-center cursor-pointer',
+            className
+          )}
           onClick={() => setOpen(!open)}
         >
           <div className="flex gap-1 flex-wrap">
-             {/* Render badges for selected items */}
-             {selected.length > 0 ? selected.map((value) => {
-               const option = options.find((opt) => opt.value === value);
-               return (
-                 <Badge
-                   variant="secondary" // Secondary variant usually has a grey background
-                   key={value}
-                   // Use bg-white dark:bg-gray-800 for badges? Or keep secondary? Let's keep secondary for now.
-                   className="mr-1 border border-border" // Add border for definition
-                   onMouseDown={(e) => {
+            {/* Render badges for selected items */}
+            {selected.length > 0 ? (
+              selected.map(value => {
+                const option = options.find(opt => opt.value === value);
+                return (
+                  <Badge
+                    variant="secondary" // Secondary variant usually has a grey background
+                    key={value}
+                    // Use bg-white dark:bg-gray-800 for badges? Or keep secondary? Let's keep secondary for now.
+                    className="mr-1 border border-border" // Add border for definition
+                    onMouseDown={e => {
                       e.preventDefault(); // Prevent default focus behavior
                       e.stopPropagation(); // Prevent popover trigger click
-                   }}
-                   onClick={(e) => {
+                    }}
+                    onClick={e => {
                       e.stopPropagation(); // Prevent popover trigger click
                       handleUnselect(value); // Call unselect handler
-                   }}
-                 >
-                   {option ? option.label : value}
-                   <X className="ml-1 h-3 w-3 cursor-pointer hover:text-foreground" />
-                 </Badge>
-               );
-             }) : (
-                // Show placeholder if nothing is selected
-                <span className="text-muted-foreground text-sm">{placeholder}</span>
-             )}
+                    }}
+                  >
+                    {option ? option.label : value}
+                    <X className="ml-1 h-3 w-3 cursor-pointer hover:text-foreground" />
+                  </Badge>
+                );
+              })
+            ) : (
+              // Show placeholder if nothing is selected
+              <span className="text-muted-foreground text-sm">{placeholder}</span>
+            )}
           </div>
           <ChevronsUpDown className="ml-auto h-4 w-4 shrink-0 opacity-50" />
         </div>
       </PopoverTrigger>
       {/* Added side="bottom" to force dropdown below the trigger */}
-      <PopoverContent id={popoverContentId} side="bottom" className="w-[--radix-popover-trigger-width] p-0">
+      <PopoverContent
+        id={popoverContentId}
+        side="bottom"
+        className="w-[--radix-popover-trigger-width] p-0"
+      >
         <Command>
           <CommandInput placeholder="Search..." />
           <CommandList>
             <CommandEmpty>No results found.</CommandEmpty>
             <CommandGroup>
-              {options.map((option) => (
+              {options.map(option => (
                 <CommandItem
                   key={option.value}
                   onSelect={() => {
                     onChange(
                       selected.includes(option.value)
-                        ? selected.filter((item) => item !== option.value)
+                        ? selected.filter(item => item !== option.value)
                         : [...selected, option.value]
                     );
                     // setOpen(true); // Keep popover open after selection - might be annoying, let it close

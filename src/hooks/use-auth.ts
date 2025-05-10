@@ -25,7 +25,7 @@ export function useAuth() {
         const decoded = jwtDecode<DecodedToken>(token);
         const currentTime = Date.now() / 1000;
         if (decoded.exp < currentTime) {
-          console.log("Auth token expired, removing.");
+          console.log('Auth token expired, removing.');
           removeAuthToken();
           setUser(null);
         } else {
@@ -62,24 +62,23 @@ export function useAuth() {
   }, [loadUserFromToken]);
 
   const reloadAuth = useCallback(() => {
-     loadUserFromToken();
+    loadUserFromToken();
   }, [loadUserFromToken]);
 
   // Function to manually update the user state in the hook
   const updateUserSessionData = useCallback((updatedUserData: Partial<Agent>) => {
-      setUser(prevUser => {
-          if (!prevUser) return null;
-          // Merge existing user data with updated fields
-          return { ...prevUser, ...updatedUserData };
-      });
-      // Note: This only updates the local state.
-      // The JWT token itself is NOT updated here.
-      // If the updated fields (like name) are needed in the token for future requests
-      // within the same session *before* a page refresh/re-login,
-      // the backend might need to issue a new token upon profile update.
-      // However, reloadAuth() on next page load will get the fresh token if login persists.
+    setUser(prevUser => {
+      if (!prevUser) return null;
+      // Merge existing user data with updated fields
+      return { ...prevUser, ...updatedUserData };
+    });
+    // Note: This only updates the local state.
+    // The JWT token itself is NOT updated here.
+    // If the updated fields (like name) are needed in the token for future requests
+    // within the same session *before* a page refresh/re-login,
+    // the backend might need to issue a new token upon profile update.
+    // However, reloadAuth() on next page load will get the fresh token if login persists.
   }, []);
-
 
   return {
     user, // Now typed as Agent | null

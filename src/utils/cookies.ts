@@ -24,7 +24,7 @@ export const removeCookie = (name: string) => {
 export const getTokenPayload = (): UserPayload | null => {
   const token = getCookie('token');
   if (!token) return null;
-  
+
   try {
     return jwtDecode<UserPayload>(token);
   } catch (error) {
@@ -36,7 +36,7 @@ export const getTokenPayload = (): UserPayload | null => {
 export const isTokenExpired = (): boolean => {
   const payload = getTokenPayload();
   if (!payload || !payload.exp) return true;
-  
+
   const currentTime = Math.floor(Date.now() / 1000);
   return payload.exp < currentTime;
-}; 
+};
