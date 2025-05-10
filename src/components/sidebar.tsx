@@ -136,6 +136,7 @@ export function Sidebar() {
       title: 'Configuration',
       href: '/configuration',
       icon: Settings,
+      roleRestriction: ['admin'],
     },
   ];
 
@@ -198,6 +199,14 @@ export function Sidebar() {
           {bottomItems.map(item => {
             const isActive = pathname === item.href;
             const IconComponent = item.icon;
+
+            // Skip rendering if item has role restriction and user doesn't have the required role
+            if (
+              item.roleRestriction &&
+              (!user?.role || !item.roleRestriction.includes(user.role))
+            ) {
+              return null;
+            }
 
             return (
               <Link

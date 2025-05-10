@@ -15,13 +15,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { MultiSelectFilter, OptionType } from '@/components/filters/multi-select-filter';
-import { Settings2, Trash2 } from 'lucide-react';
+import { MultiSelectFilter, type OptionType } from '@/components/filters/multi-select-filter';
+import { Settings2, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import {
   useInfiniteQuery,
   useQuery,
   useQueryClient,
-  InfiniteData,
+  type InfiniteData,
   useMutation,
 } from '@tanstack/react-query';
 import { getTickets, updateTicket, deleteTicket } from '@/services/ticket';
@@ -39,13 +39,14 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useDebounce } from '@/hooks/use-debounce';
 import { motion } from 'framer-motion';
-import { ITicket } from '@/typescript/ticket';
-import { IUser } from '@/typescript/user';
+import type { ITicket } from '@/typescript/ticket';
+import type { IUser } from '@/typescript/user';
 import { getUsers } from '@/services/user';
 import { formatRelativeTime, cn } from '@/lib/utils';
 import { TicketDetail } from '@/app/tickets/ticket-details';
-import { getCurrentUser, UserSession } from '@/lib/auth';
+import { getCurrentUser, type UserSession } from '@/lib/auth';
 import { useSearchParams, useRouter } from 'next/navigation';
+import { Collapsible, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 const LOAD_LIMIT = 20;
 
@@ -65,6 +66,8 @@ function MyTicketsClientContent() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
   const [selectedPriorities, setSelectedPriorities] = useState<string[]>([]);
+  const [filtersExpanded, setFiltersExpanded] = useState(true);
+
   const statusOptions: OptionType[] = [
     { value: 'Unread', label: 'Unread' },
     { value: 'Open', label: 'Open' },
@@ -142,7 +145,7 @@ function MyTicketsClientContent() {
   useEffect(() => {
     const ticketIdToOpen = searchParams.get('openTicket');
     if (ticketIdToOpen && allTicketsData.length > 0) {
-      const ticket = allTicketsData.find(t => t.id === parseInt(ticketIdToOpen, 10));
+      const ticket = allTicketsData.find(t => t.id === Number.parseInt(ticketIdToOpen, 10));
       if (ticket) {
         setSelectedTicket(ticket);
       } else {
@@ -166,7 +169,7 @@ function MyTicketsClientContent() {
     }
 
     if (selectedUsers.length > 0) {
-      const selectedUserIds = selectedUsers.map(id => parseInt(id, 10));
+      const selectedUserIds = selectedUsers.map(id => Number.parseInt(id, 10));
       tickets = tickets.filter(
         ticket => ticket.user_id && selectedUserIds.includes(ticket.user_id)
       );
@@ -377,6 +380,23 @@ function MyTicketsClientContent() {
     router.push(`${window.location.pathname}?${newSearchParams.toString()}`);
   }, [searchParams, router]);
 
+  // Calculate active filters count for the badge
+  const activeFiltersCount = useMemo(() => {
+    let count = 0;
+    if (debouncedSubjectFilter) count++;
+    count += selectedStatuses.length;
+    count += selectedUsers.length;
+    count += selectedPriorities.length;
+    return count;
+  }, [debouncedSubjectFilter, selectedStatuses, selectedUsers, selectedPriorities]);
+
+  const clearAllFilters = useCallback(() => {
+    setSubjectInput('');
+    setSelectedStatuses([]);
+    setSelectedUsers([]);
+    setSelectedPriorities([]);
+  }, []);
+
   return (
     <div className="flex h-full gap-6">
       <div className="flex-1 flex flex-col h-full">
@@ -438,6 +458,7 @@ function MyTicketsClientContent() {
                     <TableHead className="p-2 w-[150px]">Status</TableHead>
                     <TableHead className="p-2 w-[150px]">Priority</TableHead>
                     <TableHead className="p-2 w-[150px]">Sent from</TableHead>
+                    <TableHead className="p-2 w-[150px]">Last Update</TableHead>
                     <TableHead className="p-2 w-[150px]">Created</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -542,6 +563,9 @@ function MyTicketsClientContent() {
                           {ticket.user?.name || ticket.email_info?.email_sender || '-'}
                         </TableCell>
                         <TableCell className="p-2 py-4">
+                          {formatRelativeTime(ticket.last_update)}
+                        </TableCell>
+                        <TableCell className="p-2 py-4">
                           {formatRelativeTime(ticket.created_at)}
                         </TableCell>
                       </motion.tr> // Close motion.tr
@@ -561,65 +585,101 @@ function MyTicketsClientContent() {
         </Card>
       </div>
 
-      <aside className="w-80 border-l p-6 space-y-6 bg-card text-card-foreground rounded-lg flex-shrink-0">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Filters</h2>
-          <div>
-            <Button variant="ghost" size="icon">
-              <Settings2 className="h-4 w-4" />
+      <div className="flex-shrink-0 flex items-start">
+        <Collapsible open={filtersExpanded} onOpenChange={setFiltersExpanded} className="flex">
+          <CollapsibleTrigger asChild>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8 rounded-full z-10 -mr-4 mt-6 shadow-md relative"
+            >
+              {filtersExpanded ? (
+                <ChevronRight className="h-4 w-4" />
+              ) : (
+                <ChevronLeft className="h-4 w-4" />
+              )}
+              {activeFiltersCount > 0 && !filtersExpanded && (
+                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-medium text-primary-foreground">
+                  {activeFiltersCount}
+                </span>
+              )}
             </Button>
-          </div>
-        </div>
-        <div className="space-y-4">
-          <div>
-            <Label htmlFor="subject-filter" className="text-sm font-medium">
-              Subject
-            </Label>
-            <Input
-              id="subject-filter"
-              placeholder="Search subject..."
-              value={subjectInput}
-              onChange={e => setSubjectInput(e.target.value)} // Connect input to state
-            />
-          </div>
-          <div>
-            <Label htmlFor="status-filter" className="text-sm font-medium">
-              Statuses
-            </Label>
-            <MultiSelectFilter
-              options={statusOptions}
-              selected={selectedStatuses}
-              onChange={setSelectedStatuses}
-              placeholder="Filter by status..."
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <Label htmlFor="user-filter" className="text-sm font-medium">
-              Users
-            </Label>
-            <MultiSelectFilter
-              options={userOptions}
-              selected={selectedUsers}
-              onChange={setSelectedUsers}
-              placeholder="Filter by user..."
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <Label htmlFor="priority-filter" className="text-sm font-medium">
-              Priorities
-            </Label>
-            <MultiSelectFilter
-              options={priorityOptions}
-              selected={selectedPriorities}
-              onChange={setSelectedPriorities}
-              placeholder="Filter by priority..."
-              className="mt-1"
-            />
-          </div>
-        </div>
-      </aside>
+          </CollapsibleTrigger>
+          {filtersExpanded && (
+            <aside className="w-80 border-l p-6 space-y-6 bg-card text-card-foreground rounded-lg transition-all duration-300">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold">
+                  Filters
+                  {activeFiltersCount > 0 && (
+                    <Badge variant="secondary" className="ml-2">
+                      {activeFiltersCount}
+                    </Badge>
+                  )}
+                </h2>
+                <div className="flex gap-2">
+                  {activeFiltersCount > 0 && (
+                    <Button variant="ghost" size="sm" onClick={clearAllFilters}>
+                      Clear all
+                    </Button>
+                  )}
+                  <Button variant="ghost" size="icon">
+                    <Settings2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="subject-filter" className="text-sm font-medium">
+                    Subject
+                  </Label>
+                  <Input
+                    id="subject-filter"
+                    placeholder="Search subject..."
+                    value={subjectInput}
+                    onChange={e => setSubjectInput(e.target.value)} // Connect input to state
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="status-filter" className="text-sm font-medium">
+                    Statuses
+                  </Label>
+                  <MultiSelectFilter
+                    options={statusOptions}
+                    selected={selectedStatuses}
+                    onChange={setSelectedStatuses}
+                    placeholder="Filter by status..."
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="user-filter" className="text-sm font-medium">
+                    Users
+                  </Label>
+                  <MultiSelectFilter
+                    options={userOptions}
+                    selected={selectedUsers}
+                    onChange={setSelectedUsers}
+                    placeholder="Filter by user..."
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="priority-filter" className="text-sm font-medium">
+                    Priorities
+                  </Label>
+                  <MultiSelectFilter
+                    options={priorityOptions}
+                    selected={selectedPriorities}
+                    onChange={setSelectedPriorities}
+                    placeholder="Filter by priority..."
+                    className="mt-1"
+                  />
+                </div>
+              </div>
+            </aside>
+          )}
+        </Collapsible>
+      </div>
 
       {selectedTicket && (
         <TicketDetail

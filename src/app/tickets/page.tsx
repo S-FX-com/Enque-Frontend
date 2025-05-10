@@ -14,13 +14,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { Settings2, Trash2 } from 'lucide-react';
-import { MultiSelectFilter, OptionType } from '@/components/filters/multi-select-filter';
+import { Settings2, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { MultiSelectFilter, type OptionType } from '@/components/filters/multi-select-filter';
 import {
   useInfiniteQuery,
   useQuery,
   useQueryClient,
-  InfiniteData,
+  type InfiniteData,
   useMutation,
 } from '@tanstack/react-query';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -44,13 +44,14 @@ import { getTeams } from '@/services/team';
 import { getUsers } from '@/services/user';
 import { getCompanies } from '@/services/company';
 import { getCategories } from '@/services/category';
-import { ITicket } from '@/typescript/ticket';
-import { Team } from '@/typescript/team';
-import { IUser } from '@/typescript/user';
-import { ICompany } from '@/typescript/company';
-import { ICategory } from '@/typescript/category';
+import type { ITicket } from '@/typescript/ticket';
+import type { Team } from '@/typescript/team';
+import type { IUser } from '@/typescript/user';
+import type { ICompany } from '@/typescript/company';
+import type { ICategory } from '@/typescript/category';
+import { Collapsible, CollapsibleTrigger } from '@/components/ui/collapsible';
 
-import { Agent } from '@/typescript/agent';
+import type { Agent } from '@/typescript/agent';
 import { formatRelativeTime, cn } from '@/lib/utils';
 import { TicketDetail } from './ticket-details';
 const LOAD_LIMIT = 20;
@@ -74,6 +75,7 @@ function TicketsClientContent() {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedTicketIds, setSelectedTicketIds] = useState<Set<number>>(new Set()); // State for selected ticket IDs
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [filtersExpanded, setFiltersExpanded] = useState(true);
 
   // const [isNewTicketModalOpen, setIsNewTicketModalOpen] = useState(false);
   const statusOptions: OptionType[] = [
@@ -215,14 +217,14 @@ function TicketsClientContent() {
       tickets = tickets.filter(ticket => selectedStatuses.includes(ticket.status));
     }
     if (selectedTeams.length > 0) {
-      const selectedTeamIds = selectedTeams.map(id => parseInt(id, 10));
+      const selectedTeamIds = selectedTeams.map(id => Number.parseInt(id, 10));
       tickets = tickets.filter(
         ticket => ticket.team_id && selectedTeamIds.includes(ticket.team_id)
       );
     }
 
     if (selectedAgents.length > 0) {
-      const selectedAgentIds = selectedAgents.map(id => parseInt(id, 10));
+      const selectedAgentIds = selectedAgents.map(id => Number.parseInt(id, 10));
       tickets = tickets.filter(
         ticket => ticket.assignee_id && selectedAgentIds.includes(ticket.assignee_id)
       );
@@ -233,21 +235,21 @@ function TicketsClientContent() {
     }
 
     if (selectedUsers.length > 0) {
-      const selectedUserIds = selectedUsers.map(id => parseInt(id, 10));
+      const selectedUserIds = selectedUsers.map(id => Number.parseInt(id, 10));
       tickets = tickets.filter(
         ticket => ticket.user_id && selectedUserIds.includes(ticket.user_id)
       );
     }
 
     if (selectedCompanies.length > 0) {
-      const selectedCompanyIds = selectedCompanies.map(id => parseInt(id, 10));
+      const selectedCompanyIds = selectedCompanies.map(id => Number.parseInt(id, 10));
       tickets = tickets.filter(
         ticket => ticket.user?.company_id && selectedCompanyIds.includes(ticket.user.company_id)
       );
     }
 
     if (selectedCategories.length > 0) {
-      const selectedCategoryIds = selectedCategories.map(id => parseInt(id, 10));
+      const selectedCategoryIds = selectedCategories.map(id => Number.parseInt(id, 10));
       tickets = tickets.filter(
         ticket => ticket.category_id && selectedCategoryIds.includes(ticket.category_id)
       );
@@ -287,7 +289,7 @@ function TicketsClientContent() {
     const ticketIdToOpen = searchParams.get('openTicket');
     const teamIdFromQuery = searchParams.get('teamId');
     if (ticketIdToOpen && allTicketsData.length > 0) {
-      const ticket = allTicketsData.find(t => t.id === parseInt(ticketIdToOpen, 10));
+      const ticket = allTicketsData.find(t => t.id === Number.parseInt(ticketIdToOpen, 10));
       if (ticket) {
         setSelectedTicket(ticket);
       }
@@ -477,6 +479,40 @@ function TicketsClientContent() {
     router.push(`${window.location.pathname}?${newSearchParams.toString()}`);
   }, [searchParams, router]);
 
+  // Calculate active filters count for the badge
+  const activeFiltersCount = useMemo(() => {
+    let count = 0;
+    if (debouncedSubjectFilter) count++;
+    count += selectedStatuses.length;
+    count += selectedTeams.length;
+    count += selectedAgents.length;
+    count += selectedPriorities.length;
+    count += selectedUsers.length;
+    count += selectedCompanies.length;
+    count += selectedCategories.length;
+    return count;
+  }, [
+    debouncedSubjectFilter,
+    selectedStatuses,
+    selectedTeams,
+    selectedAgents,
+    selectedPriorities,
+    selectedUsers,
+    selectedCompanies,
+    selectedCategories,
+  ]);
+
+  const clearAllFilters = useCallback(() => {
+    setSubjectInput('');
+    setSelectedStatuses([]);
+    setSelectedTeams([]);
+    setSelectedAgents([]);
+    setSelectedPriorities([]);
+    setSelectedUsers([]);
+    setSelectedCompanies([]);
+    setSelectedCategories([]);
+  }, []);
+
   return (
     <div className="flex h-full gap-6">
       <div className="flex-1 flex flex-col h-full">
@@ -539,6 +575,7 @@ function TicketsClientContent() {
                     <TableHead className="p-2 w-[150px]">Priority</TableHead>
                     <TableHead className="p-2 w-[150px]">Sent from</TableHead>
                     <TableHead className="p-2 w-[150px]">Assigned to</TableHead>
+                    <TableHead className="p-2 w-[150px]">Last Update</TableHead>
                     <TableHead className="p-2 w-[150px]">Created</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -646,6 +683,9 @@ function TicketsClientContent() {
                           {agentIdToNameMap[ticket.assignee_id as number] || '-'}
                         </TableCell>
                         <TableCell className="p-2 py-4">
+                          {formatRelativeTime(ticket.last_update)}
+                        </TableCell>
+                        <TableCell className="p-2 py-4">
                           {formatRelativeTime(ticket.created_at)}
                         </TableCell>
                       </motion.tr> // Close motion.tr
@@ -664,113 +704,149 @@ function TicketsClientContent() {
           </CardContent>
         </Card>
       </div>
-      <aside className="w-80 border-l p-6 space-y-6 bg-card text-card-foreground rounded-lg flex-shrink-0">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Filters</h2>
-          <div>
-            <Button variant="ghost" size="icon">
-              <Settings2 className="h-4 w-4" />
+      <div className="flex-shrink-0 flex items-start">
+        <Collapsible open={filtersExpanded} onOpenChange={setFiltersExpanded} className="flex">
+          <CollapsibleTrigger asChild>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8 rounded-full z-10 -mr-4 mt-6 shadow-md relative"
+            >
+              {filtersExpanded ? (
+                <ChevronRight className="h-4 w-4" />
+              ) : (
+                <ChevronLeft className="h-4 w-4" />
+              )}
+              {activeFiltersCount > 0 && !filtersExpanded && (
+                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-medium text-primary-foreground">
+                  {activeFiltersCount}
+                </span>
+              )}
             </Button>
-          </div>
-        </div>
-        <div className="space-y-4">
-          <div>
-            <label htmlFor="subject-filter" className="text-sm font-medium">
-              Subject
-            </label>
-            <Input
-              id="subject-filter"
-              placeholder="Search subject..."
-              value={subjectInput}
-              onChange={e => setSubjectInput(e.target.value)}
-            />
-          </div>
-          <div>
-            <label htmlFor="status-filter" className="text-sm font-medium">
-              Statuses
-            </label>
-            <MultiSelectFilter
-              options={statusOptions}
-              selected={selectedStatuses}
-              onChange={setSelectedStatuses}
-              placeholder="Filter by status..."
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <label htmlFor="team-filter" className="text-sm font-medium">
-              Teams
-            </label>
-            <MultiSelectFilter
-              options={teamOptions}
-              selected={selectedTeams}
-              onChange={setSelectedTeams}
-              placeholder="Filter by team..."
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <label htmlFor="agent-filter" className="text-sm font-medium">
-              Agents
-            </label>
-            <MultiSelectFilter
-              options={agentOptions}
-              selected={selectedAgents}
-              onChange={setSelectedAgents}
-              placeholder="Filter by agent..."
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <label htmlFor="priority-filter" className="text-sm font-medium">
-              Priorities
-            </label>
-            <MultiSelectFilter
-              options={priorityOptions}
-              selected={selectedPriorities}
-              onChange={setSelectedPriorities}
-              placeholder="Filter by priority..."
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <label htmlFor="company-filter" className="text-sm font-medium">
-              Companies
-            </label>
-            <MultiSelectFilter
-              options={companyOptions}
-              selected={selectedCompanies}
-              onChange={setSelectedCompanies}
-              placeholder="Filter by company..."
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <label htmlFor="user-filter" className="text-sm font-medium">
-              Users
-            </label>
-            <MultiSelectFilter
-              options={userOptions}
-              selected={selectedUsers}
-              onChange={setSelectedUsers}
-              placeholder="Filter by user..."
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <label htmlFor="category-filter" className="text-sm font-medium">
-              Categories
-            </label>
-            <MultiSelectFilter
-              options={categoryOptions}
-              selected={selectedCategories}
-              onChange={setSelectedCategories}
-              placeholder="Filter by category..."
-              className="mt-1"
-            />
-          </div>
-        </div>
-      </aside>
+          </CollapsibleTrigger>
+          {filtersExpanded && (
+            <aside className="w-80 border-l p-6 space-y-6 bg-card text-card-foreground rounded-lg transition-all duration-300">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold">
+                  Filters
+                  {activeFiltersCount > 0 && (
+                    <Badge variant="secondary" className="ml-2">
+                      {activeFiltersCount}
+                    </Badge>
+                  )}
+                </h2>
+                <div className="flex gap-2">
+                  {activeFiltersCount > 0 && (
+                    <Button variant="ghost" size="sm" onClick={clearAllFilters}>
+                      Clear all
+                    </Button>
+                  )}
+                  <Button variant="ghost" size="icon">
+                    <Settings2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <label htmlFor="subject-filter" className="text-sm font-medium">
+                    Subject
+                  </label>
+                  <Input
+                    id="subject-filter"
+                    placeholder="Search subject..."
+                    value={subjectInput}
+                    onChange={e => setSubjectInput(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="status-filter" className="text-sm font-medium">
+                    Statuses
+                  </label>
+                  <MultiSelectFilter
+                    options={statusOptions}
+                    selected={selectedStatuses}
+                    onChange={setSelectedStatuses}
+                    placeholder="Filter by status..."
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="team-filter" className="text-sm font-medium">
+                    Teams
+                  </label>
+                  <MultiSelectFilter
+                    options={teamOptions}
+                    selected={selectedTeams}
+                    onChange={setSelectedTeams}
+                    placeholder="Filter by team..."
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="agent-filter" className="text-sm font-medium">
+                    Agents
+                  </label>
+                  <MultiSelectFilter
+                    options={agentOptions}
+                    selected={selectedAgents}
+                    onChange={setSelectedAgents}
+                    placeholder="Filter by agent..."
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="priority-filter" className="text-sm font-medium">
+                    Priorities
+                  </label>
+                  <MultiSelectFilter
+                    options={priorityOptions}
+                    selected={selectedPriorities}
+                    onChange={setSelectedPriorities}
+                    placeholder="Filter by priority..."
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="company-filter" className="text-sm font-medium">
+                    Companies
+                  </label>
+                  <MultiSelectFilter
+                    options={companyOptions}
+                    selected={selectedCompanies}
+                    onChange={setSelectedCompanies}
+                    placeholder="Filter by company..."
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="user-filter" className="text-sm font-medium">
+                    Users
+                  </label>
+                  <MultiSelectFilter
+                    options={userOptions}
+                    selected={selectedUsers}
+                    onChange={setSelectedUsers}
+                    placeholder="Filter by user..."
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="category-filter" className="text-sm font-medium">
+                    Categories
+                  </label>
+                  <MultiSelectFilter
+                    options={categoryOptions}
+                    selected={selectedCategories}
+                    onChange={setSelectedCategories}
+                    placeholder="Filter by category..."
+                    className="mt-1"
+                  />
+                </div>
+              </div>
+            </aside>
+          )}
+        </Collapsible>
+      </div>
       <TicketDetail
         ticket={selectedTicket}
         onClose={handleCloseDetail}
