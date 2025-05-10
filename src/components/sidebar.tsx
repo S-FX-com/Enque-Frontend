@@ -1,6 +1,7 @@
 'use client';
 
-import React, { Suspense } from 'react';
+import type React from 'react';
+import { Suspense } from 'react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
@@ -16,9 +17,10 @@ import {
 import { useAuth } from '@/hooks/use-auth';
 import { useQuery } from '@tanstack/react-query';
 import { getAgentTeams } from '@/services/team';
-import { Team } from '@/typescript/team';
+import type { Team } from '@/typescript/team';
 import { Badge } from '@/components/ui/badge';
-import { IUser } from '@/typescript/user';
+import type { IUser } from '@/typescript/user';
+import { getTickets } from '@/services/ticket';
 
 interface MyTeamsListProps {
   agentTeams: Team[] | undefined;
@@ -103,6 +105,30 @@ export function Sidebar() {
     staleTime: 1000 * 60 * 5,
   });
 
+  // Add query for all tickets count
+  const { data: allTicketsCount = 0 } = useQuery<number>({
+    queryKey: ['ticketsCount', 'all'],
+    queryFn: async () => {
+      const tickets = await getTickets();
+      return tickets.length || 0;
+    },
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    refetchInterval: 30000, // Refetch every 30 seconds
+  });
+
+  // Add query for my tickets count
+  const { data: myTicketsCount = 0 } = useQuery<number>({
+    queryKey: ['ticketsCount', 'my', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return 0;
+      const tickets = await getTickets({}, `/v1/tasks/assignee/${user.id}`);
+      return tickets.length || 0;
+    },
+    enabled: !!user?.id && !isLoadingUser,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    refetchInterval: 30000, // Refetch every 30 seconds
+  });
+
   const mainItems = [
     {
       title: 'Dashboard',
@@ -113,11 +139,13 @@ export function Sidebar() {
       title: 'All Tickets',
       href: '/tickets',
       icon: TicketIcon,
+      ticketCount: allTicketsCount,
     },
     {
       title: 'My Tickets',
       href: '/my-tickets',
       icon: TicketIcon,
+      ticketCount: myTicketsCount,
     },
     {
       title: 'Users & Companies',
@@ -158,23 +186,33 @@ export function Sidebar() {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  'relative flex items-center space-x-2 rounded-lg px-3 py-2 text-sm transition-colors',
+                  'relative flex items-center justify-between space-x-2 rounded-lg px-3 py-2 text-sm transition-colors',
                   isActive
                     ? 'font-medium text-primary dark:text-white'
                     : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
                 )}
               >
-                <div className="relative h-5 w-5">
-                  <IconComponent
-                    className={cn(
-                      'h-5 w-5',
-                      isActive
-                        ? 'text-primary dark:text-white'
-                        : 'text-slate-500 dark:text-slate-400'
-                    )}
-                  />
+                <div className="flex items-center space-x-2">
+                  <div className="relative h-5 w-5">
+                    <IconComponent
+                      className={cn(
+                        'h-5 w-5',
+                        isActive
+                          ? 'text-primary dark:text-white'
+                          : 'text-slate-500 dark:text-slate-400'
+                      )}
+                    />
+                  </div>
+                  <span>{item.title}</span>
                 </div>
-                <span>{item.title}</span>
+                {typeof item.ticketCount === 'number' && item.ticketCount > 0 && (
+                  <Badge
+                    variant="secondary"
+                    className="h-5 w-5 p-0 flex items-center justify-center rounded-full text-xs"
+                  >
+                    {item.ticketCount >= 100 ? '99+' : item.ticketCount}
+                  </Badge>
+                )}
                 {isActive && (
                   <div className="absolute right-0 top-1/2 h-6 w-1 -translate-y-1/2 transform rounded-full bg-primary"></div>
                 )}
