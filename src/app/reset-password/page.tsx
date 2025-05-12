@@ -51,7 +51,7 @@ function ResetPasswordForm() {
       }
       throw new Error(response.message || 'Failed to reset password.');
     },
-    onSuccess: (data: { access_token: string; token_type: string }) => { 
+    onSuccess: (data: { access_token: string; token_type: string }) => {
       setAuthToken(data.access_token);
       toast.success('Password reset successfully! You are now logged in.');
       setSuccessMessage('Password reset successfully! Redirecting to dashboard...');
@@ -81,23 +81,25 @@ function ResetPasswordForm() {
     setSuccessMessage(null);
     mutation.mutate({ new_password_str: data.new_password, token_str: token });
   };
-  
+
   if (!token && !error) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-slate-100 dark:bg-slate-900 p-4">
-         <div className="mb-8">
-            <Image src="/enque.png" alt="Enque Logo" width={150} height={49} priority />
+        <div className="mb-8">
+          <Image src="/enque.png" alt="Enque Logo" width={150} height={49} priority />
         </div>
         <Card className="w-full max-w-md p-6">
-            <CardHeader>
-                <CardTitle className="text-2xl font-bold text-center">Invalid Link</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <p className="text-center text-red-500">The password reset link is missing or invalid.</p>
-                <Button onClick={() => router.push('/signin')} className="w-full mt-4">
-                    Go to Sign In
-                </Button>
-            </CardContent>
+          <CardHeader>
+            <CardTitle className="text-2xl font-bold text-center">Invalid Link</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-center text-red-500">
+              The password reset link is missing or invalid.
+            </p>
+            <Button onClick={() => router.push('/signin')} className="w-full mt-4">
+              Go to Sign In
+            </Button>
+          </CardContent>
         </Card>
       </div>
     );
@@ -107,15 +109,13 @@ function ResetPasswordForm() {
     <div className="flex flex-col items-center justify-center min-h-screen bg-slate-100 dark:bg-slate-900 p-4">
       <div className="mb-8">
         <Link href="/signin">
-            <Image src="/enque.png" alt="Enque Logo" width={150} height={49} priority />
+          <Image src="/enque.png" alt="Enque Logo" width={150} height={49} priority />
         </Link>
       </div>
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle className="text-2xl font-bold text-center">Reset Your Password</CardTitle>
-          <CardDescription className="text-center">
-            Enter your new password below.
-          </CardDescription>
+          <CardDescription className="text-center">Enter your new password below.</CardDescription>
         </CardHeader>
         <CardContent>
           {successMessage && (
@@ -123,13 +123,21 @@ function ResetPasswordForm() {
               {successMessage}
             </div>
           )}
-          {error && !mutation.isError && <p className="text-sm text-red-500 mb-4 text-center">{error}</p>}
-          {mutation.isError && <p className="text-sm text-red-500 mb-4 text-center">{(mutation.error as Error)?.message || "An unknown error occurred."}</p>}
-          
+          {error && !mutation.isError && (
+            <p className="text-sm text-red-500 mb-4 text-center">{error}</p>
+          )}
+          {mutation.isError && (
+            <p className="text-sm text-red-500 mb-4 text-center">
+              {(mutation.error as Error)?.message || 'An unknown error occurred.'}
+            </p>
+          )}
+
           {!successMessage && (
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
               <div>
-                <Label htmlFor="new_password" className="mb-1 block">New Password</Label>
+                <Label htmlFor="new_password" className="mb-1 block">
+                  New Password
+                </Label>
                 <Input
                   id="new_password"
                   type="password"
@@ -141,7 +149,9 @@ function ResetPasswordForm() {
                 )}
               </div>
               <div>
-                <Label htmlFor="confirmPassword" className="mb-1 block">Confirm New Password</Label>
+                <Label htmlFor="confirmPassword" className="mb-1 block">
+                  Confirm New Password
+                </Label>
                 <Input
                   id="confirmPassword"
                   type="password"
@@ -152,12 +162,16 @@ function ResetPasswordForm() {
                   <p className="text-xs text-red-500 mt-1">{errors.confirmPassword.message}</p>
                 )}
               </div>
-              <Button type="submit" className="w-full" disabled={isSubmitting || mutation.isPending || !token}>
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={isSubmitting || mutation.isPending || !token}
+              >
                 {isSubmitting || mutation.isPending ? 'Resetting Password...' : 'Reset Password'}
               </Button>
             </form>
           )}
-           <div className="mt-6 text-center">
+          <div className="mt-6 text-center">
             <Link href="/signin" className="text-sm text-primary hover:underline">
               Back to Sign In
             </Link>
@@ -168,10 +182,11 @@ function ResetPasswordForm() {
   );
 }
 
-
 export default function ResetPasswordPage() {
   return (
-    <React.Suspense fallback={<div className="flex items-center justify-center h-screen">Loading...</div>}>
+    <React.Suspense
+      fallback={<div className="flex items-center justify-center h-screen">Loading...</div>}
+    >
       <ResetPasswordForm />
     </React.Suspense>
   );

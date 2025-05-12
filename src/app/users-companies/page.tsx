@@ -191,9 +191,9 @@ export default function UsersCompaniesPage() {
                       <Avatar className="h-8 w-8 text-xs overflow-hidden bg-slate-50 dark:bg-slate-800">
                         {company.logo_url ? (
                           <div className="relative w-full h-full p-1">
-                            <AvatarImage 
+                            <AvatarImage
                               key={`${company.id}-${company.logo_url}`}
-                              src={company.logo_url} 
+                              src={company.logo_url}
                               alt={`${company.name} logo`}
                               className="object-contain"
                             />

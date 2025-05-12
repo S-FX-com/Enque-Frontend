@@ -86,7 +86,7 @@ const CompanyUserView: React.FC<CompanyUserViewProps> = ({
     BaseResponse<ICompany>, // Type of data returned by mutationFn
     Error, // Type of error
     CompanyUpdatePayload, // Type of variables passed to mutationFn
-    { previousCompany?: ICompany, previousCompanies?: ICompany[] } // Type of context
+    { previousCompany?: ICompany; previousCompanies?: ICompany[] } // Type of context
   >({
     mutationFn: (updateData: CompanyUpdatePayload) => updateCompany(company.id, updateData),
     onMutate: async (updateData: CompanyUpdatePayload) => {
@@ -95,7 +95,10 @@ const CompanyUserView: React.FC<CompanyUserViewProps> = ({
       await queryClient.cancelQueries({ queryKey: ['companies'] });
 
       // Snapshot the previous value for the specific company
-      const previousCompany = queryClient.getQueryData<ICompany>(['company', company.id.toString()]);
+      const previousCompany = queryClient.getQueryData<ICompany>([
+        'company',
+        company.id.toString(),
+      ]);
       // Snapshot the previous value for the list of companies
       const previousCompanies = queryClient.getQueryData<ICompany[]>(['companies']);
 
@@ -109,12 +112,10 @@ const CompanyUserView: React.FC<CompanyUserViewProps> = ({
       }
       if (updateData.name && previousCompanies) {
         queryClient.setQueryData<ICompany[]>(['companies'], oldCompanies =>
-          oldCompanies?.map(c =>
-            c.id === company.id ? { ...c, name: updateData.name! } : c
-          )
+          oldCompanies?.map(c => (c.id === company.id ? { ...c, name: updateData.name! } : c))
         );
       }
-      
+
       // Also optimistically update other fields if they are part of updateData
       // For simplicity, this example focuses on 'name'. A more generic approach would update all fields in updateData.
       // For example, if updating description:
@@ -124,7 +125,6 @@ const CompanyUserView: React.FC<CompanyUserViewProps> = ({
       //     description: updateData.description,
       //   });
       // }
-
 
       return { previousCompany, previousCompanies };
     },
@@ -152,13 +152,16 @@ const CompanyUserView: React.FC<CompanyUserViewProps> = ({
       // Revert other local states if they were part of the failed update
       if (variables.description !== undefined) setEditableDescription(company.description || '');
       if (variables.email_domain !== undefined) setEditableDomain(company.email_domain || '');
-      if (variables.primary_contact_id !== undefined) setSelectedPrimaryContact(company.primary_contact_id?.toString() || undefined);
-      if (variables.account_manager_id !== undefined) setSelectedAccountManager(company.account_manager_id?.toString() || undefined);
+      if (variables.primary_contact_id !== undefined)
+        setSelectedPrimaryContact(company.primary_contact_id?.toString() || undefined);
+      if (variables.account_manager_id !== undefined)
+        setSelectedAccountManager(company.account_manager_id?.toString() || undefined);
     },
     onSettled: (response: BaseResponse<ICompany> | undefined) => {
-      const companyIdForInvalidation = (response?.success && response?.data?.id) 
-        ? response.data.id.toString() 
-        : company.id.toString();
+      const companyIdForInvalidation =
+        response?.success && response?.data?.id
+          ? response.data.id.toString()
+          : company.id.toString();
 
       queryClient.invalidateQueries({ queryKey: ['companies'] });
       queryClient.invalidateQueries({ queryKey: ['company', companyIdForInvalidation] });
@@ -368,8 +371,8 @@ const CompanyUserView: React.FC<CompanyUserViewProps> = ({
       {/* Top Section */}
       <div className="flex justify-between items-center flex-shrink-0">
         <div className="flex items-center gap-3">
-          <CompanyLogo 
-            logoUrl={logoUrl} 
+          <CompanyLogo
+            logoUrl={logoUrl}
             companyName={company.name}
             onLogoChange={handleLogoChange}
             isUpdating={updateMutation.isPending}
@@ -380,10 +383,10 @@ const CompanyUserView: React.FC<CompanyUserViewProps> = ({
               <>
                 <Input
                   value={editableName}
-                  onChange={(e) => setEditableName(e.target.value)}
+                  onChange={e => setEditableName(e.target.value)}
                   className="text-xl font-semibold h-9" // Adjusted height
                   autoFocus
-                  onKeyDown={(e) => {
+                  onKeyDown={e => {
                     if (e.key === 'Enter') {
                       if (editableName.trim() && editableName.trim() !== company.name) {
                         handleFieldUpdate('name', editableName.trim());

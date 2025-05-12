@@ -107,7 +107,7 @@ const NewCompanyModal: React.FC<NewCompanyModalProps> = ({ isOpen, onClose, onSa
         {/* Changed grid layout to simple vertical stack */}
         <div className="space-y-4 py-4">
           {error && <p className="text-red-600 text-sm">{error}</p>}
-          
+
           <div className="flex items-center gap-4 mb-2">
             <CompanyLogo
               logoUrl={logoUrl}
@@ -116,11 +116,9 @@ const NewCompanyModal: React.FC<NewCompanyModalProps> = ({ isOpen, onClose, onSa
               isUpdating={isSaving}
               key={`new-company-${logoUrl}`}
             />
-            <div className="text-sm text-muted-foreground">
-              Company logo (optional, max. 2MB)
-            </div>
+            <div className="text-sm text-muted-foreground">Company logo (optional, max. 2MB)</div>
           </div>
-          
+
           <div className="space-y-2">
             <Label htmlFor="company-name">Name*</Label>
             <Input

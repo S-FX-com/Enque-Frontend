@@ -13,18 +13,18 @@ interface CompanyLogoProps {
   size?: number; // Add size prop to control logo size
 }
 
-export function CompanyLogo({ 
-  logoUrl, 
-  companyName, 
-  onLogoChange, 
+export function CompanyLogo({
+  logoUrl,
+  companyName,
+  onLogoChange,
   isUpdating = false,
-  size = 40 // Default size is 40px
+  size = 40, // Default size is 40px
 }: CompanyLogoProps) {
   const [showOverlay, setShowOverlay] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
-  
+
   // Use provided size or default
-  const logoSize = size; 
+  const logoSize = size;
   const buttonSize = Math.max(16, Math.round(size * 0.4)); // Scale button size with logo size
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -36,12 +36,14 @@ export function CompanyLogo({
       name: file.name,
       type: file.type,
       size: file.size,
-      sizeKB: (file.size / 1024).toFixed(2) + ' KB'
+      sizeKB: (file.size / 1024).toFixed(2) + ' KB',
     });
 
     // Validate file size - max 2MB to be very generous
     if (file.size > 2 * 1024 * 1024) {
-      toast.error(`Image is too large. Maximum size is 2MB. Current size: ${(file.size / 1024).toFixed(2)}KB`);
+      toast.error(
+        `Image is too large. Maximum size is 2MB. Current size: ${(file.size / 1024).toFixed(2)}KB`
+      );
       return;
     }
 
@@ -75,12 +77,15 @@ export function CompanyLogo({
   const nameInitial = companyName.charAt(0).toUpperCase();
 
   return (
-    <div 
+    <div
       className="relative inline-block"
       onMouseEnter={() => setShowOverlay(true)}
       onMouseLeave={() => setShowOverlay(false)}
     >
-      <div className="relative inline-block leading-none overflow-hidden rounded-full bg-slate-50 dark:bg-slate-800" style={{ height: logoSize, width: logoSize }}>
+      <div
+        className="relative inline-block leading-none overflow-hidden rounded-full bg-slate-50 dark:bg-slate-800"
+        style={{ height: logoSize, width: logoSize }}
+      >
         {logoUrl ? (
           <div className="w-full h-full relative p-1">
             <Image
@@ -88,7 +93,7 @@ export function CompanyLogo({
               alt={`${companyName} logo`}
               fill={true} // Use fill instead of width/height
               className="object-contain p-1" // Use object-contain to show full logo
-              onError={(e) => {
+              onError={e => {
                 // If image fails to load, show fallback
                 console.error('Image failed to load:', e);
                 e.currentTarget.src = `/fallback.png`;
@@ -99,9 +104,13 @@ export function CompanyLogo({
             />
           </div>
         ) : (
-          <div 
+          <div
             className="rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-700 dark:text-slate-200"
-            style={{ height: logoSize, width: logoSize, fontSize: Math.max(16, Math.round(logoSize * 0.5)) }}
+            style={{
+              height: logoSize,
+              width: logoSize,
+              fontSize: Math.max(16, Math.round(logoSize * 0.5)),
+            }}
           >
             {nameInitial}
           </div>
@@ -109,7 +118,7 @@ export function CompanyLogo({
 
         {/* Edit overlay */}
         {!isUpdating && showOverlay && (
-          <div 
+          <div
             className="avatar-overlay absolute top-0 left-0 rounded-full bg-black/50 text-white cursor-pointer flex items-center justify-center"
             style={{ height: logoSize, width: logoSize, fontSize: Math.round(logoSize * 0.4) }}
             title="Upload logo (max. 2MB)"
@@ -121,18 +130,18 @@ export function CompanyLogo({
 
         {/* Remove button */}
         {!isUpdating && logoUrl && (
-          <span 
+          <span
             className="absolute bottom-0 right-0 bg-white rounded-full flex items-center justify-center cursor-pointer shadow-sm"
             style={{ height: buttonSize, width: buttonSize }}
             title="Remove logo"
             onClick={handleRemoveLogo}
           >
-            <svg 
-              stroke="currentColor" 
-              fill="currentColor" 
-              strokeWidth="0" 
-              viewBox="0 0 1024 1024" 
-              fillRule="evenodd" 
+            <svg
+              stroke="currentColor"
+              fill="currentColor"
+              strokeWidth="0"
+              viewBox="0 0 1024 1024"
+              fillRule="evenodd"
               height={`${Math.round(buttonSize * 0.8)}px`}
               width={`${Math.round(buttonSize * 0.8)}px`}
               xmlns="http://www.w3.org/2000/svg"
@@ -144,13 +153,13 @@ export function CompanyLogo({
       </div>
 
       {/* Hidden file input */}
-      <input 
-        type="file" 
-        ref={fileInputRef} 
-        style={{ display: 'none' }} 
+      <input
+        type="file"
+        ref={fileInputRef}
+        style={{ display: 'none' }}
         accept="image/png,image/jpeg,image/jpg"
         onChange={handleFileChange}
       />
     </div>
   );
-} 
+}

@@ -48,7 +48,7 @@ function AcceptInvitationForm() {
       setAuthToken(data.access_token);
       toast.success('Account activated successfully! You will be redirected.');
       // Force a full page reload to ensure auth state is correctly initialized everywhere
-      window.location.href = '/dashboard'; 
+      window.location.href = '/dashboard';
     },
     onError: (error: Error) => {
       setError(error.message || 'Failed to activate account. The link may be invalid or expired.');
@@ -71,22 +71,25 @@ function AcceptInvitationForm() {
     mutation.mutate({ password_str: data.password, token_str: token });
   };
 
-  if (!token) { // Check for token before rendering form
+  if (!token) {
+    // Check for token before rendering form
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-slate-100 dark:bg-slate-900 p-4">
         <div className="mb-8">
           <Image src="/enque.png" alt="Enque Logo" width={150} height={49} priority />
         </div>
         <Card className="w-full max-w-md p-6">
-            <CardHeader>
-                <CardTitle className="text-2xl font-bold text-center">Invalid Invitation</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <p className="text-center text-red-500">{error || 'Invitation token is missing or invalid.'}</p>
-                <Button onClick={() => router.push('/signin')} className="w-full mt-4">
-                    Go to Sign In
-                </Button>
-            </CardContent>
+          <CardHeader>
+            <CardTitle className="text-2xl font-bold text-center">Invalid Invitation</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-center text-red-500">
+              {error || 'Invitation token is missing or invalid.'}
+            </p>
+            <Button onClick={() => router.push('/signin')} className="w-full mt-4">
+              Go to Sign In
+            </Button>
+          </CardContent>
         </Card>
       </div>
     );
@@ -100,19 +103,30 @@ function AcceptInvitationForm() {
       <Card className="w-full max-w-md">
         <CardHeader>
           {/* <CardTitle className="text-2xl font-bold text-center">Set Your Password</CardTitle> REMOVED */}
-          <CardDescription className="text-center pt-4"> {/* Added pt-4 for spacing if title is removed */}
+          <CardDescription className="text-center pt-4">
+            {' '}
+            {/* Added pt-4 for spacing if title is removed */}
             Welcome! Please set a password for your new Enque account.
           </CardDescription>
         </CardHeader>
         <CardContent>
           {/* Display general error from useEffect or initial state if mutation hasn't run */}
-          {error && !mutation.isError && <p className="text-sm text-red-500 mb-4 text-center">{error}</p>}
+          {error && !mutation.isError && (
+            <p className="text-sm text-red-500 mb-4 text-center">{error}</p>
+          )}
           {/* Display error from mutation if it occurred */}
-          {mutation.isError && <p className="text-sm text-red-500 mb-4 text-center">{(mutation.error as Error)?.message || "An unknown error occurred."}</p>}
-          
+          {mutation.isError && (
+            <p className="text-sm text-red-500 mb-4 text-center">
+              {(mutation.error as Error)?.message || 'An unknown error occurred.'}
+            </p>
+          )}
+
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div>
-              <Label htmlFor="password" className="mb-1 block">New Password</Label> {/* Added mb-1 and block */}
+              <Label htmlFor="password" className="mb-1 block">
+                New Password
+              </Label>{' '}
+              {/* Added mb-1 and block */}
               <Input
                 id="password"
                 type="password"
@@ -124,7 +138,10 @@ function AcceptInvitationForm() {
               )}
             </div>
             <div>
-              <Label htmlFor="confirmPassword" className="mb-1 block">Confirm New Password</Label> {/* Added mb-1 and block */}
+              <Label htmlFor="confirmPassword" className="mb-1 block">
+                Confirm New Password
+              </Label>{' '}
+              {/* Added mb-1 and block */}
               <Input
                 id="confirmPassword"
                 type="password"
@@ -135,8 +152,14 @@ function AcceptInvitationForm() {
                 <p className="text-xs text-red-500 mt-1">{errors.confirmPassword.message}</p>
               )}
             </div>
-            <Button type="submit" className="w-full" disabled={isSubmitting || mutation.isPending || !token}>
-              {isSubmitting || mutation.isPending ? 'Setting Password...' : 'Set Password & Activate'}
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={isSubmitting || mutation.isPending || !token}
+            >
+              {isSubmitting || mutation.isPending
+                ? 'Setting Password...'
+                : 'Set Password & Activate'}
             </Button>
           </form>
         </CardContent>
@@ -147,7 +170,9 @@ function AcceptInvitationForm() {
 
 export default function AcceptInvitationPage() {
   return (
-    <React.Suspense fallback={<div className="flex items-center justify-center h-screen">Loading...</div>}>
+    <React.Suspense
+      fallback={<div className="flex items-center justify-center h-screen">Loading...</div>}
+    >
       <AcceptInvitationForm />
     </React.Suspense>
   );

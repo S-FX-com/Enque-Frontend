@@ -585,8 +585,16 @@ function MyTicketsClientContent() {
         </Card>
       </div>
 
-      <div className="flex-shrink-0 flex items-stretch"> {/* Changed items-start to items-stretch */}
-        <Collapsible open={filtersExpanded} onOpenChange={setFiltersExpanded} className="flex h-full"> {/* Added h-full to Collapsible */}
+      <div className="flex-shrink-0 flex items-stretch">
+        {' '}
+        {/* Changed items-start to items-stretch */}
+        <Collapsible
+          open={filtersExpanded}
+          onOpenChange={setFiltersExpanded}
+          className="flex h-full"
+        >
+          {' '}
+          {/* Added h-full to Collapsible */}
           <CollapsibleTrigger asChild>
             <Button
               variant="outline"
@@ -606,8 +614,12 @@ function MyTicketsClientContent() {
             </Button>
           </CollapsibleTrigger>
           {filtersExpanded && (
-            <aside className="w-80 border-l p-6 space-y-6 bg-card text-card-foreground rounded-lg transition-all duration-300 flex flex-col h-full"> {/* Added flex flex-col h-full */}
-              <div className="flex items-center justify-between flex-shrink-0"> {/* Added flex-shrink-0 */}
+            <aside className="w-80 border-l p-6 space-y-6 bg-card text-card-foreground rounded-lg transition-all duration-300 flex flex-col h-full">
+              {' '}
+              {/* Added flex flex-col h-full */}
+              <div className="flex items-center justify-between flex-shrink-0">
+                {' '}
+                {/* Added flex-shrink-0 */}
                 <h2 className="text-lg font-semibold">
                   Filters
                   {activeFiltersCount > 0 && (
@@ -627,7 +639,9 @@ function MyTicketsClientContent() {
                   </Button>
                 </div>
               </div>
-              <div className="space-y-4 overflow-y-auto flex-grow"> {/* Added overflow-y-auto and flex-grow */}
+              <div className="space-y-4 overflow-y-auto flex-grow">
+                {' '}
+                {/* Added overflow-y-auto and flex-grow */}
                 <div>
                   <Label htmlFor="subject-filter" className="text-sm font-medium">
                     Subject

@@ -128,7 +128,9 @@ export default function AgentsPage() {
 
   return (
     <div className="container mx-auto px-4 md:px-6 flex flex-col h-full">
-      <div className="flex items-center justify-end py-4 flex-shrink-0"> {/* Adjusted to justify-end if title is removed */}
+      <div className="flex items-center justify-end py-4 flex-shrink-0">
+        {' '}
+        {/* Adjusted to justify-end if title is removed */}
         {/* <h1 className="text-2xl font-bold">Agents</h1> REMOVED */}
         <div className="flex items-center gap-2">
           {selectedAgentIds.size > 0 && (
@@ -184,9 +186,11 @@ export default function AgentsPage() {
                     />
                   </TableHead>
                   {columns.map(column => (
-                    <TableHead key={column.accessorKey} className="px-6 py-4">{column.header}</TableHead> 
+                    <TableHead key={column.accessorKey} className="px-6 py-4">
+                      {column.header}
+                    </TableHead>
                   ))}
-                  <TableHead className="w-[50px] text-right px-6 py-4"> 
+                  <TableHead className="w-[50px] text-right px-6 py-4">
                     <span className="sr-only">Actions</span>
                   </TableHead>
                 </TableRow>
@@ -283,8 +287,7 @@ export default function AgentsPage() {
       <NewAgentModal
         isOpen={isNewAgentModalOpen}
         onClose={() => setIsNewAgentModalOpen(false)}
-        onInviteSuccess={() => {
-        }}
+        onInviteSuccess={() => {}}
       />
     </div>
   );

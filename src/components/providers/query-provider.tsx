@@ -24,9 +24,9 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
       // Create an async persister
       const asyncStoragePersister = createAsyncStoragePersister({
         storage: {
-          getItem: async (key) => get(key),
+          getItem: async key => get(key),
           setItem: async (key, value) => set(key, value),
-          removeItem: async (key) => del(key),
+          removeItem: async key => del(key),
         },
       });
 

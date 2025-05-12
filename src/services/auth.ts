@@ -202,25 +202,30 @@ export const authService = {
         return { success: false, message: response.message || 'Failed to request password reset.' };
       }
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Unknown error during password reset request.';
+      const message =
+        error instanceof Error ? error.message : 'Unknown error during password reset request.';
       return { success: false, message };
     }
   },
 
   // Reset Password
-  async resetPassword(token: string, new_password: string): Promise<ServiceResponse<TokenResponse>> {
+  async resetPassword(
+    token: string,
+    new_password: string
+  ): Promise<ServiceResponse<TokenResponse>> {
     try {
-      const response = await fetchAPI.POST<TokenResponse>(
-        `${SERVICE_ENDPOINT}/reset-password`,
-        { token, new_password } as Record<string, unknown>
-      );
+      const response = await fetchAPI.POST<TokenResponse>(`${SERVICE_ENDPOINT}/reset-password`, {
+        token,
+        new_password,
+      } as Record<string, unknown>);
       if (response.success && response.data) {
         return { success: true, data: response.data }; // Returns token data
       } else {
         return { success: false, message: response.message || 'Failed to reset password.' };
       }
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Unknown error during password reset.';
+      const message =
+        error instanceof Error ? error.message : 'Unknown error during password reset.';
       return { success: false, message };
     }
   },

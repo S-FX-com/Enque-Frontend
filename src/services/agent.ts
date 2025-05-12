@@ -152,11 +152,15 @@ interface AgentInviteCreatePayload {
  * @returns A promise that resolves to the invited Agent object (or a success message).
  * @throws An error if the invitation fails.
  */
-export async function inviteAgent(inviteData: AgentInviteCreatePayload): Promise<Agent> { // Assuming backend returns the created (inactive) agent
+export async function inviteAgent(inviteData: AgentInviteCreatePayload): Promise<Agent> {
+  // Assuming backend returns the created (inactive) agent
   try {
     const url = `${API_BASE_URL}/v1/agents/invite`;
     // Assuming POST returns BaseResponse<Agent> where Agent is the created (inactive) agent
-    const response = await fetchAPI.POST<Agent>(url, inviteData as unknown as Record<string, unknown>); 
+    const response = await fetchAPI.POST<Agent>(
+      url,
+      inviteData as unknown as Record<string, unknown>
+    );
 
     if (response && response.success && response.data) {
       return response.data; // Return the agent data
@@ -182,12 +186,18 @@ interface TokenResponse {
  * @returns A promise that resolves to the token response (JWT).
  * @throws An error if the acceptance fails.
  */
-export async function acceptAgentInvitation(token: string, password: string): Promise<TokenResponse> {
+export async function acceptAgentInvitation(
+  token: string,
+  password: string
+): Promise<TokenResponse> {
   try {
     const url = `${API_BASE_URL}/v1/agents/accept-invitation`;
     const payload = { token, password };
     // Assuming POST returns BaseResponse<TokenResponse>
-    const response = await fetchAPI.POST<TokenResponse>(url, payload as unknown as Record<string, unknown>);
+    const response = await fetchAPI.POST<TokenResponse>(
+      url,
+      payload as unknown as Record<string, unknown>
+    );
 
     if (response && response.success && response.data) {
       return response.data; // Return the token data
@@ -200,6 +210,5 @@ export async function acceptAgentInvitation(token: string, password: string): Pr
     throw error; // Re-throw the error
   }
 }
-
 
 // Add other agent-related service functions if needed

@@ -9,7 +9,9 @@ export default function UsersCompaniesPage({ children }: { children: React.React
   ];
 
   return (
-    <AppLayout title="Users & Companies" breadcrumbs={breadcrumbs}> {/* Capitalized title */}
+    <AppLayout title="Users & Companies" breadcrumbs={breadcrumbs}>
+      {' '}
+      {/* Capitalized title */}
       {children}
     </AppLayout>
   );

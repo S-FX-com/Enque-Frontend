@@ -66,13 +66,15 @@ export function NewAgentModal({ isOpen, onClose, onInviteSuccess }: NewAgentModa
       if (!currentUser?.workspace_id) {
         throw new Error('Workspace ID is missing. Cannot invite agent.');
       }
-      const payload = { // This matches AgentInviteCreatePayload in services/agent.ts
+      const payload = {
+        // This matches AgentInviteCreatePayload in services/agent.ts
         ...data,
         workspace_id: currentUser.workspace_id,
       };
-      return inviteAgent(payload); 
+      return inviteAgent(payload);
     },
-    onSuccess: (invitedAgent: Agent) => { // data is now explicitly Agent
+    onSuccess: (invitedAgent: Agent) => {
+      // data is now explicitly Agent
       toast.success(`Invitation sent to ${invitedAgent.email}`);
       queryClient.invalidateQueries({ queryKey: ['agents'] });
       if (onInviteSuccess) {
@@ -96,34 +98,44 @@ export function NewAgentModal({ isOpen, onClose, onInviteSuccess }: NewAgentModa
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[425px] bg-white"> {/* Added bg-white here */}
+      <DialogContent className="sm:max-w-[425px] bg-white">
+        {' '}
+        {/* Added bg-white here */}
         <DialogHeader>
           <DialogTitle>Invite New Agent</DialogTitle>
           <DialogDescription>
-            Enter the details of the agent you want to invite. They will receive an email to set up their account.
+            Enter the details of the agent you want to invite. They will receive an email to set up
+            their account.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 py-2">
           <div>
-            <Label htmlFor="name" className="mb-1 block">Full Name</Label> {/* Added mb-1 and block */}
+            <Label htmlFor="name" className="mb-1 block">
+              Full Name
+            </Label>{' '}
+            {/* Added mb-1 and block */}
             <Input id="name" {...register('name')} /> {/* Removed placeholder */}
             {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name.message}</p>}
           </div>
           <div>
-            <Label htmlFor="email" className="mb-1 block">Email Address</Label> {/* Added mb-1 and block */}
-            <Input
-              id="email"
-              type="email"
-              {...register('email')}
-            /> {/* Removed placeholder */}
+            <Label htmlFor="email" className="mb-1 block">
+              Email Address
+            </Label>{' '}
+            {/* Added mb-1 and block */}
+            <Input id="email" type="email" {...register('email')} /> {/* Removed placeholder */}
             {errors.email && <p className="text-xs text-red-500 mt-1">{errors.email.message}</p>}
           </div>
           <div>
-            <Label htmlFor="role" className="mb-1 block">Role</Label> {/* Added mb-1 and block */}
+            <Label htmlFor="role" className="mb-1 block">
+              Role
+            </Label>{' '}
+            {/* Added mb-1 and block */}
             <Controller
               name="role"
               control={control}
-              render={({ field }: { field: { onChange: (value: string) => void; value: string } }) => ( // Adjusted type for field.onChange
+              render={(
+                { field }: { field: { onChange: (value: string) => void; value: string } } // Adjusted type for field.onChange
+              ) => (
                 <Select onValueChange={field.onChange} defaultValue={field.value}>
                   <SelectTrigger id="role">
                     <SelectValue placeholder="Select a role" />
