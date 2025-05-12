@@ -183,4 +183,45 @@ export const authService = {
       return { success: false, message };
     }
   },
+
+  // Request Password Reset
+  async requestPasswordReset(email: string): Promise<ServiceResponse<{ message: string }>> {
+    try {
+      const response = await fetchAPI.POST<{ message: string }>(
+        `${SERVICE_ENDPOINT}/request-password-reset`,
+        { email } as Record<string, unknown>
+      );
+      // The backend is designed to always return a generic success message for this endpoint
+      // for security reasons (not to reveal if an email is registered or not).
+      // So, we treat any 2xx response as "success" in terms of the request being processed.
+      if (response.success && response.data) {
+        return { success: true, data: response.data };
+      } else {
+        // This would typically be a network error or an unexpected server error (500)
+        // as the endpoint itself should return 200 with a generic message.
+        return { success: false, message: response.message || 'Failed to request password reset.' };
+      }
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error during password reset request.';
+      return { success: false, message };
+    }
+  },
+
+  // Reset Password
+  async resetPassword(token: string, new_password: string): Promise<ServiceResponse<TokenResponse>> {
+    try {
+      const response = await fetchAPI.POST<TokenResponse>(
+        `${SERVICE_ENDPOINT}/reset-password`,
+        { token, new_password } as Record<string, unknown>
+      );
+      if (response.success && response.data) {
+        return { success: true, data: response.data }; // Returns token data
+      } else {
+        return { success: false, message: response.message || 'Failed to reset password.' };
+      }
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error during password reset.';
+      return { success: false, message };
+    }
+  },
 };

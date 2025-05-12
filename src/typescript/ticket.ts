@@ -37,6 +37,7 @@ export interface ITicket {
   sent_from?: IUser | null; // Agent/User who last interacted or processed
   // We might need an 'assignee' object if the backend provides it for display purposes
   // assignee?: IUser | null; // Example if backend sends full assignee object
+  last_update: string;
   created_at: string;
   updated_at: string;
   due_date?: string;

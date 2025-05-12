@@ -480,6 +480,11 @@ export function TicketDetail({ ticket, onClose, onTicketUpdate }: Props) {
               </div>
 
               <div>
+                <h3 className="text-sm font-medium text-muted-foreground mb-1">Last Update</h3>
+                <p className="text-sm">{formatRelativeTime(ticket.last_update)}</p>
+              </div>
+
+              <div>
                 <h3 className="text-sm font-medium text-muted-foreground mb-1">Created</h3>
                 <p className="text-sm">{formatRelativeTime(ticket.created_at)}</p>
               </div>

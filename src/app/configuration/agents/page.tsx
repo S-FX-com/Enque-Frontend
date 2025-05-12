@@ -21,6 +21,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { PlusCircle, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import { NewAgentModal } from '@/components/modals/new-agent-modal'; // Import the new modal
 import {
   AlertDialog,
   AlertDialogAction,
@@ -56,6 +57,7 @@ export default function AgentsPage() {
   });
   const [selectedAgentIds, setSelectedAgentIds] = useState<Set<number>>(new Set());
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isNewAgentModalOpen, setIsNewAgentModalOpen] = useState(false); // State for the new agent modal
 
   const avatarColors = ['#1D73F4', '#D4E4FA'];
 
@@ -126,8 +128,8 @@ export default function AgentsPage() {
 
   return (
     <div className="container mx-auto px-4 md:px-6 flex flex-col h-full">
-      <div className="flex items-center justify-between py-4 flex-shrink-0">
-        <h1 className="text-2xl font-bold">Agents</h1>
+      <div className="flex items-center justify-end py-4 flex-shrink-0"> {/* Adjusted to justify-end if title is removed */}
+        {/* <h1 className="text-2xl font-bold">Agents</h1> REMOVED */}
         <div className="flex items-center gap-2">
           {selectedAgentIds.size > 0 && (
             <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
@@ -160,7 +162,7 @@ export default function AgentsPage() {
               </AlertDialogContent>
             </AlertDialog>
           )}
-          <Button size="sm">
+          <Button size="sm" onClick={() => setIsNewAgentModalOpen(true)}>
             <PlusCircle className="mr-2 h-4 w-4" />
             New
           </Button>
@@ -182,9 +184,9 @@ export default function AgentsPage() {
                     />
                   </TableHead>
                   {columns.map(column => (
-                    <TableHead key={column.accessorKey}>{column.header}</TableHead>
+                    <TableHead key={column.accessorKey} className="px-6 py-4">{column.header}</TableHead> 
                   ))}
-                  <TableHead className="w-[50px] text-right">
+                  <TableHead className="w-[50px] text-right px-6 py-4"> 
                     <span className="sr-only">Actions</span>
                   </TableHead>
                 </TableRow>
@@ -248,7 +250,7 @@ export default function AgentsPage() {
                         />
                       </TableCell>
                       <TableCell
-                        className="font-medium cursor-pointer"
+                        className="font-medium cursor-pointer px-6 py-4"
                         onClick={() => handleRowClick(agent.id)}
                       >
                         <div className="flex items-center gap-2">
@@ -263,13 +265,13 @@ export default function AgentsPage() {
                           <span>{agent.name || '-'}</span>
                         </div>
                       </TableCell>
-                      <TableCell>{agent.email || '-'}</TableCell>
-                      <TableCell>{agent.phone_number || '-'}</TableCell>
-                      <TableCell>{agent.job_title || '-'}</TableCell>
-                      <TableCell className="capitalize">
+                      <TableCell className="px-6 py-4">{agent.email || '-'}</TableCell>
+                      <TableCell className="px-6 py-4">{agent.phone_number || '-'}</TableCell>
+                      <TableCell className="px-6 py-4">{agent.job_title || '-'}</TableCell>
+                      <TableCell className="capitalize px-6 py-4">
                         {agent.role === 'admin' ? 'True' : 'False'}
                       </TableCell>
-                      <TableCell className="text-right"> </TableCell>
+                      <TableCell className="text-right px-6 py-4"> </TableCell>
                     </TableRow>
                   ))
                 )}
@@ -278,6 +280,12 @@ export default function AgentsPage() {
           </div>
         </CardContent>
       </Card>
+      <NewAgentModal
+        isOpen={isNewAgentModalOpen}
+        onClose={() => setIsNewAgentModalOpen(false)}
+        onInviteSuccess={() => {
+        }}
+      />
     </div>
   );
 }

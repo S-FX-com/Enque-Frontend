@@ -163,8 +163,8 @@ export default function CategoriesPage() {
     <>
       <div className="container mx-auto px-4 md:px-6 flex flex-col h-full">
         {/* Header section */}
-        <div className="flex items-center justify-between py-4 flex-shrink-0">
-          <h1 className="text-2xl font-bold">Categories</h1>
+        <div className="flex items-center justify-end py-4 flex-shrink-0"> {/* Adjusted to justify-end if title is removed */}
+          {/* <h1 className="text-2xl font-bold">Categories</h1> REMOVED */}
           <div className="flex items-center gap-2">
             {selectedCategoryIds.size > 0 && (
               <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>

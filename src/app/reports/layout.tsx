@@ -1,5 +1,16 @@
+'use client';
+
 import AppLayout from '@/components/layouts/app-layout';
 
-export default function ReportsLayout({ children }: { children: React.ReactNode }) {
-  return <AppLayout title="Reports">{children}</AppLayout>;
+export default function ReportsPageLayout({ children }: { children: React.ReactNode }) {
+  const breadcrumbs = [
+    { label: 'Dashboard', href: '/dashboard' },
+    { label: 'Reports', href: '/reports' },
+  ];
+
+  return (
+    <AppLayout title="Reports" breadcrumbs={breadcrumbs}>
+      {children}
+    </AppLayout>
+  );
 }

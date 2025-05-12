@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/use-auth';
 import { fetchAPI } from '@/lib/fetch-api';
 import { toast } from 'sonner';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import { Loader2, CheckCircle, Trash2 } from 'lucide-react';
 import { Buffer } from 'buffer';
 
@@ -159,7 +159,7 @@ export default function MailboxPage() {
     <div className="container mx-auto p-4 md:p-6">
       <Card>
         <CardHeader>
-          <CardTitle>Mailbox Connection</CardTitle>
+          {/* <CardTitle>Mailbox Connection</CardTitle> REMOVED */}
           <CardDescription>
             Connect a Microsoft 365 mailbox to automatically create tickets from incoming emails.
           </CardDescription>

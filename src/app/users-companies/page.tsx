@@ -5,7 +5,7 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Building, Users, PlusCircle, Loader2 } from 'lucide-react';
 import NewCompanyModal from '@/components/modals/new-company-modal';
 import NewUserModal from '@/components/modals/new-user-modal';
@@ -188,9 +188,21 @@ export default function UsersCompaniesPage() {
                       }}
                       className={`w-full flex items-center gap-3 p-2 rounded-md text-left hover:bg-muted ${selectedCompanyId === company.id.toString() && currentView === 'company_users' ? 'bg-muted font-semibold' : ''}`}
                     >
-                      <Avatar className="h-8 w-8 text-xs">
+                      <Avatar className="h-8 w-8 text-xs overflow-hidden bg-slate-50 dark:bg-slate-800">
+                        {company.logo_url ? (
+                          <div className="relative w-full h-full p-1">
+                            <AvatarImage 
+                              key={`${company.id}-${company.logo_url}`}
+                              src={company.logo_url} 
+                              alt={`${company.name} logo`}
+                              className="object-contain"
+                            />
+                          </div>
+                        ) : null}
                         <AvatarFallback>
-                          <Building className="h-4 w-4 text-muted-foreground" />
+                          {company.logo_url ? null : (
+                            <Building className="h-4 w-4 text-muted-foreground" />
+                          )}
                         </AvatarFallback>
                       </Avatar>
                       <span className="text-sm font-medium truncate">{company.name}</span>

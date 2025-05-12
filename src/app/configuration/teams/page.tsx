@@ -142,15 +142,39 @@ const TeamsPage = () => {
       }
       return results;
     },
+    onMutate: async (teamIdsToDelete: number[]) => {
+      // Cancel any outgoing refetches (so they don't overwrite our optimistic update)
+      await queryClient.cancelQueries({ queryKey: ['teamsWithCounts'] });
+
+      // Snapshot the previous value
+      const previousTeams = queryClient.getQueryData<TeamWithCounts[]>(['teamsWithCounts']);
+
+      // Optimistically update to the new value
+      queryClient.setQueryData<TeamWithCounts[]>(['teamsWithCounts'], old =>
+        old ? old.filter(team => !teamIdsToDelete.includes(team.id)) : []
+      );
+
+      // Return a context object with the snapshotted value
+      return { previousTeams };
+    },
+    onError: (err: Error, teamIdsToDelete, context) => {
+      toast.error(`Error deleting teams: ${err.message}`);
+      // If the mutation fails, use the context returned from onMutate to roll back
+      if (context?.previousTeams) {
+        queryClient.setQueryData(['teamsWithCounts'], context.previousTeams);
+      }
+      setIsBulkDeleteDialogOpen(false); // Keep dialog open or close based on preference
+    },
     onSuccess: (data, variables) => {
       toast.success(`${variables.length} team(s) deleted successfully.`);
-      setSelectedTeamIds(new Set());
-      setIsBulkDeleteDialogOpen(false);
-      queryClient.invalidateQueries({ queryKey: ['teamsWithCounts'] });
+      setSelectedTeamIds(new Set()); // Clear selection on success
+      setIsBulkDeleteDialogOpen(false); // Close dialog on success
     },
-    onError: (err: Error) => {
-      toast.error(`Error deleting teams: ${err.message}`);
-      setIsBulkDeleteDialogOpen(false);
+    onSettled: () => {
+      // Always refetch after error or success:
+      queryClient.invalidateQueries({ queryKey: ['teamsWithCounts'] });
+      setSelectedTeamIds(new Set()); // Ensure selection is cleared
+      // setIsBulkDeleteDialogOpen(false); // Ensure dialog is closed
     },
   });
 
@@ -164,7 +188,7 @@ const TeamsPage = () => {
     <div className="flex flex-col gap-4 p-4 md:p-6">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-4">
-          <h1 className="text-2xl font-semibold">Teams</h1>
+          {/* <h1 className="text-2xl font-semibold">Teams</h1> REMOVED */}
           {selectedTeamIds.size > 0 && (
             <AlertDialog open={isBulkDeleteDialogOpen} onOpenChange={setIsBulkDeleteDialogOpen}>
               <AlertDialogTrigger asChild>
