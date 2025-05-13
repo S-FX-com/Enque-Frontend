@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState } from 'react'; // Add useState
+import React, { useState } from 'react';
 import Link from 'next/link';
-import { BellIcon, HelpCircleIcon, LogOutIcon, SearchIcon, PlusCircle } from 'lucide-react'; // Added PlusCircle
+import { BellIcon, HelpCircleIcon, LogOutIcon, SearchIcon, PlusCircle, Trash2Icon } from 'lucide-react';
 import {
   Button,
   Input,
@@ -13,17 +13,16 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui'; // Keep existing ui imports
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'; // Import Popover separately
-import { ScrollArea } from '@/components/ui/scroll-area'; // Import ScrollArea
+} from '@/components/ui';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { handleLogout, UserSession } from '@/lib/auth';
 import BoringAvatar from 'boring-avatars';
 import { ModeToggle } from './mode-toggle';
-import { getNotifications } from '@/services/activity';
+import { getNotifications, clearAllNotifications } from '@/services/activity';
 import { Activity } from '@/typescript/activity';
-// import { formatDistanceToNow, parseISO } from 'date-fns'; // Removed unused date-fns imports
 import { formatRelativeTime } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -52,6 +51,7 @@ export function Topbar({
   const router = useRouter();
   const queryClient = useQueryClient();
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [isClearingNotifications, setIsClearingNotifications] = useState(false);
 
   // Fetch notifications when the popover might open or user changes
   const { data: notifications = [], isLoading: isLoadingNotifications } = useQuery<
@@ -64,6 +64,22 @@ export function Topbar({
     staleTime: 1000 * 60, // Refetch after 1 minute if stale
     refetchInterval: 1000 * 60 * 2, // Optional: Refetch every 2 minutes
   });
+
+  // Function to clear all notifications
+  const handleClearAllNotifications = async () => {
+    if (isClearingNotifications) return;
+    
+    try {
+      setIsClearingNotifications(true);
+      await clearAllNotifications();
+      // Invalidate and refetch notifications
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    } catch (error) {
+      console.error('Failed to clear notifications:', error);
+    } finally {
+      setIsClearingNotifications(false);
+    }
+  };
 
   // Function to clear cache (in-memory and persisted) and then logout
   const logoutAndClearCache = () => {
@@ -146,7 +162,21 @@ export function Topbar({
                   exit={{ opacity: 0, y: -10 }}
                   transition={{ duration: 0.2 }}
                 >
-                  <div className="p-4 font-medium border-b">Notifications</div>
+                  <div className="p-4 font-medium border-b flex justify-between items-center">
+                    <span>Notifications</span>
+                    {notifications.length > 0 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 text-slate-500 hover:text-red-500"
+                        onClick={handleClearAllNotifications}
+                        disabled={isClearingNotifications}
+                      >
+                        <Trash2Icon size={16} />
+                        <span className="sr-only">Clear all notifications</span>
+                      </Button>
+                    )}
+                  </div>
                   <ScrollArea className="h-72">
                     {' '}
                     {/* Fixed height and scroll */}

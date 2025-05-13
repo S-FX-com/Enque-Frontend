@@ -27,4 +27,25 @@ export const getNotifications = async (limit: number = 10): Promise<Activity[]> 
   }
 };
 
+/**
+ * Deletes all notifications for the current user's workspace.
+ * @returns A promise that resolves to a success response.
+ */
+export const clearAllNotifications = async (): Promise<{ success: boolean; deleted_count: number }> => {
+  try {
+    const url = `${API_BASE_URL}/v1/notifications/all`;
+    const response = await fetchAPI.DELETE<{ success: boolean; deleted_count: number }>(url);
+
+    if (!response || !response.data) {
+      console.error('Failed to clear notifications or response data is missing');
+      return { success: false, deleted_count: 0 };
+    }
+    return response.data;
+  } catch (error) {
+    console.error('Error clearing notifications:', error);
+    // Return default error response
+    return { success: false, deleted_count: 0 };
+  }
+};
+
 // Add other activity-related service functions here later if needed
