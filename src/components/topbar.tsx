@@ -2,7 +2,14 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { BellIcon, HelpCircleIcon, LogOutIcon, SearchIcon, PlusCircle, Trash2Icon } from 'lucide-react';
+import {
+  BellIcon,
+  HelpCircleIcon,
+  LogOutIcon,
+  SearchIcon,
+  PlusCircle,
+  Trash2Icon,
+} from 'lucide-react';
 import {
   Button,
   Input,
@@ -68,7 +75,7 @@ export function Topbar({
   // Function to clear all notifications
   const handleClearAllNotifications = async () => {
     if (isClearingNotifications) return;
-    
+
     try {
       setIsClearingNotifications(true);
       await clearAllNotifications();

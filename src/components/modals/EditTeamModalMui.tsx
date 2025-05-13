@@ -27,14 +27,15 @@ import data from '@emoji-mart/data';
 import { useMutation, useQueryClient, QueryKey } from '@tanstack/react-query';
 import { Agent } from '@/typescript/agent';
 // Assuming updateTeam service exists and TeamUpdate type
-import { updateTeam, addTeamMember, getTeamMembers, removeTeamMember } from '@/services/team'; 
+import { updateTeam, addTeamMember, getTeamMembers, removeTeamMember } from '@/services/team';
 import { Team, TeamMember } from '@/typescript/team'; // Removed TeamUpdate
 import { getCurrentUser } from '@/lib/auth';
 import { toast } from 'sonner';
 
 const TEXT_COLOR = '#2b3674'; // User specified color
 
-interface TeamWithCounts extends Team { // Re-evaluate if TeamWithCounts is the right type for teamToEdit
+interface TeamWithCounts extends Team {
+  // Re-evaluate if TeamWithCounts is the right type for teamToEdit
   agentCount: number | null;
   ticketCount: number | null;
   members?: TeamMember[]; // Assuming members might be part of teamToEdit
@@ -68,8 +69,12 @@ interface UpdateTeamMutationResult {
   originalAgentIds?: string[];
 }
 
-
-const EditTeamModalMui: React.FC<EditTeamModalMuiProps> = ({ open, onClose, teamToEdit, allAgents }) => {
+const EditTeamModalMui: React.FC<EditTeamModalMuiProps> = ({
+  open,
+  onClose,
+  teamToEdit,
+  allAgents,
+}) => {
   const queryClient = useQueryClient();
   const [teamName, setTeamName] = useState('');
   const [teamDescription, setTeamDescription] = useState('');
@@ -94,17 +99,21 @@ const EditTeamModalMui: React.FC<EditTeamModalMuiProps> = ({ open, onClose, team
 
       // Fetch and set current team members
       if (teamToEdit.id) {
-        getTeamMembers(teamToEdit.id).then(members => {
-          const currentMemberIds = members.map(m => m.agent_id.toString());
-          setSelectedAgentIds(currentMemberIds);
-          setOriginalAgentIds(currentMemberIds);
-        }).catch(err => {
-          console.error("Failed to fetch team members for editing:", err);
-          // Fallback if teamToEdit.members was provided
-          const memberIdsFromProp = teamToEdit.members?.map((m: TeamMember) => m.agent_id?.toString()).filter(Boolean) || [];
-           setSelectedAgentIds(memberIdsFromProp);
-           setOriginalAgentIds(memberIdsFromProp);
-        });
+        getTeamMembers(teamToEdit.id)
+          .then(members => {
+            const currentMemberIds = members.map(m => m.agent_id.toString());
+            setSelectedAgentIds(currentMemberIds);
+            setOriginalAgentIds(currentMemberIds);
+          })
+          .catch(err => {
+            console.error('Failed to fetch team members for editing:', err);
+            // Fallback if teamToEdit.members was provided
+            const memberIdsFromProp =
+              teamToEdit.members?.map((m: TeamMember) => m.agent_id?.toString()).filter(Boolean) ||
+              [];
+            setSelectedAgentIds(memberIdsFromProp);
+            setOriginalAgentIds(memberIdsFromProp);
+          });
       } else {
         setSelectedAgentIds([]);
         setOriginalAgentIds([]);
@@ -114,59 +123,76 @@ const EditTeamModalMui: React.FC<EditTeamModalMuiProps> = ({ open, onClose, team
   }, [open, teamToEdit]);
 
   const mutation = useMutation<UpdateTeamMutationResult, Error, UpdateTeamMutationPayload>({
-    mutationFn: async (dataToUpdate: UpdateTeamMutationPayload): Promise<UpdateTeamMutationResult> => {
+    mutationFn: async (
+      dataToUpdate: UpdateTeamMutationPayload
+    ): Promise<UpdateTeamMutationResult> => {
       if (!teamToEdit || !teamToEdit.id) {
         throw new Error('Team to edit is not properly defined.');
       }
-      
+
       const updatedTeamFromApi = await updateTeam(teamToEdit.id, dataToUpdate);
-  
+
       const agentsToAdd = selectedAgentIds.filter(id => !originalAgentIds.includes(id));
       const agentsToRemove = originalAgentIds.filter(id => !selectedAgentIds.includes(id));
-  
-      const addPromises = agentsToAdd.map(agentId => addTeamMember(teamToEdit.id, parseInt(agentId, 10)));
-      const removePromises = agentsToRemove.map(agentId => removeTeamMember(teamToEdit.id, parseInt(agentId, 10)));
-              
+
+      const addPromises = agentsToAdd.map(agentId =>
+        addTeamMember(teamToEdit.id, parseInt(agentId, 10))
+      );
+      const removePromises = agentsToRemove.map(agentId =>
+        removeTeamMember(teamToEdit.id, parseInt(agentId, 10))
+      );
+
       await Promise.allSettled([...addPromises, ...removePromises]).then(results => {
-          results.forEach((result, index) => {
-              if (result.status === 'rejected') {
-                  const action = index < addPromises.length ? 'add' : 'remove';
-                  const agentIdInvolved = index < addPromises.length ? agentsToAdd[index] : agentsToRemove[index - addPromises.length];
-                  console.warn(`[EditTeamModalMui] Failed to ${action} agent ID ${agentIdInvolved} for team ${teamToEdit.id}:`, result.reason);
-              }
-          });
+        results.forEach((result, index) => {
+          if (result.status === 'rejected') {
+            const action = index < addPromises.length ? 'add' : 'remove';
+            const agentIdInvolved =
+              index < addPromises.length
+                ? agentsToAdd[index]
+                : agentsToRemove[index - addPromises.length];
+            console.warn(
+              `[EditTeamModalMui] Failed to ${action} agent ID ${agentIdInvolved} for team ${teamToEdit.id}:`,
+              result.reason
+            );
+          }
+        });
       });
-      
+
       const finalUpdatedTeam: Team = {
-          ...updatedTeamFromApi,
-          icon_name: dataToUpdate.icon_name === undefined ? teamToEdit.icon_name : dataToUpdate.icon_name,
+        ...updatedTeamFromApi,
+        icon_name:
+          dataToUpdate.icon_name === undefined ? teamToEdit.icon_name : dataToUpdate.icon_name,
       };
-  
-      return { updatedTeam: finalUpdatedTeam, newlySelectedAgentIds: selectedAgentIds, originalAgentIds };
+
+      return {
+        updatedTeam: finalUpdatedTeam,
+        newlySelectedAgentIds: selectedAgentIds,
+        originalAgentIds,
+      };
     },
     onSuccess: async (result: UpdateTeamMutationResult) => {
       const { updatedTeam, newlySelectedAgentIds } = result;
       toast.success(`Team "${updatedTeam.name}" updated successfully!`);
-      
+
       const teamsQueryKey: QueryKey = ['teams'];
-      queryClient.setQueryData<Team[]>(teamsQueryKey, (oldTeams = []) => 
-        oldTeams.map(t => t.id === updatedTeam.id ? { ...t, ...updatedTeam } : t)
+      queryClient.setQueryData<Team[]>(teamsQueryKey, (oldTeams = []) =>
+        oldTeams.map(t => (t.id === updatedTeam.id ? { ...t, ...updatedTeam } : t))
       );
 
       const teamsWithCountsQueryKey: QueryKey = ['teamsWithCounts'];
       queryClient.setQueryData<TeamWithCounts[]>(teamsWithCountsQueryKey, (oldData = []) => {
         return oldData.map(t => {
           if (t.id === updatedTeam.id) {
-            return { 
-              ...t, 
-              ...updatedTeam, 
-              agentCount: newlySelectedAgentIds?.length ?? t.agentCount
+            return {
+              ...t,
+              ...updatedTeam,
+              agentCount: newlySelectedAgentIds?.length ?? t.agentCount,
             };
           }
           return t;
         });
       });
-      
+
       let specificAgentTeamsKey: QueryKey | undefined;
       try {
         const currentUser = await getCurrentUser();
@@ -182,7 +208,7 @@ const EditTeamModalMui: React.FC<EditTeamModalMuiProps> = ({ open, onClose, team
       queryClient.invalidateQueries({ queryKey: teamsQueryKey });
       queryClient.invalidateQueries({ queryKey: ['paginatedTeams'] });
       queryClient.invalidateQueries({ queryKey: teamsWithCountsQueryKey });
-      
+
       setTimeout(() => {
         if (specificAgentTeamsKey) {
           queryClient.invalidateQueries({ queryKey: specificAgentTeamsKey });
@@ -214,16 +240,16 @@ const EditTeamModalMui: React.FC<EditTeamModalMuiProps> = ({ open, onClose, team
   };
 
   const handleRemoveAgent = (agentIdToRemove: string) => {
-    setSelectedAgentIds((prevSelectedAgentIds) =>
-      prevSelectedAgentIds.filter((id) => id !== agentIdToRemove)
+    setSelectedAgentIds(prevSelectedAgentIds =>
+      prevSelectedAgentIds.filter(id => id !== agentIdToRemove)
     );
   };
 
-  const handleAgentChange = (event: SelectChangeEvent<string[]>) => { 
-    const { target: { value } } = event;
-    setSelectedAgentIds(
-      typeof value === 'string' ? value.split(',') : value,
-    );
+  const handleAgentChange = (event: SelectChangeEvent<string[]>) => {
+    const {
+      target: { value },
+    } = event;
+    setSelectedAgentIds(typeof value === 'string' ? value.split(',') : value);
   };
 
   const handleTriggerUpdateTeam = () => {
@@ -233,7 +259,7 @@ const EditTeamModalMui: React.FC<EditTeamModalMuiProps> = ({ open, onClose, team
       setFormError('Team name is required.');
       return;
     }
-    
+
     const payload: UpdateTeamMutationPayload = {
       name: teamName.trim(),
       description: teamDescription.trim() || null,
@@ -264,76 +290,92 @@ const EditTeamModalMui: React.FC<EditTeamModalMuiProps> = ({ open, onClose, team
   };
 
   return (
-    <Dialog 
-      open={open} 
-      onClose={handleCloseAndReset} 
+    <Dialog
+      open={open}
+      onClose={handleCloseAndReset}
       maxWidth="sm"
       fullWidth
       PaperProps={{
         sx: {
           borderRadius: '12px',
-        }
+        },
       }}
     >
-      <DialogTitle sx={{ pb: 0, fontSize: '1.25rem', fontWeight: 600, pt: 2.5, px: 2.5, color: TEXT_COLOR }}>
+      <DialogTitle
+        sx={{ pb: 0, fontSize: '1.25rem', fontWeight: 600, pt: 2.5, px: 2.5, color: TEXT_COLOR }}
+      >
         Edit Team: {teamToEdit?.name || ''}
       </DialogTitle>
-      <DialogContentText sx={{ color: TEXT_COLOR, opacity: 0.8, px: 2.5, pt: 0.5, pb: 2, fontSize: '0.875rem' }}>
+      <DialogContentText
+        sx={{ color: TEXT_COLOR, opacity: 0.8, px: 2.5, pt: 0.5, pb: 2, fontSize: '0.875rem' }}
+      >
         Update the team details and members below.
       </DialogContentText>
       <DialogContent dividers sx={{ pt: 2, pb: 2.5, px: 2.5, borderColor: 'rgba(0, 0, 0, 0.08)' }}>
         {formError && (
           <Box sx={{ color: 'error.main', mb: 2, fontSize: '0.875rem' }}>{formError}</Box>
         )}
-        
-        <InputLabel shrink htmlFor="edit-team-name" sx={{ fontSize: '0.875rem', fontWeight: 500, color: TEXT_COLOR, mb: 0.75 }}>Name*</InputLabel>
+
+        <InputLabel
+          shrink
+          htmlFor="edit-team-name"
+          sx={{ fontSize: '0.875rem', fontWeight: 500, color: TEXT_COLOR, mb: 0.75 }}
+        >
+          Name*
+        </InputLabel>
         <Box sx={{ display: 'flex', alignItems: 'stretch', mb: 2.5 }}>
-          <IconButton 
-            onClick={handleEmojiButtonClick} 
+          <IconButton
+            onClick={handleEmojiButtonClick}
             aria-label="Select emoji"
             size="medium"
-            sx={{ 
-              mr: 1, 
+            sx={{
+              mr: 1,
               border: '1px solid #D1D5DB',
               borderRadius: '8px',
-              padding: '8px', 
+              padding: '8px',
               width: '50px',
               height: '50px',
-              alignSelf: 'center'
+              alignSelf: 'center',
             }}
             disabled={mutation.isPending}
           >
             {selectedEmoji ? (
-                <span style={{ fontSize: '22px' }}>{selectedEmoji.native}</span>
+              <span style={{ fontSize: '22px' }}>{selectedEmoji.native}</span>
             ) : (
-                <AddReaction sx={{ fontSize: '24px' }} />
+              <AddReaction sx={{ fontSize: '24px' }} />
             )}
           </IconButton>
           <TextField
             autoFocus
-            margin="none" 
+            margin="none"
             id="edit-team-name"
             type="text"
             fullWidth
             variant="outlined"
             value={teamName}
-            onChange={(e) => setTeamName(e.target.value)}
+            onChange={e => setTeamName(e.target.value)}
             error={!!formError && !teamName.trim()}
             disabled={mutation.isPending}
             sx={{
-              flexGrow: 1, 
-              '& .MuiOutlinedInput-root': { 
-                borderRadius: '8px', 
+              flexGrow: 1,
+              '& .MuiOutlinedInput-root': {
+                borderRadius: '8px',
                 '& .MuiOutlinedInput-notchedOutline': { borderColor: '#D1D5DB' },
                 '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#B0BEC5' },
                 '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: 'primary.main' },
-              } 
+              },
             }}
             placeholder="Enter team name"
           />
         </Box>
-        
-        <InputLabel shrink htmlFor="edit-team-description" sx={{ fontSize: '0.875rem', fontWeight: 500, color: TEXT_COLOR, mb: 0.75 }}>Description</InputLabel>
+
+        <InputLabel
+          shrink
+          htmlFor="edit-team-description"
+          sx={{ fontSize: '0.875rem', fontWeight: 500, color: TEXT_COLOR, mb: 0.75 }}
+        >
+          Description
+        </InputLabel>
         <TextField
           margin="none"
           id="edit-team-description"
@@ -343,22 +385,27 @@ const EditTeamModalMui: React.FC<EditTeamModalMuiProps> = ({ open, onClose, team
           rows={3}
           variant="outlined"
           value={teamDescription}
-          onChange={(e) => setTeamDescription(e.target.value)}
+          onChange={e => setTeamDescription(e.target.value)}
           disabled={mutation.isPending}
-          sx={{ 
-            mb: 2.5, 
-            '& .MuiOutlinedInput-root': { 
-              borderRadius: '8px', 
+          sx={{
+            mb: 2.5,
+            '& .MuiOutlinedInput-root': {
+              borderRadius: '8px',
               '& .MuiOutlinedInput-notchedOutline': { borderColor: '#D1D5DB' },
               '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#B0BEC5' },
               '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: 'primary.main' },
-            } 
+            },
           }}
           placeholder="Enter team description"
         />
-        
+
         <FormControl fullWidth margin="none" disabled={mutation.isPending} sx={{ mb: 1 }}>
-          <InputLabel id="edit-multiple-agents-select-label" sx={{ fontSize: '0.875rem', fontWeight: 500, color: TEXT_COLOR}}>Agents</InputLabel>
+          <InputLabel
+            id="edit-multiple-agents-select-label"
+            sx={{ fontSize: '0.875rem', fontWeight: 500, color: TEXT_COLOR }}
+          >
+            Agents
+          </InputLabel>
           <Select
             labelId="edit-multiple-agents-select-label"
             id="edit-multiple-agents"
@@ -366,19 +413,19 @@ const EditTeamModalMui: React.FC<EditTeamModalMuiProps> = ({ open, onClose, team
             value={selectedAgentIds}
             onChange={handleAgentChange}
             input={
-              <OutlinedInput 
+              <OutlinedInput
                 label="Agents"
-                sx={{ 
+                sx={{
                   borderRadius: '8px',
                   '& .MuiOutlinedInput-notchedOutline': { borderColor: '#D1D5DB' },
-                  '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#B0BEC5' }, 
+                  '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#B0BEC5' },
                   '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: 'primary.main' },
                 }}
               />
             }
-            renderValue={(selected) => (
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}> 
-                {(selected as string[]).map((id) => {
+            renderValue={selected => (
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
+                {(selected as string[]).map(id => {
                   const agent = allAgents.find(a => a.id.toString() === id); // Use allAgents for rendering chip label
                   return agent ? (
                     <Chip
@@ -386,22 +433,26 @@ const EditTeamModalMui: React.FC<EditTeamModalMuiProps> = ({ open, onClose, team
                       label={agent.name || agent.email}
                       onDelete={() => handleRemoveAgent(id)}
                       size="small"
-                      sx={{ height: '26px', borderRadius: '6px' }} 
+                      sx={{ height: '26px', borderRadius: '6px' }}
                     />
                   ) : null;
                 })}
               </Box>
             )}
             MenuProps={MenuProps}
-            sx={{ 
+            sx={{
               '& .MuiSelect-select': {
                 paddingTop: selectedAgentIds.length > 0 ? '10px' : '14.5px',
                 paddingBottom: selectedAgentIds.length > 0 ? '10px' : '14.5px',
               },
             }}
           >
-            {allAgents.length === 0 && <MenuItem disabled value=""><em>No agents available</em></MenuItem>}
-            {allAgents.map((agent) => (
+            {allAgents.length === 0 && (
+              <MenuItem disabled value="">
+                <em>No agents available</em>
+              </MenuItem>
+            )}
+            {allAgents.map(agent => (
               <MenuItem key={agent.id} value={agent.id.toString()}>
                 <Checkbox checked={selectedAgentIds.indexOf(agent.id.toString()) > -1} />
                 <ListItemText primary={agent.name || agent.email} />
@@ -426,31 +477,54 @@ const EditTeamModalMui: React.FC<EditTeamModalMuiProps> = ({ open, onClose, team
           <Picker data={data} onEmojiSelect={handleEmojiSelect} theme="light" />
         </Popover>
       </DialogContent>
-      <DialogActions sx={{p: '20px 20px', borderTop: '1px solid rgba(0, 0, 0, 0.08)', backgroundColor: '#F8F9FA' }}>
-        <Button onClick={handleCloseAndReset} color="inherit" disabled={mutation.isPending} sx={{ textTransform: 'none', fontSize: '0.875rem', borderRadius: '8px', padding: '8px 20px', fontWeight: 500 }}>Cancel</Button>
-        <Button 
-            onClick={handleTriggerUpdateTeam} 
-            variant="contained" 
-            disabled={mutation.isPending || !teamName.trim()}
-            sx={{ 
-              textTransform: 'none', 
-              fontSize: '0.875rem', 
-              borderRadius: '8px', 
-              padding: '8px 20px',
-              boxShadow: 'none',
-              fontWeight: 500,
-              backgroundColor: '#007AFF',
-              '&:hover': { 
-                backgroundColor: '#005ecb',
-                boxShadow: 'none',
-              } 
-            }}
+      <DialogActions
+        sx={{
+          p: '20px 20px',
+          borderTop: '1px solid rgba(0, 0, 0, 0.08)',
+          backgroundColor: '#F8F9FA',
+        }}
+      >
+        <Button
+          onClick={handleCloseAndReset}
+          color="inherit"
+          disabled={mutation.isPending}
+          sx={{
+            textTransform: 'none',
+            fontSize: '0.875rem',
+            borderRadius: '8px',
+            padding: '8px 20px',
+            fontWeight: 500,
+          }}
         >
-          {mutation.isPending ? <CircularProgress size={22} sx={{ color: 'white' }} /> : 'Save Changes'}
+          Cancel
+        </Button>
+        <Button
+          onClick={handleTriggerUpdateTeam}
+          variant="contained"
+          disabled={mutation.isPending || !teamName.trim()}
+          sx={{
+            textTransform: 'none',
+            fontSize: '0.875rem',
+            borderRadius: '8px',
+            padding: '8px 20px',
+            boxShadow: 'none',
+            fontWeight: 500,
+            backgroundColor: '#007AFF',
+            '&:hover': {
+              backgroundColor: '#005ecb',
+              boxShadow: 'none',
+            },
+          }}
+        >
+          {mutation.isPending ? (
+            <CircularProgress size={22} sx={{ color: 'white' }} />
+          ) : (
+            'Save Changes'
+          )}
         </Button>
       </DialogActions>
     </Dialog>
   );
 };
 
-export default EditTeamModalMui; 
+export default EditTeamModalMui;

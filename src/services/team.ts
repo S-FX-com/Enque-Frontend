@@ -156,7 +156,12 @@ export const deleteTeam = async (teamId: number): Promise<void> => {
  */
 export const updateTeam = async (
   teamId: number,
-  teamData: { name?: string | null; description?: string | null; logo_url?: string | null; icon_name?: string | null; }
+  teamData: {
+    name?: string | null;
+    description?: string | null;
+    logo_url?: string | null;
+    icon_name?: string | null;
+  }
 ): Promise<Team> => {
   if (!teamId) {
     console.error('updateTeam requires a valid teamId');

@@ -67,7 +67,10 @@ const NewTeamModalMui: React.FC<NewTeamModalMuiProps> = ({ open, onClose, agents
 
   const mutation = useMutation<CreateTeamMutationResult, Error, TeamCreate>({
     mutationFn: async (teamCreationData: TeamCreate): Promise<CreateTeamMutationResult> => {
-      console.log('[NewTeamModalMui] mutationFn received teamCreationData:', JSON.stringify(teamCreationData));
+      console.log(
+        '[NewTeamModalMui] mutationFn received teamCreationData:',
+        JSON.stringify(teamCreationData)
+      );
       const currentUser = await getCurrentUser();
       if (!currentUser || !currentUser.workspace_id) {
         throw new Error('Could not retrieve user session or workspace ID.');
@@ -75,66 +78,75 @@ const NewTeamModalMui: React.FC<NewTeamModalMuiProps> = ({ open, onClose, agents
 
       const { agent_ids, ...teamDetails } = teamCreationData;
       const payloadForService = {
-        ...teamDetails, 
-        workspace_id: currentUser.workspace_id
+        ...teamDetails,
+        workspace_id: currentUser.workspace_id,
       };
-      console.log('[NewTeamModalMui] Payload for createTeam service:', JSON.stringify(payloadForService));
+      console.log(
+        '[NewTeamModalMui] Payload for createTeam service:',
+        JSON.stringify(payloadForService)
+      );
       const newTeamFromApi = await createTeam(payloadForService);
 
       const newTeamWithIcon: Team = {
         ...newTeamFromApi,
-        icon_name: payloadForService.icon_name || null 
+        icon_name: payloadForService.icon_name || null,
       };
 
       if (newTeamWithIcon && newTeamWithIcon.id && agent_ids && agent_ids.length > 0) {
         const agentIdNumbers = agent_ids.map(id => parseInt(id, 10)).filter(id => !isNaN(id));
-        
+
         const memberAddPromises = agentIdNumbers.map(agentId =>
           addTeamMember(newTeamWithIcon.id, agentId)
         );
         // Not waiting for these promises to resolve fully here for faster UI response for team creation itself
         // Errors are logged internally. For optimistic update, we assume adds were attempted.
         Promise.allSettled(memberAddPromises).then(results => {
-            results.forEach((result, index) => {
-                if (result.status === 'rejected') {
-                    console.warn(`[NewTeamModalMui] Async: Failed to add agent ID ${agentIdNumbers[index]} to team ${newTeamWithIcon.id}:`, result.reason);
-                }
-            });
+          results.forEach((result, index) => {
+            if (result.status === 'rejected') {
+              console.warn(
+                `[NewTeamModalMui] Async: Failed to add agent ID ${agentIdNumbers[index]} to team ${newTeamWithIcon.id}:`,
+                result.reason
+              );
+            }
+          });
         });
       }
       return { team: newTeamWithIcon, attemptedAgentIds: agent_ids }; // Return team and agent_ids used
     },
-    onSuccess: async (mutationResult) => { 
+    onSuccess: async mutationResult => {
       const { team: newTeam, attemptedAgentIds } = mutationResult;
-      console.log('[NewTeamModalMui] Team data after creation (onSuccess):', JSON.stringify(newTeam)); 
+      console.log(
+        '[NewTeamModalMui] Team data after creation (onSuccess):',
+        JSON.stringify(newTeam)
+      );
       toast.success(`Team "${newTeam.name}" created successfully!`);
-      
+
       // Step 1: Perform all optimistic updates
       const teamsQueryKey: QueryKey = ['teams'];
       queryClient.setQueryData<Team[]>(teamsQueryKey, (oldTeams = []) => {
         if (oldTeams.find(t => t.id === newTeam.id)) {
-          return oldTeams.map(t => t.id === newTeam.id ? newTeam : t);
+          return oldTeams.map(t => (t.id === newTeam.id ? newTeam : t));
         }
         return [...oldTeams, newTeam];
       });
 
       const teamsWithCountsQueryKey: QueryKey = ['teamsWithCounts'];
-      queryClient.setQueryData<TeamWithCounts[]>(teamsWithCountsQueryKey, (oldData) => {
+      queryClient.setQueryData<TeamWithCounts[]>(teamsWithCountsQueryKey, oldData => {
         const agentCount = attemptedAgentIds?.length || 0;
         const teamWithCounts: TeamWithCounts = {
           ...newTeam,
           agentCount: agentCount,
-          ticketCount: 0, 
+          ticketCount: 0,
         };
-        
+
         if (oldData && Array.isArray(oldData)) {
           const teamExists = oldData.find(t => t.id === newTeam.id);
           if (teamExists) {
-            return oldData.map(t => t.id === newTeam.id ? teamWithCounts : t);
+            return oldData.map(t => (t.id === newTeam.id ? teamWithCounts : t));
           }
           return [...oldData, teamWithCounts];
         }
-        return [teamWithCounts]; 
+        return [teamWithCounts];
       });
 
       let specificAgentTeamsKey: QueryKey | undefined;
@@ -144,7 +156,7 @@ const NewTeamModalMui: React.FC<NewTeamModalMuiProps> = ({ open, onClose, agents
           specificAgentTeamsKey = ['agentTeams', currentUser.id];
           queryClient.setQueryData<Team[]>(specificAgentTeamsKey, (oldAgentTeams = []) => {
             if (oldAgentTeams.find(t => t.id === newTeam.id)) {
-              return oldAgentTeams.map(t => t.id === newTeam.id ? newTeam : t);
+              return oldAgentTeams.map(t => (t.id === newTeam.id ? newTeam : t));
             }
             return [...oldAgentTeams, newTeam];
           });
@@ -158,21 +170,24 @@ const NewTeamModalMui: React.FC<NewTeamModalMuiProps> = ({ open, onClose, agents
       queryClient.invalidateQueries({ queryKey: teamsQueryKey });
       queryClient.invalidateQueries({ queryKey: ['paginatedTeams'] });
       queryClient.invalidateQueries({ queryKey: teamsWithCountsQueryKey });
-      
+
       // Delay invalidation for agentTeams to allow backend to catch up
       setTimeout(() => {
         if (specificAgentTeamsKey) {
-          console.log('[NewTeamModalMui] Delayedly invalidating specific agentTeams query:', specificAgentTeamsKey);
+          console.log(
+            '[NewTeamModalMui] Delayedly invalidating specific agentTeams query:',
+            specificAgentTeamsKey
+          );
           queryClient.invalidateQueries({ queryKey: specificAgentTeamsKey });
         } else {
           console.log('[NewTeamModalMui] Delayedly invalidating generic agentTeams query');
-          queryClient.invalidateQueries({ queryKey: ['agentTeams'] }); 
+          queryClient.invalidateQueries({ queryKey: ['agentTeams'] });
         }
       }, 1000); // 1-second delay
 
       handleCloseAndReset();
     },
-    onError: (error) => {
+    onError: error => {
       console.error('[NewTeamModalMui] Error creating team:', error);
       setFormError(error.message || 'Failed to create team. Please try again.');
       toast.error(error.message || 'Failed to create team. Please try again.');
@@ -193,16 +208,16 @@ const NewTeamModalMui: React.FC<NewTeamModalMuiProps> = ({ open, onClose, agents
   };
 
   const handleRemoveAgent = (agentIdToRemove: string) => {
-    setSelectedAgentIds((prevSelectedAgentIds) =>
-      prevSelectedAgentIds.filter((id) => id !== agentIdToRemove)
+    setSelectedAgentIds(prevSelectedAgentIds =>
+      prevSelectedAgentIds.filter(id => id !== agentIdToRemove)
     );
   };
 
-  const handleAgentChange = (event: SelectChangeEvent<string[]>) => { 
-    const { target: { value } } = event;
-    setSelectedAgentIds(
-      typeof value === 'string' ? value.split(',') : value,
-    );
+  const handleAgentChange = (event: SelectChangeEvent<string[]>) => {
+    const {
+      target: { value },
+    } = event;
+    setSelectedAgentIds(typeof value === 'string' ? value.split(',') : value);
   };
 
   const handleTriggerCreateTeam = () => {
@@ -211,7 +226,7 @@ const NewTeamModalMui: React.FC<NewTeamModalMuiProps> = ({ open, onClose, agents
       setFormError('Team name is required.');
       return;
     }
-    
+
     const teamData: TeamCreate = {
       name: teamName.trim(),
       description: teamDescription.trim() || null,
@@ -257,18 +272,20 @@ const NewTeamModalMui: React.FC<NewTeamModalMuiProps> = ({ open, onClose, agents
   };
 
   return (
-    <Dialog 
-      open={open} 
-      onClose={handleCloseAndReset} 
+    <Dialog
+      open={open}
+      onClose={handleCloseAndReset}
       maxWidth="sm"
       fullWidth
       PaperProps={{
         sx: {
           borderRadius: '12px',
-        }
+        },
       }}
     >
-      <DialogTitle sx={{ pb: 0, fontSize: '1.25rem', fontWeight: 600, pt: 2.5, px: 2.5, color: '#334155' }}>
+      <DialogTitle
+        sx={{ pb: 0, fontSize: '1.25rem', fontWeight: 600, pt: 2.5, px: 2.5, color: '#334155' }}
+      >
         Create New Team
       </DialogTitle>
       <DialogContentText sx={{ color: '#475569', px: 2.5, pt: 0.5, pb: 2, fontSize: '0.875rem' }}>
@@ -278,55 +295,67 @@ const NewTeamModalMui: React.FC<NewTeamModalMuiProps> = ({ open, onClose, agents
         {formError && (
           <Box sx={{ color: 'error.main', mb: 2, fontSize: '0.875rem' }}>{formError}</Box>
         )}
-        
-        <InputLabel shrink htmlFor="name" sx={{ fontSize: '0.875rem', fontWeight: 500, color: '#334155', mb: 0.75 }}>Name*</InputLabel>
+
+        <InputLabel
+          shrink
+          htmlFor="name"
+          sx={{ fontSize: '0.875rem', fontWeight: 500, color: '#334155', mb: 0.75 }}
+        >
+          Name*
+        </InputLabel>
         <Box sx={{ display: 'flex', alignItems: 'stretch', mb: 2.5 }}>
-          <IconButton 
-            onClick={handleEmojiButtonClick} 
+          <IconButton
+            onClick={handleEmojiButtonClick}
             aria-label="Select emoji"
             size="medium"
-            sx={{ 
-              mr: 1, 
+            sx={{
+              mr: 1,
               border: '1px solid #D1D5DB',
               borderRadius: '8px',
-              padding: '8px', 
+              padding: '8px',
               width: '50px',
               height: '50px',
-              alignSelf: 'center'
+              alignSelf: 'center',
             }}
             disabled={mutation.isPending}
           >
             {selectedEmoji ? (
-                <span style={{ fontSize: '22px' }}>{selectedEmoji.native}</span>
+              <span style={{ fontSize: '22px' }}>{selectedEmoji.native}</span>
             ) : (
-                <AddReaction sx={{ fontSize: '24px' }} />
+              <AddReaction sx={{ fontSize: '24px' }} />
             )}
           </IconButton>
           <TextField
             autoFocus
-            margin="none" 
+            margin="none"
             id="name"
             type="text"
             fullWidth
             variant="outlined"
             value={teamName}
-            onChange={(e) => setTeamName(e.target.value)}
+            onChange={e => setTeamName(e.target.value)}
             error={!!formError && !teamName.trim()}
             disabled={mutation.isPending}
             sx={{
-              flexGrow: 1, 
-              '& .MuiOutlinedInput-root': { 
-                borderRadius: '8px', 
+              flexGrow: 1,
+              '& .MuiOutlinedInput-root': {
+                borderRadius: '8px',
                 '& .MuiOutlinedInput-notchedOutline': { borderColor: '#D1D5DB' },
                 '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#B0BEC5' },
                 '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: 'primary.main' },
-              } 
+              },
             }}
             placeholder="Enter team name"
           />
         </Box>
-        
-        <InputLabel shrink htmlFor="description" sx={{ fontSize: '0.875rem', fontWeight: 500, color: '#334155', mb: 0.75 }}>Description</InputLabel>
+
+        <InputLabel
+          shrink
+          htmlFor="description"
+          sx={{ fontSize: '0.875rem', fontWeight: 500, color: '#334155', mb: 0.75 }}
+        >
+          Description
+        </InputLabel>
         <TextField
           margin="none"
           id="description"
@@ -336,22 +365,27 @@ const NewTeamModalMui: React.FC<NewTeamModalMuiProps> = ({ open, onClose, agents
           rows={3}
           variant="outlined"
           value={teamDescription}
-          onChange={(e) => setTeamDescription(e.target.value)}
+          onChange={e => setTeamDescription(e.target.value)}
           disabled={mutation.isPending}
-          sx={{ 
-            mb: 2.5, 
-            '& .MuiOutlinedInput-root': { 
-              borderRadius: '8px', 
+          sx={{
+            mb: 2.5,
+            '& .MuiOutlinedInput-root': {
+              borderRadius: '8px',
               '& .MuiOutlinedInput-notchedOutline': { borderColor: '#D1D5DB' },
               '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#B0BEC5' },
               '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: 'primary.main' },
-            } 
+            },
           }}
           placeholder="Enter team description"
         />
-        
+
         <FormControl fullWidth margin="none" disabled={mutation.isPending} sx={{ mb: 1 }}>
-          <InputLabel id="multiple-agents-select-label" sx={{ fontSize: '0.875rem', fontWeight: 500, color: '#334155'}}>Agents</InputLabel>
+          <InputLabel
+            id="multiple-agents-select-label"
+            sx={{ fontSize: '0.875rem', fontWeight: 500, color: '#334155' }}
+          >
+            Agents
+          </InputLabel>
           <Select
             labelId="multiple-agents-select-label"
             id="multiple-agents"
@@ -359,19 +393,19 @@ const NewTeamModalMui: React.FC<NewTeamModalMuiProps> = ({ open, onClose, agents
             value={selectedAgentIds}
             onChange={handleAgentChange}
             input={
-              <OutlinedInput 
+              <OutlinedInput
                 label="Agents"
-                sx={{ 
+                sx={{
                   borderRadius: '8px',
                   '& .MuiOutlinedInput-notchedOutline': { borderColor: '#D1D5DB' },
-                  '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#B0BEC5' }, 
+                  '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#B0BEC5' },
                   '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: 'primary.main' },
                 }}
               />
             }
-            renderValue={(selected) => (
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}> 
-                {(selected as string[]).map((id) => {
+            renderValue={selected => (
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
+                {(selected as string[]).map(id => {
                   const agent = agents.find(a => a.id.toString() === id);
                   return agent ? (
                     <Chip
@@ -379,22 +413,26 @@ const NewTeamModalMui: React.FC<NewTeamModalMuiProps> = ({ open, onClose, agents
                       label={agent.name || agent.email}
                       onDelete={() => handleRemoveAgent(id)}
                       size="small"
-                      sx={{ height: '26px', borderRadius: '6px' }} 
+                      sx={{ height: '26px', borderRadius: '6px' }}
                     />
                   ) : null;
                 })}
               </Box>
             )}
             MenuProps={MenuProps}
-            sx={{ 
+            sx={{
               '& .MuiSelect-select': {
                 paddingTop: selectedAgentIds.length > 0 ? '10px' : '14.5px',
                 paddingBottom: selectedAgentIds.length > 0 ? '10px' : '14.5px',
               },
             }}
           >
-            {agents.length === 0 && <MenuItem disabled value=""><em>No agents available</em></MenuItem>}
-            {agents.map((agent) => (
+            {agents.length === 0 && (
+              <MenuItem disabled value="">
+                <em>No agents available</em>
+              </MenuItem>
+            )}
+            {agents.map(agent => (
               <MenuItem key={agent.id} value={agent.id.toString()}>
                 <Checkbox checked={selectedAgentIds.indexOf(agent.id.toString()) > -1} />
                 <ListItemText primary={agent.name || agent.email} />
@@ -419,31 +457,54 @@ const NewTeamModalMui: React.FC<NewTeamModalMuiProps> = ({ open, onClose, agents
           <Picker data={data} onEmojiSelect={handleEmojiSelect} theme="light" />
         </Popover>
       </DialogContent>
-      <DialogActions sx={{p: '20px 20px', borderTop: '1px solid rgba(0, 0, 0, 0.08)', backgroundColor: '#F8F9FA' }}>
-        <Button onClick={handleCloseAndReset} color="inherit" disabled={mutation.isPending} sx={{ textTransform: 'none', fontSize: '0.875rem', borderRadius: '8px', padding: '8px 20px', fontWeight: 500 }}>Cancel</Button>
-        <Button 
-            onClick={handleTriggerCreateTeam} 
-            variant="contained" 
-            disabled={mutation.isPending || !teamName.trim()}
-            sx={{ 
-              textTransform: 'none', 
-              fontSize: '0.875rem', 
-              borderRadius: '8px', 
-              padding: '8px 20px',
-              boxShadow: 'none',
-              fontWeight: 500,
-              backgroundColor: '#007AFF',
-              '&:hover': { 
-                backgroundColor: '#005ecb',
-                boxShadow: 'none',
-              } 
-            }}
+      <DialogActions
+        sx={{
+          p: '20px 20px',
+          borderTop: '1px solid rgba(0, 0, 0, 0.08)',
+          backgroundColor: '#F8F9FA',
+        }}
+      >
+        <Button
+          onClick={handleCloseAndReset}
+          color="inherit"
+          disabled={mutation.isPending}
+          sx={{
+            textTransform: 'none',
+            fontSize: '0.875rem',
+            borderRadius: '8px',
+            padding: '8px 20px',
+            fontWeight: 500,
+          }}
         >
-          {mutation.isPending ? <CircularProgress size={22} sx={{ color: 'white' }} /> : 'Create Team'}
+          Cancel
+        </Button>
+        <Button
+          onClick={handleTriggerCreateTeam}
+          variant="contained"
+          disabled={mutation.isPending || !teamName.trim()}
+          sx={{
+            textTransform: 'none',
+            fontSize: '0.875rem',
+            borderRadius: '8px',
+            padding: '8px 20px',
+            boxShadow: 'none',
+            fontWeight: 500,
+            backgroundColor: '#007AFF',
+            '&:hover': {
+              backgroundColor: '#005ecb',
+              boxShadow: 'none',
+            },
+          }}
+        >
+          {mutation.isPending ? (
+            <CircularProgress size={22} sx={{ color: 'white' }} />
+          ) : (
+            'Create Team'
+          )}
         </Button>
       </DialogActions>
     </Dialog>
   );
 };
 
-export default NewTeamModalMui; 
+export default NewTeamModalMui;

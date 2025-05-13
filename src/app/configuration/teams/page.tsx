@@ -33,7 +33,7 @@ import { getAgents } from '@/services/agent';
 import { Team } from '@/typescript/team';
 import { Agent } from '@/typescript/agent';
 import { toast } from 'sonner';
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface TeamWithCounts extends Team {
   agentCount: number | null;
@@ -65,11 +65,20 @@ const fetchTeamsWithCounts = async (): Promise<TeamWithCounts[]> => {
 
   const countPromises = initialTeams.flatMap(team => [
     getTeamMembers(team.id)
-      .then(members => ({ type: 'members' as const, teamId: team.id, data: members.length } as CountSuccess))
-      .catch((err: Error) => ({ type: 'members' as const, teamId: team.id, error: err } as CountFailure)),
+      .then(
+        members =>
+          ({ type: 'members' as const, teamId: team.id, data: members.length }) as CountSuccess
+      )
+      .catch(
+        (err: Error) => ({ type: 'members' as const, teamId: team.id, error: err }) as CountFailure
+      ),
     getTeamTasks(team.id)
-      .then(tasks => ({ type: 'tasks' as const, teamId: team.id, data: tasks.length } as CountSuccess))
-      .catch((err: Error) => ({ type: 'tasks' as const, teamId: team.id, error: err } as CountFailure)),
+      .then(
+        tasks => ({ type: 'tasks' as const, teamId: team.id, data: tasks.length }) as CountSuccess
+      )
+      .catch(
+        (err: Error) => ({ type: 'tasks' as const, teamId: team.id, error: err }) as CountFailure
+      ),
   ]);
 
   const countResults = await Promise.allSettled(countPromises);
@@ -81,15 +90,19 @@ const fetchTeamsWithCounts = async (): Promise<TeamWithCounts[]> => {
 
       if (team) {
         if (value.type === 'members') {
-          if ('data' in value) { // Check if it's a CountSuccess
+          if ('data' in value) {
+            // Check if it's a CountSuccess
             team.agentCount = value.data;
-          } else if ('error' in value) { // Check if it's a CountFailure
+          } else if ('error' in value) {
+            // Check if it's a CountFailure
             console.error(`Error fetching members for team ${value.teamId}:`, value.error.message);
           }
         } else if (value.type === 'tasks') {
-          if ('data' in value) { // Check if it's a CountSuccess
+          if ('data' in value) {
+            // Check if it's a CountSuccess
             team.ticketCount = value.data;
-          } else if ('error' in value) { // Check if it's a CountFailure
+          } else if ('error' in value) {
+            // Check if it's a CountFailure
             console.error(`Error fetching tasks for team ${value.teamId}:`, value.error.message);
           }
         }
@@ -160,14 +173,21 @@ const TeamsPage = () => {
   const isIndeterminate = selectedTeamIds.size > 0 && selectedTeamIds.size < teams.length;
   const headerCheckboxState = isAllSelected ? true : isIndeterminate ? 'indeterminate' : false;
 
-  const deleteTeamsMutation = useMutation<unknown, Error, number[], { previousTeams?: TeamWithCounts[] }>({
+  const deleteTeamsMutation = useMutation<
+    unknown,
+    Error,
+    number[],
+    { previousTeams?: TeamWithCounts[] }
+  >({
     mutationFn: async (teamIds: number[]) => {
       const results = await Promise.allSettled(teamIds.map(id => deleteTeam(id)));
       const failedDeletions = results.filter(r => r.status === 'rejected');
       if (failedDeletions.length > 0) {
         console.error('Failed deletions:', failedDeletions);
         const errorMessages = failedDeletions
-          .map(fail => ((fail as PromiseRejectedResult).reason as Error)?.message || 'Unknown error')
+          .map(
+            fail => ((fail as PromiseRejectedResult).reason as Error)?.message || 'Unknown error'
+          )
           .join(', ');
         throw new Error(`Failed to delete ${failedDeletions.length} team(s): ${errorMessages}`);
       }
@@ -218,23 +238,50 @@ const TeamsPage = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[50px]"><Skeleton className="h-5 w-5" /></TableHead>
-                  <TableHead><Skeleton className="h-5 w-32" /></TableHead>
-                  <TableHead><Skeleton className="h-5 w-48" /></TableHead>
-                  <TableHead className="text-center"><Skeleton className="h-5 w-20" /></TableHead>
-                  <TableHead className="text-center"><Skeleton className="h-5 w-20" /></TableHead>
-                  <TableHead className="text-right"><Skeleton className="h-5 w-20" /></TableHead>
+                  <TableHead className="w-[50px]">
+                    <Skeleton className="h-5 w-5" />
+                  </TableHead>
+                  <TableHead>
+                    <Skeleton className="h-5 w-32" />
+                  </TableHead>
+                  <TableHead>
+                    <Skeleton className="h-5 w-48" />
+                  </TableHead>
+                  <TableHead className="text-center">
+                    <Skeleton className="h-5 w-20" />
+                  </TableHead>
+                  <TableHead className="text-center">
+                    <Skeleton className="h-5 w-20" />
+                  </TableHead>
+                  <TableHead className="text-right">
+                    <Skeleton className="h-5 w-20" />
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {[...Array(5)].map((_, i) => (
                   <TableRow key={i}>
-                    <TableCell><Skeleton className="h-5 w-5" /></TableCell>
-                    <TableCell><div className="flex items-center"><Skeleton className="h-8 w-8 rounded-full mr-2" /><Skeleton className="h-5 w-24" /></div></TableCell>
-                    <TableCell><Skeleton className="h-5 w-40" /></TableCell>
-                    <TableCell className="text-center"><Skeleton className="h-5 w-12" /></TableCell>
-                    <TableCell className="text-center"><Skeleton className="h-5 w-12" /></TableCell>
-                    <TableCell className="text-right"><Skeleton className="h-8 w-16" /></TableCell>
+                    <TableCell>
+                      <Skeleton className="h-5 w-5" />
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center">
+                        <Skeleton className="h-8 w-8 rounded-full mr-2" />
+                        <Skeleton className="h-5 w-24" />
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-5 w-40" />
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Skeleton className="h-5 w-12" />
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Skeleton className="h-5 w-12" />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Skeleton className="h-8 w-16" />
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -277,7 +324,11 @@ const TeamsPage = () => {
           {selectedTeamIds.size > 0 && (
             <AlertDialog open={isBulkDeleteDialogOpen} onOpenChange={setIsBulkDeleteDialogOpen}>
               <AlertDialogTrigger asChild>
-                <Button variant="destructive" size="sm" disabled={deleteTeamsMutation.isPending || selectedTeamIds.size === 0}>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  disabled={deleteTeamsMutation.isPending || selectedTeamIds.size === 0}
+                >
                   <Trash2 className="mr-2 h-4 w-4" />
                   Delete ({selectedTeamIds.size})
                 </Button>
@@ -286,13 +337,18 @@ const TeamsPage = () => {
                 <AlertDialogHeader>
                   <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    This action cannot be undone. This will permanently delete the selected
-                    team(s) and all associated data.
+                    This action cannot be undone. This will permanently delete the selected team(s)
+                    and all associated data.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel disabled={deleteTeamsMutation.isPending}>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleBulkDeleteConfirm} disabled={deleteTeamsMutation.isPending}>
+                  <AlertDialogCancel disabled={deleteTeamsMutation.isPending}>
+                    Cancel
+                  </AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleBulkDeleteConfirm}
+                    disabled={deleteTeamsMutation.isPending}
+                  >
                     {deleteTeamsMutation.isPending ? 'Deleting...' : 'Delete'}
                   </AlertDialogAction>
                 </AlertDialogFooter>
@@ -336,54 +392,79 @@ const TeamsPage = () => {
                     />
                   </TableHead>
                   <TableHead className="w-[180px] max-w-[200px] px-3 py-3.5">Name</TableHead>
-                  <TableHead className="hidden md:table-cell w-[220px] max-w-[250px] px-3 py-3.5">Description</TableHead>
-                  <TableHead className="text-center hidden sm:table-cell w-[100px] px-3 py-3.5">Agents</TableHead>
-                  <TableHead className="text-center hidden sm:table-cell w-[100px] px-3 py-3.5">Tickets</TableHead>
+                  <TableHead className="hidden md:table-cell w-[220px] max-w-[250px] px-3 py-3.5">
+                    Description
+                  </TableHead>
+                  <TableHead className="text-center hidden sm:table-cell w-[100px] px-3 py-3.5">
+                    Agents
+                  </TableHead>
+                  <TableHead className="text-center hidden sm:table-cell w-[100px] px-3 py-3.5">
+                    Tickets
+                  </TableHead>
                   <TableHead className="text-right w-[80px] px-3 py-3.5">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {teams.map(team => (
-                  <TableRow key={team.id} data-state={selectedTeamIds.has(team.id) ? "selected" : undefined}>
+                  <TableRow
+                    key={team.id}
+                    data-state={selectedTeamIds.has(team.id) ? 'selected' : undefined}
+                  >
                     <TableCell className="px-3 py-2">
                       <Checkbox
                         checked={selectedTeamIds.has(team.id)}
-                        onCheckedChange={(checked) => handleRowSelectChange(team.id, checked)}
+                        onCheckedChange={checked => handleRowSelectChange(team.id, checked)}
                         aria-label={`Select row for ${team.name}`}
                         disabled={deleteTeamsMutation.isPending}
                       />
                     </TableCell>
                     <TableCell className="font-medium px-3 py-2">
                       <div className="flex items-center">
-                        {team.icon_name ?
-                          <span className="mr-2 text-xl">{team.icon_name}</span> :
+                        {team.icon_name ? (
+                          <span className="mr-2 text-xl">{team.icon_name}</span>
+                        ) : (
                           <Users className="mr-2 h-5 w-5 text-muted-foreground" />
-                        }
+                        )}
                         {team.name}
                       </div>
                     </TableCell>
                     <TableCell className="hidden md:table-cell text-sm text-muted-foreground px-3 py-2">
-                      {team.description ?
-                        (team.description.length > 60 ? team.description.substring(0, 60) + '...' : team.description) :
+                      {team.description ? (
+                        team.description.length > 60 ? (
+                          team.description.substring(0, 60) + '...'
+                        ) : (
+                          team.description
+                        )
+                      ) : (
                         <span className="text-gray-400 italic">No description</span>
-                      }
+                      )}
                     </TableCell>
                     <TableCell className="text-center hidden sm:table-cell px-3 py-2">
                       {team.agentCount !== null ? (
                         <div className="flex items-center justify-center">
                           <Users className="h-4 w-4 mr-1 text-muted-foreground" /> {team.agentCount}
                         </div>
-                      ) : <Skeleton className="h-5 w-5 mx-auto" />}
+                      ) : (
+                        <Skeleton className="h-5 w-5 mx-auto" />
+                      )}
                     </TableCell>
                     <TableCell className="text-center hidden sm:table-cell px-3 py-2">
                       {team.ticketCount !== null ? (
                         <div className="flex items-center justify-center">
-                          <Ticket className="h-4 w-4 mr-1 text-muted-foreground" /> {team.ticketCount}
+                          <Ticket className="h-4 w-4 mr-1 text-muted-foreground" />{' '}
+                          {team.ticketCount}
                         </div>
-                      ) : <Skeleton className="h-5 w-5 mx-auto" />}
+                      ) : (
+                        <Skeleton className="h-5 w-5 mx-auto" />
+                      )}
                     </TableCell>
                     <TableCell className="text-right px-3 py-2">
-                      <Button variant="ghost" size="sm" onClick={() => handleEdit(team)} disabled={deleteTeamsMutation.isPending}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleEdit(team)}
+                        disabled={deleteTeamsMutation.isPending}
+                      >
                         <Pencil className="h-4 w-4" />
                       </Button>
                     </TableCell>
