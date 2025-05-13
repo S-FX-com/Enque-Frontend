@@ -441,11 +441,11 @@ function MyTicketsClientContent() {
         )}
         <Card className="shadow-none border-0 flex-1 flex flex-col overflow-hidden m-0">
           <CardContent className="flex-1 overflow-hidden p-0">
-            <div ref={scrollContainerRef} className="h-full overflow-y-auto px-6">
+            <div ref={scrollContainerRef} className="h-full overflow-y-auto">
               <Table>
                 <TableHeader className="sticky top-0 bg-card z-10">
                   <TableRow className="border-b border-slate-200 dark:border-slate-700 hover:bg-transparent">
-                    <TableHead className="w-[50px] p-2">
+                    <TableHead className="w-[50px] px-4">
                       <Checkbox
                         checked={headerCheckboxState}
                         onCheckedChange={handleSelectAllChange}
@@ -500,7 +500,7 @@ function MyTicketsClientContent() {
                         onClick={() => handleTicketClick(ticket)} // Moved onClick here
                         data-state={selectedTicketIds.has(ticket.id) ? 'selected' : ''}
                       >
-                        <TableCell className="p-2 py-4">
+                        <TableCell className="px-4">
                           <Checkbox
                             checked={selectedTicketIds.has(ticket.id)}
                             onCheckedChange={checked => handleRowSelectChange(ticket.id, checked)}

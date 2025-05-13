@@ -13,7 +13,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Card, CardContent } from '@/components/ui/card';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pencil, PlusCircle, Trash2 } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -185,8 +185,8 @@ const TeamsPage = () => {
   };
 
   return (
-    <div className="flex flex-col gap-4 p-4 md:p-6">
-      <div className="flex items-center justify-between mb-4">
+    <>
+      <div className="flex items-center justify-end py-4 flex-shrink-0">
         <div className="flex items-center gap-4">
           {/* <h1 className="text-2xl font-semibold">Teams</h1> REMOVED */}
           {selectedTeamIds.size > 0 && (
@@ -221,15 +221,18 @@ const TeamsPage = () => {
             </AlertDialog>
           )}
         </div>
-        <Button onClick={() => setIsNewModalOpen(true)}>+ New Team</Button>
+        <Button size="sm" onClick={() => setIsNewModalOpen(true)}>
+          <PlusCircle className="mr-2 h-4 w-4" />
+          New
+        </Button>
       </div>
 
       <Card className="shadow-none border-0">
-        <CardContent className="pt-0">
+        <CardContent className="flex-1 overflow-hidden p-0">
           <Table>
             <TableHeader>
               <TableRow className="border-b border-slate-200 dark:border-slate-700 hover:bg-transparent">
-                <TableHead className="w-[50px] p-2">
+                <TableHead className="w-[50px] px-4">
                   <Checkbox
                     checked={headerCheckboxState}
                     onCheckedChange={handleSelectAllChange}
@@ -267,7 +270,7 @@ const TeamsPage = () => {
                     className="hover:bg-card"
                     data-state={selectedTeamIds.has(team.id) ? 'selected' : ''}
                   >
-                    <TableCell className="p-2 py-4">
+                    <TableCell className="px-4">
                       <Checkbox
                         checked={selectedTeamIds.has(team.id)}
                         onCheckedChange={checked => handleRowSelectChange(team.id, checked)}
@@ -315,6 +318,7 @@ const TeamsPage = () => {
           }
         }}
       />
+
       {teamToEdit && (
         <EditTeamModal
           isOpen={isEditModalOpen}
@@ -338,7 +342,7 @@ const TeamsPage = () => {
           teamToEdit={teamToEdit}
         />
       )}
-    </div>
+    </>
   );
 };
 

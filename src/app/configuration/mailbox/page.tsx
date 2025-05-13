@@ -156,7 +156,7 @@ export default function MailboxPage() {
   };
 
   return (
-    <div className="container mx-auto p-4 md:p-6">
+    <>
       <Card>
         <CardHeader>
           {/* <CardTitle>Mailbox Connection</CardTitle> REMOVED */}
@@ -227,6 +227,6 @@ export default function MailboxPage() {
           </div>
         </CardContent>
       </Card>
-    </div>
+    </>
   );
 }

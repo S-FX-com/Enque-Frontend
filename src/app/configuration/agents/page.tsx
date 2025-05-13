@@ -127,7 +127,7 @@ export default function AgentsPage() {
   };
 
   return (
-    <div className="container mx-auto px-4 md:px-6 flex flex-col h-full">
+    <>
       <div className="flex items-center justify-end py-4 flex-shrink-0">
         {' '}
         {/* Adjusted to justify-end if title is removed */}
@@ -171,7 +171,7 @@ export default function AgentsPage() {
         </div>
       </div>
 
-      <Card className="bg-white dark:bg-black flex-1 flex flex-col overflow-hidden">
+      <Card className="shadow-none border-0 flex-1 flex flex-col overflow-hidden">
         <CardContent className="flex-1 overflow-hidden p-0">
           <div className="h-full overflow-y-auto">
             <Table>
@@ -284,11 +284,12 @@ export default function AgentsPage() {
           </div>
         </CardContent>
       </Card>
+
       <NewAgentModal
         isOpen={isNewAgentModalOpen}
         onClose={() => setIsNewAgentModalOpen(false)}
         onInviteSuccess={() => {}}
       />
-    </div>
+    </>
   );
 }
