@@ -7,13 +7,8 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import {
-  AreaChartIcon,
-  LayoutDashboard,
-  Settings,
-  TicketIcon,
-  Users,
-  UsersRound,
-} from 'lucide-react';
+  Users2,
+} from "lucide-react";
 import { useAuth } from '@/hooks/use-auth';
 import { useQuery } from '@tanstack/react-query';
 import { getAgentTeams } from '@/services/team';
@@ -44,7 +39,7 @@ const MyTeamsList: React.FC<MyTeamsListProps> = ({ agentTeams, isLoadingUser, us
         const teamHref = `/tickets?teamId=${team.id}&teamName=${encodeURIComponent(team.name)}`;
         const currentTeamIdParam = searchParams.get('teamId');
         const isActive = pathname === '/tickets' && currentTeamIdParam === team.id.toString();
-        const IconComponent = UsersRound;
+        const FallbackIcon = Users2;
 
         return (
           <Link
@@ -58,8 +53,12 @@ const MyTeamsList: React.FC<MyTeamsListProps> = ({ agentTeams, isLoadingUser, us
             )}
           >
             <div className="flex items-center space-x-2">
-              <div className="relative h-5 w-5">
-                <IconComponent fill={cn(isActive ? '#1D73F4' : '#2B3674')} />
+              <div className="relative h-5 w-5 flex items-center justify-center">
+                {team.icon_name ? (
+                  <span className="text-lg">{team.icon_name}</span>
+                ) : (
+                  <FallbackIcon fill={cn(isActive ? '#1D73F4' : '#2B3674')} />
+                )}
               </div>
               <span>{team.name}</span>
             </div>

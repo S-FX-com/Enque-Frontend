@@ -68,26 +68,29 @@ export const getTeamMembers = async (teamId: number): Promise<TeamMember[]> => {
 
 /**
  * Creates a new team.
- * @param teamData The data for the new team (name, description, workspace_id).
+ * @param teamData The data for the new team (name, description, workspace_id, icon_name).
  * @returns A promise that resolves to the newly created team object.
  */
 export const createTeam = async (teamData: {
   name: string;
   description?: string | null;
   workspace_id: number;
+  icon_name?: string | null;
 }): Promise<Team> => {
+  console.log('[createTeam service] Received teamData:', JSON.stringify(teamData)); // Log 1: Data received by service
   try {
     const url = `${API_BASE_URL}/v1/teams/`;
-    // Assuming fetchAPI.POST handles sending the body and returns the created object
     const response = await fetchAPI.POST<Team>(url, teamData);
+    console.log('[createTeam service] API Response raw:', JSON.stringify(response)); // Log 2: Raw API response
 
     if (!response || !response.data) {
-      console.error('Failed to create team or data is missing');
-      throw new Error('Failed to create team');
+      console.error('[createTeam service] Failed to create team or data is missing in response');
+      throw new Error('Failed to create team or API response data is missing');
     }
+    console.log('[createTeam service] Parsed team data from API:', JSON.stringify(response.data)); // Log 3: Parsed data
     return response.data;
   } catch (error) {
-    console.error('Error creating team:', error);
+    console.error('[createTeam service] Error during API call:', error);
     throw error;
   }
 };
@@ -153,7 +156,7 @@ export const deleteTeam = async (teamId: number): Promise<void> => {
  */
 export const updateTeam = async (
   teamId: number,
-  teamData: { name?: string | null; description?: string | null; logo_url?: string | null }
+  teamData: { name?: string | null; description?: string | null; logo_url?: string | null; icon_name?: string | null; }
 ): Promise<Team> => {
   if (!teamId) {
     console.error('updateTeam requires a valid teamId');
