@@ -131,10 +131,10 @@ export function Topbar({
               className="text-slate-400 dark:text-slate-500 mx-0.5 relative"
             >
               <BellIcon /> {/* Removed explicit size to test base style */}
-              {/* Example unread indicator - replace with actual logic */}
-              {/* {notifications.some(n => !n.is_read) && (
-                                <span className="absolute top-1 right-1 block h-2 w-2 rounded-full bg-red-500 ring-2 ring-background" />
-                            )} */}
+              {/* Show red dot indicator when there are notifications */}
+              {notifications.length > 0 && (
+                <span className="absolute top-1 right-1 block h-2 w-2 rounded-full bg-red-500 ring-1 ring-white" />
+              )}
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-80 p-0" align="end">
