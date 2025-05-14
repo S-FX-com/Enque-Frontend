@@ -50,7 +50,7 @@ export function stringToColor(str: string): string {
 export function formatRelativeTime(dateString: string | Date | null | undefined): string {
   try {
     if (!dateString) {
-      return 'Unknown date';
+      return '-';
     }
 
     let dateToParse: Date;

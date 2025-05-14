@@ -1,4 +1,7 @@
-import React, { useState, useEffect } from 'react';
+'use client';
+
+import type React from 'react';
+import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogActions,
@@ -17,17 +20,18 @@ import {
   ListItemText,
   OutlinedInput,
   CircularProgress,
-  SelectChangeEvent,
+  type SelectChangeEvent,
   DialogContentText,
   Chip,
+  FormHelperText,
 } from '@mui/material';
 import { AddReaction } from '@mui/icons-material';
 import Picker from '@emoji-mart/react';
 import data from '@emoji-mart/data';
-import { useMutation, useQueryClient, QueryKey } from '@tanstack/react-query';
-import { Agent } from '@/typescript/agent';
+import { useMutation, useQueryClient, type QueryKey } from '@tanstack/react-query';
+import type { Agent } from '@/typescript/agent';
 import { createTeam, addTeamMember } from '@/services/team';
-import { Team, TeamCreate } from '@/typescript/team';
+import type { Team, TeamCreate } from '@/typescript/team';
 import { getCurrentUser } from '@/lib/auth';
 import { toast } from 'sonner';
 
@@ -56,6 +60,11 @@ interface CreateTeamMutationResult {
   attemptedAgentIds?: string[];
 }
 
+// Update TeamCreate interface to include manager_id
+interface ExtendedTeamCreate extends TeamCreate {
+  manager_id?: number | null;
+}
+
 const NewTeamModalMui: React.FC<NewTeamModalMuiProps> = ({ open, onClose, agents }) => {
   const queryClient = useQueryClient();
   const [teamName, setTeamName] = useState('');
@@ -63,10 +72,11 @@ const NewTeamModalMui: React.FC<NewTeamModalMuiProps> = ({ open, onClose, agents
   const [selectedEmoji, setSelectedEmoji] = useState<EmojiMartItem | null>(null);
   const [emojiPickerAnchorEl, setEmojiPickerAnchorEl] = useState<HTMLButtonElement | null>(null);
   const [selectedAgentIds, setSelectedAgentIds] = useState<string[]>([]);
+  const [selectedManagerId, setSelectedManagerId] = useState<string>('');
   const [formError, setFormError] = useState<string | null>(null);
 
-  const mutation = useMutation<CreateTeamMutationResult, Error, TeamCreate>({
-    mutationFn: async (teamCreationData: TeamCreate): Promise<CreateTeamMutationResult> => {
+  const mutation = useMutation<CreateTeamMutationResult, Error, ExtendedTeamCreate>({
+    mutationFn: async (teamCreationData: ExtendedTeamCreate): Promise<CreateTeamMutationResult> => {
       console.log(
         '[NewTeamModalMui] mutationFn received teamCreationData:',
         JSON.stringify(teamCreationData)
@@ -76,10 +86,11 @@ const NewTeamModalMui: React.FC<NewTeamModalMuiProps> = ({ open, onClose, agents
         throw new Error('Could not retrieve user session or workspace ID.');
       }
 
-      const { agent_ids, ...teamDetails } = teamCreationData;
+      const { agent_ids, manager_id, ...teamDetails } = teamCreationData;
       const payloadForService = {
         ...teamDetails,
         workspace_id: currentUser.workspace_id,
+        manager_id: manager_id || null,
       };
       console.log(
         '[NewTeamModalMui] Payload for createTeam service:',
@@ -93,7 +104,9 @@ const NewTeamModalMui: React.FC<NewTeamModalMuiProps> = ({ open, onClose, agents
       };
 
       if (newTeamWithIcon && newTeamWithIcon.id && agent_ids && agent_ids.length > 0) {
-        const agentIdNumbers = agent_ids.map(id => parseInt(id, 10)).filter(id => !isNaN(id));
+        const agentIdNumbers = agent_ids
+          .map(id => Number.parseInt(id, 10))
+          .filter(id => !isNaN(id));
 
         const memberAddPromises = agentIdNumbers.map(agentId =>
           addTeamMember(newTeamWithIcon.id, agentId)
@@ -220,6 +233,10 @@ const NewTeamModalMui: React.FC<NewTeamModalMuiProps> = ({ open, onClose, agents
     setSelectedAgentIds(typeof value === 'string' ? value.split(',') : value);
   };
 
+  const handleManagerChange = (event: SelectChangeEvent<string>) => {
+    setSelectedManagerId(event.target.value);
+  };
+
   const handleTriggerCreateTeam = () => {
     setFormError(null);
     if (!teamName.trim()) {
@@ -227,12 +244,13 @@ const NewTeamModalMui: React.FC<NewTeamModalMuiProps> = ({ open, onClose, agents
       return;
     }
 
-    const teamData: TeamCreate = {
+    const teamData: ExtendedTeamCreate = {
       name: teamName.trim(),
       description: teamDescription.trim() || null,
       icon_name: selectedEmoji?.native || null,
       agent_ids: selectedAgentIds,
       workspace_id: 0, // Placeholder, actual ID set in mutationFn
+      manager_id: selectedManagerId ? Number.parseInt(selectedManagerId, 10) : null,
     };
     console.log('[NewTeamModalMui] Data before calling mutation.mutate:', JSON.stringify(teamData));
     mutation.mutate(teamData);
@@ -243,6 +261,7 @@ const NewTeamModalMui: React.FC<NewTeamModalMuiProps> = ({ open, onClose, agents
     setTeamDescription('');
     setSelectedEmoji(null);
     setSelectedAgentIds([]);
+    setSelectedManagerId('');
     setEmojiPickerAnchorEl(null);
     setFormError(null);
     onClose();
@@ -255,6 +274,7 @@ const NewTeamModalMui: React.FC<NewTeamModalMuiProps> = ({ open, onClose, agents
       setTeamDescription('');
       setSelectedEmoji(null);
       setSelectedAgentIds([]);
+      setSelectedManagerId('');
       setEmojiPickerAnchorEl(null);
       setFormError(null);
     }
@@ -379,7 +399,7 @@ const NewTeamModalMui: React.FC<NewTeamModalMuiProps> = ({ open, onClose, agents
           placeholder="Enter team description"
         />
 
-        <FormControl fullWidth margin="none" disabled={mutation.isPending} sx={{ mb: 1 }}>
+        <FormControl fullWidth margin="none" disabled={mutation.isPending} sx={{ mb: 2.5 }}>
           <InputLabel
             id="multiple-agents-select-label"
             sx={{ fontSize: '0.875rem', fontWeight: 500, color: '#334155' }}
@@ -439,6 +459,44 @@ const NewTeamModalMui: React.FC<NewTeamModalMuiProps> = ({ open, onClose, agents
               </MenuItem>
             ))}
           </Select>
+        </FormControl>
+
+        {/* Team Manager Selection */}
+        <FormControl fullWidth margin="none" disabled={mutation.isPending} sx={{ mb: 2 }}>
+          <InputLabel
+            id="team-manager-select-label"
+            sx={{ fontSize: '0.875rem', fontWeight: 500, color: '#334155' }}
+          >
+            Team Manager
+          </InputLabel>
+          <Select
+            labelId="team-manager-select-label"
+            id="team-manager"
+            value={selectedManagerId}
+            onChange={handleManagerChange}
+            input={
+              <OutlinedInput
+                label="Team Manager"
+                sx={{
+                  borderRadius: '8px',
+                  '& .MuiOutlinedInput-notchedOutline': { borderColor: '#D1D5DB' },
+                  '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#B0BEC5' },
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: 'primary.main' },
+                }}
+              />
+            }
+            MenuProps={MenuProps}
+          >
+            <MenuItem value="">
+              <em>No manager</em>
+            </MenuItem>
+            {agents.map(agent => (
+              <MenuItem key={agent.id} value={agent.id.toString()}>
+                {agent.name || agent.email}
+              </MenuItem>
+            ))}
+          </Select>
+          <FormHelperText>Select an agent to be the team manager</FormHelperText>
         </FormControl>
 
         <Popover

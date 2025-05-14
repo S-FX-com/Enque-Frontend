@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -13,7 +13,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Pencil, PlusCircle, Trash2, Users, Ticket, ServerCrash } from 'lucide-react';
+import { Pencil, PlusCircle, Trash2, Users, ServerCrash } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,16 +28,14 @@ import {
 import NewTeamModalMui from '@/components/modals/NewTeamModalMui';
 import EditTeamModalMui from '@/components/modals/EditTeamModalMui';
 import { getTeams, getTeamMembers, deleteTeam } from '@/services/team';
-import { getTeamTasks } from '@/services/task';
 import { getAgents } from '@/services/agent';
-import { Team } from '@/typescript/team';
-import { Agent } from '@/typescript/agent';
+import type { Team } from '@/typescript/team';
+import type { Agent } from '@/typescript/agent';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface TeamWithCounts extends Team {
-  agentCount: number | null;
-  ticketCount: number | null;
+  agents: Agent[] | null;
 }
 
 // Define more specific types for promise results
@@ -60,55 +58,42 @@ const fetchTeamsWithCounts = async (): Promise<TeamWithCounts[]> => {
   }
 
   const teamsMap = new Map<number, TeamWithCounts>(
-    initialTeams.map(team => [team.id, { ...team, agentCount: null, ticketCount: null }])
+    initialTeams.map(team => [team.id, { ...team, agents: null }])
   );
 
-  const countPromises = initialTeams.flatMap(team => [
+  const countPromises = initialTeams.map(team =>
     getTeamMembers(team.id)
       .then(
         members =>
-          ({ type: 'members' as const, teamId: team.id, data: members.length }) as CountSuccess
+          ({ type: 'members' as const, teamId: team.id, data: members }) as {
+            type: 'members';
+            teamId: number;
+            data: Agent[];
+          }
       )
       .catch(
         (err: Error) => ({ type: 'members' as const, teamId: team.id, error: err }) as CountFailure
-      ),
-    getTeamTasks(team.id)
-      .then(
-        tasks => ({ type: 'tasks' as const, teamId: team.id, data: tasks.length }) as CountSuccess
       )
-      .catch(
-        (err: Error) => ({ type: 'tasks' as const, teamId: team.id, error: err }) as CountFailure
-      ),
-  ]);
+  );
 
   const countResults = await Promise.allSettled(countPromises);
 
   countResults.forEach(settledResult => {
     if (settledResult.status === 'fulfilled') {
-      const value = settledResult.value; // value is TypedCountResult
+      const value = settledResult.value;
       const team = teamsMap.get(value.teamId);
 
       if (team) {
         if (value.type === 'members') {
           if ('data' in value) {
-            // Check if it's a CountSuccess
-            team.agentCount = value.data;
+            // Store the actual agent objects
+            team.agents = value.data;
           } else if ('error' in value) {
-            // Check if it's a CountFailure
             console.error(`Error fetching members for team ${value.teamId}:`, value.error.message);
-          }
-        } else if (value.type === 'tasks') {
-          if ('data' in value) {
-            // Check if it's a CountSuccess
-            team.ticketCount = value.data;
-          } else if ('error' in value) {
-            // Check if it's a CountFailure
-            console.error(`Error fetching tasks for team ${value.teamId}:`, value.error.message);
           }
         }
       }
     } else {
-      // settledResult is PromiseRejectedResult (promise itself failed, not just caught error)
       console.error(
         'A promise for fetching team counts was rejected directly:',
         (settledResult.reason as Error)?.message || settledResult.reason
@@ -247,11 +232,8 @@ const TeamsPage = () => {
                   <TableHead>
                     <Skeleton className="h-5 w-48" />
                   </TableHead>
-                  <TableHead className="text-center">
-                    <Skeleton className="h-5 w-20" />
-                  </TableHead>
-                  <TableHead className="text-center">
-                    <Skeleton className="h-5 w-20" />
+                  <TableHead>
+                    <Skeleton className="h-5 w-48" />
                   </TableHead>
                   <TableHead className="text-right">
                     <Skeleton className="h-5 w-20" />
@@ -273,11 +255,8 @@ const TeamsPage = () => {
                     <TableCell>
                       <Skeleton className="h-5 w-40" />
                     </TableCell>
-                    <TableCell className="text-center">
-                      <Skeleton className="h-5 w-12" />
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Skeleton className="h-5 w-12" />
+                    <TableCell>
+                      <Skeleton className="h-5 w-40" />
                     </TableCell>
                     <TableCell className="text-right">
                       <Skeleton className="h-8 w-16" />
@@ -395,12 +374,7 @@ const TeamsPage = () => {
                   <TableHead className="hidden md:table-cell w-[220px] max-w-[250px] px-3 py-3.5">
                     Description
                   </TableHead>
-                  <TableHead className="text-center hidden sm:table-cell w-[100px] px-3 py-3.5">
-                    Agents
-                  </TableHead>
-                  <TableHead className="text-center hidden sm:table-cell w-[100px] px-3 py-3.5">
-                    Tickets
-                  </TableHead>
+                  <TableHead className="hidden sm:table-cell px-3 py-3.5">Agents</TableHead>
                   <TableHead className="text-right w-[80px] px-3 py-3.5">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -439,23 +413,23 @@ const TeamsPage = () => {
                         <span className="text-gray-400 italic">No description</span>
                       )}
                     </TableCell>
-                    <TableCell className="text-center hidden sm:table-cell px-3 py-2">
-                      {team.agentCount !== null ? (
-                        <div className="flex items-center justify-center">
-                          <Users className="h-4 w-4 mr-1 text-muted-foreground" /> {team.agentCount}
+                    <TableCell className="hidden sm:table-cell px-3 py-2">
+                      {team.agents !== null ? (
+                        <div className="flex items-center">
+                          <Users className="h-4 w-4 mr-1 text-muted-foreground" />
+                          {team.agents?.length > 0 ? (
+                            team.agents
+                              .map(
+                                teamAgent =>
+                                  allAgents.filter(agent => agent.id === teamAgent.agent_id)[0].name
+                              )
+                              .join(', ')
+                          ) : (
+                            <span className="text-gray-400 italic">No agents</span>
+                          )}
                         </div>
                       ) : (
-                        <Skeleton className="h-5 w-5 mx-auto" />
-                      )}
-                    </TableCell>
-                    <TableCell className="text-center hidden sm:table-cell px-3 py-2">
-                      {team.ticketCount !== null ? (
-                        <div className="flex items-center justify-center">
-                          <Ticket className="h-4 w-4 mr-1 text-muted-foreground" />{' '}
-                          {team.ticketCount}
-                        </div>
-                      ) : (
-                        <Skeleton className="h-5 w-5 mx-auto" />
+                        <Skeleton className="h-5 w-20 mx-auto" />
                       )}
                     </TableCell>
                     <TableCell className="text-right px-3 py-2">
