@@ -492,7 +492,7 @@ export function TicketDetail({ ticket, onClose, onTicketUpdate }: Props) {
                 <div className="flex flex-col gap-2">
                   <Button
                     size="sm"
-                    variant="outline"
+                    variant="default"
                     onClick={() => resolveTicketMutation.mutate()}
                     disabled={isResolvingTicket}
                     className="w-full"
