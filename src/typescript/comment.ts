@@ -1,5 +1,15 @@
 import { IUser, IAgent } from './user'; // Import IAgent
 
+// Definición de la interfaz para un adjunto
+export interface IAttachment {
+  id: number; // O string, dependiendo de la implementación del backend (parece ser int por el schema)
+  file_name: string;
+  content_type: string;
+  file_size: number;
+  download_url: string; // URL relativa para descargar el archivo
+  created_at: string; // O Date, si se convierte en el frontend
+}
+
 export interface IComment {
   id: number;
   content: string; // Could be plain text or HTML
@@ -10,6 +20,7 @@ export interface IComment {
   agent?: IAgent | null; // Sender can be an Agent (optional)
   ticket_id: number;
   workspace_id: number; // Add workspace_id based on backend schema
+  attachments?: IAttachment[]; // <--- Nuevo campo para los adjuntos
 }
 
 // Optional: Interface for creating comments if needed later

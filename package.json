@@ -10,10 +10,12 @@
     "format": "prettier --write ."
   },
   "dependencies": {
+    "@cyntler/react-doc-viewer": "^1.17.0",
     "@emoji-mart/data": "^1.2.1",
     "@emoji-mart/react": "^1.1.1",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.0",
+    "@fluentui/react-icons": "^2.0.300",
     "@hookform/resolvers": "^5.0.1",
     "@mui/icons-material": "^7.1.0",
     "@mui/material": "^7.1.0",

@@ -71,7 +71,9 @@ export default function UsersCompaniesPage() {
     queryKey: ['unassignedUsers'],
     queryFn: () => getUnassignedUsers({ limit: 1000 }),
     enabled: currentView === 'unassigned_users',
-    staleTime: 5 * 60 * 1000,
+    staleTime: 0,
+    refetchInterval: 5000,
+    refetchIntervalInBackground: false,
   });
 
   const {
@@ -83,7 +85,9 @@ export default function UsersCompaniesPage() {
     queryFn: () =>
       selectedCompanyId ? getCompanyUsers(selectedCompanyId, { limit: 1000 }) : Promise.resolve([]),
     enabled: !!selectedCompanyId && currentView === 'company_users',
-    staleTime: 5 * 60 * 1000,
+    staleTime: 0,
+    refetchInterval: 5000,
+    refetchIntervalInBackground: false,
   });
 
   const {

@@ -16,10 +16,17 @@ interface Props {
   onChange: (richText: string) => void;
   placeholder?: string;
   disabled?: boolean;
+  onAttachmentsChange?: (files: File[]) => void;
   // Add other props like 'editable' if needed based on context
 }
 
-export function RichTextEditor({ content, onChange, placeholder, disabled = false }: Props) {
+export function RichTextEditor({
+  content,
+  onChange,
+  placeholder,
+  disabled = false,
+  onAttachmentsChange,
+}: Props) {
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -148,7 +155,7 @@ export function RichTextEditor({ content, onChange, placeholder, disabled = fals
 
   return (
     <div className="flex flex-col">
-      <RichTextToolbar editor={editor} />
+      <RichTextToolbar editor={editor} onAttachmentsChange={onAttachmentsChange} />
       <EditorContent editor={editor} />
     </div>
   );
