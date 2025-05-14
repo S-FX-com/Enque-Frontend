@@ -158,7 +158,7 @@ export default function ReportsPage() {
   );
 
   return (
-    <div className="container mx-auto px-4 md:px-6 py-6 space-y-6">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Reporting Dashboard</h1>
         <Select value={timeRange} onValueChange={setTimeRange}>

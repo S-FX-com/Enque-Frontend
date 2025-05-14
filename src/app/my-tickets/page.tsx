@@ -599,7 +599,7 @@ function MyTicketsClientContent() {
             <Button
               variant="outline"
               size="icon"
-              className="h-8 w-8 rounded-full z-10 -mr-4 mt-6 shadow-md relative"
+              className="h-8 w-8 rounded-full z-10 -mr-4 mt-6 shadow-md relative cursor-pointer"
             >
               {filtersExpanded ? (
                 <ChevronRight className="h-4 w-4" />

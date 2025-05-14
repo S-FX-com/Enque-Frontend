@@ -135,7 +135,7 @@ export default function UsersCompaniesPage() {
   };
 
   return (
-    <div className="flex flex-col h-full p-4 md:p-6 gap-4">
+    <div className="flex flex-col h-full gap-6">
       {/* Header Section */}
       <div className="flex items-center justify-start flex-wrap gap-2">
         <Button
@@ -336,6 +336,7 @@ export default function UsersCompaniesPage() {
         onClose={() => setIsNewCompanyModalOpen(false)}
         onSaveSuccess={handleCompanySaveSuccess}
       />
+
       <NewUserModal
         isOpen={isNewUserModalOpen}
         onClose={() => setIsNewUserModalOpen(false)}

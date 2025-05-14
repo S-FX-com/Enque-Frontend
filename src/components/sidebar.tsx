@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils';
 import { Users2 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { useQuery } from '@tanstack/react-query';
-import { getAgentTeams } from '@/services/team';
+import { getAgentTeams, getTeams } from '@/services/team';
 import type { Team } from '@/typescript/team';
 import { Badge } from '@/components/ui/badge';
 import type { IUser } from '@/typescript/user';
@@ -88,10 +88,13 @@ export function Sidebar() {
   const { data: agentTeams } = useQuery<Team[], Error>({
     queryKey: ['agentTeams', user?.id],
     queryFn: () => {
-      if (!user?.id) {
-        return Promise.resolve([]);
+      if (!user?.id) return Promise.resolve([]);
+
+      if (user.role === 'admin') {
+        return getTeams();
+      } else {
+        return getAgentTeams(user.id);
       }
-      return getAgentTeams(user.id);
     },
     enabled: !!user?.id && !isLoadingUser,
     staleTime: 1000 * 60 * 5,
@@ -152,8 +155,8 @@ export function Sidebar() {
           xmlns="http://www.w3.org/2000/svg"
         >
           <path
-            fill-rule="evenodd"
-            clip-rule="evenodd"
+            fillRule="evenodd"
+            clipRule="evenodd"
             d="M0.769231 0.5H20.7692L21.5385 1.26923V11.8138C21.0973 11.3132 20.5777 10.8877 20 10.5538V2.03846H1.53846V14.3462H5.38462L6.15385 15.1154V17.8738L9.45538 14.5708L10 14.3462H10.9631C10.8359 14.8395 10.7713 15.3523 10.7692 15.8846H10.3185L5.92923 20.2754L4.61538 19.7308V15.8846H0.769231L0 15.1154V1.26923L0.769231 0.5Z"
             fill={fill}
           />
@@ -214,8 +217,8 @@ export function Sidebar() {
           xmlns="http://www.w3.org/2000/svg"
         >
           <path
-            fill-rule="evenodd"
-            clip-rule="evenodd"
+            fillRule="evenodd"
+            clipRule="evenodd"
             d="M2.21429 21.5H21.5V20.0714H2.92857V1.5H1.5V20.7857L2.21429 21.5ZM4.35714 17.9286V6.5L5.07143 5.78571H7.92857L8.64286 6.5V17.9286L7.92857 18.6429H5.07143L4.35714 17.9286ZM7.21429 17.2143V7.21429H5.78571V17.2143H7.21429ZM15.7857 3.64286V17.9286L16.5 18.6429H19.3571L20.0714 17.9286V3.64286L19.3571 2.92857H16.5L15.7857 3.64286ZM18.6429 4.35714V17.2143H17.2143V4.35714H18.6429ZM10.0714 17.9286V9.35714L10.7857 8.64286H13.6429L14.3571 9.35714V17.9286L13.6429 18.6429H10.7857L10.0714 17.9286ZM12.9286 17.2143V10.0714H11.5V17.2143H12.9286Z"
             fill={fill}
           />
