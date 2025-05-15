@@ -1,8 +1,7 @@
 'use client';
 
-import React from 'react';
-// Removed unused Editor type import
-import { useEditor, EditorContent } from '@tiptap/react';
+import React, { useCallback } from 'react';
+import { useEditor, EditorContent, type Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
 import Placeholder from '@tiptap/extension-placeholder';
@@ -10,6 +9,8 @@ import HardBreak from '@tiptap/extension-hard-break';
 import Image from '@tiptap/extension-image'; // Import Image extension
 import { RichTextToolbar } from './RichTextToolbar';
 import './tiptap-styles.css';
+import { uploadImage } from '@/services/upload'; // Importar el servicio de carga de imágenes
+import { toast } from 'sonner';
 
 interface Props {
   content: string;
@@ -27,6 +28,27 @@ export function RichTextEditor({
   disabled = false,
   onAttachmentsChange,
 }: Props) {
+  // Función para manejar el pegado de imágenes
+  const handlePasteImage = useCallback(async (file: File, editor: Editor) => {
+    try {
+      // Eliminar la notificación de carga
+      const result = await uploadImage(file);
+      
+      if (result && result.url) {
+        // Insertar la imagen en el editor con dimensiones fijas
+        editor.chain().focus().setImage({
+          src: result.url,
+          alt: 'Pasted Image',
+        }).run();
+        
+        toast.success('Image uploaded and inserted successfully!');
+      }
+    } catch (error) {
+      console.error('Failed to upload pasted image:', error);
+      toast.error('Failed to upload pasted image. Please try using the image button instead.');
+    }
+  }, []);
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -73,7 +95,9 @@ export function RichTextEditor({
         inline: false,
         allowBase64: false,
         HTMLAttributes: {
-          // No default classes needed here now
+          width: 150,
+          height: 92,
+          style: 'width: 150px; height: 92px; max-width: 150px;',
         },
       }).extend({
         // Extend the Image extension to add custom attribute handling
@@ -81,37 +105,28 @@ export function RichTextEditor({
           return {
             ...this.parent?.(), // Keep existing attributes like src, alt, title
             width: {
-              default: null,
+              default: 150,
               // Parse width attribute from HTML
               parseHTML: element => element.getAttribute('width'),
               // Render width attribute back to HTML
               renderHTML: attributes => {
-                if (!attributes.width) {
-                  return {};
-                }
                 return { width: attributes.width };
               },
             },
             height: {
-              default: null,
+              default: 92,
               // Parse height attribute from HTML
               parseHTML: element => element.getAttribute('height'),
               // Render height attribute back to HTML
               renderHTML: attributes => {
-                if (!attributes.height) {
-                  return {};
-                }
                 return { height: attributes.height };
               },
             },
             // Keep style attribute handling if we decide to use it later, otherwise remove
             style: {
-              default: null,
+              default: 'width: 150px; height: 92px; max-width: 150px;',
               parseHTML: element => element.getAttribute('style'),
               renderHTML: attributes => {
-                if (!attributes.style) {
-                  return {};
-                }
                 return { style: attributes.style };
               },
             },
@@ -132,11 +147,39 @@ export function RichTextEditor({
         class:
           'max-w-none focus:outline-none p-2 border rounded-md min-h-[80px] max-h-[300px] overflow-y-auto',
       },
+      // Añadir manejador de eventos para pegar
+      handlePaste: (view, event) => {
+        const currentEditor = editor;
+        // Verificar que no esté deshabilitado y que el editor exista
+        if (disabled || !currentEditor) return false;
+        
+        // Revisar si hay imágenes en el clipboard
+        const items = event.clipboardData?.items;
+        if (!items) return false;
+
+        // Buscar imágenes en los datos del portapapeles
+        for (let i = 0; i < items.length; i++) {
+          const item = items[i];
+          
+          // Si encontramos una imagen, manejarla
+          if (item.type.indexOf('image') !== -1) {
+            const file = item.getAsFile();
+            if (file) {
+              // Prevenir el comportamiento predeterminado
+              event.preventDefault();
+              // Cargar y insertar la imagen
+              handlePasteImage(file, currentEditor);
+              return true;
+            }
+          }
+        }
+        
+        // Si no hay imágenes, dejar que TipTap maneje el pegado normalmente
+        return false;
+      },
     },
   });
 
-  // Set content programmatically if the external content changes
-  // Set content programmatically if the external content changes
   // Set content programmatically if the external content changes
   // (e.g., clearing the editor after sending)
   React.useEffect(() => {

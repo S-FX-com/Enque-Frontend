@@ -41,7 +41,7 @@ export function TicketDetail({ ticket, onClose, onTicketUpdate }: Props) {
   const [isUpdatingTeam, setIsUpdatingTeam] = useState(false);
   const [isUpdatingCategory, setIsUpdatingCategory] = useState(false);
   const [isClosingTicket, setIsClosingTicket] = useState(false);
-  const [isResolvingTicket, setIsResolvingTicket] = useState(false);
+  const [isClosingTicketAlt, setIsClosingTicketAlt] = useState(false);
   useEffect(() => {
     const fetchAgents = async () => {
       setIsLoadingAgents(true);
@@ -268,8 +268,8 @@ export function TicketDetail({ ticket, onClose, onTicketUpdate }: Props) {
   >({
     mutationFn: async () => {
       if (!ticket) throw new Error('No ticket selected');
-      setIsResolvingTicket(true);
-      return updateTicket(ticket.id, { status: 'Resolved' });
+      setIsClosingTicketAlt(true);
+      return updateTicket(ticket.id, { status: 'Closed' });
     },
     onMutate: async () => {
       if (!ticket) return { previousTicket: null };
@@ -278,7 +278,7 @@ export function TicketDetail({ ticket, onClose, onTicketUpdate }: Props) {
 
       const optimisticTicket: ITicket = {
         ...previousTicket,
-        status: 'Resolved' as TicketStatus,
+        status: 'Closed' as TicketStatus,
       };
 
       queryClient.setQueryData(['tickets', ticket.id], optimisticTicket);
@@ -294,11 +294,11 @@ export function TicketDetail({ ticket, onClose, onTicketUpdate }: Props) {
         onTicketUpdate(updatedTicketData);
       }
       onClose();
-      toast.success(`Ticket #${updatedTicketData.id} resolved successfully.`);
+      toast.success(`Ticket #${updatedTicketData.id} closed successfully.`);
     },
     onError: (error, _variables, context) => {
       toast.error(
-        `Error resolving ticket #${ticket?.id}: ${error instanceof Error ? error.message : 'Unknown error'}`
+        `Error closing ticket #${ticket?.id}: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
       if (context?.previousTicket) {
         queryClient.setQueryData(['tickets', ticket!.id], context.previousTicket);
@@ -308,7 +308,7 @@ export function TicketDetail({ ticket, onClose, onTicketUpdate }: Props) {
       }
     },
     onSettled: () => {
-      setIsResolvingTicket(false);
+      setIsClosingTicketAlt(false);
       // queryClient.invalidateQueries({ queryKey: ['tickets', ticket?.id] });
     },
   });
@@ -494,10 +494,10 @@ export function TicketDetail({ ticket, onClose, onTicketUpdate }: Props) {
                     size="sm"
                     variant="default"
                     onClick={() => resolveTicketMutation.mutate()}
-                    disabled={isResolvingTicket}
+                    disabled={isClosingTicketAlt}
                     className="w-full"
                   >
-                    {isResolvingTicket ? 'Marking Resolved...' : 'Mark Resolved'}
+                    {isClosingTicketAlt ? 'Marking Resolved...' : 'Mark Resolved'}
                   </Button>
                   <Button
                     size="sm"

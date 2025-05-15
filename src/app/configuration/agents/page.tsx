@@ -40,6 +40,7 @@ const columns = [
   { accessorKey: 'phone_number', header: 'Phone number' },
   { accessorKey: 'job_title', header: 'Job title' },
   { accessorKey: 'role', header: 'Admin' },
+  { accessorKey: 'email_signature', header: 'Email Signature' },
 ];
 
 export default function AgentsPage() {
@@ -274,6 +275,9 @@ export default function AgentsPage() {
                       <TableCell className="px-6 py-4">{agent.job_title || '-'}</TableCell>
                       <TableCell className="capitalize px-6 py-4">
                         {agent.role === 'admin' ? 'True' : 'False'}
+                      </TableCell>
+                      <TableCell className="px-6 py-4">
+                        {agent.email_signature ? 'Custom' : 'Global'}
                       </TableCell>
                       <TableCell className="text-right px-6 py-4"> </TableCell>
                     </TableRow>

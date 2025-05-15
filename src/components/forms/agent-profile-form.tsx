@@ -18,16 +18,19 @@ import {
 import BoringAvatar from 'boring-avatars';
 import { useAuth } from '@/hooks/use-auth'; // To check current user's role
 import { toast } from 'sonner';
-import { useMutation, useQueryClient } from '@tanstack/react-query'; // Added useQueryClient
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query'; // Added useQueryClient and useQuery
 import { updateAgentProfile } from '@/services/agent'; // Use the correct service
 import { AgentUpdate, Agent } from '@/typescript/agent';
 import { RichTextEditor } from '@/components/tiptap/RichTextEditor';
+import { getEnabledGlobalSignature } from '@/services/global-signature';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { Info } from 'lucide-react';
 
 // Helper component for Detail rows (copied from profile page)
 const DetailRow: React.FC<{ label: string; value: React.ReactNode }> = ({ label, value }) => (
   <div className="grid grid-cols-3 gap-4 py-1">
     <dt className="text-sm font-medium text-muted-foreground">{label}</dt>
-    <dd className="text-sm col-span-2 capitalize">{value || '-'}</dd>
+    <dd className="text-sm col-span-2">{value || '-'}</dd>
   </div>
 );
 
@@ -69,6 +72,17 @@ export function AgentProfileForm({ agent }: AgentProfileFormProps) {
   const [editedPhoneNumber, setEditedPhoneNumber] = useState(agent.phone_number || '');
   const [editedRole, setEditedRole] = useState(agent.role || 'agent');
   const [editedSignature, setEditedSignature] = useState(agent.email_signature || '');
+
+  // Fetch global signature (only if enabled)
+  const workspaceId = agent.workspace_id;
+  const {
+    data: globalSignatureData,
+  } = useQuery({
+    queryKey: ['globalSignature', workspaceId, 'enabled'],
+    queryFn: () => getEnabledGlobalSignature(workspaceId!),
+    enabled: !!workspaceId,
+    staleTime: 5 * 60 * 1000,
+  });
 
   // Update local state if the agent prop changes (e.g., after successful fetch)
   useEffect(() => {
@@ -307,14 +321,41 @@ export function AgentProfileForm({ agent }: AgentProfileFormProps) {
         <section className="mb-6">
           <h2 className="text-lg font-semibold mb-3">Email Signature</h2>
           {!isEditing ? (
-            <div
-              className="border rounded-md p-4 bg-muted/20 min-h-[100px] text-sm prose dark:prose-invert max-w-none"
-              dangerouslySetInnerHTML={{
-                __html:
-                  displayData.email_signature ||
-                  '<p class="text-muted-foreground">No signature set.</p>',
-              }}
-            />
+            <>
+              {globalSignatureData?.content ? (
+                <>
+                  <Alert className="mb-4">
+                    <Info className="h-4 w-4" />
+                    <AlertTitle>Using Global Signature</AlertTitle>
+                    <AlertDescription>
+                      This agent is currently using the workspace&apos;s global signature template, which will be personalized with their information when sending emails.
+                      {agent.email_signature && (
+                        <p className="mt-2 font-semibold">
+                          Note: The global signature overrides any personal signature.
+                        </p>
+                      )}
+                    </AlertDescription>
+                  </Alert>
+                  <div
+                    className="border rounded-md p-4 bg-muted/20 min-h-[100px] text-sm prose dark:prose-invert max-w-none"
+                    dangerouslySetInnerHTML={{
+                      __html: globalSignatureData.content
+                        .replace(/\[Agent Name\]/g, displayData.name)
+                        .replace(/\[Agent Role\]/g, displayData.jobTitle || '-'),
+                    }}
+                  />
+                </>
+              ) : (
+                <div
+                  className="border rounded-md p-4 bg-muted/20 min-h-[100px] text-sm prose dark:prose-invert max-w-none"
+                  dangerouslySetInnerHTML={{
+                    __html:
+                      displayData.email_signature ||
+                      '<p class="text-muted-foreground">No signature set.</p>',
+                  }}
+                />
+              )}
+            </>
           ) : (
             // Signature editing allowed only by admins
             <RichTextEditor

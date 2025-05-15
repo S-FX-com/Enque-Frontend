@@ -45,7 +45,7 @@ import { getUsers } from '@/services/user';
 import { formatRelativeTime, cn } from '@/lib/utils';
 import { TicketDetail } from '@/app/tickets/ticket-details';
 import { getCurrentUser, type UserSession } from '@/lib/auth';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { Collapsible, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 const LOAD_LIMIT = 20;
@@ -56,6 +56,7 @@ function MyTicketsClientContent() {
   const queryClient = useQueryClient();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const pathname = usePathname();
   const [selectedTicket, setSelectedTicket] = useState<ITicket | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [currentUser, setCurrentUser] = useState<UserSession | null>(null);
@@ -67,6 +68,7 @@ function MyTicketsClientContent() {
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
   const [selectedPriorities, setSelectedPriorities] = useState<string[]>([]);
   const [filtersExpanded, setFiltersExpanded] = useState(false); // Changed to false
+  const [selectedTeams, setSelectedTeams] = useState<string[]>([]);
 
   const statusOptions: OptionType[] = [
     { value: 'Unread', label: 'Unread' },
@@ -144,6 +146,27 @@ function MyTicketsClientContent() {
 
   useEffect(() => {
     const ticketIdToOpen = searchParams.get('openTicket');
+    
+    // Si estamos en my-tickets, limpiamos los filtros de equipo
+    if (pathname === '/my-tickets') {
+      // Limpiar estado de filtros de equipo en cualquier caso
+      if (selectedTeams && selectedTeams.length > 0) {
+        setSelectedTeams([]);
+      }
+      
+      // Si hay un parámetro teamId en la URL, lo limpiamos también
+      if (window.location.href.includes('teamId=')) {
+        const newSearchParams = new URLSearchParams(searchParams.toString());
+        newSearchParams.delete('teamId');
+        newSearchParams.delete('teamName');
+        // Preservar openTicket si existe
+        if (ticketIdToOpen) {
+          newSearchParams.set('openTicket', ticketIdToOpen);
+        }
+        router.replace(`${pathname}?${newSearchParams.toString()}`, { scroll: false });
+      }
+    }
+
     if (ticketIdToOpen && allTicketsData.length > 0) {
       const ticket = allTicketsData.find(t => t.id === Number.parseInt(ticketIdToOpen, 10));
       if (ticket) {
@@ -156,15 +179,28 @@ function MyTicketsClientContent() {
         });
       }
     }
-  }, [searchParams, allTicketsData, router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, allTicketsData, router, pathname]);
 
   const filteredTicketsData = useMemo(() => {
     let tickets = allTicketsData;
+
+    // Filter out closed tickets by default, unless specifically selected in the status filter
+    if (selectedStatuses.length === 0) {
+      tickets = tickets.filter(ticket => ticket.status !== 'Closed');
+    }
 
     if (debouncedSubjectFilter) {
       const lowerCaseSubjectFilter = debouncedSubjectFilter.toLowerCase();
       tickets = tickets.filter(ticket =>
         ticket.title.toLowerCase().includes(lowerCaseSubjectFilter)
+      );
+    }
+
+    if (selectedTeams.length > 0) {
+      const selectedTeamIds = selectedTeams.map(id => Number.parseInt(id, 10));
+      tickets = tickets.filter(
+        ticket => ticket.team_id && selectedTeamIds.includes(ticket.team_id)
       );
     }
 
@@ -184,7 +220,7 @@ function MyTicketsClientContent() {
     }
 
     return tickets;
-  }, [allTicketsData, debouncedSubjectFilter, selectedUsers, selectedStatuses, selectedPriorities]);
+  }, [allTicketsData, debouncedSubjectFilter, selectedUsers, selectedStatuses, selectedPriorities, selectedTeams]);
 
   const handleSelectAllChange = (checked: boolean | 'indeterminate') => {
     if (checked === true) {
@@ -387,14 +423,16 @@ function MyTicketsClientContent() {
     count += selectedStatuses.length;
     count += selectedUsers.length;
     count += selectedPriorities.length;
+    count += selectedTeams.length;
     return count;
-  }, [debouncedSubjectFilter, selectedStatuses, selectedUsers, selectedPriorities]);
+  }, [debouncedSubjectFilter, selectedStatuses, selectedUsers, selectedPriorities, selectedTeams]);
 
   const clearAllFilters = useCallback(() => {
     setSubjectInput('');
     setSelectedStatuses([]);
     setSelectedUsers([]);
     setSelectedPriorities([]);
+    setSelectedTeams([]);
   }, []);
 
   return (
@@ -598,13 +636,13 @@ function MyTicketsClientContent() {
           <CollapsibleTrigger asChild>
             <Button
               variant="outline"
-              size="icon"
-              className="h-8 w-8 rounded-full z-10 -mr-4 mt-6 shadow-md relative cursor-pointer"
+              size="sm"
+              className="z-10 -mr-4 mt-6 shadow-md relative cursor-pointer rounded-full px-3"
             >
               {filtersExpanded ? (
                 <ChevronRight className="h-4 w-4" />
               ) : (
-                <ChevronLeft className="h-4 w-4" />
+                <>Filters <ChevronLeft className="h-4 w-4 ml-1 inline" /></>
               )}
               {activeFiltersCount > 0 && !filtersExpanded && (
                 <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-medium text-primary-foreground">

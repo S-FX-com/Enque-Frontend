@@ -65,6 +65,9 @@ export function RichTextToolbar({ editor, onAttachmentsChange }: Props) {
       toast.success('Image uploaded successfully!');
       // Insert the uploaded image URL into the editor
       if (editor && data?.url) {
+        // Usar la URL tal como viene del servicio sin modificarla
+        const src = data.url;
+        
         // Apply fixed dimensions using both attributes and inline styles
         const attrs: {
           src: string;
@@ -73,7 +76,7 @@ export function RichTextToolbar({ editor, onAttachmentsChange }: Props) {
           alt?: string;
           style?: string;
         } = {
-          src: data.url, // Use the URL returned from the backend
+          src, // Use the URL returned from the backend
           alt: selectedFile?.name || 'Uploaded Image', // Use file name as alt text
           width: 150,
           height: 92,
@@ -125,10 +128,13 @@ export function RichTextToolbar({ editor, onAttachmentsChange }: Props) {
   // Callback to handle setting the image from URL input
   const handleSetImageFromUrl = useCallback(() => {
     if (editor && imageUrl) {
+      // No modificar URLs externas que ya comienzan con http o https
+      const src = imageUrl;
+      
       // Apply fixed dimensions using both attributes and inline styles
       const attrs: { src: string; width?: number; height?: number; alt?: string; style?: string } =
         {
-          src: imageUrl,
+          src,
           alt: 'Signature Image',
           width: 150,
           height: 92,

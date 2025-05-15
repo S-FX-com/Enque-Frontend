@@ -18,6 +18,7 @@ import { RichTextEditor } from '@/components/tiptap/RichTextEditor';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { uploadAttachments } from '@/services/attachmentService';
+import { getEnabledGlobalSignature } from '@/services/global-signature';
 
 interface Props {
   ticket: ITicket;
@@ -26,13 +27,14 @@ interface Props {
 export function TicketConversation({ ticket }: Props) {
   const queryClient = useQueryClient();
   const { user: currentUser } = useAuth();
-  const [replyContent, setReplyContent] = useState<string>('');
+  const [replyContent, setReplyContent] = useState('');
   const [isPrivateNote, setIsPrivateNote] = useState(false);
   const [editorKey, setEditorKey] = useState(0);
   const prevTicketIdRef = useRef<number | null>(null);
-  const [currentAttachments, setCurrentAttachments] = useState<File[]>([]);
+  const [selectedAttachments, setSelectedAttachments] = useState<File[]>([]);
+  
   const {
-    data: rawComments = [],
+    data: comments = [],
     isLoading: isLoadingComments,
     error: commentsError,
     isError: isCommentsError,
@@ -52,46 +54,20 @@ export function TicketConversation({ ticket }: Props) {
     staleTime: 5 * 60 * 1000,
   });
 
+  const workspaceId = currentUser?.workspace_id;
+  const { data: globalSignatureData } = useQuery({
+    queryKey: ['globalSignature', workspaceId, 'enabled'],
+    queryFn: () => getEnabledGlobalSignature(workspaceId!),
+    enabled: !!workspaceId,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // --- Combine initial message and comments ---
   const conversationItems = React.useMemo(() => {
-    console.log('[CONV_ITEMS_DEBUG] Recalculating conversationItems. Ticket ID:', ticket.id);
-    console.log('[CONV_ITEMS_DEBUG] Raw comments from API:', JSON.stringify(rawComments, null, 2));
-
-    let potentialInitialComment: IComment | null = null;
-    let attachmentsFromPlaceholder: IComment['attachments'] = [];
-    const otherComments: IComment[] = [];
-
-    const placeholderComment = rawComments.find(
-      comment =>
-        comment.is_private &&
-        comment.agent?.email === 'admin@example.com' &&
-        comment.content?.startsWith('Correo original contenía') &&
-        comment.content?.endsWith('adjunto(s).')
-    );
-    console.log(
-      '[CONV_ITEMS_DEBUG] Placeholder comment found by find():',
-      JSON.stringify(placeholderComment, null, 2)
-    );
-
-    if (placeholderComment?.attachments && placeholderComment.attachments.length > 0) {
-      attachmentsFromPlaceholder = placeholderComment.attachments;
-    }
-    console.log(
-      '[CONV_ITEMS_DEBUG] Attachments extracted from placeholder:',
-      JSON.stringify(attachmentsFromPlaceholder, null, 2)
-    );
-
-    rawComments.forEach(comment => {
-      if (comment.id !== placeholderComment?.id) {
-        otherComments.push(comment);
-      }
-    });
-    console.log(
-      '[CONV_ITEMS_DEBUG] Other comments (after filtering placeholder, if found):',
-      JSON.stringify(otherComments, null, 2)
-    );
+    const items: IComment[] = [...comments];
 
     let initialMessageContent: string | null | undefined = null;
-    let initialMessageSender: IComment['user'] = null;
+    let initialMessageSender: IComment['user'] = null; // Esto es IUser | null
 
     if (ticket.description) {
       initialMessageContent = ticket.description;
@@ -100,63 +76,52 @@ export function TicketConversation({ ticket }: Props) {
       initialMessageContent = ticket.body.email_body;
       initialMessageSender = ticket.user;
     }
-    console.log(
-      '[CONV_ITEMS_DEBUG] Initial message content for ticket:',
-      initialMessageContent ? initialMessageContent.substring(0, 100) + '...' : 'null'
-    );
 
+    // Modificación: Crear el mensaje inicial si hay contenido, incluso si initialMessageSender es null.
     if (initialMessageContent && ticket.created_at) {
-      potentialInitialComment = {
+      const initialComment: IComment = {
         id: -1,
         content: initialMessageContent,
         created_at: ticket.created_at,
         updated_at: ticket.created_at,
-        user: initialMessageSender,
+        user: initialMessageSender, // Puede ser null, ConversationMessageItem debería manejarlo
         agent: null,
         ticket_id: ticket.id,
+        // Usar ticket.workspace_id de forma segura. Asumiendo que ITicket tiene workspace_id no nulo.
+        // Si initialMessageSender existe, su workspace_id debería coincidir con ticket.workspace_id.
         workspace_id: ticket.workspace_id,
         is_private: false,
-        attachments: attachmentsFromPlaceholder,
       };
+      items.push(initialComment);
     }
-    console.log(
-      '[CONV_ITEMS_DEBUG] Potential initial comment (with attachments merged):',
-      JSON.stringify(potentialInitialComment, null, 2)
-    );
 
-    const finalCombinedItems: IComment[] = [...otherComments];
-    if (potentialInitialComment) {
-      finalCombinedItems.push(potentialInitialComment);
-    }
-    console.log(
-      '[CONV_ITEMS_DEBUG] Final combined items (before sort):',
-      finalCombinedItems.map(c => ({
-        id: c.id,
-        content: c.content ? c.content.substring(0, 50) + '...' : '',
-        attachments: c.attachments?.length,
-        user: c.user?.email,
-        agent: c.agent?.email,
-        is_private: c.is_private,
-      }))
-    );
+    items.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
-    // La ordenación para `displayItems` se hace después, así que aquí el orden no es el final visible.
-    // Para depuración, podemos ver el orden aquí.
-    // finalCombinedItems.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-
-    return finalCombinedItems;
-  }, [rawComments, ticket]);
+    return items;
+  }, [comments, ticket]);
 
   useEffect(() => {
-    const currentSignature = currentAgentData?.email_signature || '';
+    // Usar firma global si está disponible Y activada, sin importar si hay firma personal
+    let signatureToUse = '';
+    
+    // Si hay una firma global disponible (esto ya garantiza que esté activada por usar getEnabledGlobalSignature)
+    if (globalSignatureData?.content) {
+      signatureToUse = globalSignatureData.content
+        .replace(/\[Agent Name\]/g, currentAgentData?.name || '')
+        .replace(/\[Agent Role\]/g, currentAgentData?.job_title || '-');
+    } else if (currentAgentData?.email_signature) {
+      // Solo usar firma personal si no hay firma global activada
+      signatureToUse = currentAgentData.email_signature;
+    }
+    
     const currentTicketId = ticket.id;
     const userName = ticket.user?.name || 'there';
     const greeting = `<p>Hi ${userName},</p><p><br></p>`;
     const prevTicketId = prevTicketIdRef.current;
-    const initialContent = currentSignature ? `${greeting}${currentSignature}` : greeting;
+    const initialContent = signatureToUse ? `${greeting}${signatureToUse}` : greeting;
 
     console.log(
-      `[TicketConversation Effect] Running. Ticket: ${currentTicketId}, Prev Ticket: ${prevTicketId}, Signature available: ${!!currentSignature}`
+      `[TicketConversation Effect] Running. Ticket: ${currentTicketId}, Prev Ticket: ${prevTicketId}, Signature available: ${!!signatureToUse}`
     );
     setReplyContent(initialContent);
     setEditorKey(prevKey => prevKey + 1);
@@ -166,151 +131,75 @@ export function TicketConversation({ ticket }: Props) {
       setIsPrivateNote(false);
     }
     prevTicketIdRef.current = currentTicketId;
-  }, [ticket.id, ticket.user?.name, currentAgentData?.email_signature]);
+  }, [ticket.id, ticket.user?.name, currentAgentData, globalSignatureData]);
 
-  const uploadAttachmentsMutation = useMutation({
-    mutationFn: uploadAttachments,
-    onError: error => {
-      console.error('Failed to upload attachments:', error);
-      toast.error(`Failed to upload attachments: ${error.message}`);
-    },
-  });
+  // Manejar cambios en adjuntos seleccionados
+  const handleAttachmentsChange = (files: File[]) => {
+    setSelectedAttachments(files);
+  };
 
-  const createCommentMutation = useMutation({
-    mutationFn: (payload: CreateCommentPayload) => createComment(ticket.id, payload),
-    onMutate: async newCommentPayload => {
-      // Cancelar consultas en vuelo para evitar sobrescrituras
-      await queryClient.cancelQueries({ queryKey: ['comments', ticket.id] });
-
-      // Guardar el estado previo de los comentarios
-      const previousComments = queryClient.getQueryData<IComment[]>(['comments', ticket.id]);
-
-      // Crear un comentario optimista para mostrar inmediatamente
-      const optimisticComment: IComment = {
-        id: Date.now(), // ID temporal único
-        content: newCommentPayload.content,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        ticket_id: ticket.id,
-        workspace_id: currentUser?.workspace_id || 0,
-        is_private: newCommentPayload.is_private || false,
-        agent: currentUser
-          ? {
-              id: currentUser.id,
-              name: currentUser.name,
-              email: currentUser.email,
-              role:
-                currentUser.role === 'manager' ? 'admin' : (currentUser.role as 'admin' | 'agent'),
-              is_active: true,
-              workspace_id: currentUser.workspace_id,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            }
-          : null,
-        attachments:
-          currentAttachments.length > 0
-            ? currentAttachments.map(file => ({
-                id: -Date.now() - Math.floor(Math.random() * 1000), // ID negativo temporal
-                file_name: file.name,
-                content_type: file.type,
-                file_size: file.size,
-                created_at: new Date().toISOString(),
-                download_url: URL.createObjectURL(file), // URL temporal para previsualización
-              }))
-            : [],
-      };
-
-      // Añadir optimísticamente el comentario a la caché
-      queryClient.setQueryData<IComment[]>(['comments', ticket.id], old =>
-        old ? [...old, optimisticComment] : [optimisticComment]
-      );
-
-      // Limpiar la UI inmediatamente
-      setReplyContent('');
-      setIsPrivateNote(false);
-      setCurrentAttachments([]);
-
-      // Devuelve el contexto que será pasado a onError y onSettled
-      return { previousComments, optimisticComment };
-    },
-    onError: (err, variables, context) => {
-      // Si hay un error, revertir a los comentarios previos
-      if (context?.previousComments) {
-        queryClient.setQueryData<IComment[]>(['comments', ticket.id], context.previousComments);
-      }
-      console.error('Failed to send reply:', err);
-      toast.error(`Failed to send reply: ${err.message}`);
-    },
-    onSuccess: () => {
-      // Actualizar silenciosamente los datos reales
-      queryClient.invalidateQueries({ queryKey: ['comments', ticket.id] });
-      toast.success('Reply sent successfully.');
-    },
-    onSettled: () => {
-      // En cualquier caso, invalidar consultas para asegurar datos frescos
-      queryClient.invalidateQueries({ queryKey: ['comments', ticket.id] });
-    },
-  });
-
-  const handleSendReply = async () => {
-    if (!replyContent.trim() || !ticket?.id || createCommentMutation.isPending) return;
+  // Procesar adjuntos y enviar comentario
+  const sendComment = async (content: string, isPrivate: boolean) => {
     if (!currentUser) {
       toast.error('Authentication error. User not found.');
       return;
     }
 
     let attachmentIds: number[] = [];
-    if (currentAttachments.length > 0) {
+    
+    // Si hay adjuntos, primero subirlos y obtener sus IDs
+    if (selectedAttachments && selectedAttachments.length > 0) {
       try {
-        const uploadedAttachments = await uploadAttachmentsMutation.mutateAsync(currentAttachments);
-
-        attachmentIds = uploadedAttachments.map(att => att.id);
-
-        // No mostrar ningún toast para el proceso de adjuntos
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const uploaded = await uploadAttachments(selectedAttachments);
+        attachmentIds = uploaded.map(file => file.id);
+        console.log(`Successfully uploaded attachments: ${attachmentIds}`);
       } catch (error) {
+        console.error('Error uploading attachments:', error);
+        toast.error('Failed to upload attachments');
         return;
       }
     }
 
+    // Crear el comentario con los IDs de adjuntos
     const payload: CreateCommentPayload = {
-      content: replyContent,
+      content,
       ticket_id: ticket.id,
       agent_id: currentUser.id,
       workspace_id: currentUser.workspace_id,
-      is_private: isPrivateNote,
+      is_private: isPrivate,
+      attachment_ids: attachmentIds.length > 0 ? attachmentIds : undefined,
     };
 
-    if (attachmentIds.length > 0) {
-      payload.attachment_ids = attachmentIds;
-    }
-
-    createCommentMutation.mutate(payload);
+    return createComment(ticket.id, payload);
   };
 
+  const createCommentMutation = useMutation({
+    mutationFn: () => sendComment(replyContent, isPrivateNote),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['comments', ticket.id] });
+      setReplyContent('');
+      setSelectedAttachments([]); // Limpiar adjuntos después de enviar exitosamente
+      setIsPrivateNote(false);
+      setEditorKey(prev => prev + 1); // Resetear editor por completo para limpiar cualquier estado residual
+      toast.success('Reply sent successfully.');
+    },
+    onError: error => {
+      console.error('Failed to send reply:', error);
+      toast.error(`Failed to send reply: ${error.message}`);
+    },
+  });
+
+  const handleSendReply = () => {
+    if (!replyContent.trim() || !ticket?.id || createCommentMutation.isPending) return;
+    createCommentMutation.mutate();
+  };
+  
   const handlePrivateNoteChange = (checked: boolean) => {
     setIsPrivateNote(checked);
     if (checked) {
       setReplyContent('');
     }
   };
-
-  const displayItems = React.useMemo(() => {
-    const sortedItems = conversationItems
-      .slice()
-      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-    console.log(
-      '[CONV_ITEMS_DEBUG] Display items (after final sort - newest first):',
-      sortedItems.map(c => ({
-        id: c.id,
-        content: c.content ? c.content.substring(0, 50) + '...' : '',
-        created_at: c.created_at,
-        user: c.user?.name,
-        agent: c.agent?.name,
-      }))
-    );
-    return sortedItems;
-  }, [conversationItems]);
 
   return (
     <div className="flex flex-col h-full space-y-6">
@@ -328,6 +217,7 @@ export function TicketConversation({ ticket }: Props) {
           <CardTitle className="text-lg">Conversation</CardTitle>
         </CardHeader>
         <CardContent className="flex-1 overflow-y-auto space-y-4">
+          {/* Render based on loading/error state first */}
           {isLoadingComments && (
             <div className="space-y-4">
               <Skeleton className="h-16 w-full" />
@@ -339,14 +229,17 @@ export function TicketConversation({ ticket }: Props) {
               Failed to load conversation: {commentsError?.message || 'Unknown error'}
             </div>
           )}
+
+          {/* Render conversation items if not loading and no error */}
           {!isLoadingComments &&
             !isCommentsError &&
-            (displayItems.length === 0 ? (
+            (conversationItems.length === 0 ? (
               <div className="text-center text-muted-foreground py-10">
                 No conversation history found.
               </div>
             ) : (
-              displayItems.map(item => (
+              conversationItems.map(item => (
+                // Use item.id for real comments, and a stable key for the initial message
                 <ConversationMessageItem
                   key={item.id === -1 ? 'initial-message' : item.id}
                   comment={item}
@@ -362,8 +255,8 @@ export function TicketConversation({ ticket }: Props) {
             content={replyContent}
             onChange={setReplyContent}
             placeholder={isPrivateNote ? 'Write a private note...' : 'Type your reply here...'}
-            disabled={createCommentMutation.isPending || uploadAttachmentsMutation.isPending}
-            onAttachmentsChange={setCurrentAttachments}
+            disabled={createCommentMutation.isPending}
+            onAttachmentsChange={handleAttachmentsChange}
           />
           {createCommentMutation.isError && (
             <p className="text-xs text-red-500 pt-1">
@@ -376,28 +269,20 @@ export function TicketConversation({ ticket }: Props) {
                 id="private-note"
                 checked={isPrivateNote}
                 onCheckedChange={handlePrivateNoteChange}
-                disabled={createCommentMutation.isPending || uploadAttachmentsMutation.isPending}
+                disabled={createCommentMutation.isPending}
               />
               <Label htmlFor="private-note">Private Note</Label>
-              {currentAttachments.length > 0 && (
-                <span className="text-xs text-muted-foreground ml-4">
-                  {currentAttachments.length} file(s) selected
-                </span>
-              )}
             </div>
             <Button
               onClick={handleSendReply}
               disabled={
-                !replyContent ||
-                replyContent === '<p></p>' ||
-                createCommentMutation.isPending ||
-                uploadAttachmentsMutation.isPending
+                !replyContent || replyContent === '<p></p>' || createCommentMutation.isPending
               }
             >
-              {createCommentMutation.isPending || uploadAttachmentsMutation.isPending ? (
+              {createCommentMutation.isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {uploadAttachmentsMutation.isPending ? 'Uploading...' : 'Sending...'}
+                  Sending...
                 </>
               ) : (
                 <>

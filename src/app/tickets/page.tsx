@@ -23,7 +23,7 @@ import {
   type InfiniteData,
   useMutation,
 } from '@tanstack/react-query';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { getTickets, updateTicket, deleteTicket } from '@/services/ticket';
 import { toast } from 'sonner';
 import {
@@ -62,6 +62,7 @@ function TicketsClientContent() {
   const queryClient = useQueryClient();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const pathname = usePathname();
   const [selectedTicket, setSelectedTicket] = useState<ITicket | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [subjectInput, setSubjectInput] = useState('');
@@ -208,6 +209,11 @@ function TicketsClientContent() {
   const filteredTicketsData = useMemo(() => {
     let tickets = allTicketsData;
 
+    // Filter out closed tickets by default, unless specifically selected in the status filter
+    if (selectedStatuses.length === 0) {
+      tickets = tickets.filter(ticket => ticket.status !== 'Closed');
+    }
+
     if (debouncedSubjectFilter) {
       const lowerCaseFilter = debouncedSubjectFilter.toLowerCase();
       tickets = tickets.filter(ticket => ticket.title.toLowerCase().includes(lowerCaseFilter));
@@ -288,19 +294,28 @@ function TicketsClientContent() {
   useEffect(() => {
     const ticketIdToOpen = searchParams.get('openTicket');
     const teamIdFromQuery = searchParams.get('teamId');
+
+    // Limpiar o aplicar el filtro de equipo
+    if (pathname === '/tickets') {
+      if (teamIdFromQuery) {
+        // Si hay un teamId válido, lo aplicamos al estado
+        if (!selectedTeams.includes(teamIdFromQuery)) {
+          setSelectedTeams([teamIdFromQuery]);
+        }
+      } else {
+        // Si no hay teamId, limpiamos el filtro de equipos
+        setSelectedTeams([]);
+      }
+    }
+
     if (ticketIdToOpen && allTicketsData.length > 0) {
       const ticket = allTicketsData.find(t => t.id === Number.parseInt(ticketIdToOpen, 10));
       if (ticket) {
         setSelectedTicket(ticket);
       }
     }
-
-    if (teamIdFromQuery) {
-      if (!selectedTeams.includes(teamIdFromQuery)) {
-        setSelectedTeams([teamIdFromQuery]);
-      }
-    }
-  }, [searchParams, allTicketsData, router, selectedTeams]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, allTicketsData, router, pathname]);
 
   const agentIdToNameMap = React.useMemo(() => {
     return agentsData.reduce(
@@ -716,13 +731,13 @@ function TicketsClientContent() {
           <CollapsibleTrigger asChild>
             <Button
               variant="outline"
-              size="icon"
-              className="h-8 w-8 rounded-full z-10 -mr-4 mt-6 shadow-md relative cursor-pointer"
+              size="sm"
+              className="z-10 -mr-4 mt-6 shadow-md relative cursor-pointer rounded-full px-3"
             >
               {filtersExpanded ? (
                 <ChevronRight className="h-4 w-4" />
               ) : (
-                <ChevronLeft className="h-4 w-4" />
+                <>Filters <ChevronLeft className="h-4 w-4 ml-1 inline" /></>
               )}
               {activeFiltersCount > 0 && !filtersExpanded && (
                 <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-medium text-primary-foreground">

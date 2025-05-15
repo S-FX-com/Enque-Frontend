@@ -45,7 +45,14 @@ interface Props {
 
 // Helper function to parse sender info from comment content
 const parseSenderFromContent = (content: string): { name: string; email: string } | null => {
-  const match = content.match(/<p><strong>From:<\/strong>\s*(.*?)\s*<(.*?)><\/p><hr>/);
+  // Primero buscar el nuevo formato especial
+  const metadataMatch = content.match(/<original-sender>(.*?)\|(.*?)<\/original-sender>/);
+  if (metadataMatch && metadataMatch[1] && metadataMatch[2]) {
+    return { name: metadataMatch[1].trim(), email: metadataMatch[2].trim() };
+  }
+  
+  // Si no encuentra el nuevo formato, intentar con el formato anterior
+  const match = content.match(/<p><strong>From:<\/strong>\s*(.*?)\s*<(.*?)><\/p>(?:<hr>)?/);
   if (match && match[1] && match[2]) {
     return { name: match[1].trim(), email: match[2].trim() };
   }
@@ -211,8 +218,15 @@ export function ConversationMessageItem({ comment }: Props) {
     isUserReply = true;
     senderName = parsedSender.name;
     senderIdentifier = parsedSender.email;
-    const hrIndex = fullContent.indexOf('<hr>');
-    fullContent = hrIndex !== -1 ? fullContent.substring(hrIndex + 4).trim() : fullContent;
+    
+    // Eliminar los metadatos del contenido a mostrar si está en el nuevo formato
+    if (fullContent.includes('<original-sender>')) {
+      fullContent = fullContent.replace(/<original-sender>.*?<\/original-sender>/g, '');
+    } else {
+      // Si usa el formato antiguo con <hr>
+      const hrIndex = fullContent.indexOf('<hr>');
+      fullContent = hrIndex !== -1 ? fullContent.substring(hrIndex + 4).trim() : fullContent;
+    }
   } else if (isAgentMessage) {
     senderName = comment.agent?.name || 'Agent';
     senderIdentifier = comment.agent?.email || `agent-${comment.agent?.id}`;

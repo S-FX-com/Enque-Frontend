@@ -98,6 +98,24 @@ export default function ClientPage() {
           ),
           href: '/configuration/categories',
         },
+        {
+          name: 'Email Signatures',
+          icon: ({ fill = '#2B3674' }: { fill: string }) => (
+            <svg
+              width="36"
+              height="36"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M21.5 2H2.5C1.12 2 0 3.12 0 4.5V19.5C0 20.88 1.12 22 2.5 22H21.5C22.88 22 24 20.88 24 19.5V4.5C24 3.12 22.88 2 21.5 2ZM21.5 19.5H2.5V7.75L12 13.62L21.5 7.75V19.5ZM12 11.38L2.5 5.5H21.5L12 11.38Z"
+                fill={fill}
+              />
+            </svg>
+          ),
+          href: '/configuration/signatures',
+        },
       ],
     },
   ] as {
