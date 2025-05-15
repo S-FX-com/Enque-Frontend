@@ -161,6 +161,7 @@ export const updateTeam = async (
     description?: string | null;
     logo_url?: string | null;
     icon_name?: string | null;
+    manager_id?: number | null;
   }
 ): Promise<Team> => {
   if (!teamId) {

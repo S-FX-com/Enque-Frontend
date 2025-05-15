@@ -24,6 +24,7 @@ export interface TeamUpdate {
   description?: string | null;
   logo_url?: string | null;
   icon_name?: string | null;
+  manager_id?: number | null;
 }
 
 export interface TeamMember {

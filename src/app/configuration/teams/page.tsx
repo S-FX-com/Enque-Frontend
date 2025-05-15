@@ -29,47 +29,49 @@ import NewTeamModalMui from '@/components/modals/NewTeamModalMui';
 import EditTeamModalMui from '@/components/modals/EditTeamModalMui';
 import { getTeams, getTeamMembers, deleteTeam } from '@/services/team';
 import { getAgents } from '@/services/agent';
-import type { Team } from '@/typescript/team';
+import type { Team, TeamMember } from '@/typescript/team';
 import type { Agent } from '@/typescript/agent';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
 
-interface TeamWithCounts extends Team {
-  agents: Agent[] | null;
+// Simplified interface to avoid type conflicts
+interface LocalTeamData extends Team {
+  agents: TeamMember[] | null;
+  members?: TeamMember[];
 }
 
 // Define more specific types for promise results
-interface CountSuccess {
-  type: 'members' | 'tasks';
-  teamId: number;
-  data: number; // data is present on success
-}
-
 interface CountFailure {
   type: 'members' | 'tasks';
   teamId: number;
   error: Error; // error is present on captured failure
 }
 
-const fetchTeamsWithCounts = async (): Promise<TeamWithCounts[]> => {
+const fetchTeamsWithCounts = async (): Promise<LocalTeamData[]> => {
   const initialTeams = await getTeams();
   if (!initialTeams || initialTeams.length === 0) {
     return [];
   }
 
-  const teamsMap = new Map<number, TeamWithCounts>(
-    initialTeams.map(team => [team.id, { ...team, agents: null }])
+  const teamsMap = new Map<number, LocalTeamData>(
+    initialTeams.map(team => [
+      team.id, 
+      { 
+        ...team, 
+        agents: null,
+        members: [],
+      }
+    ])
   );
 
   const countPromises = initialTeams.map(team =>
     getTeamMembers(team.id)
       .then(
-        members =>
-          ({ type: 'members' as const, teamId: team.id, data: members }) as {
-            type: 'members';
-            teamId: number;
-            data: Agent[];
-          }
+        members => ({
+          type: 'members' as const,
+          teamId: team.id,
+          data: members,
+        })
       )
       .catch(
         (err: Error) => ({ type: 'members' as const, teamId: team.id, error: err }) as CountFailure
@@ -86,7 +88,8 @@ const fetchTeamsWithCounts = async (): Promise<TeamWithCounts[]> => {
       if (team) {
         if (value.type === 'members') {
           if ('data' in value) {
-            // Store the actual agent objects
+            // Store the team members directly
+            team.members = value.data;
             team.agents = value.data;
           } else if ('error' in value) {
             console.error(`Error fetching members for team ${value.teamId}:`, value.error.message);
@@ -108,7 +111,7 @@ const TeamsPage = () => {
   const queryClient = useQueryClient();
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [teamToEdit, setTeamToEdit] = useState<TeamWithCounts | null>(null);
+  const [teamToEdit, setTeamToEdit] = useState<LocalTeamData | null>(null);
   const [selectedTeamIds, setSelectedTeamIds] = useState<Set<number>>(new Set());
   const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
 
@@ -122,14 +125,14 @@ const TeamsPage = () => {
     data: teams = [],
     isLoading: isLoadingTeams,
     error: teamsError,
-  } = useQuery<TeamWithCounts[], Error>({
+  } = useQuery<LocalTeamData[], Error>({
     queryKey: ['teamsWithCounts'],
     queryFn: fetchTeamsWithCounts,
     staleTime: 1000 * 60 * 5,
     refetchOnWindowFocus: true,
   });
 
-  const handleEdit = (team: TeamWithCounts) => {
+  const handleEdit = (team: LocalTeamData) => {
     setTeamToEdit(team);
     setIsEditModalOpen(true);
   };
@@ -162,7 +165,7 @@ const TeamsPage = () => {
     unknown,
     Error,
     number[],
-    { previousTeams?: TeamWithCounts[] }
+    { previousTeams?: LocalTeamData[] }
   >({
     mutationFn: async (teamIds: number[]) => {
       const results = await Promise.allSettled(teamIds.map(id => deleteTeam(id)));
@@ -180,8 +183,8 @@ const TeamsPage = () => {
     },
     onMutate: async (teamIdsToDelete: number[]) => {
       await queryClient.cancelQueries({ queryKey: ['teamsWithCounts'] });
-      const previousTeams = queryClient.getQueryData<TeamWithCounts[]>(['teamsWithCounts']);
-      queryClient.setQueryData<TeamWithCounts[]>(['teamsWithCounts'], old =>
+      const previousTeams = queryClient.getQueryData<LocalTeamData[]>(['teamsWithCounts']);
+      queryClient.setQueryData<LocalTeamData[]>(['teamsWithCounts'], old =>
         old ? old.filter(team => !teamIdsToDelete.includes(team.id)) : []
       );
       return { previousTeams };
@@ -418,12 +421,9 @@ const TeamsPage = () => {
                         <div className="flex items-center">
                           <Users className="h-4 w-4 mr-1 text-muted-foreground" />
                           {team.agents?.length > 0 ? (
-                            team.agents
-                              .map(
-                                teamAgent =>
-                                  allAgents.filter(agent => agent.id === teamAgent.agent_id)[0].name
-                              )
-                              .join(', ')
+                            <span>
+                              {team.agents.length} agent(s)
+                            </span>
                           ) : (
                             <span className="text-gray-400 italic">No agents</span>
                           )}
@@ -464,7 +464,11 @@ const TeamsPage = () => {
             setIsEditModalOpen(false);
             setTeamToEdit(null);
           }}
-          teamToEdit={teamToEdit}
+          teamToEdit={{
+            ...teamToEdit,
+            agentCount: teamToEdit.agents?.length ?? 0,
+            ticketCount: teamToEdit.ticket_count ?? 0,
+          }}
           allAgents={allAgents}
         />
       )}
