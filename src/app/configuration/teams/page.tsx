@@ -55,24 +55,22 @@ const fetchTeamsWithCounts = async (): Promise<LocalTeamData[]> => {
 
   const teamsMap = new Map<number, LocalTeamData>(
     initialTeams.map(team => [
-      team.id, 
-      { 
-        ...team, 
+      team.id,
+      {
+        ...team,
         agents: null,
         members: [],
-      }
+      },
     ])
   );
 
   const countPromises = initialTeams.map(team =>
     getTeamMembers(team.id)
-      .then(
-        members => ({
-          type: 'members' as const,
-          teamId: team.id,
-          data: members,
-        })
-      )
+      .then(members => ({
+        type: 'members' as const,
+        teamId: team.id,
+        data: members,
+      }))
       .catch(
         (err: Error) => ({ type: 'members' as const, teamId: team.id, error: err }) as CountFailure
       )
@@ -421,9 +419,7 @@ const TeamsPage = () => {
                         <div className="flex items-center">
                           <Users className="h-4 w-4 mr-1 text-muted-foreground" />
                           {team.agents?.length > 0 ? (
-                            <span>
-                              {team.agents.length} agent(s)
-                            </span>
+                            <span>{team.agents.length} agent(s)</span>
                           ) : (
                             <span className="text-gray-400 italic">No agents</span>
                           )}

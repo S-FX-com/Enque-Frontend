@@ -50,7 +50,7 @@ const parseSenderFromContent = (content: string): { name: string; email: string 
   if (metadataMatch && metadataMatch[1] && metadataMatch[2]) {
     return { name: metadataMatch[1].trim(), email: metadataMatch[2].trim() };
   }
-  
+
   // Si no encuentra el nuevo formato, intentar con el formato anterior
   const match = content.match(/<p><strong>From:<\/strong>\s*(.*?)\s*<(.*?)><\/p>(?:<hr>)?/);
   if (match && match[1] && match[2]) {
@@ -218,7 +218,7 @@ export function ConversationMessageItem({ comment }: Props) {
     isUserReply = true;
     senderName = parsedSender.name;
     senderIdentifier = parsedSender.email;
-    
+
     // Eliminar los metadatos del contenido a mostrar si está en el nuevo formato
     if (fullContent.includes('<original-sender>')) {
       fullContent = fullContent.replace(/<original-sender>.*?<\/original-sender>/g, '');

@@ -12,7 +12,11 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Terminal, Info, AlertCircle, XCircle } from 'lucide-react';
-import { getGlobalSignature, updateGlobalSignature, toggleGlobalSignature } from '@/services/global-signature';
+import {
+  getGlobalSignature,
+  updateGlobalSignature,
+  toggleGlobalSignature,
+} from '@/services/global-signature';
 
 export default function GlobalSignatureConfigPage() {
   const queryClient = useQueryClient();
@@ -131,7 +135,9 @@ export default function GlobalSignatureConfigPage() {
                   id="signature-active"
                   checked={isEnabled}
                   onCheckedChange={handleToggle}
-                  disabled={toggleSignatureMutation.isPending || isLoadingSignature || !globalSignatureData}
+                  disabled={
+                    toggleSignatureMutation.isPending || isLoadingSignature || !globalSignatureData
+                  }
                 />
                 <Label htmlFor="signature-active" className="font-medium">
                   {isEnabled ? 'Enabled' : 'Disabled'}
@@ -146,7 +152,8 @@ export default function GlobalSignatureConfigPage() {
               <XCircle className="h-4 w-4 text-gray-500" />
               <AlertTitle>Global Signature Disabled</AlertTitle>
               <AlertDescription>
-                The global signature is disabled. Agents will use their personal signatures if available.
+                The global signature is disabled. Agents will use their personal signatures if
+                available.
               </AlertDescription>
             </Alert>
           )}
@@ -155,8 +162,14 @@ export default function GlobalSignatureConfigPage() {
             <Info className="h-4 w-4" />
             <AlertTitle>About Global Signatures</AlertTitle>
             <AlertDescription>
-              <p className="mb-2">This signature will be applied to all agents in your workspace.</p>
-              <p>Use placeholders like <strong>[Agent Name]</strong> and <strong>[Agent Role]</strong> that will be automatically replaced with each agent&apos;s information when sending emails.</p>
+              <p className="mb-2">
+                This signature will be applied to all agents in your workspace.
+              </p>
+              <p>
+                Use placeholders like <strong>[Agent Name]</strong> and{' '}
+                <strong>[Agent Role]</strong> that will be automatically replaced with each
+                agent&apos;s information when sending emails.
+              </p>
             </AlertDescription>
           </Alert>
 
@@ -179,9 +192,7 @@ export default function GlobalSignatureConfigPage() {
           ) : (
             <div className="space-y-4">
               <div>
-                <h3 className="text-sm font-medium mb-3">
-                  Edit global signature template:
-                </h3>
+                <h3 className="text-sm font-medium mb-3">Edit global signature template:</h3>
 
                 <RichTextEditor
                   content={signatureContent}
@@ -189,7 +200,7 @@ export default function GlobalSignatureConfigPage() {
                   placeholder="Enter global email signature template..."
                   disabled={updateSignatureMutation.isPending}
                 />
-                
+
                 <div className="mt-6 flex justify-end">
                   <Button
                     onClick={handleSave}
@@ -206,4 +217,4 @@ export default function GlobalSignatureConfigPage() {
       </Card>
     </div>
   );
-} 
+}

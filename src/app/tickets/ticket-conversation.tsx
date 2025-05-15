@@ -32,7 +32,7 @@ export function TicketConversation({ ticket }: Props) {
   const [editorKey, setEditorKey] = useState(0);
   const prevTicketIdRef = useRef<number | null>(null);
   const [selectedAttachments, setSelectedAttachments] = useState<File[]>([]);
-  
+
   const {
     data: comments = [],
     isLoading: isLoadingComments,
@@ -103,7 +103,7 @@ export function TicketConversation({ ticket }: Props) {
   useEffect(() => {
     // Usar firma global si está disponible Y activada, sin importar si hay firma personal
     let signatureToUse = '';
-    
+
     // Si hay una firma global disponible (esto ya garantiza que esté activada por usar getEnabledGlobalSignature)
     if (globalSignatureData?.content) {
       signatureToUse = globalSignatureData.content
@@ -113,7 +113,7 @@ export function TicketConversation({ ticket }: Props) {
       // Solo usar firma personal si no hay firma global activada
       signatureToUse = currentAgentData.email_signature;
     }
-    
+
     const currentTicketId = ticket.id;
     const userName = ticket.user?.name || 'there';
     const greeting = `<p>Hi ${userName},</p><p><br></p>`;
@@ -146,7 +146,7 @@ export function TicketConversation({ ticket }: Props) {
     }
 
     let attachmentIds: number[] = [];
-    
+
     // Si hay adjuntos, primero subirlos y obtener sus IDs
     if (selectedAttachments && selectedAttachments.length > 0) {
       try {
@@ -193,7 +193,7 @@ export function TicketConversation({ ticket }: Props) {
     if (!replyContent.trim() || !ticket?.id || createCommentMutation.isPending) return;
     createCommentMutation.mutate();
   };
-  
+
   const handlePrivateNoteChange = (checked: boolean) => {
     setIsPrivateNote(checked);
     if (checked) {

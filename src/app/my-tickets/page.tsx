@@ -146,14 +146,14 @@ function MyTicketsClientContent() {
 
   useEffect(() => {
     const ticketIdToOpen = searchParams.get('openTicket');
-    
+
     // Si estamos en my-tickets, limpiamos los filtros de equipo
     if (pathname === '/my-tickets') {
       // Limpiar estado de filtros de equipo en cualquier caso
       if (selectedTeams && selectedTeams.length > 0) {
         setSelectedTeams([]);
       }
-      
+
       // Si hay un parámetro teamId en la URL, lo limpiamos también
       if (window.location.href.includes('teamId=')) {
         const newSearchParams = new URLSearchParams(searchParams.toString());
@@ -220,7 +220,14 @@ function MyTicketsClientContent() {
     }
 
     return tickets;
-  }, [allTicketsData, debouncedSubjectFilter, selectedUsers, selectedStatuses, selectedPriorities, selectedTeams]);
+  }, [
+    allTicketsData,
+    debouncedSubjectFilter,
+    selectedUsers,
+    selectedStatuses,
+    selectedPriorities,
+    selectedTeams,
+  ]);
 
   const handleSelectAllChange = (checked: boolean | 'indeterminate') => {
     if (checked === true) {
@@ -642,7 +649,9 @@ function MyTicketsClientContent() {
               {filtersExpanded ? (
                 <ChevronRight className="h-4 w-4" />
               ) : (
-                <>Filters <ChevronLeft className="h-4 w-4 ml-1 inline" /></>
+                <>
+                  Filters <ChevronLeft className="h-4 w-4 ml-1 inline" />
+                </>
               )}
               {activeFiltersCount > 0 && !filtersExpanded && (
                 <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-medium text-primary-foreground">

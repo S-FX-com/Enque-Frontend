@@ -5,11 +5,11 @@ import { useEffect } from 'react';
 
 export default function RedirectToGlobalSignaturePage() {
   const router = useRouter();
-  
+
   useEffect(() => {
     router.replace('/configuration/signatures');
   }, [router]);
-  
+
   return (
     <div className="flex items-center justify-center min-h-[300px]">
       <div className="text-center">
@@ -17,4 +17,4 @@ export default function RedirectToGlobalSignaturePage() {
       </div>
     </div>
   );
-} 
+}

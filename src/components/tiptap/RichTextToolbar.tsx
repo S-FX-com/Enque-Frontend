@@ -67,7 +67,7 @@ export function RichTextToolbar({ editor, onAttachmentsChange }: Props) {
       if (editor && data?.url) {
         // Usar la URL tal como viene del servicio sin modificarla
         const src = data.url;
-        
+
         // Apply fixed dimensions using both attributes and inline styles
         const attrs: {
           src: string;
@@ -130,7 +130,7 @@ export function RichTextToolbar({ editor, onAttachmentsChange }: Props) {
     if (editor && imageUrl) {
       // No modificar URLs externas que ya comienzan con http o https
       const src = imageUrl;
-      
+
       // Apply fixed dimensions using both attributes and inline styles
       const attrs: { src: string; width?: number; height?: number; alt?: string; style?: string } =
         {

@@ -82,10 +82,7 @@ export default function ProfileSettingsPage() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const {
-    data: globalSignatureData,
-    isLoading: isLoadingGlobalSignature,
-  } = useQuery({
+  const { data: globalSignatureData, isLoading: isLoadingGlobalSignature } = useQuery({
     queryKey: ['globalSignature', user?.workspace_id],
     queryFn: () => getGlobalSignature(user!.workspace_id),
     enabled: !!user?.workspace_id,
@@ -195,7 +192,8 @@ export default function ProfileSettingsPage() {
     }
   };
 
-  const hasPersonalSignature = agentProfileData?.email_signature && agentProfileData.email_signature.trim() !== '';
+  const hasPersonalSignature =
+    agentProfileData?.email_signature && agentProfileData.email_signature.trim() !== '';
   const isAdmin = currentUserRole === 'admin';
 
   return (
@@ -392,10 +390,17 @@ export default function ProfileSettingsPage() {
                 <Info className="h-4 w-4" />
                 <AlertTitle>Using Global Signature</AlertTitle>
                 <AlertDescription>
-                  You are currently using the workspace&apos;s global signature template, which will be personalized
-                  with your information when sending emails.
+                  You are currently using the workspace&apos;s global signature template, which will
+                  be personalized with your information when sending emails.
                   {isAdmin && (
-                    <> You can <Link href="/configuration/signatures" className="underline">edit the global signature here</Link>.</>
+                    <>
+                      {' '}
+                      You can{' '}
+                      <Link href="/configuration/signatures" className="underline">
+                        edit the global signature here
+                      </Link>
+                      .
+                    </>
                   )}
                 </AlertDescription>
               </Alert>
@@ -429,7 +434,7 @@ export default function ProfileSettingsPage() {
                 dangerouslySetInnerHTML={{
                   __html:
                     displayData.email_signature ||
-                    (globalSignatureData?.content 
+                    (globalSignatureData?.content
                       ? globalSignatureData.content
                           .replace(/\[Agent Name\]/g, displayData.name)
                           .replace(/\[Agent Role\]/g, displayData.jobTitle || '-')
@@ -449,7 +454,7 @@ export default function ProfileSettingsPage() {
                 dangerouslySetInnerHTML={{
                   __html:
                     displayData.email_signature ||
-                    (globalSignatureData?.content 
+                    (globalSignatureData?.content
                       ? globalSignatureData.content
                           .replace(/\[Agent Name\]/g, displayData.name)
                           .replace(/\[Agent Role\]/g, displayData.jobTitle || '-')

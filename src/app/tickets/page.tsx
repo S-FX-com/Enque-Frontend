@@ -737,7 +737,9 @@ function TicketsClientContent() {
               {filtersExpanded ? (
                 <ChevronRight className="h-4 w-4" />
               ) : (
-                <>Filters <ChevronLeft className="h-4 w-4 ml-1 inline" /></>
+                <>
+                  Filters <ChevronLeft className="h-4 w-4 ml-1 inline" />
+                </>
               )}
               {activeFiltersCount > 0 && !filtersExpanded && (
                 <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-medium text-primary-foreground">

@@ -17,8 +17,10 @@ const API_BASE_URL =
  */
 export async function getGlobalSignature(workspaceId: number): Promise<GlobalSignature | null> {
   try {
-    const response = await fetchAPI.GET<GlobalSignature>(`${API_BASE_URL}/v1/global-signatures/${workspaceId}`);
-    
+    const response = await fetchAPI.GET<GlobalSignature>(
+      `${API_BASE_URL}/v1/global-signatures/${workspaceId}`
+    );
+
     if (response && response.success && response.data) {
       return response.data;
     }
@@ -34,10 +36,14 @@ export async function getGlobalSignature(workspaceId: number): Promise<GlobalSig
  * @param workspaceId ID del workspace
  * @returns Promise con la firma global activada
  */
-export async function getEnabledGlobalSignature(workspaceId: number): Promise<GlobalSignature | null> {
+export async function getEnabledGlobalSignature(
+  workspaceId: number
+): Promise<GlobalSignature | null> {
   try {
-    const response = await fetchAPI.GET<GlobalSignature>(`${API_BASE_URL}/v1/global-signatures/${workspaceId}/enabled`);
-    
+    const response = await fetchAPI.GET<GlobalSignature>(
+      `${API_BASE_URL}/v1/global-signatures/${workspaceId}/enabled`
+    );
+
     if (response && response.success && response.data) {
       return response.data;
     }
@@ -56,12 +62,12 @@ export async function getEnabledGlobalSignature(workspaceId: number): Promise<Gl
  * @returns Promise con la firma global actualizada
  */
 export async function updateGlobalSignature(
-  workspaceId: number, 
+  workspaceId: number,
   content: string,
   isEnabled?: boolean
 ): Promise<GlobalSignature | null> {
   try {
-    const payload: { content: string, is_enabled?: boolean } = { content };
+    const payload: { content: string; is_enabled?: boolean } = { content };
     if (isEnabled !== undefined) {
       payload.is_enabled = isEnabled;
     }
@@ -70,7 +76,7 @@ export async function updateGlobalSignature(
       `${API_BASE_URL}/v1/global-signatures/${workspaceId}`,
       payload
     );
-    
+
     if (response && response.success && response.data) {
       return response.data;
     }
@@ -87,13 +93,16 @@ export async function updateGlobalSignature(
  * @param isEnabled Estado de activación de la firma
  * @returns Promise con la firma global actualizada
  */
-export async function toggleGlobalSignature(workspaceId: number, isEnabled: boolean): Promise<GlobalSignature | null> {
+export async function toggleGlobalSignature(
+  workspaceId: number,
+  isEnabled: boolean
+): Promise<GlobalSignature | null> {
   try {
     const response = await fetchAPI.PUT<GlobalSignature>(
       `${API_BASE_URL}/v1/global-signatures/${workspaceId}`,
       { is_enabled: isEnabled }
     );
-    
+
     if (response && response.success && response.data) {
       return response.data;
     }
@@ -102,4 +111,4 @@ export async function toggleGlobalSignature(workspaceId: number, isEnabled: bool
     console.error('Error toggling global signature:', error);
     throw error;
   }
-} 
+}

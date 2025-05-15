@@ -75,9 +75,7 @@ export function AgentProfileForm({ agent }: AgentProfileFormProps) {
 
   // Fetch global signature (only if enabled)
   const workspaceId = agent.workspace_id;
-  const {
-    data: globalSignatureData,
-  } = useQuery({
+  const { data: globalSignatureData } = useQuery({
     queryKey: ['globalSignature', workspaceId, 'enabled'],
     queryFn: () => getEnabledGlobalSignature(workspaceId!),
     enabled: !!workspaceId,
@@ -328,7 +326,8 @@ export function AgentProfileForm({ agent }: AgentProfileFormProps) {
                     <Info className="h-4 w-4" />
                     <AlertTitle>Using Global Signature</AlertTitle>
                     <AlertDescription>
-                      This agent is currently using the workspace&apos;s global signature template, which will be personalized with their information when sending emails.
+                      This agent is currently using the workspace&apos;s global signature template,
+                      which will be personalized with their information when sending emails.
                       {agent.email_signature && (
                         <p className="mt-2 font-semibold">
                           Note: The global signature overrides any personal signature.

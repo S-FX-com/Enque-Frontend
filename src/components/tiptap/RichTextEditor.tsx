@@ -33,14 +33,18 @@ export function RichTextEditor({
     try {
       // Eliminar la notificación de carga
       const result = await uploadImage(file);
-      
+
       if (result && result.url) {
         // Insertar la imagen en el editor con dimensiones fijas
-        editor.chain().focus().setImage({
-          src: result.url,
-          alt: 'Pasted Image',
-        }).run();
-        
+        editor
+          .chain()
+          .focus()
+          .setImage({
+            src: result.url,
+            alt: 'Pasted Image',
+          })
+          .run();
+
         toast.success('Image uploaded and inserted successfully!');
       }
     } catch (error) {
@@ -152,7 +156,7 @@ export function RichTextEditor({
         const currentEditor = editor;
         // Verificar que no esté deshabilitado y que el editor exista
         if (disabled || !currentEditor) return false;
-        
+
         // Revisar si hay imágenes en el clipboard
         const items = event.clipboardData?.items;
         if (!items) return false;
@@ -160,7 +164,7 @@ export function RichTextEditor({
         // Buscar imágenes en los datos del portapapeles
         for (let i = 0; i < items.length; i++) {
           const item = items[i];
-          
+
           // Si encontramos una imagen, manejarla
           if (item.type.indexOf('image') !== -1) {
             const file = item.getAsFile();
@@ -173,7 +177,7 @@ export function RichTextEditor({
             }
           }
         }
-        
+
         // Si no hay imágenes, dejar que TipTap maneje el pegado normalmente
         return false;
       },
