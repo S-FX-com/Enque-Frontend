@@ -6,14 +6,47 @@
   /* Add other focus styles if desired */
 }
 
+/* Estilo para la firma de email */
+.email-signature,
+.ProseMirror .email-signature {
+  color: #6b7280 !important; /* text-gray-500 */
+}
+
+.email-signature p,
+.ProseMirror .email-signature p {
+  color: #6b7280 !important;
+}
+
+/* Asegurar que el estilo se aplique también en el HTML renderizado de la conversación */
+.prose .email-signature,
+.prose .email-signature p {
+  color: #6b7280 !important;
+}
+
 /* Style links within the editor */
 .ProseMirror a {
-  color: theme('colors.blue.600');
-  text-decoration: underline;
+  color: theme('colors.blue.600') !important;
+  text-decoration: underline !important;
   cursor: pointer;
 }
 .dark .ProseMirror a {
-  color: theme('colors.blue.400');
+  color: theme('colors.blue.400') !important;
+}
+
+/* Asegurar que el subrayado se muestre correctamente */
+.ProseMirror u {
+  text-decoration: underline;
+}
+
+/* Cuando se activa el enlace en el editor, resaltar su estado activo */
+.ProseMirror [data-type='link'],
+.ProseMirror a[href] {
+  color: theme('colors.blue.600') !important;
+  text-decoration: underline !important;
+}
+.dark .ProseMirror [data-type='link'],
+.dark .ProseMirror a[href] {
+  color: theme('colors.blue.400') !important;
 }
 
 /* Override ANY styles for images within the editor to force fixed size */
@@ -33,6 +66,42 @@
   height: auto;
   margin-top: 1em; /* Default prose margins */
   margin-bottom: 1em;
+}
+
+/* Styles for bullet lists */
+.ProseMirror ul {
+  list-style-type: disc;
+  padding-left: 1.5em;
+  margin: 0.5em 0;
+  color: inherit;
+}
+
+/* Styles for numbered lists */
+.ProseMirror ol {
+  list-style-type: decimal;
+  padding-left: 1.5em;
+  margin: 0.5em 0;
+  color: inherit;
+}
+
+/* Styles for list items */
+.ProseMirror li {
+  margin-bottom: 0.3em;
+  color: inherit;
+}
+
+/* Nested lists */
+.ProseMirror li > ul,
+.ProseMirror li > ol {
+  margin-top: 0.3em;
+  margin-bottom: 0;
+}
+
+/* Dark mode adjustments */
+.dark .ProseMirror ul,
+.dark .ProseMirror ol,
+.dark .ProseMirror li {
+  color: theme('colors.slate.200');
 }
 
 /* Add any other custom styles for Tiptap elements here */

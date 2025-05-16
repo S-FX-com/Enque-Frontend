@@ -1,29 +1,14 @@
-import { fetchAPI } from '@/lib/fetch-api'; // Corrected import name
-import { Team, TeamMember } from '../typescript/team'; // Using relative path and adding TeamMember import
-
-// Use the production URL directly. Ensure NEXT_PUBLIC_API_BASE_URL is set in the production environment.
+import { fetchAPI } from '@/lib/fetch-api';
+import { Team, TeamMember } from '../typescript/team';
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || 'https://enque-backend-production.up.railway.app';
 
 export const getTeams = async (): Promise<Team[]> => {
   try {
     const url = `${API_BASE_URL}/v1/teams/`;
-    // Use the GET method from the fetchAPI object
-    // Assuming fetchAPI.GET handles response checking and JSON parsing internally
-    // Adjust based on the actual implementation of fetchAPI.GET
-    const response = await fetchAPI.GET<Team[]>(url); // Pass the expected return type
 
-    // Assuming fetchAPI.GET throws an error on failure or returns data directly
-    // If fetchAPI.GET returns the raw response object, uncomment and adapt the checks below
-    /*
-    if (!response.ok) { // Or check a success flag if fetchAPI.GET returns a custom object
-      console.error('Failed to fetch teams:', response.statusText); // Adjust property access if needed
-      throw new Error('Failed to fetch teams');
-    }
-    const data: Team[] = await response.json(); // Adjust if data is already parsed
-    */
+    const response = await fetchAPI.GET<Team[]>(url);
 
-    // If fetchAPI.GET returns the parsed data directly on success:
     if (!response || !response.data) {
       // Adjust based on actual return structure
       console.error('Failed to fetch teams or data is missing');
@@ -77,17 +62,17 @@ export const createTeam = async (teamData: {
   workspace_id: number;
   icon_name?: string | null;
 }): Promise<Team> => {
-  console.log('[createTeam service] Received teamData:', JSON.stringify(teamData)); // Log 1: Data received by service
+  console.log('[createTeam service] Received teamData:', JSON.stringify(teamData));
   try {
     const url = `${API_BASE_URL}/v1/teams/`;
     const response = await fetchAPI.POST<Team>(url, teamData);
-    console.log('[createTeam service] API Response raw:', JSON.stringify(response)); // Log 2: Raw API response
+    console.log('[createTeam service] API Response raw:', JSON.stringify(response));
 
     if (!response || !response.data) {
       console.error('[createTeam service] Failed to create team or data is missing in response');
       throw new Error('Failed to create team or API response data is missing');
     }
-    console.log('[createTeam service] Parsed team data from API:', JSON.stringify(response.data)); // Log 3: Parsed data
+    console.log('[createTeam service] Parsed team data from API:', JSON.stringify(response.data));
     return response.data;
   } catch (error) {
     console.error('[createTeam service] Error during API call:', error);
@@ -232,5 +217,3 @@ export const getAgentTeams = async (agentId: number): Promise<Team[]> => {
     throw error; // Or return [];
   }
 };
-
-// Add other team-related service functions here later

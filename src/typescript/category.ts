@@ -2,6 +2,6 @@
 export interface ICategory {
   id: number;
   name: string;
-  created_at: string; // Assuming ISO format string
-  updated_at: string; // Assuming ISO format string
+  created_at: string;
+  updated_at: string;
 }

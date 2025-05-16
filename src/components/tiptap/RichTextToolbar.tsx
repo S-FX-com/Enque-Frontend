@@ -6,6 +6,7 @@ import { type Editor } from '@tiptap/react';
 import {
   Bold,
   Italic,
+  Underline,
   List,
   ListOrdered,
   Link as LinkIcon,
@@ -223,6 +224,19 @@ export function RichTextToolbar({ editor, onAttachmentsChange }: Props) {
         title="Italic"
       >
         <Italic className="h-4 w-4" />
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        className={cn(
+          'h-8 w-8',
+          editor.isActive('underline') ? 'bg-accent text-accent-foreground' : ''
+        )}
+        onClick={() => editor.chain().focus().toggleUnderline().run()}
+        disabled={!editor.can().chain().focus().toggleUnderline().run()}
+        title="Underline"
+      >
+        <Underline className="h-4 w-4" />
       </Button>
       <Button
         variant="ghost"

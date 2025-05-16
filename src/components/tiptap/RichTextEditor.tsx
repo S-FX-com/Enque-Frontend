@@ -7,6 +7,8 @@ import Link from '@tiptap/extension-link';
 import Placeholder from '@tiptap/extension-placeholder';
 import HardBreak from '@tiptap/extension-hard-break';
 import Image from '@tiptap/extension-image'; // Import Image extension
+import Underline from '@tiptap/extension-underline'; // Importar extensión de subrayado
+import { Extension } from '@tiptap/core'; // Importar Extension
 import { RichTextToolbar } from './RichTextToolbar';
 import './tiptap-styles.css';
 import { uploadImage } from '@/services/upload'; // Importar el servicio de carga de imágenes
@@ -20,6 +22,66 @@ interface Props {
   onAttachmentsChange?: (files: File[]) => void;
   // Add other props like 'editable' if needed based on context
 }
+
+// Extensión personalizada para manejar doble espacio en listas
+const ListKeyboardShortcuts = Extension.create({
+  name: 'listKeyboardShortcuts',
+
+  addKeyboardShortcuts() {
+    // Variable para registrar el último momento en que se presionó espacio
+    let lastSpaceTime = 0;
+
+    return {
+      Space: ({ editor }) => {
+        const { state } = editor;
+        const { selection } = state;
+        const { empty, $head } = selection;
+
+        // Solo funciona si el cursor está vacío (no hay texto seleccionado)
+        if (!empty) return false;
+
+        // Verificar si estamos en un elemento de lista
+        const isInList = $head.parent.type.name === 'listItem';
+        if (!isInList) return false;
+
+        // Obtener el contenido del nodo actual
+        const nodeContent = $head.parent.textContent;
+
+        // Verificar si el nodo está vacío (solo tiene espacios o está totalmente vacío)
+        if (nodeContent.trim() === '') {
+          // Si está vacío, salir de la lista
+          editor.chain().liftListItem('listItem').run();
+          return true;
+        }
+
+        // Implementación del doble espacio (al estilo Word)
+        const now = Date.now();
+        const isDoubleSpace = now - lastSpaceTime < 500; // 500ms para detectar doble espacio
+
+        // Actualizar el tiempo del último espacio
+        lastSpaceTime = now;
+
+        // Si es doble espacio, verificar la posición del cursor
+        if (isDoubleSpace && $head.parentOffset === nodeContent.length) {
+          // Estamos al final del texto y se detectó doble espacio
+          // Primero eliminamos el espacio anterior
+          editor.commands.deleteRange({
+            from: $head.pos - 1,
+            to: $head.pos,
+          });
+
+          // Insertamos un salto de línea y salimos de la lista
+          editor.chain().createParagraphNear().liftListItem('listItem').run();
+
+          return true;
+        }
+
+        // Si no es doble espacio o no estamos al final, continuar normalmente
+        return false;
+      },
+    };
+  },
+});
 
 export function RichTextEditor({
   content,
@@ -66,9 +128,19 @@ export function RichTextEditor({
         // Ensure basic formatting is enabled
         bold: {}, // Enables bold command
         italic: {}, // Enables italic command
-        bulletList: {}, // Enables bullet list command
-        orderedList: {}, // Enables ordered list command
-        listItem: {},
+        bulletList: {
+          keepMarks: true,
+          keepAttributes: true,
+        }, // Enables bullet list command with additional configuration
+        orderedList: {
+          keepMarks: true,
+          keepAttributes: true,
+        }, // Enables ordered list command with additional configuration
+        listItem: {
+          HTMLAttributes: {
+            class: 'list-item',
+          },
+        },
         // Disable others if not required
         strike: false,
         code: false,
@@ -92,6 +164,8 @@ export function RichTextEditor({
           rel: 'noopener noreferrer nofollow',
         },
       }),
+      // Añadir la extensión de subrayado
+      Underline.configure(),
       Placeholder.configure({
         placeholder: placeholder || 'Type your message...',
       }),
@@ -137,6 +211,8 @@ export function RichTextEditor({
           };
         },
       }),
+      // Añadir la extensión personalizada para manejar doble espacio en listas
+      ListKeyboardShortcuts,
     ],
     content: content,
     editable: !disabled,

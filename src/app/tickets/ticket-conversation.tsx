@@ -114,6 +114,11 @@ export function TicketConversation({ ticket }: Props) {
       signatureToUse = currentAgentData.email_signature;
     }
 
+    // Envolver la firma en un div con clase para poder aplicar el estilo gris
+    if (signatureToUse) {
+      signatureToUse = `<div class="email-signature text-gray-500">${signatureToUse}</div>`;
+    }
+
     const currentTicketId = ticket.id;
     const userName = ticket.user?.name || 'there';
     const greeting = `<p>Hi ${userName},</p><p><br></p>`;

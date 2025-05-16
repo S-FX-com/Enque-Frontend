@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import '@cyntler/react-doc-viewer/dist/index.css'; // Estilos para DocViewer
 import { formatDistanceToNow } from 'date-fns';
 import Avatar from 'boring-avatars';
@@ -293,6 +293,41 @@ export function ConversationMessageItem({ comment }: Props) {
     comment.attachments &&
     comment.attachments.length > 0;
 
+  // Función para hacer las imágenes extraídas clickeables
+  useEffect(() => {
+    const makeImagesClickable = () => {
+      if (!currentDisplayReplyPart) {
+        return;
+      }
+
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(currentDisplayReplyPart, 'text/html');
+
+      // Buscar imágenes con la clase especial añadida por el backend
+      const imgElements = doc.querySelectorAll('img.email-extracted-image');
+
+      // Simplemente asegurar que las imágenes tengan cursor pointer para indicar que son clickeables
+      imgElements.forEach(img => {
+        const imgElement = img as HTMLImageElement;
+        imgElement.style.cursor = 'pointer';
+      });
+    };
+
+    makeImagesClickable();
+  }, [currentDisplayReplyPart]);
+
+  // Handler para manejar clics en imágenes extraídas dentro del contenido
+  const handleImageClick = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.tagName === 'IMG' && target.classList.contains('email-extracted-image')) {
+      // Si tiene src, abrir la imagen directamente
+      const src = target.getAttribute('src');
+      if (src) {
+        window.open(src, '_blank');
+      }
+    }
+  };
+
   const handlePreviewAttachment = (attachment: IAttachment) => {
     setSelectedAttachment(attachment);
     setIsPreviewOpen(true);
@@ -307,6 +342,7 @@ export function ConversationMessageItem({ comment }: Props) {
     process.env.NEXT_PUBLIC_API_BASE_URL || 'https://enque-backend-production.up.railway.app/v1';
 
   const handleDownloadAttachment = (attachment: IAttachment) => {
+    // Código para adjuntos normales
     const fullDownloadUrl = `${apiBaseUrl}${attachment.download_url.startsWith('/') ? attachment.download_url : '/' + attachment.download_url}`;
     console.log(
       'Attempting to download from absolute URL:',
@@ -354,8 +390,9 @@ export function ConversationMessageItem({ comment }: Props) {
           <div className={`max-w-none break-words overflow-x-auto`}>
             {!isOnlyAttachmentPlaceholder && (
               <div
-                className="text-sm text-foreground prose dark:prose-invert max-w-none"
+                className="text-sm text-black dark:text-white prose dark:prose-invert max-w-none whitespace-pre-line prose-a:text-blue-600 dark:prose-a:text-blue-400 prose-a:underline"
                 dangerouslySetInnerHTML={{ __html: currentDisplayReplyPart }}
+                onClick={handleImageClick}
               />
             )}
 
@@ -376,7 +413,7 @@ export function ConversationMessageItem({ comment }: Props) {
               displayQuotedPart &&
               !isOnlyAttachmentPlaceholder && (
                 <div
-                  className="mt-2 pt-2 border-t border-dashed border-slate-300 dark:border-slate-600 text-muted-foreground text-xs prose dark:prose-invert max-w-none"
+                  className="mt-2 pt-2 border-t border-dashed border-slate-300 dark:border-slate-600 text-black dark:text-slate-200 text-xs prose dark:prose-invert max-w-none whitespace-pre-line prose-a:text-blue-600 dark:prose-a:text-blue-400 prose-a:underline"
                   dangerouslySetInnerHTML={{ __html: displayQuotedPart || '' }}
                 />
               )}
@@ -419,7 +456,7 @@ export function ConversationMessageItem({ comment }: Props) {
                               {att.file_name}
                             </span>
                             <span className="text-xs text-muted-foreground">
-                              {formatFileSize(att.file_size)}
+                              {att.size_text || formatFileSize(att.file_size)}
                             </span>
                           </div>
                         </div>
@@ -525,6 +562,55 @@ export function ConversationMessageItem({ comment }: Props) {
         /* Si #msdoc-renderer es el padre directo y necesita ser block para que el iframe se expanda */
         #msdoc-renderer {
           display: block !important; /* O podrías probar flex si el de arriba no funciona solo */
+        }
+        /* Estilos para asegurar que los párrafos vacíos tengan altura adecuada */
+        .prose p {
+          min-height: 1.5em;
+          margin-bottom: 0.5em;
+        }
+        /* Asegurar que el subrayado se muestre correctamente */
+        .prose u {
+          text-decoration: underline;
+        }
+        /* Estilo forzado para enlaces en la conversación */
+        .prose a {
+          color: #2563eb !important;
+          text-decoration: underline !important;
+        }
+        .dark .prose a {
+          color: #60a5fa !important;
+          text-decoration: underline !important;
+        }
+        /* Estilos para listas en el contenido de la conversación */
+        .prose ul {
+          list-style-type: disc !important;
+          padding-left: 1.5em !important;
+          margin: 0.5em 0 !important;
+        }
+        .prose ol {
+          list-style-type: decimal !important;
+          padding-left: 1.5em !important;
+          margin: 0.5em 0 !important;
+        }
+        .prose li {
+          margin-bottom: 0.3em !important;
+          display: list-item !important;
+        }
+        .prose li > ul,
+        .prose li > ol {
+          margin-top: 0.3em !important;
+          margin-bottom: 0 !important;
+        }
+        /* Ajustes para modo oscuro */
+        .dark .prose ul,
+        .dark .prose ol,
+        .dark .prose li {
+          color: white !important;
+        }
+        .dark .prose ul::marker,
+        .dark .prose ol::marker,
+        .dark .prose li::marker {
+          color: rgba(255, 255, 255, 0.8) !important;
         }
       `}</style>
     </>
