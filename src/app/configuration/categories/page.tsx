@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { BaseResponse } from '@/lib/fetch-api';
 import { getCategories, deleteCategory } from '@/services/category';
@@ -17,7 +17,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { PlusCircle, Trash2 } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   AlertDialog,
@@ -159,54 +159,54 @@ export default function CategoriesPage() {
     }
   };
 
+  // Connect to the global New button
+  useEffect(() => {
+    // Expose the function to the window object so AppLayout can access it
+    (
+      window as Window & typeof globalThis & { openNewCategoryModal?: () => void }
+    ).openNewCategoryModal = () => setIsNewCategoryModalOpen(true);
+    return () => {
+      // Clean up when the component unmounts
+      delete (window as Window & typeof globalThis & { openNewCategoryModal?: () => void })
+        .openNewCategoryModal;
+    };
+  }, []);
+
   return (
     <>
       <div className="flex items-center justify-end py-4 flex-shrink-0">
-        {' '}
-        {/* Adjusted to justify-end if title is removed */}
-        {/* <h1 className="text-2xl font-bold">Categories</h1> REMOVED */}
-        <div className="flex items-center gap-2">
-          {selectedCategoryIds.size > 0 && (
-            <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-              <AlertDialogTrigger asChild>
-                <Button
-                  variant="destructive"
-                  size="sm"
+        {selectedCategoryIds.size > 0 && (
+          <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive" size="sm" disabled={deleteCategoriesMutation.isPending}>
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete ({selectedCategoryIds.size})
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent className="bg-white">
+              <AlertDialogHeader>
+                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This action cannot be undone. This will permanently delete the selected
+                  {selectedCategoryIds.size === 1 ? ' category' : ' categories'}. Associated tickets
+                  will have their category removed.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={deleteCategoriesMutation.isPending}>
+                  Cancel
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleDeleteConfirm}
                   disabled={deleteCategoriesMutation.isPending}
+                  className="bg-destructive text-white hover:bg-destructive/90"
                 >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete ({selectedCategoryIds.size})
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent className="bg-white">
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This action cannot be undone. This will permanently delete the selected
-                    {selectedCategoryIds.size === 1 ? ' category' : ' categories'}. Associated
-                    tickets will have their category removed.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel disabled={deleteCategoriesMutation.isPending}>
-                    Cancel
-                  </AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={handleDeleteConfirm}
-                    disabled={deleteCategoriesMutation.isPending}
-                    className="bg-destructive text-white hover:bg-destructive/90"
-                  >
-                    {deleteCategoriesMutation.isPending ? 'Deleting...' : 'Delete'}
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          )}
-          <Button size="sm" onClick={() => setIsNewCategoryModalOpen(true)}>
-            <PlusCircle className="mr-2 h-4 w-4" />
-            New
-          </Button>
-        </div>
+                  {deleteCategoriesMutation.isPending ? 'Deleting...' : 'Delete'}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
       </div>
 
       <Card className="shadow-none border-0 flex-1 flex flex-col overflow-hidden">

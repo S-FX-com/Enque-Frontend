@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getAgents, deleteAgent } from '@/services/agent';
 import { Agent } from '@/typescript/agent';
@@ -18,7 +18,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar } from '@/components/ui/avatar';
 import BoringAvatar from 'boring-avatars';
 import { Skeleton } from '@/components/ui/skeleton';
-import { PlusCircle, Trash2 } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { NewAgentModal } from '@/components/modals/new-agent-modal'; // Import the new modal
@@ -127,49 +127,52 @@ export default function AgentsPage() {
     }
   };
 
+  // Connect to the global New button
+  useEffect(() => {
+    // Expose the function to the window object so AppLayout can access it
+    (window as Window & typeof globalThis & { openNewAgentModal?: () => void }).openNewAgentModal =
+      () => setIsNewAgentModalOpen(true);
+    return () => {
+      // Clean up when the component unmounts
+      delete (window as Window & typeof globalThis & { openNewAgentModal?: () => void })
+        .openNewAgentModal;
+    };
+  }, []);
+
   return (
     <>
       <div className="flex items-center justify-end py-4 flex-shrink-0">
-        {' '}
-        {/* Adjusted to justify-end if title is removed */}
-        {/* <h1 className="text-2xl font-bold">Agents</h1> REMOVED */}
-        <div className="flex items-center gap-2">
-          {selectedAgentIds.size > 0 && (
-            <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-              <AlertDialogTrigger asChild>
-                <Button variant="destructive" size="sm" disabled={deleteAgentsMutation.isPending}>
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete ({selectedAgentIds.size})
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This action cannot be undone. This will permanently delete the selected
-                    {selectedAgentIds.size === 1 ? ' agent' : ' agents'} and associated data.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel disabled={deleteAgentsMutation.isPending}>
-                    Cancel
-                  </AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={handleDeleteConfirm}
-                    disabled={deleteAgentsMutation.isPending}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  >
-                    {deleteAgentsMutation.isPending ? 'Deleting...' : 'Delete'}
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          )}
-          <Button size="sm" onClick={() => setIsNewAgentModalOpen(true)}>
-            <PlusCircle className="mr-2 h-4 w-4" />
-            New
-          </Button>
-        </div>
+        {selectedAgentIds.size > 0 && (
+          <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive" size="sm" disabled={deleteAgentsMutation.isPending}>
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete ({selectedAgentIds.size})
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This action cannot be undone. This will permanently delete the selected
+                  {selectedAgentIds.size === 1 ? ' agent' : ' agents'} and any related data.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={deleteAgentsMutation.isPending}>
+                  Cancel
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleDeleteConfirm}
+                  disabled={deleteAgentsMutation.isPending}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  {deleteAgentsMutation.isPending ? 'Deleting...' : 'Delete'}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
       </div>
 
       <Card className="shadow-none border-0 flex-1 flex flex-col overflow-hidden">

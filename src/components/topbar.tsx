@@ -23,7 +23,7 @@ import {
 } from '@/components/ui';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { handleLogout, UserSession } from '@/lib/auth';
 import BoringAvatar from 'boring-avatars';
@@ -59,6 +59,7 @@ export function Topbar({
   const queryClient = useQueryClient();
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isClearingNotifications, setIsClearingNotifications] = useState(false);
+  const pathname = usePathname();
 
   // Fetch notifications when the popover might open or user changes
   const { data: notifications = [], isLoading: isLoadingNotifications } = useQuery<
@@ -128,7 +129,12 @@ export function Topbar({
           {/* Conditionally render the button if the handler is provided */}
           {onNewTicketClick && (
             <Button size="sm" variant="default" onClick={onNewTicketClick} className="ml-2">
-              <PlusCircle className="mr-2 h-4 w-4" /> New
+              <PlusCircle className="mr-2 h-4 w-4" />
+              {pathname === '/configuration/teams'
+                ? 'New Team'
+                : pathname === '/configuration/categories'
+                  ? 'New Category'
+                  : 'New'}
             </Button>
           )}
         </div>
