@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -212,18 +212,6 @@ const TeamsPage = () => {
     }
   };
 
-  // Connect to the global New button
-  useEffect(() => {
-    // Expose the function to the window object so AppLayout can access it
-    (window as Window & typeof globalThis & { openNewTeamModal?: () => void }).openNewTeamModal =
-      () => setIsNewModalOpen(true);
-    return () => {
-      // Clean up when the component unmounts
-      delete (window as Window & typeof globalThis & { openNewTeamModal?: () => void })
-        .openNewTeamModal;
-    };
-  }, []);
-
   if (isLoadingTeams || isLoadingAgents) {
     return (
       <div className="p-4 md:p-8">
@@ -310,6 +298,9 @@ const TeamsPage = () => {
     <>
       <div className="flex items-center justify-between py-4 px-4 md:px-0 flex-shrink-0">
         <div className="flex items-center">
+          {/* <h1 className="text-2xl font-semibold">Teams Management</h1> */}
+        </div>
+        <div className="flex items-center gap-2">
           {selectedTeamIds.size > 0 && (
             <AlertDialog open={isBulkDeleteDialogOpen} onOpenChange={setIsBulkDeleteDialogOpen}>
               <AlertDialogTrigger asChild>
@@ -344,6 +335,10 @@ const TeamsPage = () => {
               </AlertDialogContent>
             </AlertDialog>
           )}
+          <Button onClick={() => setIsNewModalOpen(true)} size="sm" disabled={isLoadingAgents}>
+            <PlusCircle className="mr-2 h-4 w-4" />
+            New Team
+          </Button>
         </div>
       </div>
 

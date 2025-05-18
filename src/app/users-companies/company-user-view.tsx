@@ -630,7 +630,7 @@ const CompanyUserView: React.FC<CompanyUserViewProps> = ({
             <PlusCircle className="mr-2 h-4 w-4" /> Add User to Company
           </Button>
         </div>
-        <div className="flex-grow overflow-y-auto border rounded-md max-h-[500px]">
+        <div className="flex-grow overflow-y-auto border rounded-md max-h-[465px]">
           {isLoadingUsers ? (
             <div className="flex justify-center items-center h-32">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />

@@ -8,10 +8,7 @@ export interface IAttachment {
   file_size: number;
   download_url: string; // URL relativa para descargar el archivo
   created_at: string; // O Date, si se convierte en el frontend
-  // Campos adicionales para imágenes extraídas
-  is_extracted_image?: boolean;
-  original_src?: string;
-  size_text?: string;
+  size_text?: string; // Texto formateado del tamaño del archivo (opcional)
 }
 
 export interface IComment {

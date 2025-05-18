@@ -25,6 +25,7 @@ import { Team } from '@/typescript/team';
 import { updateTicket } from '@/services/ticket';
 import { toast } from 'sonner';
 import { getCurrentUser } from '@/lib/auth';
+import { cn } from '@/lib/utils';
 
 interface Props {
   ticket: ITicket | null;
@@ -366,13 +367,48 @@ export function TicketDetail({ ticket, onClose, onTicketUpdate }: Props) {
                   <SelectTrigger className="h-8 text-xs focus:ring-0 focus:ring-offset-0">
                     <SelectValue
                       placeholder={isUpdatingPriority ? 'Updating...' : 'Select priority'}
-                    />
+                    >
+                      {ticket.priority && (
+                        <div className="flex items-center gap-2">
+                          <div
+                            className={cn(
+                              'w-2 h-2 rounded-full',
+                              ticket.priority === 'Low' && 'bg-slate-500',
+                              ticket.priority === 'Medium' && 'bg-green-500',
+                              ticket.priority === 'High' && 'bg-yellow-500',
+                              ticket.priority === 'Critical' && 'bg-red-500'
+                            )}
+                          />
+                          {ticket.priority}
+                        </div>
+                      )}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Low">Low</SelectItem>
-                    <SelectItem value="Medium">Medium</SelectItem>
-                    <SelectItem value="High">High</SelectItem>
-                    <SelectItem value="Critical">Critical</SelectItem>
+                    <SelectItem value="Low">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-slate-500" />
+                        Low
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="Medium">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-green-500" />
+                        Medium
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="High">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-yellow-500" />
+                        High
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="Critical">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-red-500" />
+                        Critical
+                      </div>
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>

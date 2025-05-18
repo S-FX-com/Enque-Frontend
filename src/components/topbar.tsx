@@ -106,7 +106,7 @@ export function Topbar({
   return (
     <div className="flex items-center justify-between w-full py-6">
       {/* Title and Breadcrumbs Section */}
-      <div className="flex flex-col gap-1">
+      <div className="flex flex-col gap-2">
         {/* Breadcrumbs */}
         <div className="flex items-center text-sm text-muted-foreground">
           {breadcrumbs.length > 0 ? (
