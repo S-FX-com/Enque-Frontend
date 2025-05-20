@@ -31,12 +31,21 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { RichTextEditor } from '@/components/tiptap/RichTextEditor';
+import {
+  getAutomations,
+  createAutomation,
+  updateAutomation,
+  deleteAutomation,
+  toggleAutomation,
+  runAutomation,
+  type Automation,
+} from '@/services/automations';
 
 export default function AutomationsConfigPage() {
   const queryClient = useQueryClient();
   const { user, isLoading: isLoadingAuthUser } = useAuth();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [selectedAutomation, setSelectedAutomation] = useState<any>(null);
+  const [selectedAutomation, setSelectedAutomation] = useState<Automation | null>(null);
   const [automationName, setAutomationName] = useState('');
   const [automationDescription, setAutomationDescription] = useState('');
   const [automationType, setAutomationType] = useState('scheduled');
@@ -63,7 +72,9 @@ export default function AutomationsConfigPage() {
   });
 
   const createAutomationMutation = useMutation({
-    mutationFn: async (automation: any) => {
+    mutationFn: async (
+      automation: Omit<Automation, 'id' | 'workspace_id' | 'created_at' | 'updated_at'>
+    ) => {
       if (!workspaceId) throw new Error('Workspace ID is missing');
       return createAutomation(workspaceId, automation);
     },
@@ -80,9 +91,10 @@ export default function AutomationsConfigPage() {
   });
 
   const updateAutomationMutation = useMutation({
-    mutationFn: async (automation: any) => {
+    mutationFn: async (automation: Automation) => {
       if (!workspaceId) throw new Error('Workspace ID is missing');
-      return updateAutomation(workspaceId, automation);
+      const { id, ...updateData } = automation;
+      return updateAutomation(workspaceId, id, updateData);
     },
     onSuccess: () => {
       toast.success('Automation updated successfully!');
@@ -97,7 +109,7 @@ export default function AutomationsConfigPage() {
   });
 
   const deleteAutomationMutation = useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: async (id: number) => {
       if (!workspaceId) throw new Error('Workspace ID is missing');
       return deleteAutomation(workspaceId, id);
     },
@@ -112,7 +124,7 @@ export default function AutomationsConfigPage() {
   });
 
   const toggleAutomationMutation = useMutation({
-    mutationFn: async ({ id, enabled }: { id: string; enabled: boolean }) => {
+    mutationFn: async ({ id, enabled }: { id: number; enabled: boolean }) => {
       if (!workspaceId) throw new Error('Workspace ID is missing');
       return toggleAutomation(workspaceId, id, enabled);
     },
@@ -123,6 +135,20 @@ export default function AutomationsConfigPage() {
     onError: error => {
       console.error('Failed to toggle automation:', error);
       toast.error(`Failed to toggle automation: ${error.message}`);
+    },
+  });
+
+  const runAutomationMutation = useMutation({
+    mutationFn: async (id: number) => {
+      if (!workspaceId) throw new Error('Workspace ID is missing');
+      return runAutomation(workspaceId, id);
+    },
+    onSuccess: data => {
+      toast.success(data.message || 'Automation run successfully!');
+    },
+    onError: error => {
+      console.error('Failed to run automation:', error);
+      toast.error(`Failed to run automation: ${error.message}`);
     },
   });
 
@@ -167,7 +193,7 @@ export default function AutomationsConfigPage() {
     }
   };
 
-  const handleEdit = (automation: any) => {
+  const handleEdit = (automation: Automation) => {
     setSelectedAutomation(automation);
     setAutomationName(automation.name);
     setAutomationDescription(automation.description || '');
@@ -180,17 +206,21 @@ export default function AutomationsConfigPage() {
     setIsDialogOpen(true);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = (id: number) => {
     if (confirm('Are you sure you want to delete this automation?')) {
       deleteAutomationMutation.mutate(id);
     }
   };
 
-  const handleToggle = (id: string, currentStatus: boolean) => {
+  const handleToggle = (id: number, currentStatus: boolean) => {
     toggleAutomationMutation.mutate({
       id,
       enabled: !currentStatus,
     });
+  };
+
+  const handleRun = (id: number) => {
+    runAutomationMutation.mutate(id);
   };
 
   const resetForm = () => {
@@ -481,6 +511,10 @@ export default function AutomationsConfigPage() {
                       <Button variant="ghost" size="sm" onClick={() => handleDelete(automation.id)}>
                         <Trash2 className="h-4 w-4 mr-2" />
                         Delete
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => handleRun(automation.id)}>
+                        <Calendar className="h-4 w-4 mr-2" />
+                        Run Now
                       </Button>
                     </div>
                   </div>

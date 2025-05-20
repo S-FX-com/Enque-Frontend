@@ -10,16 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import {
-  Terminal,
-  Info,
-  AlertCircle,
-  Mail,
-  MessageSquare,
-  Bell,
-  Users,
-  ExternalLink,
-} from 'lucide-react';
+import { Terminal, Info, AlertCircle, Mail, MessageSquare, Bell, Users } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { RichTextEditor } from '@/components/tiptap/RichTextEditor';
 import {
@@ -29,7 +20,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import {
   Accordion,
@@ -37,6 +27,12 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
+import {
+  getNotificationSettings,
+  updateNotificationTemplate,
+  toggleNotificationSetting,
+  connectNotificationChannel,
+} from '@/services/notifications';
 
 export default function NotificationsConfigPage() {
   const queryClient = useQueryClient();
@@ -45,6 +41,7 @@ export default function NotificationsConfigPage() {
   const [currentTemplate, setCurrentTemplate] = useState('');
   const [currentTemplatePath, setCurrentTemplatePath] = useState('');
   const [currentTemplateTitle, setCurrentTemplateTitle] = useState('');
+  const [currentTemplateId, setCurrentTemplateId] = useState<number | null>(null);
 
   const currentUserRole = user?.role;
   const workspaceId = user?.workspace_id;
@@ -62,9 +59,9 @@ export default function NotificationsConfigPage() {
   });
 
   const updateTemplateMutation = useMutation({
-    mutationFn: async ({ path, template }: { path: string; template: string }) => {
+    mutationFn: async ({ templateId, content }: { templateId: number; content: string }) => {
       if (!workspaceId) throw new Error('Workspace ID is missing');
-      return updateNotificationTemplate(workspaceId, path, template);
+      return updateNotificationTemplate(workspaceId, templateId, content);
     },
     onSuccess: () => {
       toast.success('Notification template updated successfully!');
@@ -78,9 +75,9 @@ export default function NotificationsConfigPage() {
   });
 
   const toggleSettingMutation = useMutation({
-    mutationFn: async ({ path, enabled }: { path: string; enabled: boolean }) => {
+    mutationFn: async ({ settingId, enabled }: { settingId: number; enabled: boolean }) => {
       if (!workspaceId) throw new Error('Workspace ID is missing');
-      return toggleNotificationSetting(workspaceId, path, enabled);
+      return toggleNotificationSetting(workspaceId, settingId, enabled);
     },
     onSuccess: () => {
       toast.success('Notification setting updated successfully!');
@@ -95,7 +92,7 @@ export default function NotificationsConfigPage() {
   const connectTeamsMutation = useMutation({
     mutationFn: async () => {
       if (!workspaceId) throw new Error('Workspace ID is missing');
-      return connectTeams(workspaceId);
+      return connectNotificationChannel(workspaceId, 'teams', {});
     },
     onSuccess: () => {
       toast.success('Microsoft Teams connected successfully!');
@@ -107,28 +104,33 @@ export default function NotificationsConfigPage() {
     },
   });
 
-  const handleEditTemplate = (path: string, template: string, title: string) => {
-    setCurrentTemplatePath(path);
+  const handleEditTemplate = (templateId: number, template: string, title: string) => {
+    setCurrentTemplateId(templateId);
     setCurrentTemplate(template);
     setCurrentTemplateTitle(title);
     setIsDialogOpen(true);
   };
 
   const handleSaveTemplate = () => {
+    if (!currentTemplateId) {
+      toast.error('Template ID is missing');
+      return;
+    }
+
     if (currentTemplate.trim() === '') {
       toast.error('Template content cannot be empty');
       return;
     }
 
     updateTemplateMutation.mutate({
-      path: currentTemplatePath,
-      template: currentTemplate,
+      templateId: currentTemplateId,
+      content: currentTemplate,
     });
   };
 
-  const handleToggleSetting = (path: string, currentValue: boolean) => {
+  const handleToggleSetting = (settingId: number, currentValue: boolean) => {
     toggleSettingMutation.mutate({
-      path,
+      settingId,
       enabled: !currentValue,
     });
   };
@@ -229,7 +231,7 @@ export default function NotificationsConfigPage() {
                               size="sm"
                               onClick={() =>
                                 handleEditTemplate(
-                                  'agents.email.new_ticket_created',
+                                  notificationSettings.agents.email.new_ticket_created.id,
                                   notificationSettings.agents.email.new_ticket_created.template,
                                   'New Ticket Created'
                                 )
@@ -245,7 +247,7 @@ export default function NotificationsConfigPage() {
                                 }
                                 onCheckedChange={() =>
                                   handleToggleSetting(
-                                    'agents.email.new_ticket_created.is_enabled',
+                                    notificationSettings.agents.email.new_ticket_created.id,
                                     notificationSettings.agents.email.new_ticket_created.is_enabled
                                   )
                                 }
@@ -272,7 +274,7 @@ export default function NotificationsConfigPage() {
                               size="sm"
                               onClick={() =>
                                 handleEditTemplate(
-                                  'agents.email.new_response',
+                                  notificationSettings.agents.email.new_response.id,
                                   notificationSettings.agents.email.new_response.template,
                                   'New Response'
                                 )
@@ -286,7 +288,7 @@ export default function NotificationsConfigPage() {
                                 checked={notificationSettings.agents.email.new_response.is_enabled}
                                 onCheckedChange={() =>
                                   handleToggleSetting(
-                                    'agents.email.new_response.is_enabled',
+                                    notificationSettings.agents.email.new_response.id,
                                     notificationSettings.agents.email.new_response.is_enabled
                                   )
                                 }
@@ -313,7 +315,7 @@ export default function NotificationsConfigPage() {
                               size="sm"
                               onClick={() =>
                                 handleEditTemplate(
-                                  'agents.email.ticket_assigned',
+                                  notificationSettings.agents.email.ticket_assigned.id,
                                   notificationSettings.agents.email.ticket_assigned.template,
                                   'Ticket Assigned'
                                 )
@@ -329,7 +331,7 @@ export default function NotificationsConfigPage() {
                                 }
                                 onCheckedChange={() =>
                                   handleToggleSetting(
-                                    'agents.email.ticket_assigned.is_enabled',
+                                    notificationSettings.agents.email.ticket_assigned.id,
                                     notificationSettings.agents.email.ticket_assigned.is_enabled
                                   )
                                 }
@@ -371,7 +373,7 @@ export default function NotificationsConfigPage() {
                               }
                               onCheckedChange={() =>
                                 handleToggleSetting(
-                                  'agents.enque_popup.new_ticket_created.is_enabled',
+                                  notificationSettings.agents.enque_popup.new_ticket_created.id,
                                   notificationSettings.agents.enque_popup.new_ticket_created
                                     .is_enabled
                                 )
@@ -400,7 +402,7 @@ export default function NotificationsConfigPage() {
                               }
                               onCheckedChange={() =>
                                 handleToggleSetting(
-                                  'agents.enque_popup.new_response.is_enabled',
+                                  notificationSettings.agents.enque_popup.new_response.id,
                                   notificationSettings.agents.enque_popup.new_response.is_enabled
                                 )
                               }
@@ -428,7 +430,7 @@ export default function NotificationsConfigPage() {
                               }
                               onCheckedChange={() =>
                                 handleToggleSetting(
-                                  'agents.enque_popup.ticket_assigned.is_enabled',
+                                  notificationSettings.agents.enque_popup.ticket_assigned.id,
                                   notificationSettings.agents.enque_popup.ticket_assigned.is_enabled
                                 )
                               }
@@ -500,7 +502,7 @@ export default function NotificationsConfigPage() {
                                 checked={notificationSettings.agents.teams.is_enabled}
                                 onCheckedChange={() =>
                                   handleToggleSetting(
-                                    'agents.teams.is_enabled',
+                                    notificationSettings.agents.teams.id,
                                     notificationSettings.agents.teams.is_enabled
                                   )
                                 }
@@ -536,7 +538,7 @@ export default function NotificationsConfigPage() {
                           checked={notificationSettings.clients.ticket_created.is_enabled}
                           onCheckedChange={() =>
                             handleToggleSetting(
-                              'clients.ticket_created.is_enabled',
+                              notificationSettings.clients.ticket_created.id,
                               notificationSettings.clients.ticket_created.is_enabled
                             )
                           }
@@ -562,7 +564,7 @@ export default function NotificationsConfigPage() {
                       variant="outline"
                       onClick={() =>
                         handleEditTemplate(
-                          'clients.ticket_created',
+                          notificationSettings.clients.ticket_created.id,
                           notificationSettings.clients.ticket_created.template,
                           'Ticket Created Confirmation'
                         )
@@ -586,7 +588,7 @@ export default function NotificationsConfigPage() {
                           checked={notificationSettings.clients.ticket_resolved.is_enabled}
                           onCheckedChange={() =>
                             handleToggleSetting(
-                              'clients.ticket_resolved.is_enabled',
+                              notificationSettings.clients.ticket_resolved.id,
                               notificationSettings.clients.ticket_resolved.is_enabled
                             )
                           }
@@ -612,7 +614,7 @@ export default function NotificationsConfigPage() {
                       variant="outline"
                       onClick={() =>
                         handleEditTemplate(
-                          'clients.ticket_resolved',
+                          notificationSettings.clients.ticket_resolved.id,
                           notificationSettings.clients.ticket_resolved.template,
                           'Ticket Resolved Confirmation'
                         )

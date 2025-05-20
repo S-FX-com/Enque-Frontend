@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -20,6 +20,12 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import {
+  getCnameSettings,
+  updateCnameSettings,
+  toggleCnameSettings,
+  verifyCnameSettings,
+} from '@/services/cname';
 
 export default function CnameConfigPage() {
   const queryClient = useQueryClient();
@@ -103,7 +109,7 @@ export default function CnameConfigPage() {
     }
 
     // Simple domain validation
-    const domainRegex = /^([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$/;
+    const domainRegex = /^([a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$/;
     if (!domainRegex.test(domain)) {
       toast.error('Please enter a valid domain');
       return;

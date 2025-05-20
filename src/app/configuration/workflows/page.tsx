@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -35,13 +35,23 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  getWorkflows,
+  createWorkflow,
+  updateWorkflow,
+  deleteWorkflow,
+  toggleWorkflow,
+  duplicateWorkflow,
+  getWorkflowTriggers,
+  type Workflow,
+} from '@/services/workflows';
 
 export default function WorkflowsConfigPage() {
   const queryClient = useQueryClient();
   const { user, isLoading: isLoadingAuthUser } = useAuth();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [selectedWorkflow, setSelectedWorkflow] = useState<any>(null);
+  const [selectedWorkflow, setSelectedWorkflow] = useState<Workflow | null>(null);
   const [workflowName, setWorkflowName] = useState('');
   const [workflowDescription, setWorkflowDescription] = useState('');
   const [workflowTrigger, setWorkflowTrigger] = useState('');
@@ -62,8 +72,17 @@ export default function WorkflowsConfigPage() {
     staleTime: 5 * 60 * 1000,
   });
 
+  const { data: triggers } = useQuery({
+    queryKey: ['workflowTriggers', workspaceId],
+    queryFn: () => getWorkflowTriggers(workspaceId!),
+    enabled: !!workspaceId,
+    staleTime: 30 * 60 * 1000,
+  });
+
   const createWorkflowMutation = useMutation({
-    mutationFn: async (workflow: any) => {
+    mutationFn: async (
+      workflow: Omit<Workflow, 'id' | 'workspace_id' | 'created_at' | 'updated_at'>
+    ) => {
       if (!workspaceId) throw new Error('Workspace ID is missing');
       return createWorkflow(workspaceId, workflow);
     },
@@ -80,9 +99,10 @@ export default function WorkflowsConfigPage() {
   });
 
   const updateWorkflowMutation = useMutation({
-    mutationFn: async (workflow: any) => {
+    mutationFn: async (workflow: Workflow) => {
       if (!workspaceId) throw new Error('Workspace ID is missing');
-      return updateWorkflow(workspaceId, workflow);
+      const { id, ...updateData } = workflow;
+      return updateWorkflow(workspaceId, id, updateData);
     },
     onSuccess: () => {
       toast.success('Workflow updated successfully!');
@@ -97,7 +117,7 @@ export default function WorkflowsConfigPage() {
   });
 
   const deleteWorkflowMutation = useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: async (id: number) => {
       if (!workspaceId) throw new Error('Workspace ID is missing');
       return deleteWorkflow(workspaceId, id);
     },
@@ -112,7 +132,7 @@ export default function WorkflowsConfigPage() {
   });
 
   const toggleWorkflowMutation = useMutation({
-    mutationFn: async ({ id, enabled }: { id: string; enabled: boolean }) => {
+    mutationFn: async ({ id, enabled }: { id: number; enabled: boolean }) => {
       if (!workspaceId) throw new Error('Workspace ID is missing');
       return toggleWorkflow(workspaceId, id, enabled);
     },
@@ -127,7 +147,7 @@ export default function WorkflowsConfigPage() {
   });
 
   const duplicateWorkflowMutation = useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: async (id: number) => {
       if (!workspaceId) throw new Error('Workspace ID is missing');
       return duplicateWorkflow(workspaceId, id);
     },
@@ -179,19 +199,19 @@ export default function WorkflowsConfigPage() {
 
   const handleDelete = (id: string) => {
     if (confirm('Are you sure you want to delete this workflow?')) {
-      deleteWorkflowMutation.mutate(id);
+      deleteWorkflowMutation.mutate(Number(id));
     }
   };
 
   const handleToggle = (id: string, currentStatus: boolean) => {
     toggleWorkflowMutation.mutate({
-      id,
+      id: Number(id),
       enabled: !currentStatus,
     });
   };
 
   const handleDuplicate = (id: string) => {
-    duplicateWorkflowMutation.mutate(id);
+    duplicateWorkflowMutation.mutate(Number(id));
   };
 
   const resetForm = () => {
@@ -296,14 +316,11 @@ export default function WorkflowsConfigPage() {
                         <SelectValue placeholder="Select a trigger event" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="ticket.created">Ticket Created</SelectItem>
-                        <SelectItem value="ticket.updated">Ticket Updated</SelectItem>
-                        <SelectItem value="ticket.closed">Ticket Closed</SelectItem>
-                        <SelectItem value="ticket.reopened">Ticket Reopened</SelectItem>
-                        <SelectItem value="sla.warning">SLA Warning</SelectItem>
-                        <SelectItem value="sla.breach">SLA Breach</SelectItem>
-                        <SelectItem value="agent.assigned">Agent Assigned</SelectItem>
-                        <SelectItem value="customer.replied">Customer Replied</SelectItem>
+                        {triggers?.map((trigger: any) => (
+                          <SelectItem key={trigger.value} value={trigger.value}>
+                            {trigger.label}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -11,7 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Terminal, Info, AlertCircle, XCircle, Plus, Trash2 } from 'lucide-react';
+import { Terminal, Info, AlertCircle, Plus, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import {
   Dialog,
@@ -30,12 +30,20 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import {
+  getCannedReplies,
+  createCannedReply,
+  updateCannedReply,
+  deleteCannedReply,
+  toggleCannedReply,
+  type CannedReply,
+} from '@/services/canned-replies';
 
 export default function CannedRepliesConfigPage() {
   const queryClient = useQueryClient();
   const { user, isLoading: isLoadingAuthUser } = useAuth();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [selectedReply, setSelectedReply] = useState<any>(null);
+  const [selectedReply, setSelectedReply] = useState<CannedReply | null>(null);
   const [replyTitle, setReplyTitle] = useState('');
   const [replyContent, setReplyContent] = useState('');
 
@@ -78,13 +86,13 @@ export default function CannedRepliesConfigPage() {
       content,
       isEnabled,
     }: {
-      id: string;
+      id: number;
       title: string;
       content: string;
       isEnabled: boolean;
     }) => {
       if (!workspaceId) throw new Error('Workspace ID is missing');
-      return updateCannedReply(workspaceId, id, title, content, isEnabled);
+      return updateCannedReply(workspaceId, id, { title, content, is_enabled: isEnabled });
     },
     onSuccess: () => {
       toast.success('Canned reply updated successfully!');
@@ -99,7 +107,7 @@ export default function CannedRepliesConfigPage() {
   });
 
   const deleteReplyMutation = useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: async (id: number) => {
       if (!workspaceId) throw new Error('Workspace ID is missing');
       return deleteCannedReply(workspaceId, id);
     },
@@ -114,7 +122,7 @@ export default function CannedRepliesConfigPage() {
   });
 
   const toggleReplyMutation = useMutation({
-    mutationFn: async ({ id, enabled }: { id: string; enabled: boolean }) => {
+    mutationFn: async ({ id, enabled }: { id: number; enabled: boolean }) => {
       if (!workspaceId) throw new Error('Workspace ID is missing');
       return toggleCannedReply(workspaceId, id, enabled);
     },
@@ -154,20 +162,20 @@ export default function CannedRepliesConfigPage() {
     }
   };
 
-  const handleEdit = (reply: any) => {
+  const handleEdit = (reply: CannedReply) => {
     setSelectedReply(reply);
     setReplyTitle(reply.title);
     setReplyContent(reply.content);
     setIsDialogOpen(true);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = (id: number) => {
     if (confirm('Are you sure you want to delete this canned reply?')) {
       deleteReplyMutation.mutate(id);
     }
   };
 
-  const handleToggle = (id: string, currentStatus: boolean) => {
+  const handleToggle = (id: number, currentStatus: boolean) => {
     toggleReplyMutation.mutate({
       id,
       enabled: !currentStatus,

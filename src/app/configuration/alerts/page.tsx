@@ -29,6 +29,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  getAlertSettings,
+  updateSystemAlert,
+  toggleSystemAlert,
+  updateAdminNotification,
+  toggleAdminNotification,
+  testConnection,
+  type SystemAlert,
+  type AdminNotification,
+} from '@/services/alerts';
 
 export default function AlertsConfigPage() {
   const queryClient = useQueryClient();
@@ -62,9 +72,9 @@ export default function AlertsConfigPage() {
   });
 
   const updateAlertMutation = useMutation({
-    mutationFn: async ({ path, value }: { path: string; value: any }) => {
+    mutationFn: async ({ alertKey, data }: { alertKey: string; data: Partial<SystemAlert> }) => {
       if (!workspaceId) throw new Error('Workspace ID is missing');
-      return updateAlertSetting(workspaceId, path, value);
+      return updateSystemAlert(workspaceId, alertKey, data);
     },
     onSuccess: () => {
       toast.success('Alert settings updated successfully!');
@@ -77,10 +87,32 @@ export default function AlertsConfigPage() {
     },
   });
 
-  const toggleAlertMutation = useMutation({
-    mutationFn: async ({ path, enabled }: { path: string; enabled: boolean }) => {
+  const updateNotificationMutation = useMutation({
+    mutationFn: async ({
+      notificationKey,
+      data,
+    }: {
+      notificationKey: string;
+      data: Partial<AdminNotification>;
+    }) => {
       if (!workspaceId) throw new Error('Workspace ID is missing');
-      return toggleAlertSetting(workspaceId, path, enabled);
+      return updateAdminNotification(workspaceId, notificationKey, data);
+    },
+    onSuccess: () => {
+      toast.success('Notification settings updated successfully!');
+      queryClient.invalidateQueries({ queryKey: ['alertSettings', workspaceId] });
+      setIsDialogOpen(false);
+    },
+    onError: error => {
+      console.error('Failed to update notification settings:', error);
+      toast.error(`Failed to update settings: ${error.message}`);
+    },
+  });
+
+  const toggleAlertMutation = useMutation({
+    mutationFn: async ({ alertKey, enabled }: { alertKey: string; enabled: boolean }) => {
+      if (!workspaceId) throw new Error('Workspace ID is missing');
+      return toggleSystemAlert(workspaceId, alertKey, enabled);
     },
     onSuccess: () => {
       toast.success('Alert setting updated successfully!');
@@ -92,10 +124,31 @@ export default function AlertsConfigPage() {
     },
   });
 
+  const toggleNotificationMutation = useMutation({
+    mutationFn: async ({
+      notificationKey,
+      enabled,
+    }: {
+      notificationKey: string;
+      enabled: boolean;
+    }) => {
+      if (!workspaceId) throw new Error('Workspace ID is missing');
+      return toggleAdminNotification(workspaceId, notificationKey, enabled);
+    },
+    onSuccess: () => {
+      toast.success('Notification setting updated successfully!');
+      queryClient.invalidateQueries({ queryKey: ['alertSettings', workspaceId] });
+    },
+    onError: error => {
+      console.error('Failed to toggle notification setting:', error);
+      toast.error(`Failed to update setting: ${error.message}`);
+    },
+  });
+
   const testM365ConnectionMutation = useMutation({
     mutationFn: async () => {
       if (!workspaceId) throw new Error('Workspace ID is missing');
-      return testM365Connection(workspaceId);
+      return testConnection(workspaceId, 'm365');
     },
     onSuccess: data => {
       if (data.is_connected) {
@@ -132,14 +185,14 @@ export default function AlertsConfigPage() {
     };
 
     updateAlertMutation.mutate({
-      path: `system_alerts.${currentAlert.key}`,
-      value: updatedAlert,
+      alertKey: currentAlert.key,
+      data: updatedAlert,
     });
   };
 
-  const handleToggleAlert = (path: string, currentValue: boolean) => {
+  const handleToggleAlert = (alertKey: string, currentValue: boolean) => {
     toggleAlertMutation.mutate({
-      path,
+      alertKey,
       enabled: !currentValue,
     });
   };
@@ -157,9 +210,9 @@ export default function AlertsConfigPage() {
       return;
     }
 
-    updateAlertMutation.mutate({
-      path: currentTemplatePath,
-      value: { template: currentTemplate },
+    updateNotificationMutation.mutate({
+      notificationKey: currentTemplatePath.split('.').pop()!,
+      data: { template: currentTemplate },
     });
     setIsEditingTemplate(false);
   };
@@ -186,9 +239,9 @@ export default function AlertsConfigPage() {
         currentAlert.key === 'high_ticket_volume' ? Number.parseInt(thresholdValue) : undefined,
     };
 
-    updateAlertMutation.mutate({
-      path: `admin_notifications.${currentAlert.key}`,
-      value: updatedNotification,
+    updateNotificationMutation.mutate({
+      notificationKey: currentAlert.key,
+      data: updatedNotification,
     });
   };
 
@@ -278,17 +331,18 @@ export default function AlertsConfigPage() {
                           <Switch
                             id="m365-alert"
                             checked={
-                              alertSettings.system_alerts.m365_connector_disconnected.is_enabled
+                              alertSettings?.system_alerts?.m365_connector_disconnected?.is_enabled
                             }
                             onCheckedChange={() =>
                               handleToggleAlert(
-                                'system_alerts.m365_connector_disconnected.is_enabled',
-                                alertSettings.system_alerts.m365_connector_disconnected.is_enabled
+                                'm365_connector_disconnected',
+                                alertSettings?.system_alerts?.m365_connector_disconnected
+                                  ?.is_enabled
                               )
                             }
                           />
                           <Label htmlFor="m365-alert">
-                            {alertSettings.system_alerts.m365_connector_disconnected.is_enabled
+                            {alertSettings?.system_alerts?.m365_connector_disconnected?.is_enabled
                               ? 'Enabled'
                               : 'Disabled'}
                           </Label>
@@ -299,7 +353,7 @@ export default function AlertsConfigPage() {
                         <div className="flex items-center gap-2 text-sm">
                           <AlertCircle className="h-4 w-4 text-red-500" />
                           <span>
-                            {alertSettings.system_alerts.m365_connector_disconnected.message}
+                            {alertSettings?.system_alerts?.m365_connector_disconnected?.message}
                           </span>
                         </div>
                       </div>
@@ -310,7 +364,7 @@ export default function AlertsConfigPage() {
                           onClick={() =>
                             handleEditAlert(
                               'm365_connector_disconnected',
-                              alertSettings.system_alerts.m365_connector_disconnected
+                              alertSettings?.system_alerts?.m365_connector_disconnected
                             )
                           }
                         >
@@ -343,17 +397,17 @@ export default function AlertsConfigPage() {
                           <Switch
                             id="db-alert"
                             checked={
-                              alertSettings.system_alerts.database_connection_error.is_enabled
+                              alertSettings?.system_alerts?.database_connection_error?.is_enabled
                             }
                             onCheckedChange={() =>
                               handleToggleAlert(
-                                'system_alerts.database_connection_error.is_enabled',
-                                alertSettings.system_alerts.database_connection_error.is_enabled
+                                'database_connection_error',
+                                alertSettings?.system_alerts?.database_connection_error?.is_enabled
                               )
                             }
                           />
                           <Label htmlFor="db-alert">
-                            {alertSettings.system_alerts.database_connection_error.is_enabled
+                            {alertSettings?.system_alerts?.database_connection_error?.is_enabled
                               ? 'Enabled'
                               : 'Disabled'}
                           </Label>
@@ -364,7 +418,7 @@ export default function AlertsConfigPage() {
                         <div className="flex items-center gap-2 text-sm">
                           <AlertCircle className="h-4 w-4 text-red-500" />
                           <span>
-                            {alertSettings.system_alerts.database_connection_error.message}
+                            {alertSettings?.system_alerts?.database_connection_error?.message}
                           </span>
                         </div>
                       </div>
@@ -374,7 +428,7 @@ export default function AlertsConfigPage() {
                         onClick={() =>
                           handleEditAlert(
                             'database_connection_error',
-                            alertSettings.system_alerts.database_connection_error
+                            alertSettings?.system_alerts?.database_connection_error
                           )
                         }
                       >
@@ -398,16 +452,16 @@ export default function AlertsConfigPage() {
                         <div className="flex items-center space-x-2">
                           <Switch
                             id="license-alert"
-                            checked={alertSettings.system_alerts.license_expiring.is_enabled}
+                            checked={alertSettings?.system_alerts?.license_expiring?.is_enabled}
                             onCheckedChange={() =>
                               handleToggleAlert(
-                                'system_alerts.license_expiring.is_enabled',
-                                alertSettings.system_alerts.license_expiring.is_enabled
+                                'license_expiring',
+                                alertSettings?.system_alerts?.license_expiring?.is_enabled
                               )
                             }
                           />
                           <Label htmlFor="license-alert">
-                            {alertSettings.system_alerts.license_expiring.is_enabled
+                            {alertSettings?.system_alerts?.license_expiring?.is_enabled
                               ? 'Enabled'
                               : 'Disabled'}
                           </Label>
@@ -417,7 +471,7 @@ export default function AlertsConfigPage() {
                       <div className="bg-muted p-4 rounded-md mb-4">
                         <div className="flex items-center gap-2 text-sm">
                           <AlertCircle className="h-4 w-4 text-yellow-500" />
-                          <span>{alertSettings.system_alerts.license_expiring.message}</span>
+                          <span>{alertSettings?.system_alerts?.license_expiring?.message}</span>
                         </div>
                       </div>
 
@@ -426,7 +480,7 @@ export default function AlertsConfigPage() {
                         onClick={() =>
                           handleEditAlert(
                             'license_expiring',
-                            alertSettings.system_alerts.license_expiring
+                            alertSettings?.system_alerts?.license_expiring
                           )
                         }
                       >
@@ -454,16 +508,18 @@ export default function AlertsConfigPage() {
                         <div className="flex items-center space-x-2">
                           <Switch
                             id="new-agent-notification"
-                            checked={alertSettings.admin_notifications.new_agent_joined.is_enabled}
+                            checked={
+                              alertSettings?.admin_notifications?.new_agent_joined?.is_enabled
+                            }
                             onCheckedChange={() =>
                               handleToggleAlert(
-                                'admin_notifications.new_agent_joined.is_enabled',
-                                alertSettings.admin_notifications.new_agent_joined.is_enabled
+                                'new_agent_joined',
+                                alertSettings?.admin_notifications?.new_agent_joined?.is_enabled
                               )
                             }
                           />
                           <Label htmlFor="new-agent-notification">
-                            {alertSettings.admin_notifications.new_agent_joined.is_enabled
+                            {alertSettings?.admin_notifications?.new_agent_joined?.is_enabled
                               ? 'Enabled'
                               : 'Disabled'}
                           </Label>
@@ -478,7 +534,7 @@ export default function AlertsConfigPage() {
                           <div className="flex items-center gap-1">
                             <span
                               className={`px-2 py-1 text-xs rounded-full ${
-                                alertSettings.admin_notifications.new_agent_joined.channels.includes(
+                                alertSettings?.admin_notifications?.new_agent_joined?.channels.includes(
                                   'email'
                                 )
                                   ? 'bg-green-100 text-green-800'
@@ -489,14 +545,14 @@ export default function AlertsConfigPage() {
                             </span>
                             <span
                               className={`px-2 py-1 text-xs rounded-full ${
-                                alertSettings.admin_notifications.new_agent_joined.channels.includes(
+                                alertSettings?.admin_notifications?.new_agent_joined?.channels.includes(
                                   'in_app'
                                 )
                                   ? 'bg-green-100 text-green-800'
                                   : 'bg-gray-100 text-gray-800'
                               }`}
                             >
-                              In-Platform
+                              In-App
                             </span>
                           </div>
                         </div>
@@ -506,7 +562,7 @@ export default function AlertsConfigPage() {
                         <div
                           className="prose prose-sm max-w-none"
                           dangerouslySetInnerHTML={{
-                            __html: alertSettings.admin_notifications.new_agent_joined.template,
+                            __html: alertSettings?.admin_notifications?.new_agent_joined?.template,
                           }}
                         />
                       </div>
@@ -516,7 +572,7 @@ export default function AlertsConfigPage() {
                         onClick={() =>
                           handleEditNotification(
                             'new_agent_joined',
-                            alertSettings.admin_notifications.new_agent_joined
+                            alertSettings?.admin_notifications?.new_agent_joined
                           )
                         }
                       >
@@ -541,17 +597,17 @@ export default function AlertsConfigPage() {
                           <Switch
                             id="high-volume-notification"
                             checked={
-                              alertSettings.admin_notifications.high_ticket_volume.is_enabled
+                              alertSettings?.admin_notifications?.high_ticket_volume?.is_enabled
                             }
                             onCheckedChange={() =>
                               handleToggleAlert(
-                                'admin_notifications.high_ticket_volume.is_enabled',
-                                alertSettings.admin_notifications.high_ticket_volume.is_enabled
+                                'high_ticket_volume',
+                                alertSettings?.admin_notifications?.high_ticket_volume?.is_enabled
                               )
                             }
                           />
                           <Label htmlFor="high-volume-notification">
-                            {alertSettings.admin_notifications.high_ticket_volume.is_enabled
+                            {alertSettings?.admin_notifications?.high_ticket_volume?.is_enabled
                               ? 'Enabled'
                               : 'Disabled'}
                           </Label>
@@ -564,8 +620,8 @@ export default function AlertsConfigPage() {
                             Threshold:
                           </Label>
                           <span className="text-sm">
-                            {alertSettings.admin_notifications.high_ticket_volume.threshold} tickets
-                            per hour
+                            {alertSettings?.admin_notifications?.high_ticket_volume?.threshold}{' '}
+                            tickets per hour
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
@@ -575,7 +631,7 @@ export default function AlertsConfigPage() {
                           <div className="flex items-center gap-1">
                             <span
                               className={`px-2 py-1 text-xs rounded-full ${
-                                alertSettings.admin_notifications.high_ticket_volume.channels.includes(
+                                alertSettings?.admin_notifications?.high_ticket_volume?.channels.includes(
                                   'email'
                                 )
                                   ? 'bg-green-100 text-green-800'
@@ -586,14 +642,14 @@ export default function AlertsConfigPage() {
                             </span>
                             <span
                               className={`px-2 py-1 text-xs rounded-full ${
-                                alertSettings.admin_notifications.high_ticket_volume.channels.includes(
+                                alertSettings?.admin_notifications?.high_ticket_volume?.channels.includes(
                                   'in_app'
                                 )
                                   ? 'bg-green-100 text-green-800'
                                   : 'bg-gray-100 text-gray-800'
                               }`}
                             >
-                              In-Platform
+                              In-App
                             </span>
                           </div>
                         </div>
@@ -603,7 +659,8 @@ export default function AlertsConfigPage() {
                         <div
                           className="prose prose-sm max-w-none"
                           dangerouslySetInnerHTML={{
-                            __html: alertSettings.admin_notifications.high_ticket_volume.template,
+                            __html:
+                              alertSettings?.admin_notifications?.high_ticket_volume?.template,
                           }}
                         />
                       </div>
@@ -613,7 +670,7 @@ export default function AlertsConfigPage() {
                         onClick={() =>
                           handleEditNotification(
                             'high_ticket_volume',
-                            alertSettings.admin_notifications.high_ticket_volume
+                            alertSettings?.admin_notifications?.high_ticket_volume
                           )
                         }
                       >
@@ -637,16 +694,16 @@ export default function AlertsConfigPage() {
                         <div className="flex items-center space-x-2">
                           <Switch
                             id="system-update-notification"
-                            checked={alertSettings.admin_notifications.system_update.is_enabled}
+                            checked={alertSettings?.admin_notifications?.system_update?.is_enabled}
                             onCheckedChange={() =>
                               handleToggleAlert(
-                                'admin_notifications.system_update.is_enabled',
-                                alertSettings.admin_notifications.system_update.is_enabled
+                                'system_update',
+                                alertSettings?.admin_notifications?.system_update?.is_enabled
                               )
                             }
                           />
                           <Label htmlFor="system-update-notification">
-                            {alertSettings.admin_notifications.system_update.is_enabled
+                            {alertSettings?.admin_notifications?.system_update?.is_enabled
                               ? 'Enabled'
                               : 'Disabled'}
                           </Label>
@@ -661,7 +718,7 @@ export default function AlertsConfigPage() {
                           <div className="flex items-center gap-1">
                             <span
                               className={`px-2 py-1 text-xs rounded-full ${
-                                alertSettings.admin_notifications.system_update.channels.includes(
+                                alertSettings?.admin_notifications?.system_update?.channels.includes(
                                   'email'
                                 )
                                   ? 'bg-green-100 text-green-800'
@@ -672,14 +729,14 @@ export default function AlertsConfigPage() {
                             </span>
                             <span
                               className={`px-2 py-1 text-xs rounded-full ${
-                                alertSettings.admin_notifications.system_update.channels.includes(
+                                alertSettings?.admin_notifications?.system_update?.channels.includes(
                                   'in_app'
                                 )
                                   ? 'bg-green-100 text-green-800'
                                   : 'bg-gray-100 text-gray-800'
                               }`}
                             >
-                              In-Platform
+                              In-App
                             </span>
                           </div>
                         </div>
@@ -689,7 +746,7 @@ export default function AlertsConfigPage() {
                         <div
                           className="prose prose-sm max-w-none"
                           dangerouslySetInnerHTML={{
-                            __html: alertSettings.admin_notifications.system_update.template,
+                            __html: alertSettings?.admin_notifications?.system_update?.template,
                           }}
                         />
                       </div>
@@ -699,7 +756,7 @@ export default function AlertsConfigPage() {
                         onClick={() =>
                           handleEditNotification(
                             'system_update',
-                            alertSettings.admin_notifications.system_update
+                            alertSettings?.admin_notifications?.system_update
                           )
                         }
                       >
@@ -766,11 +823,11 @@ export default function AlertsConfigPage() {
                         </div>
                         <div className="flex items-center space-x-2">
                           <Switch
-                            id="In-Platform-channel"
+                            id="in-app-channel"
                             checked={inAppChannel}
                             onCheckedChange={setInAppChannel}
                           />
-                          <Label htmlFor="In-Platform-channel">In-Platform</Label>
+                          <Label htmlFor="in-app-channel">In-App</Label>
                         </div>
                       </div>
                     </div>
@@ -865,9 +922,11 @@ export default function AlertsConfigPage() {
                         ? handleSaveNotification
                         : handleSaveAlert
                   }
-                  disabled={updateAlertMutation.isPending}
+                  disabled={updateAlertMutation.isPending || updateNotificationMutation.isPending}
                 >
-                  {updateAlertMutation.isPending ? 'Saving...' : 'Save Changes'}
+                  {updateAlertMutation.isPending || updateNotificationMutation.isPending
+                    ? 'Saving...'
+                    : 'Save Changes'}
                 </Button>
               </DialogFooter>
             </DialogContent>
