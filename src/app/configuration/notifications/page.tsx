@@ -38,69 +38,6 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 
-// Mock service functions - replace with actual implementations
-const getNotificationSettings = async (workspaceId: string) => {
-  // Fetch notification settings from your API
-  return {
-    agents: {
-      email: {
-        new_ticket_created: {
-          is_enabled: true,
-          template: '<p>A new ticket has been created: [Ticket ID]</p>',
-        },
-        new_response: {
-          is_enabled: true,
-          template: '<p>New response on ticket: [Ticket ID]</p>',
-        },
-        ticket_assigned: {
-          is_enabled: true,
-          template: '<p>Ticket [Ticket ID] has been assigned to you</p>',
-        },
-      },
-      enque_popup: {
-        new_ticket_created: {
-          is_enabled: true,
-        },
-        new_response: {
-          is_enabled: true,
-        },
-        ticket_assigned: {
-          is_enabled: true,
-        },
-      },
-      teams: {
-        is_enabled: false,
-        is_connected: false,
-      },
-    },
-    clients: {
-      ticket_created: {
-        is_enabled: true,
-        template: '<p>Thank you for submitting your ticket. Your ticket ID is [Ticket ID].</p>',
-      },
-      ticket_resolved: {
-        is_enabled: true,
-        template: '<p>Your ticket [Ticket ID] has been resolved.</p>',
-      },
-    },
-  };
-};
-
-const updateNotificationTemplate = async (workspaceId: string, path: string, template: string) => {
-  // Update notification template via API
-  return { success: true };
-};
-
-const toggleNotificationSetting = async (workspaceId: string, path: string, enabled: boolean) => {
-  // Toggle notification setting via API
-  return { success: true };
-};
-
-const connectTeams = async (workspaceId: string) => {
-  // Connect Microsoft Teams via API
-  return { success: true, is_connected: true };
-};
-
 export default function NotificationsConfigPage() {
   const queryClient = useQueryClient();
   const { user, isLoading: isLoadingAuthUser } = useAuth();

@@ -21,63 +21,6 @@ import {
   TableRow,
 } from '@/components/ui/table';
 
-// Mock service functions - replace with actual implementations
-const getCnameSettings = async (workspaceId: string) => {
-  // Fetch CNAME settings from your API
-  return {
-    is_enabled: true,
-    domain: 'enque.cc',
-    verification_status: 'verified', // 'pending', 'verified', 'failed'
-    dns_records: [
-      {
-        type: 'CNAME',
-        name: 'CNAME Title',
-        value: 'aaaa.com',
-        status: 'verified',
-      },
-      {
-        type: 'TXT',
-        name: 'TXT Title',
-        value: '123456789',
-        status: 'verified',
-      },
-    ],
-  };
-};
-
-const updateCnameSettings = async (workspaceId: string, domain: string) => {
-  // Update CNAME settings via API
-  return {
-    is_enabled: true,
-    domain,
-    verification_status: 'pending',
-    dns_records: [
-      {
-        type: 'CNAME',
-        name: domain.split('.')[0],
-        value: 'enque-proxy.vercel.app',
-        status: 'pending',
-      },
-      {
-        type: 'TXT',
-        name: `enque-verification.${domain.split('.')[0]}`,
-        value: 'enque-verify-123456789',
-        status: 'pending',
-      },
-    ],
-  };
-};
-
-const toggleCnameSettings = async (workspaceId: string, enabled: boolean) => {
-  // Toggle CNAME settings via API
-  return { is_enabled: enabled };
-};
-
-const verifyCnameSettings = async (workspaceId: string) => {
-  // Verify CNAME settings via API
-  return { verification_status: 'verified' };
-};
-
 export default function CnameConfigPage() {
   const queryClient = useQueryClient();
   const { user, isLoading: isLoadingAuthUser } = useAuth();

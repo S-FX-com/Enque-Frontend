@@ -37,61 +37,6 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
-// Mock service functions - replace with actual implementations
-const getWorkflows = async (workspaceId: string) => {
-  // Fetch workflows from your API
-  return [
-    {
-      id: '1',
-      name: 'New Ticket Assignment',
-      description: 'Automatically assign new tickets to available agents',
-      is_enabled: true,
-      trigger: 'ticket.created',
-      conditions: [{ field: 'priority', operator: 'equals', value: 'high' }],
-      actions: [
-        { type: 'assign_to_agent', config: { agent_id: 'random' } },
-        { type: 'add_tag', config: { tag: 'needs-review' } },
-      ],
-    },
-    {
-      id: '2',
-      name: 'SLA Breach Alert',
-      description: 'Send notification when SLA is about to breach',
-      is_enabled: true,
-      trigger: 'sla.warning',
-      conditions: [],
-      actions: [
-        { type: 'send_notification', config: { channel: 'email', template: 'sla-warning' } },
-      ],
-    },
-  ];
-};
-
-const createWorkflow = async (workspaceId: string, workflow: any) => {
-  // Create a new workflow via API
-  return { ...workflow, id: Date.now().toString() };
-};
-
-const updateWorkflow = async (workspaceId: string, workflow: any) => {
-  // Update a workflow via API
-  return workflow;
-};
-
-const deleteWorkflow = async (workspaceId: string, id: string) => {
-  // Delete a workflow via API
-  return { success: true };
-};
-
-const toggleWorkflow = async (workspaceId: string, id: string, enabled: boolean) => {
-  // Toggle a workflow via API
-  return { id, is_enabled: enabled };
-};
-
-const duplicateWorkflow = async (workspaceId: string, id: string) => {
-  // Duplicate a workflow via API
-  return { id: Date.now().toString(), name: 'Copy of Workflow', is_enabled: false };
-};
-
 export default function WorkflowsConfigPage() {
   const queryClient = useQueryClient();
   const { user, isLoading: isLoadingAuthUser } = useAuth();

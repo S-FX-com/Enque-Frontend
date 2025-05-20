@@ -31,35 +31,6 @@ import {
   TableRow,
 } from '@/components/ui/table';
 
-// Mock service functions - replace with actual implementations
-const getCannedReplies = async (workspaceId: string) => {
-  // Fetch canned replies from your API
-  return [
-    { id: '1', title: 'Welcome Message', content: '<p>Thank you for contacting us!</p>', is_enabled: true },
-    { id: '2', title: 'Follow-up', content: '<p>Just checking in on your issue.</p>', is_enabled: true },
-  ];
-};
-
-const createCannedReply = async (workspaceId: string, title: string, content: string) => {
-  // Create a new canned reply via API
-  return { id: Date.now().toString(), title, content, is_enabled: true };
-};
-
-const updateCannedReply = async (workspaceId: string, id: string, title: string, content: string, isEnabled: boolean) => {
-  // Update a canned reply via API
-  return { id, title, content, is_enabled: isEnabled };
-};
-
-const deleteCannedReply = async (workspaceId: string, id: string) => {
-  // Delete a canned reply via API
-  return { success: true };
-};
-
-const toggleCannedReply = async (workspaceId: string, id: string, enabled: boolean) => {
-  // Toggle a canned reply via API
-  return { id, is_enabled: enabled };
-};
-
 export default function CannedRepliesConfigPage() {
   const queryClient = useQueryClient();
   const { user, isLoading: isLoadingAuthUser } = useAuth();
@@ -101,7 +72,17 @@ export default function CannedRepliesConfigPage() {
   });
 
   const updateReplyMutation = useMutation({
-    mutationFn: async ({ id, title, content, isEnabled }: { id: string; title: string; content: string; isEnabled: boolean }) => {
+    mutationFn: async ({
+      id,
+      title,
+      content,
+      isEnabled,
+    }: {
+      id: string;
+      title: string;
+      content: string;
+      isEnabled: boolean;
+    }) => {
       if (!workspaceId) throw new Error('Workspace ID is missing');
       return updateCannedReply(workspaceId, id, title, content, isEnabled);
     },
@@ -240,7 +221,9 @@ export default function CannedRepliesConfigPage() {
               </DialogTrigger>
               <DialogContent className="sm:max-w-2xl">
                 <DialogHeader>
-                  <DialogTitle>{selectedReply ? 'Edit Canned Reply' : 'Create New Canned Reply'}</DialogTitle>
+                  <DialogTitle>
+                    {selectedReply ? 'Edit Canned Reply' : 'Create New Canned Reply'}
+                  </DialogTitle>
                   <DialogDescription>
                     {selectedReply
                       ? 'Update this canned reply for your team to use.'
@@ -254,7 +237,7 @@ export default function CannedRepliesConfigPage() {
                       id="title"
                       placeholder="Enter a descriptive title"
                       value={replyTitle}
-                      onChange={(e) => setReplyTitle(e.target.value)}
+                      onChange={e => setReplyTitle(e.target.value)}
                     />
                   </div>
                   <div className="space-y-2">
@@ -274,8 +257,8 @@ export default function CannedRepliesConfigPage() {
                     {createReplyMutation.isPending || updateReplyMutation.isPending
                       ? 'Saving...'
                       : selectedReply
-                      ? 'Update Reply'
-                      : 'Create Reply'}
+                        ? 'Update Reply'
+                        : 'Create Reply'}
                   </Button>
                 </DialogFooter>
               </DialogContent>
@@ -288,11 +271,12 @@ export default function CannedRepliesConfigPage() {
             <AlertTitle>About Canned Replies</AlertTitle>
             <AlertDescription>
               <p className="mb-2">
-                Canned replies help your team respond quickly and consistently to common customer inquiries.
+                Canned replies help your team respond quickly and consistently to common customer
+                inquiries.
               </p>
               <p>
-                You can use placeholders like <strong>[Customer Name]</strong> that will be automatically replaced
-                when sending replies.
+                You can use placeholders like <strong>[Customer Name]</strong> that will be
+                automatically replaced when sending replies.
               </p>
             </AlertDescription>
           </Alert>
@@ -323,7 +307,7 @@ export default function CannedRepliesConfigPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {cannedReplies.map((reply) => (
+                {cannedReplies.map(reply => (
                   <TableRow key={reply.id}>
                     <TableCell className="font-medium">{reply.title}</TableCell>
                     <TableCell>
@@ -341,18 +325,10 @@ export default function CannedRepliesConfigPage() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleEdit(reply)}
-                        >
+                        <Button variant="outline" size="sm" onClick={() => handleEdit(reply)}>
                           Edit
                         </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleDelete(reply.id)}
-                        >
+                        <Button variant="outline" size="sm" onClick={() => handleDelete(reply.id)}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
@@ -364,10 +340,7 @@ export default function CannedRepliesConfigPage() {
           ) : (
             <div className="text-center py-8">
               <p className="text-muted-foreground mb-4">No canned replies found</p>
-              <Button
-                onClick={() => setIsDialogOpen(true)}
-                variant="outline"
-              >
+              <Button onClick={() => setIsDialogOpen(true)} variant="outline">
                 Create your first canned reply
               </Button>
             </div>
