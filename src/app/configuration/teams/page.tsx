@@ -419,7 +419,15 @@ const TeamsPage = () => {
                         <div className="flex items-center">
                           <Users className="h-4 w-4 mr-1 text-muted-foreground" />
                           {team.agents?.length > 0 ? (
-                            <span>{team.agents.length} agent(s)</span>
+                            <span>
+                              {team.agents
+                                .map(
+                                  teamAgent =>
+                                    allAgents.filter(agent => teamAgent.agent_id === agent.id)[0]
+                                      .name
+                                )
+                                .join(', ')}
+                            </span>
                           ) : (
                             <span className="text-gray-400 italic">No agents</span>
                           )}
