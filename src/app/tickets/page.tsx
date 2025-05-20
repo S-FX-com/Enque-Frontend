@@ -207,7 +207,7 @@ function TicketsClientContent() {
       return nextPageParam;
     },
     initialPageParam: 0,
-    staleTime: 1000 * 60,
+    staleTime: 0,
     refetchInterval: 5000,
     refetchIntervalInBackground: true,
   });

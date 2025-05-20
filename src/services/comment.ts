@@ -1,5 +1,6 @@
 import { fetchAPI } from '@/lib/fetch-api'; // Corrected import name
 import { IComment } from '@/typescript/comment';
+import { ITicket } from '@/typescript/ticket'; // Import ITicket type
 import { AppConfigs } from '@/configs'; // Import AppConfigs
 
 /**
@@ -65,21 +66,25 @@ export interface CreateCommentPayload {
  * Creates a new comment for a specific task.
  * @param taskId - The ID of the task.
  * @param payload - The comment data (content, is_private).
- * @returns A promise that resolves to the newly created comment.
+ * @returns A promise that resolves to the newly created comment and updated task data.
  */
+export interface CommentResponseData {
+  comment: IComment;
+  task: ITicket; // Using proper ITicket type instead of any
+  assignee_changed: boolean;
+}
+
 export const createComment = async (
   taskId: number,
   payload: CreateCommentPayload
-): Promise<IComment> => {
-  // Return the created IComment on success
+): Promise<CommentResponseData> => {
+  // Return the created IComment and task data on success
   try {
     // Construct the full URL
     const url = `${AppConfigs.api}/tasks/${taskId}/comments`;
 
-    // Use fetchAPI.POST and expect BaseResponse<IComment>
-    // The backend likely infers agent_id and workspace_id from the token
-    // No need for 'as any' now that CreateCommentPayload is compatible
-    const response = await fetchAPI.POST<IComment>(url, payload);
+    // Use fetchAPI.POST and expect BaseResponse<CommentResponseData>
+    const response = await fetchAPI.POST<CommentResponseData>(url, payload);
 
     if (!response.success || !response.data) {
       // Handle API error response
@@ -88,7 +93,7 @@ export const createComment = async (
       throw new Error(errorMessage);
     }
 
-    // Return the newly created comment data
+    // Return the response data containing both comment and updated task
     return response.data;
   } catch (error) {
     console.error('Error creating comment:', error);

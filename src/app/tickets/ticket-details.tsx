@@ -33,16 +33,36 @@ interface Props {
   onTicketUpdate?: (updatedTicket: ITicket) => void;
 }
 
-export function TicketDetail({ ticket, onClose, onTicketUpdate }: Props) {
+export function TicketDetail({ ticket: initialTicket, onClose, onTicketUpdate }: Props) {
   const queryClient = useQueryClient();
   const [agents, setAgents] = useState<Agent[]>([]);
   const [isLoadingAgents, setIsLoadingAgents] = useState(true);
-  const [isUpdatingPriority, setIsUpdatingPriority] = useState(false);
   const [isUpdatingAssignee, setIsUpdatingAssignee] = useState(false);
   const [isUpdatingTeam, setIsUpdatingTeam] = useState(false);
   const [isUpdatingCategory, setIsUpdatingCategory] = useState(false);
+  const [isUpdatingPriority, setIsUpdatingPriority] = useState(false);
   const [isClosingTicket, setIsClosingTicket] = useState(false);
   const [isResolvingTicket, setIsResolvingTicket] = useState(false);
+  const [ticket, setTicket] = useState<ITicket | null>(initialTicket);
+
+  // Get teams data from React Query
+  const { data: teams = [], isLoading: isLoadingTeams } = useQuery<Team[], Error>({
+    queryKey: ['teams'],
+    queryFn: getTeams,
+    staleTime: 1000 * 60 * 5,
+  });
+
+  // Get categories data from React Query
+  const { data: categories = [], isLoading: isLoadingCategories } = useQuery<ICategory[], Error>({
+    queryKey: ['categories'],
+    queryFn: () => getCategories(),
+    staleTime: 1000 * 60 * 5,
+  });
+
+  useEffect(() => {
+    setTicket(initialTicket);
+  }, [initialTicket]);
+
   useEffect(() => {
     const fetchAgents = async () => {
       setIsLoadingAgents(true);
@@ -57,17 +77,7 @@ export function TicketDetail({ ticket, onClose, onTicketUpdate }: Props) {
     };
     fetchAgents();
   }, []);
-  const { data: teams = [], isLoading: isLoadingTeams } = useQuery<Team[], Error>({
-    queryKey: ['teams'],
-    queryFn: getTeams,
-    staleTime: 1000 * 60 * 5,
-  });
 
-  const { data: categories = [], isLoading: isLoadingCategories } = useQuery<ICategory[], Error>({
-    queryKey: ['categories'],
-    queryFn: () => getCategories(),
-    staleTime: 1000 * 60 * 5,
-  });
   const updateFieldMutation = useMutation<
     ITicket,
     Error,
@@ -350,7 +360,17 @@ export function TicketDetail({ ticket, onClose, onTicketUpdate }: Props) {
 
         <div className="flex-1 flex gap-4 p-4 pt-10 overflow-y-auto">
           <div className="flex-1 min-w-0">
-            <TicketConversation ticket={ticket} />
+            <TicketConversation
+              ticket={ticket!}
+              onTicketUpdate={updatedTicket => {
+                // Update the ticket in state
+                setTicket(updatedTicket);
+                // Call the parent's onTicketUpdate callback if provided
+                if (onTicketUpdate) {
+                  onTicketUpdate(updatedTicket);
+                }
+              }}
+            />
           </div>
           <div className="border-l border-border"></div>
           <div className="w-56 flex-shrink-0 space-y-4 flex flex-col pr-2">

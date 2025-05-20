@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import '@cyntler/react-doc-viewer/dist/index.css'; // Estilos para DocViewer
+import '@cyntler/react-doc-viewer/dist/index.css';
 import { formatDistanceToNow } from 'date-fns';
 import Avatar from 'boring-avatars';
 import { IComment, IAttachment } from '@/typescript/comment';
@@ -16,14 +16,12 @@ import {
 } from '@fluentui/react-icons';
 import DocViewer, { DocViewerRenderers } from '@cyntler/react-doc-viewer';
 
-// Importaciones de MUI
 import Modal from '@mui/material/Modal';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
-import MuiCloseIcon from '@mui/icons-material/Close'; // Alias para el icono de cierre de MUI
+import MuiCloseIcon from '@mui/icons-material/Close';
 
-// Definición de colores para los tipos de archivo
 const fileTypeColors: { [key: string]: string } = {
   pdf: '#D93025',
   word: '#2D5B9F',
@@ -38,12 +36,10 @@ const fileTypeColors: { [key: string]: string } = {
   generic_attach: '#737373',
 };
 
-// Interfaz Props restaurada a su posición original
 interface Props {
   comment: IComment;
 }
 
-// Helper function to parse sender info from comment content
 const parseSenderFromContent = (content: string): { name: string; email: string } | null => {
   // Primero buscar el nuevo formato especial
   const metadataMatch = content.match(/<original-sender>(.*?)\|(.*?)<\/original-sender>/);
@@ -51,7 +47,6 @@ const parseSenderFromContent = (content: string): { name: string; email: string 
     return { name: metadataMatch[1].trim(), email: metadataMatch[2].trim() };
   }
 
-  // Si no encuentra el nuevo formato, intentar con el formato anterior
   const match = content.match(/<p><strong>From:<\/strong>\s*(.*?)\s*<(.*?)><\/p>(?:<hr>)?/);
   if (match && match[1] && match[2]) {
     return { name: match[1].trim(), email: match[2].trim() };
@@ -82,7 +77,6 @@ function findQuoteStartIndex(html: string): number {
   for (const pattern of patterns) {
     const match = html.match(pattern);
     if (match && match.index !== undefined) {
-      // Avoid matching the <hr> added by our backend parser if it's right at the start
       if (pattern.source === '<hr/i' && match.index < 10) {
         continue;
       }
@@ -94,12 +88,10 @@ function findQuoteStartIndex(html: string): number {
   return earliestIndex;
 }
 
-// Helper para obtener el icono del archivo
 const getFileIcon = (contentType: string, className: string = 'h-5 w-5 mr-1.5 flex-shrink-0') => {
-  let fileTypeKey = 'generic_attach'; // Clave por defecto
-  let iconComponent; // Variable para el componente del icono
+  let fileTypeKey = 'generic_attach';
+  let iconComponent;
 
-  // Determinar la clave del tipo de archivo y el componente del icono
   if (contentType === 'application/pdf') {
     fileTypeKey = 'pdf';
     iconComponent = DocumentPdfIcon;
@@ -108,19 +100,19 @@ const getFileIcon = (contentType: string, className: string = 'h-5 w-5 mr-1.5 fl
     contentType === 'application/msword'
   ) {
     fileTypeKey = 'word';
-    iconComponent = FluentDocumentIcon; // Usando genérico, pero se coloreará como Word
+    iconComponent = FluentDocumentIcon;
   } else if (
     contentType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
     contentType === 'application/vnd.ms-excel'
   ) {
     fileTypeKey = 'excel';
-    iconComponent = FluentDocumentIcon; // Usando genérico, pero se coloreará como Excel
+    iconComponent = FluentDocumentIcon;
   } else if (
     contentType === 'application/vnd.openxmlformats-officedocument.presentationml.presentation' ||
     contentType === 'application/vnd.ms-powerpoint'
   ) {
     fileTypeKey = 'powerpoint';
-    iconComponent = FluentDocumentIcon; // Usando genérico, pero se coloreará como PowerPoint
+    iconComponent = FluentDocumentIcon;
   } else if (contentType.startsWith('image/')) {
     fileTypeKey = 'image';
     iconComponent = FluentImageIcon;
@@ -146,7 +138,7 @@ const getFileIcon = (contentType: string, className: string = 'h-5 w-5 mr-1.5 fl
 
   const iconColor = fileTypeColors[fileTypeKey] || fileTypeColors.generic_attach;
   const iconStyle = { fontSize: '20px', color: iconColor };
-  const PassThroughComponent = iconComponent; // Para que JSX lo interprete como componente
+  const PassThroughComponent = iconComponent;
 
   return <PassThroughComponent className={className} style={iconStyle} />;
 };
@@ -161,26 +153,23 @@ const formatFileSize = (bytes: number, decimals = 2) => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 };
 
-// Helper function to clean specific reply preamble lines
 const cleanReplyPreamble = (html: string): string => {
   if (!html) return '';
-  // Pattern for: "El [día], [dd] [mes] [aaaa] a la(s) [hh:mm] [a.m./p.m.], [Nombre] ([Email]) escribió:"
+
   const spanishReplyHeaderPattern =
     /El (?:lun|mar|mié|jue|vie|sáb|dom), \d{1,2} (?:ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic) \d{4} a la\(s\) \d{1,2}:\d{2}(?:&#8239;|\s)?(?:a\.m\.|p\.m\.), [^<]+ \([^)]+\) escribió:/i;
 
   let cleanedHtml = html.replace(spanishReplyHeaderPattern, '');
 
-  // Remove potentially empty <p> tags that might result from the replacement
   cleanedHtml = cleanedHtml.replace(/<p>\s*<\/p>/gi, '');
-  // Trim leading <br> tags that might be left alone
+
   cleanedHtml = cleanedHtml.replace(/^\s*(?:<br\s*\/?>\s*)+/i, '');
-  // Trim trailing <br> tags that might be left alone (corregido)
+
   cleanedHtml = cleanedHtml.replace(/(?:<br\s*\/?>\s*)+$/i, '');
 
   return cleanedHtml.trim();
 };
 
-// Estilos para el Box del Modal de MUI
 const muiModalStyle = {
   position: 'absolute',
   top: '50%',
@@ -219,7 +208,6 @@ export function ConversationMessageItem({ comment }: Props) {
     senderName = parsedSender.name;
     senderIdentifier = parsedSender.email;
 
-    // Eliminar los metadatos del contenido a mostrar si está en el nuevo formato
     if (fullContent.includes('<original-sender>')) {
       fullContent = fullContent.replace(/<original-sender>.*?<\/original-sender>/g, '');
     } else {
@@ -256,7 +244,6 @@ export function ConversationMessageItem({ comment }: Props) {
   let showToggleButton = false;
 
   if (isUserReply && fullContent) {
-    // Añadido check para fullContent por si acaso
     const quoteStartIndex = findQuoteStartIndex(fullContent);
     if (quoteStartIndex !== -1) {
       displayReplyPart = fullContent.substring(0, quoteStartIndex);
@@ -271,29 +258,23 @@ export function ConversationMessageItem({ comment }: Props) {
       displayReplyPart = fullContent;
     }
   } else if (fullContent) {
-    // Si no es UserReply (podría ser initialMessage o solo Agent), displayReplyPart es fullContent
     displayReplyPart = fullContent;
   } else {
-    displayReplyPart = ''; // Asegurar que displayReplyPart sea siempre un string
+    displayReplyPart = '';
   }
 
-  // Asegurar que displayReplyPart es un string antes de limpiarlo
   let currentDisplayReplyPart = typeof displayReplyPart === 'string' ? displayReplyPart : '';
 
-  // Clean the Spanish reply header from the determined reply part
   if (currentDisplayReplyPart && (isUserReply || isInitialMessage)) {
     currentDisplayReplyPart = cleanReplyPreamble(currentDisplayReplyPart);
   }
 
-  // Determinar si el contenido del comentario es solo el mensaje de "contenía adjuntos"
-  // y hay adjuntos reales para mostrar. Si es así, no mostramos este mensaje.
   const isOnlyAttachmentPlaceholder =
     comment.content?.startsWith('Correo original contenía') &&
     comment.content?.endsWith('adjunto(s).') &&
     comment.attachments &&
     comment.attachments.length > 0;
 
-  // Función para hacer las imágenes extraídas clickeables
   useEffect(() => {
     const makeImagesClickable = () => {
       if (!currentDisplayReplyPart) {
@@ -303,10 +284,8 @@ export function ConversationMessageItem({ comment }: Props) {
       const parser = new DOMParser();
       const doc = parser.parseFromString(currentDisplayReplyPart, 'text/html');
 
-      // Buscar imágenes con la clase especial añadida por el backend
       const imgElements = doc.querySelectorAll('img.email-extracted-image');
 
-      // Simplemente asegurar que las imágenes tengan cursor pointer para indicar que son clickeables
       imgElements.forEach(img => {
         const imgElement = img as HTMLImageElement;
         imgElement.style.cursor = 'pointer';
@@ -316,11 +295,9 @@ export function ConversationMessageItem({ comment }: Props) {
     makeImagesClickable();
   }, [currentDisplayReplyPart]);
 
-  // Handler para manejar clics en imágenes extraídas dentro del contenido
   const handleImageClick = (e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
     if (target.tagName === 'IMG' && target.classList.contains('email-extracted-image')) {
-      // Si tiene src, abrir la imagen directamente
       const src = target.getAttribute('src');
       if (src) {
         window.open(src, '_blank');
@@ -335,7 +312,7 @@ export function ConversationMessageItem({ comment }: Props) {
 
   const handleClosePreview = () => {
     setIsPreviewOpen(false);
-    setSelectedAttachment(null); // Limpiar el adjunto seleccionado al cerrar
+    setSelectedAttachment(null);
   };
 
   const apiBaseUrl =
@@ -380,7 +357,6 @@ export function ConversationMessageItem({ comment }: Props) {
                   (Private Note)
                 </span>
               )}
-              {/* Si es el placeholder de adjuntos, y el comentario es privado, mostrar "Archivos Adjuntos" */}
               {isOnlyAttachmentPlaceholder && comment.is_private && (
                 <span className="ml-2 text-xs text-muted-foreground">(Archivos Adjuntos)</span>
               )}
@@ -418,16 +394,15 @@ export function ConversationMessageItem({ comment }: Props) {
                 />
               )}
 
-            {/* Sección para mostrar adjuntos */}
             {comment.attachments && comment.attachments.length > 0 && (
               <div
                 className={cn('mt-3 pt-3 border-t border-slate-200 dark:border-slate-700', {
-                  'mt-0 pt-0 border-t-0': isOnlyAttachmentPlaceholder, // No añadir margen ni borde superior si solo son adjuntos
+                  'mt-0 pt-0 border-t-0': isOnlyAttachmentPlaceholder,
                 })}
               >
                 <p
                   className={cn('text-xs font-medium text-muted-foreground mb-2', {
-                    'sr-only': isOnlyAttachmentPlaceholder, // Ocultar "Attachments:" si es el único contenido
+                    'sr-only': isOnlyAttachmentPlaceholder,
                   })}
                 >
                   Attachments:
@@ -479,7 +454,6 @@ export function ConversationMessageItem({ comment }: Props) {
         </div>
       </div>
 
-      {/* Modal de MUI para la vista previa del documento */}
       {selectedAttachment && (
         <Modal
           open={isPreviewOpen}
@@ -514,10 +488,10 @@ export function ConversationMessageItem({ comment }: Props) {
               sx={{
                 flexGrow: 1,
                 overflow: 'hidden',
-                p: { xs: 0.5, sm: 1 }, // Reducir un poco el padding para dar más espacio
-                width: '100%', // Asegurar ancho completo
-                height: '100%', // Asegurar altura completa para que el DocViewer se expanda
-                minHeight: 0, // Importante en contextos flex para que el hijo no se desborde
+                p: { xs: 0.5, sm: 1 },
+                width: '100%',
+                height: '100%',
+                minHeight: 0,
               }}
             >
               <DocViewer
@@ -543,7 +517,6 @@ export function ConversationMessageItem({ comment }: Props) {
         </Modal>
       )}
 
-      {/* Estilos globales JSX para el iframe de DocViewer y sus contenedores */}
       <style jsx global>{`
         #msdoc-iframe {
           width: 100% !important;
@@ -559,20 +532,36 @@ export function ConversationMessageItem({ comment }: Props) {
           display: flex !important;
           flex-direction: column !important;
         }
-        /* Si #msdoc-renderer es el padre directo y necesita ser block para que el iframe se expanda */
+
         #msdoc-renderer {
-          display: block !important; /* O podrías probar flex si el de arriba no funciona solo */
+          display: block !important;
         }
-        /* Estilos para asegurar que los párrafos vacíos tengan altura adecuada */
+
         .prose p {
           min-height: 1.5em;
           margin-bottom: 0.5em;
         }
-        /* Asegurar que el subrayado se muestre correctamente */
+        .prose .email-signature p {
+          margin-top: 0 !important;
+          margin-bottom: 0 !important;
+          line-height: 1.3 !important;
+        }
+        .prose .email-signature p strong,
+        .prose .email-signature p em {
+          display: inline-block;
+        }
+        .prose .email-signature br {
+          line-height: 1 !important;
+        }
+
+        .prose .email-signature p + p {
+          margin-top: 0 !important;
+        }
+
         .prose u {
           text-decoration: underline;
         }
-        /* Estilo forzado para enlaces en la conversación */
+
         .prose a {
           color: #2563eb !important;
           text-decoration: underline !important;
@@ -581,7 +570,7 @@ export function ConversationMessageItem({ comment }: Props) {
           color: #60a5fa !important;
           text-decoration: underline !important;
         }
-        /* Estilos para listas en el contenido de la conversación */
+
         .prose ul {
           list-style-type: disc !important;
           padding-left: 1.5em !important;
@@ -601,7 +590,7 @@ export function ConversationMessageItem({ comment }: Props) {
           margin-top: 0.3em !important;
           margin-bottom: 0 !important;
         }
-        /* Ajustes para modo oscuro */
+
         .dark .prose ul,
         .dark .prose ol,
         .dark .prose li {

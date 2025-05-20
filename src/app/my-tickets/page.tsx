@@ -134,7 +134,7 @@ function MyTicketsClientContent() {
     },
     initialPageParam: 0,
     staleTime: 1000 * 60,
-    refetchInterval: 5000,
+    refetchInterval: 2000,
     refetchIntervalInBackground: true,
     enabled: !!currentUser?.id,
   });

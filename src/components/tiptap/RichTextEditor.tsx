@@ -175,7 +175,7 @@ export function RichTextEditor({
         HTMLAttributes: {
           width: 150,
           height: 92,
-          style: 'width: 150px; height: 92px; max-width: 150px;',
+          style: 'width: 150px; height: 92px; max-width: 150px; object-fit: scale-down;',
         },
       }).extend({
         // Extend the Image extension to add custom attribute handling
@@ -202,7 +202,7 @@ export function RichTextEditor({
             },
             // Keep style attribute handling if we decide to use it later, otherwise remove
             style: {
-              default: 'width: 150px; height: 92px; max-width: 150px;',
+              default: 'width: 150px; height: 92px; max-width: 150px; object-fit: scale-down;',
               parseHTML: element => element.getAttribute('style'),
               renderHTML: attributes => {
                 return { style: attributes.style };

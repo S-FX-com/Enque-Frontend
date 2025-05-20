@@ -6,7 +6,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { fetchAPI } from '@/lib/fetch-api';
 import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
-import { Loader2, CheckCircle, Trash2 } from 'lucide-react';
+import { Loader2, CheckCircle, Trash2, RefreshCw } from 'lucide-react';
 import { Buffer } from 'buffer';
 
 interface MailboxConnection {
@@ -26,6 +26,7 @@ export default function MailboxPage() {
   const [isLoadingConnect, setIsLoadingConnect] = useState(false);
   const [isLoadingList, setIsLoadingList] = useState(true);
   const [disconnectingId, setDisconnectingId] = useState<number | null>(null);
+  const [reconnectingId, setReconnectingId] = useState<number | null>(null);
   const [connections, setConnections] = useState<MailboxConnection[]>([]);
   const [error, setError] = useState<string | null>(null);
 
@@ -155,6 +156,50 @@ export default function MailboxPage() {
     }
   };
 
+  const handleReconnect = async (connectionId: number) => {
+    if (!workspaceId || !user) {
+      toast.error('Error: Workspace or user information is missing.');
+      setError('Workspace or user information is missing.');
+      return;
+    }
+
+    setReconnectingId(connectionId);
+    setError(null);
+    try {
+      const apiUrlBase =
+        process.env.NEXT_PUBLIC_API_BASE_URL || 'https://enque-backend-production.up.railway.app';
+      const reconnectUrl = `${apiUrlBase}/v1/microsoft/connection/${connectionId}/reconnect`;
+
+      const stateObject = {
+        workspace_id: workspaceId.toString(),
+        agent_id: user.id.toString(),
+        connection_id: connectionId.toString(),
+        original_hostname: window.location.hostname,
+      };
+      const stateJsonString = JSON.stringify(stateObject);
+      let base64State = Buffer.from(stateJsonString).toString('base64');
+      base64State = base64State.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+
+      const response = await fetchAPI.POST<{ auth_url: string }>(reconnectUrl, {
+        state: base64State,
+      });
+
+      if (response.data?.auth_url) {
+        window.location.href = response.data.auth_url;
+      } else {
+        throw new Error('Authorization URL not received from backend.');
+      }
+    } catch (err) {
+      console.error(`Failed to reconnect mailbox ${connectionId}:`, err);
+      const errorMsg =
+        err instanceof Error ? err.message : 'An unknown error occurred during reconnection.';
+      toast.error(errorMsg);
+      setError(errorMsg);
+    } finally {
+      setReconnectingId(null);
+    }
+  };
+
   return (
     <>
       <Card>
@@ -188,19 +233,36 @@ export default function MailboxPage() {
                         <p className="text-xs text-muted-foreground">{conn.email}</p>
                       </div>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDisconnect(conn.id)}
-                      disabled={disconnectingId === conn.id}
-                      aria-label={`Disconnect ${conn.email}`}
-                    >
-                      {disconnectingId === conn.id ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Trash2 className="h-4 w-4 text-red-500 hover:text-red-700" />
-                      )}
-                    </Button>
+                    <div className="flex items-center space-x-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleReconnect(conn.id)}
+                        disabled={reconnectingId === conn.id}
+                        aria-label={`Reconnect ${conn.email}`}
+                        title="Reconnect mailbox"
+                      >
+                        {reconnectingId === conn.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <RefreshCw className="h-4 w-4 text-blue-500 hover:text-blue-700" />
+                        )}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDisconnect(conn.id)}
+                        disabled={disconnectingId === conn.id}
+                        aria-label={`Disconnect ${conn.email}`}
+                        title="Disconnect mailbox"
+                      >
+                        {disconnectingId === conn.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4 text-red-500 hover:text-red-700" />
+                        )}
+                      </Button>
+                    </div>
                   </li>
                 ))}
               </ul>

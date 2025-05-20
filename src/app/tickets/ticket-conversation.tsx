@@ -11,7 +11,12 @@ import { ITicket } from '@/typescript/ticket';
 import { IComment } from '@/typescript/comment';
 import { Agent } from '@/typescript/agent';
 import { getAgentById } from '@/services/agent';
-import { getCommentsByTaskId, createComment, CreateCommentPayload } from '@/services/comment';
+import {
+  getCommentsByTaskId,
+  createComment,
+  CreateCommentPayload,
+  CommentResponseData,
+} from '@/services/comment';
 import { ConversationMessageItem } from '@/components/conversation-message-item';
 import { useAuth } from '@/hooks/use-auth';
 import { RichTextEditor } from '@/components/tiptap/RichTextEditor';
@@ -22,9 +27,10 @@ import { getEnabledGlobalSignature } from '@/services/global-signature';
 
 interface Props {
   ticket: ITicket;
+  onTicketUpdate?: (updatedTicket: ITicket) => void;
 }
 
-export function TicketConversation({ ticket }: Props) {
+export function TicketConversation({ ticket, onTicketUpdate }: Props) {
   const queryClient = useQueryClient();
   const { user: currentUser } = useAuth();
   const [replyContent, setReplyContent] = useState('');
@@ -42,8 +48,8 @@ export function TicketConversation({ ticket }: Props) {
     queryKey: ['comments', ticket.id],
     queryFn: () => getCommentsByTaskId(ticket.id),
     enabled: !!ticket?.id,
-    staleTime: 1 * 60 * 1000,
-    refetchInterval: 5000,
+    staleTime: 3000,
+    refetchInterval: 2000,
     refetchIntervalInBackground: true,
   });
   const currentAgentId = currentUser?.id;
@@ -116,6 +122,21 @@ export function TicketConversation({ ticket }: Props) {
 
     // Envolver la firma en un div con clase para poder aplicar el estilo gris
     if (signatureToUse) {
+      // Aplicar formato GoDesk - Convertir multiple párrafos en formato con <br>
+      signatureToUse = signatureToUse
+        // Reemplazar combinación </strong></p><p><em> con </strong><br><em>
+        .replace(/<\/strong><\/p>\s*<p>\s*<em>/g, '</strong><br><em>')
+        // Reemplazar combinación </em></p><p><em> con </em><br><em>
+        .replace(/<\/em><\/p>\s*<p>\s*<em>/g, '</em><br><em>')
+        // Otros patrones comunes en firmas
+        .replace(/<\/strong><\/p>\s*<p>/g, '</strong><br>')
+        .replace(/<\/em><\/p>\s*<p>/g, '</em><br>')
+        // Separar nombre/título/compañía/etc
+        .replace(/<\/p>\s*<p>\s*<strong>/g, '<br><strong>')
+        .replace(/<\/p>\s*<p>\s*<em>/g, '<br><em>')
+        // Cualquier otro cierre/apertura de párrafo
+        .replace(/<\/p>\s*<p>/g, '<br>');
+
       signatureToUse = `<div class="email-signature text-gray-500">${signatureToUse}</div>`;
     }
 
@@ -144,10 +165,10 @@ export function TicketConversation({ ticket }: Props) {
   };
 
   // Procesar adjuntos y enviar comentario
-  const sendComment = async (content: string, isPrivate: boolean) => {
+  const sendComment = async (content: string, isPrivate: boolean): Promise<CommentResponseData> => {
     if (!currentUser) {
       toast.error('Authentication error. User not found.');
-      return;
+      throw new Error('Authentication error. User not found.');
     }
 
     let attachmentIds: number[] = [];
@@ -161,7 +182,7 @@ export function TicketConversation({ ticket }: Props) {
       } catch (error) {
         console.error('Error uploading attachments:', error);
         toast.error('Failed to upload attachments');
-        return;
+        throw new Error('Failed to upload attachments');
       }
     }
 
@@ -180,13 +201,46 @@ export function TicketConversation({ ticket }: Props) {
 
   const createCommentMutation = useMutation({
     mutationFn: () => sendComment(replyContent, isPrivateNote),
-    onSuccess: () => {
+    onSuccess: (data: CommentResponseData) => {
+      // Mostrar inmediatamente el nuevo comentario actualizando la caché directamente
+      if (data.comment) {
+        queryClient.setQueryData<IComment[]>(['comments', ticket.id], oldComments => {
+          // Si no hay comentarios previos, crear un array con el nuevo comentario
+          if (!oldComments) return [data.comment];
+          // Asegurarse de que el comentario no esté ya en la lista
+          if (!oldComments.some(comment => comment.id === data.comment.id)) {
+            return [data.comment, ...oldComments];
+          }
+          return oldComments;
+        });
+      }
+
+      // También invalida para asegurar sincronización con el servidor
       queryClient.invalidateQueries({ queryKey: ['comments', ticket.id] });
+
+      // Reset form state
       setReplyContent('');
       setSelectedAttachments([]); // Limpiar adjuntos después de enviar exitosamente
       setIsPrivateNote(false);
       setEditorKey(prev => prev + 1); // Resetear editor por completo para limpiar cualquier estado residual
+
+      // Show success message
       toast.success('Reply sent successfully.');
+
+      // If the updated ticket data includes a new assignee, update the ticket in the cache
+      if (data.task && onTicketUpdate) {
+        console.log('Ticket updated from comment creation:', data.task);
+        onTicketUpdate(data.task);
+
+        // Update the ticket in the cache
+        queryClient.setQueryData(['ticket', ticket.id], data.task);
+        queryClient.invalidateQueries({ queryKey: ['tickets'] });
+
+        // Show notification if the assignee changed
+        if (data.assignee_changed && currentUser) {
+          toast.info(`You were automatically assigned to this ticket.`);
+        }
+      }
     },
     onError: error => {
       console.error('Failed to send reply:', error);

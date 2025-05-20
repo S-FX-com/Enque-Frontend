@@ -12,7 +12,7 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
       new QueryClient({
         defaultOptions: {
           queries: {
-            staleTime: 1000 * 60 * 5,
+            staleTime: 1000 * 30,
             gcTime: 1000 * 60 * 60 * 24,
           },
         },
@@ -21,7 +21,6 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      // Create an async persister
       const asyncStoragePersister = createAsyncStoragePersister({
         storage: {
           getItem: async key => get(key),
@@ -33,8 +32,63 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
       persistQueryClient({
         queryClient,
         persister: asyncStoragePersister,
-        maxAge: 1000 * 60 * 60 * 24, // 24 hours
+        maxAge: 1000 * 60 * 60 * 24,
       });
+    }
+  }, [queryClient]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const backgroundRefresh = () => {
+        // Buscar todas las queries de tickets
+        const hasTicketsQuery = queryClient.getQueryCache().findAll({
+          queryKey: ['tickets'],
+        });
+        const hasMyTicketsQuery = queryClient.getQueryCache().findAll({
+          queryKey: ['tickets', 'my'],
+        });
+
+        // Buscar todas las queries de comentarios
+        const commentsQueries = queryClient.getQueryCache().findAll({
+          predicate: query => Array.isArray(query.queryKey) && query.queryKey[0] === 'comments',
+        });
+
+        if (hasTicketsQuery.length > 0) {
+          console.log('Background refresh: Refreshing All Tickets');
+          queryClient.refetchQueries({
+            queryKey: ['tickets'],
+            type: 'all',
+            exact: false,
+          });
+        }
+
+        if (hasMyTicketsQuery.length > 0) {
+          console.log('Background refresh: Refreshing My Tickets');
+          queryClient.refetchQueries({
+            queryKey: ['tickets', 'my'],
+            type: 'all',
+            exact: true,
+          });
+        }
+
+        // Refrescar todos los comentarios abiertos
+        if (commentsQueries.length > 0) {
+          console.log(`Background refresh: Refreshing ${commentsQueries.length} comment threads`);
+          commentsQueries.forEach(query => {
+            queryClient.refetchQueries({
+              queryKey: query.queryKey,
+              type: 'all',
+              exact: true,
+            });
+          });
+        }
+      };
+
+      const intervalId = setInterval(backgroundRefresh, 10000);
+
+      return () => {
+        clearInterval(intervalId);
+      };
     }
   }, [queryClient]);
 

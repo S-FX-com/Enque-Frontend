@@ -1,29 +1,57 @@
-/* Basic Tiptap Styling */
-
-/* Ensure the editor content area has focus styles if needed */
 .ProseMirror:focus {
   outline: none;
-  /* Add other focus styles if desired */
 }
 
-/* Estilo para la firma de email */
 .email-signature,
 .ProseMirror .email-signature {
-  color: #6b7280 !important; /* text-gray-500 */
+  color: #6b7280 !important;
+  line-height: 1.3 !important;
 }
 
 .email-signature p,
 .ProseMirror .email-signature p {
   color: #6b7280 !important;
+  margin-top: 0 !important;
+  margin-bottom: 0.5em !important;
+  line-height: 1.3 !important;
 }
 
-/* Asegurar que el estilo se aplique también en el HTML renderizado de la conversación */
+.email-signature p strong {
+  display: inline-block;
+  margin-bottom: 0 !important;
+}
+
+.email-signature p em {
+  display: inline-block;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+.email-signature br {
+  line-height: 1 !important;
+}
+
+.email-signature p + p {
+  margin-top: 0 !important;
+}
+
+.email-signature p strong + br + em,
+.email-signature p em + br + em {
+  margin-top: -5px !important;
+}
+
 .prose .email-signature,
 .prose .email-signature p {
   color: #6b7280 !important;
+  margin-top: 0 !important;
+  margin-bottom: 0.5em !important;
+  line-height: 1.3 !important;
 }
 
-/* Style links within the editor */
+.prose .email-signature p + p {
+  margin-top: 0 !important;
+}
+
 .ProseMirror a {
   color: theme('colors.blue.600') !important;
   text-decoration: underline !important;
@@ -33,12 +61,10 @@
   color: theme('colors.blue.400') !important;
 }
 
-/* Asegurar que el subrayado se muestre correctamente */
 .ProseMirror u {
   text-decoration: underline;
 }
 
-/* Cuando se activa el enlace en el editor, resaltar su estado activo */
 .ProseMirror [data-type='link'],
 .ProseMirror a[href] {
   color: theme('colors.blue.600') !important;
@@ -48,27 +74,22 @@
 .dark .ProseMirror a[href] {
   color: theme('colors.blue.400') !important;
 }
-
-/* Override ANY styles for images within the editor to force fixed size */
 .ProseMirror img[width][height] {
-  /* Target images specifically having width/height attributes */
-  width: var(--img-width, 150px) !important; /* Use CSS variable or fallback */
-  height: var(--img-height, 92px) !important; /* Use CSS variable or fallback */
+  width: var(--img-width, 150px) !important;
+  height: var(--img-height, 92px) !important;
   max-width: var(--img-width, 150px) !important; /* Ensure max-width matches */
-  object-fit: contain; /* Optional: control how image fits if aspect ratio differs */
+  object-fit: scale-down; /* Changed from contain to scale-down to better preserve aspect ratio */
   margin-top: 0.5em !important; /* Add some margin back */
   margin-bottom: 0.5em !important;
 }
 
-/* Reset width/height for images *without* explicit dimensions if needed */
 .ProseMirror img:not([width]):not([height]) {
   max-width: 100%;
   height: auto;
-  margin-top: 1em; /* Default prose margins */
+  margin-top: 1em;
   margin-bottom: 1em;
 }
 
-/* Styles for bullet lists */
 .ProseMirror ul {
   list-style-type: disc;
   padding-left: 1.5em;
@@ -76,7 +97,6 @@
   color: inherit;
 }
 
-/* Styles for numbered lists */
 .ProseMirror ol {
   list-style-type: decimal;
   padding-left: 1.5em;
@@ -84,13 +104,11 @@
   color: inherit;
 }
 
-/* Styles for list items */
 .ProseMirror li {
   margin-bottom: 0.3em;
   color: inherit;
 }
 
-/* Nested lists */
 .ProseMirror li > ul,
 .ProseMirror li > ol {
   margin-top: 0.3em;
@@ -103,5 +121,3 @@
 .dark .ProseMirror li {
   color: theme('colors.slate.200');
 }
-
-/* Add any other custom styles for Tiptap elements here */

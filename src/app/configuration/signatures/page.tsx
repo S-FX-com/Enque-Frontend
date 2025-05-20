@@ -11,7 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Terminal, Info, AlertCircle, XCircle } from 'lucide-react';
+import { Terminal, Info, AlertCircle } from 'lucide-react';
 import {
   getGlobalSignature,
   updateGlobalSignature,
@@ -46,11 +46,10 @@ export default function GlobalSignatureConfigPage() {
     } else {
       // Set default template
       setSignatureContent(`
-<p><strong>[Agent Name]</strong></p>
-<p><em>[Agent Role]</em></p>
-<p><a href="https://yourcompany.com">Your Company</a></p>
-<p>Please add your company logo below:</p>
-<p></p>
+<p><strong>[Agent Name]</strong><br>
+<em>[Agent Role]</em><br>
+<em>Your Company Name</em></p>
+<p><img src="" alt="" width="150" height="92"></p>
       `);
       setIsEnabled(true);
     }
@@ -147,17 +146,6 @@ export default function GlobalSignatureConfigPage() {
           </div>
         </CardHeader>
         <CardContent>
-          {!isEnabled && globalSignatureData && (
-            <Alert className="mb-4 bg-muted">
-              <XCircle className="h-4 w-4 text-gray-500" />
-              <AlertTitle>Global Signature Disabled</AlertTitle>
-              <AlertDescription>
-                The global signature is disabled. Agents will use their personal signatures if
-                available.
-              </AlertDescription>
-            </Alert>
-          )}
-
           <Alert className="mb-6">
             <Info className="h-4 w-4" />
             <AlertTitle>About Global Signatures</AlertTitle>
@@ -165,7 +153,7 @@ export default function GlobalSignatureConfigPage() {
               <p className="mb-2">
                 This signature will be applied to all agents in your workspace.
               </p>
-              <p>
+              <p className="mb-2">
                 Use placeholders like <strong>[Agent Name]</strong> and{' '}
                 <strong>[Agent Role]</strong> that will be automatically replaced with each
                 agent&apos;s information when sending emails.
