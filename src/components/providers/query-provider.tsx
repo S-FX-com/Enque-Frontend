@@ -84,7 +84,9 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
         }
       };
 
-      const intervalId = setInterval(backgroundRefresh, 10000);
+      // Intervalo global de actualización - 30 segundos es suficiente ya que los componentes
+      // individuales tienen sus propios intervalos de actualización también
+      const intervalId = setInterval(backgroundRefresh, 30000);
 
       return () => {
         clearInterval(intervalId);

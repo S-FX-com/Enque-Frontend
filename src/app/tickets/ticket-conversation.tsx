@@ -48,8 +48,8 @@ export function TicketConversation({ ticket, onTicketUpdate }: Props) {
     queryKey: ['comments', ticket.id],
     queryFn: () => getCommentsByTaskId(ticket.id),
     enabled: !!ticket?.id,
-    staleTime: 3000,
-    refetchInterval: 2000,
+    staleTime: 1 * 60 * 1000,
+    refetchInterval: 13000,
     refetchIntervalInBackground: true,
   });
   const currentAgentId = currentUser?.id;

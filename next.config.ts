@@ -5,9 +5,6 @@ const nextConfig: NextConfig = {
   env: {
     NEXT_PUBLIC_JWT_SECRET: 'temporarysecret',
   },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
 };
 
 export default nextConfig;

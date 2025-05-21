@@ -120,7 +120,11 @@ export function RichTextEditor({
       StarterKit.configure({
         // Configure StarterKit extensions as needed
         // Ensure paragraph is enabled (default in StarterKit)
-        paragraph: {},
+        paragraph: {
+          HTMLAttributes: {
+            class: 'paragraph',
+          },
+        },
         heading: false, // Disable headings if not needed
         blockquote: false,
         codeBlock: false,
@@ -152,7 +156,13 @@ export function RichTextEditor({
       }),
       // Add HardBreak extension separately
       // This handles Shift+Enter and might influence Enter behavior in lists
-      HardBreak.configure(),
+      HardBreak.configure({
+        // Configurar para preservar breaks
+        keepMarks: true,
+        HTMLAttributes: {
+          class: 'hard-break',
+        },
+      }),
       Link.configure({
         // Enables link commands
         openOnClick: false,
@@ -217,8 +227,14 @@ export function RichTextEditor({
     content: content,
     editable: !disabled,
     onUpdate: ({ editor }) => {
-      // Get HTML content and pass it up
-      onChange(editor.getHTML());
+      // Obtener el HTML y asegurarse de que los párrafos vacíos tengan <br>
+      const html = editor.getHTML();
+
+      // Reemplazar párrafos vacíos con párrafos que contengan <br>
+      const fixedHtml = html.replace(/<p>\s*<\/p>/gi, '<p><br></p>');
+
+      // Pasar el HTML modificado
+      onChange(fixedHtml);
     },
     // Basic editor styling directly or via CSS file
     editorProps: {

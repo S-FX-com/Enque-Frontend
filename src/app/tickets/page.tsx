@@ -208,7 +208,7 @@ function TicketsClientContent() {
     },
     initialPageParam: 0,
     staleTime: 0,
-    refetchInterval: 5000,
+    refetchInterval: 15000,
     refetchIntervalInBackground: true,
   });
   const allTicketsData = React.useMemo(
