@@ -37,6 +37,10 @@ export function TicketDetail({ ticket: initialTicket, onClose, onTicketUpdate }:
   const queryClient = useQueryClient();
   const [agents, setAgents] = useState<Agent[]>([]);
   const [isLoadingAgents, setIsLoadingAgents] = useState(true);
+  const [isUpdatingAssignee, setIsUpdatingAssignee] = useState(false);
+  const [isUpdatingTeam, setIsUpdatingTeam] = useState(false);
+  const [isUpdatingCategory, setIsUpdatingCategory] = useState(false);
+  const [isUpdatingPriority, setIsUpdatingPriority] = useState(false);
   const [isClosingTicket, setIsClosingTicket] = useState(false);
   const [isResolvingTicket, setIsResolvingTicket] = useState(false);
   const [ticket, setTicket] = useState<ITicket | null>(initialTicket);
@@ -81,8 +85,8 @@ export function TicketDetail({ ticket: initialTicket, onClose, onTicketUpdate }:
       field: 'priority' | 'assignee_id' | 'team_id' | 'category_id';
       value: string | null;
       originalFieldValue: TicketPriority | number | null;
-    },
-    { previousTicket: ITicket | null }
+    }, // Type of variables passed to mutationFn
+    { previousTicket: ITicket | null } // Type of context
   >({
     mutationFn: async ({ field, value }) => {
       if (!ticket) throw new Error('No ticket selected for update');
@@ -103,28 +107,43 @@ export function TicketDetail({ ticket: initialTicket, onClose, onTicketUpdate }:
       }
       return updatedTicketData;
     },
-    onMutate: async () => {
-      // Ya no necesitamos hacer actualización optimista aquí, solo guardar estado previo
+    onMutate: async ({ field, value }) => {
       if (!ticket) return { previousTicket: null };
+      if (field === 'priority') setIsUpdatingPriority(true);
+      if (field === 'assignee_id') setIsUpdatingAssignee(true);
+      if (field === 'team_id') setIsUpdatingTeam(true);
+      if (field === 'category_id') setIsUpdatingCategory(true);
 
-      // Guardamos una copia del ticket antes de la actualización para posible reversión
-      return { previousTicket: { ...ticket } };
+      const previousTicket = { ...ticket };
+
+      let optimisticUpdateValue: TicketStatus | TicketPriority | number | null;
+      if (field === 'assignee_id' || field === 'team_id' || field === 'category_id') {
+        optimisticUpdateValue = value === 'null' || value === null ? null : parseInt(value, 10);
+      } else {
+        optimisticUpdateValue = value as TicketPriority;
+      }
+
+      const optimisticTicket = {
+        ...ticket,
+        [field]: optimisticUpdateValue,
+      };
+
+      if (onTicketUpdate) {
+        onTicketUpdate(optimisticTicket);
+      }
+      return { previousTicket };
     },
     onError: (error, variables, context) => {
       console.error(`Error updating ticket ${variables.field}:`, error);
       toast.error(`Failed to update ticket ${variables.field}. Reverting changes.`);
-
-      // Revertir al estado anterior si hay error
-      if (context?.previousTicket) {
-        setTicket(context.previousTicket);
-        if (onTicketUpdate) {
-          onTicketUpdate(context.previousTicket);
-        }
+      if (context?.previousTicket && onTicketUpdate) {
+        onTicketUpdate(context.previousTicket);
       }
     },
     onSuccess: async (data, variables) => {
-      // No es necesario actualizar el estado aquí ya que se hizo optimistamente
-      // Solo invalidamos las consultas necesarias para mantener sincronización
+      if (onTicketUpdate) {
+        onTicketUpdate(data);
+      }
       const currentUser = await getCurrentUser();
       const currentUserId = currentUser?.id;
 
@@ -133,6 +152,9 @@ export function TicketDetail({ ticket: initialTicket, onClose, onTicketUpdate }:
           const previousAssigneeId = variables.originalFieldValue;
           const newAssigneeId = data.assignee_id;
           if (previousAssigneeId === currentUserId || newAssigneeId === currentUserId) {
+            console.log(
+              `Assignee changed involving current user ${currentUserId}. Invalidating 'My Tickets' query.`
+            );
             queryClient.invalidateQueries({ queryKey: ['tickets', 'my', currentUserId] });
             queryClient.invalidateQueries({ queryKey: ['tickets'] });
           }
@@ -140,22 +162,29 @@ export function TicketDetail({ ticket: initialTicket, onClose, onTicketUpdate }:
           queryClient.invalidateQueries({ queryKey: ['tickets'] });
           if (variables.field === 'team_id') {
             queryClient.invalidateQueries({ queryKey: ['tickets', 'my', currentUserId] });
-            queryClient.invalidateQueries({ queryKey: ['teamsWithCounts'] });
+            queryClient.invalidateQueries({ queryKey: ['teamsWithCounts'] }); // For TeamsPage
             queryClient.invalidateQueries({ queryKey: ['teamTasks'] });
-            queryClient.invalidateQueries({ queryKey: ['agentTeams', currentUserId] });
-            queryClient.invalidateQueries({ queryKey: ['agentTeams'] });
+            queryClient.invalidateQueries({ queryKey: ['agentTeams', currentUserId] }); // For Sidebar "My Teams"
+            queryClient.invalidateQueries({ queryKey: ['agentTeams'] }); // Broader invalidation as a fallback
           } else if (variables.field === 'category_id' || variables.field === 'priority') {
             queryClient.invalidateQueries({ queryKey: ['tickets', 'my', currentUserId] });
           }
         }
       } else {
+        // If currentUserId is not available
         queryClient.invalidateQueries({ queryKey: ['tickets'] });
         if (variables.field === 'team_id') {
           queryClient.invalidateQueries({ queryKey: ['teamsWithCounts'] });
           queryClient.invalidateQueries({ queryKey: ['teamTasks'] });
-          queryClient.invalidateQueries({ queryKey: ['agentTeams'] });
+          queryClient.invalidateQueries({ queryKey: ['agentTeams'] }); // Broader invalidation for Sidebar
         }
       }
+    },
+    onSettled: (_data, _error, variables) => {
+      if (variables.field === 'priority') setIsUpdatingPriority(false);
+      if (variables.field === 'assignee_id') setIsUpdatingAssignee(false);
+      if (variables.field === 'team_id') setIsUpdatingTeam(false);
+      if (variables.field === 'category_id') setIsUpdatingCategory(false);
     },
   });
 
@@ -164,37 +193,26 @@ export function TicketDetail({ ticket: initialTicket, onClose, onTicketUpdate }:
     value: string | null
   ) => {
     if (!ticket) return;
+    if (field === 'priority' && isUpdatingPriority) return;
+    if (field === 'assignee_id' && isUpdatingAssignee) return;
+    if (field === 'team_id' && isUpdatingTeam) return;
+    if (field === 'category_id' && isUpdatingCategory) return;
 
-    // Aplicar el valor optimista inmediatamente
-    let optimisticUpdateValue: TicketStatus | TicketPriority | number | null;
+    let updateValueForComparison: TicketStatus | TicketPriority | number | null;
     if (field === 'assignee_id' || field === 'team_id' || field === 'category_id') {
-      optimisticUpdateValue = value === 'null' || value === null ? null : parseInt(value, 10);
-      if (typeof optimisticUpdateValue === 'number' && isNaN(optimisticUpdateValue)) {
+      updateValueForComparison = value === 'null' || value === null ? null : parseInt(value, 10);
+      if (typeof updateValueForComparison === 'number' && isNaN(updateValueForComparison)) {
         console.error(`Invalid ${field} selected: ${value}`);
         return;
       }
     } else {
-      optimisticUpdateValue = value as TicketPriority;
+      updateValueForComparison = value as TicketPriority;
     }
 
-    // Si el valor es exactamente el mismo, no hacemos nada
-    if (ticket[field as keyof ITicket] === optimisticUpdateValue) {
+    if (ticket[field as keyof ITicket] === updateValueForComparison) {
       return;
     }
 
-    // Aplicar actualización optimista al estado local inmediatamente
-    const updatedTicket = {
-      ...ticket,
-      [field]: optimisticUpdateValue,
-    };
-    setTicket(updatedTicket);
-
-    // Llamar al callback para actualizar el padre inmediatamente
-    if (onTicketUpdate) {
-      onTicketUpdate(updatedTicket);
-    }
-
-    // Iniciar la actualización en segundo plano
     const originalFieldValue = ticket[field] ?? null;
     updateFieldMutation.mutate({ field, value, originalFieldValue });
   };
@@ -262,7 +280,7 @@ export function TicketDetail({ ticket: initialTicket, onClose, onTicketUpdate }:
     mutationFn: async () => {
       if (!ticket) throw new Error('No ticket selected');
       setIsResolvingTicket(true);
-      return updateTicket(ticket.id, { status: 'Closed' });
+      return updateTicket(ticket.id, { status: 'Resolved' });
     },
     onMutate: async () => {
       if (!ticket) return { previousTicket: null };
@@ -271,7 +289,7 @@ export function TicketDetail({ ticket: initialTicket, onClose, onTicketUpdate }:
 
       const optimisticTicket: ITicket = {
         ...previousTicket,
-        status: 'Closed' as TicketStatus,
+        status: 'Resolved' as TicketStatus,
       };
 
       queryClient.setQueryData(['tickets', ticket.id], optimisticTicket);
@@ -287,11 +305,11 @@ export function TicketDetail({ ticket: initialTicket, onClose, onTicketUpdate }:
         onTicketUpdate(updatedTicketData);
       }
       onClose();
-      toast.success(`Ticket #${updatedTicketData.id} closed successfully.`);
+      toast.success(`Ticket #${updatedTicketData.id} resolved successfully.`);
     },
     onError: (error, _variables, context) => {
       toast.error(
-        `Error closing ticket #${ticket?.id}: ${error instanceof Error ? error.message : 'Unknown error'}`
+        `Error resolving ticket #${ticket?.id}: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
       if (context?.previousTicket) {
         queryClient.setQueryData(['tickets', ticket!.id], context.previousTicket);
@@ -364,10 +382,12 @@ export function TicketDetail({ ticket: initialTicket, onClose, onTicketUpdate }:
                 <Select
                   value={ticket.priority}
                   onValueChange={value => handleUpdateField('priority', value)}
-                  disabled={false}
+                  disabled={isUpdatingPriority}
                 >
                   <SelectTrigger className="h-8 text-xs focus:ring-0 focus:ring-offset-0">
-                    <SelectValue placeholder="Select priority">
+                    <SelectValue
+                      placeholder={isUpdatingPriority ? 'Updating...' : 'Select priority'}
+                    >
                       {ticket.priority && (
                         <div className="flex items-center gap-2">
                           <div
@@ -417,10 +437,18 @@ export function TicketDetail({ ticket: initialTicket, onClose, onTicketUpdate }:
                 <Select
                   value={ticket.assignee_id?.toString() ?? 'null'}
                   onValueChange={value => handleUpdateField('assignee_id', value)}
-                  disabled={isLoadingAgents}
+                  disabled={isLoadingAgents || isUpdatingAssignee}
                 >
                   <SelectTrigger className="h-8 text-xs focus:ring-0 focus:ring-offset-0">
-                    <SelectValue placeholder={isLoadingAgents ? 'Loading...' : 'Select agent'} />
+                    <SelectValue
+                      placeholder={
+                        isLoadingAgents
+                          ? 'Loading...'
+                          : isUpdatingAssignee
+                            ? 'Updating...'
+                            : 'Select agent'
+                      }
+                    />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="null">Unassigned</SelectItem>
@@ -437,10 +465,18 @@ export function TicketDetail({ ticket: initialTicket, onClose, onTicketUpdate }:
                 <Select
                   value={ticket.team_id?.toString() ?? 'null'}
                   onValueChange={value => handleUpdateField('team_id', value)}
-                  disabled={isLoadingTeams}
+                  disabled={isLoadingTeams || isUpdatingTeam}
                 >
                   <SelectTrigger className="h-8 text-xs focus:ring-0 focus:ring-offset-0">
-                    <SelectValue placeholder={isLoadingTeams ? 'Loading...' : 'Select team'} />
+                    <SelectValue
+                      placeholder={
+                        isLoadingTeams
+                          ? 'Loading...'
+                          : isUpdatingTeam
+                            ? 'Updating...'
+                            : 'Select team'
+                      }
+                    />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="null">Unassigned</SelectItem>
@@ -457,11 +493,17 @@ export function TicketDetail({ ticket: initialTicket, onClose, onTicketUpdate }:
                 <Select
                   value={ticket.category_id?.toString() ?? 'null'}
                   onValueChange={value => handleUpdateField('category_id', value)}
-                  disabled={isLoadingCategories}
+                  disabled={isLoadingCategories || isUpdatingCategory}
                 >
                   <SelectTrigger className="h-8 text-xs focus:ring-0 focus:ring-offset-0">
                     <SelectValue
-                      placeholder={isLoadingCategories ? 'Loading...' : 'Select category'}
+                      placeholder={
+                        isLoadingCategories
+                          ? 'Loading...'
+                          : isUpdatingCategory
+                            ? 'Updating...'
+                            : 'Select category'
+                      }
                     />
                   </SelectTrigger>
                   <SelectContent>

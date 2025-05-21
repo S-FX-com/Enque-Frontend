@@ -532,44 +532,74 @@ export function ConversationMessageItem({ comment }: Props) {
           display: flex !important;
           flex-direction: column !important;
         }
+
         #msdoc-renderer {
           display: block !important;
         }
 
-        /* Estilos para el cuerpo del mensaje en la conversación */
-        .prose p:not(.email-signature p):not(.email-signature) {
-          line-height: 1.2; /* Reducir el interlineado general */
-          margin-top: 0.5em;
+        .prose p {
+          min-height: 1.5em;
           margin-bottom: 0.5em;
         }
-
-        /* Estilos específicos para la firma en la conversación */
-        .prose .email-signature p,
-        .prose .email-signature {
-          color: #6b7280 !important; /* text-gray-500 */
+        .prose .email-signature p {
           margin-top: 0 !important;
-          margin-bottom: 0.1em !important; /* Reducido para ajustarse a line-height: 0.6 */
-          line-height: 0.6 !important; /* Ajustado a 0.6 */
+          margin-bottom: 0 !important;
+          line-height: 1.3 !important;
+        }
+        .prose .email-signature p strong,
+        .prose .email-signature p em {
+          display: inline-block;
         }
         .prose .email-signature br {
           line-height: 1 !important;
         }
-        .prose .email-signature img {
-          margin-top: 0.25em !important; /* Reducido para acercar la imagen */
-          margin-bottom: 0 !important;
+
+        .prose .email-signature p + p {
+          margin-top: 0 !important;
         }
-        /* Asegurar que el subrayado se muestre correctamente */
+
+        .prose u {
+          text-decoration: underline;
+        }
+
         .prose a {
+          color: #2563eb !important;
           text-decoration: underline !important;
         }
-        /* Para asegurar que el texto dentro de la firma sea mas pequeño */
-        .prose .email-signature,
-        .prose .email-signature p,
-        .prose .email-signature span,
-        .prose .email-signature em,
-        .prose .email-signature strong {
-          font-size: 0.9em !important; /* Hacemos la fuente un poco más pequeña */
-          line-height: 0.6 !important; /* Aplicar también aquí para consistencia */
+        .dark .prose a {
+          color: #60a5fa !important;
+          text-decoration: underline !important;
+        }
+
+        .prose ul {
+          list-style-type: disc !important;
+          padding-left: 1.5em !important;
+          margin: 0.5em 0 !important;
+        }
+        .prose ol {
+          list-style-type: decimal !important;
+          padding-left: 1.5em !important;
+          margin: 0.5em 0 !important;
+        }
+        .prose li {
+          margin-bottom: 0.3em !important;
+          display: list-item !important;
+        }
+        .prose li > ul,
+        .prose li > ol {
+          margin-top: 0.3em !important;
+          margin-bottom: 0 !important;
+        }
+
+        .dark .prose ul,
+        .dark .prose ol,
+        .dark .prose li {
+          color: white !important;
+        }
+        .dark .prose ul::marker,
+        .dark .prose ol::marker,
+        .dark .prose li::marker {
+          color: rgba(255, 255, 255, 0.8) !important;
         }
       `}</style>
     </>

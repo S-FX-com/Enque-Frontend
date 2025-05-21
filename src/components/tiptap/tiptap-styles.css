@@ -2,25 +2,18 @@
   outline: none;
 }
 
-/* Estilos para el cuerpo del mensaje en el editor */
-.ProseMirror p:not(.email-signature p) {
-  line-height: 1.4; /* Reducir el interlineado general */
-  margin-top: 0.5em; /* Ajustar margen superior si es necesario */
-  margin-bottom: 0.5em; /* Ajustar margen inferior si es necesario */
-}
-
 .email-signature,
 .ProseMirror .email-signature {
   color: #6b7280 !important;
-  line-height: 0.6 !important; /* Ajustado a 0.6 */
+  line-height: 1.3 !important;
 }
 
 .email-signature p,
 .ProseMirror .email-signature p {
   color: #6b7280 !important;
   margin-top: 0 !important;
-  margin-bottom: 0.1em !important; /* Reducido para ajustarse a line-height: 0.6 */
-  line-height: 0.6 !important; /* Ajustado a 0.6 */
+  margin-bottom: 0.5em !important;
+  line-height: 1.3 !important;
 }
 
 .email-signature p strong {
@@ -51,8 +44,8 @@
 .prose .email-signature p {
   color: #6b7280 !important;
   margin-top: 0 !important;
-  margin-bottom: 0.1em !important; /* Reducido para ajustarse a line-height: 0.6 */
-  line-height: 0.6 !important; /* Ajustado a 0.6 */
+  margin-bottom: 0.5em !important;
+  line-height: 1.3 !important;
 }
 
 .prose .email-signature p + p {
