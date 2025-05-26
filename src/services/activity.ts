@@ -1,5 +1,6 @@
 import { fetchAPI } from '@/lib/fetch-api';
 import { Activity } from '../typescript/activity'; // Use relative path
+import { toast } from 'sonner'; // Importar toast de sonner
 
 // Use the production URL directly. Ensure NEXT_PUBLIC_API_BASE_URL is set in the production environment.
 const API_BASE_URL =
@@ -48,6 +49,58 @@ export const clearAllNotifications = async (): Promise<{
     console.error('Error clearing notifications:', error);
     // Return default error response
     return { success: false, deleted_count: 0 };
+  }
+};
+
+/**
+ * Shows a toast notification when a new activity is received.
+ * @param notification The notification to display
+ */
+export const showNotificationToast = (notification: Activity): void => {
+  // Determine the content type based on notification type
+  const isTicketCreation = notification.source_type === 'Ticket';
+  const isComment = notification.source_type === 'Comment';
+  const isUserCreator = isTicketCreation && 
+    (notification.creator_user_id || notification.creator_user_email);
+  
+  const displayName = isUserCreator
+    ? notification.creator_user_name || 'User'
+    : notification.agent?.name || 'System';
+
+  // Text for toast notification title and description
+  let title = '';
+  let description = '';
+  
+  if (isTicketCreation && notification.source_id) {
+    title = `New ticket from ${displayName}`;
+    description = `${displayName} logged a new ticket #${notification.source_id}`;
+  } else if (isComment && notification.source_id) {
+    title = `New comment from ${displayName}`;
+    description = notification.action || `${displayName} commented on ticket #${notification.source_id}`;
+  } else {
+    title = `New notification from ${displayName}`;
+    description = notification.action || 'Unspecified action';
+  }
+
+  // Determine URL for when notification is clicked - use action button for tickets and comments
+  if ((isTicketCreation || isComment) && notification.source_id) {
+    // Para notificaciones de tickets y comentarios, usar estilo default (gris claro tipo iPhone)
+    toast(title, {
+      description,
+      duration: 5000, // 5 seconds
+      action: {
+        label: 'View',
+        onClick: () => {
+          window.location.href = `/tickets?openTicket=${notification.source_id}`;
+        }
+      }
+    });
+  } else {
+    // For other notifications use normal toast
+    toast(title, {
+      description,
+      duration: 5000 // 5 seconds
+    });
   }
 };
 

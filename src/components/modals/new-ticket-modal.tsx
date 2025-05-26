@@ -151,6 +151,7 @@ export function NewTicketModal({ open, onOpenChange }: NewTicketModalProps) {
     onSuccess: () => {
       toast.success('Ticket created successfully!');
       queryClient.invalidateQueries({ queryKey: ['tickets'] }); // Invalidate tickets query
+      queryClient.invalidateQueries({ queryKey: ['activities'] }); // Invalidate activities for notifications
       reset(); // Reset form
       setEditorContent(''); // Clear editor
       onOpenChange(false); // Close modal
@@ -165,14 +166,10 @@ export function NewTicketModal({ open, onOpenChange }: NewTicketModalProps) {
 
   // Add SubmitHandler type to onSubmit
   const onSubmit: SubmitHandler<TicketFormData> = data => {
-    // Ensure currentUser and workspace_id exist before proceeding
-    if (!currentUser || typeof currentUser.workspace_id !== 'number') {
-      // Check type too
+    // Ensure currentUser exists and has a valid workspace_id
+    if (!currentUser || !currentUser.workspace_id) {
       toast.error('Could not identify user workspace. Please try logging in again.');
-      console.error(
-        'Missing currentUser or valid workspace_id in NewTicketModal onSubmit',
-        currentUser
-      );
+      console.error('Missing currentUser or workspace_id in NewTicketModal onSubmit', currentUser);
       return;
     }
 
@@ -187,7 +184,7 @@ export function NewTicketModal({ open, onOpenChange }: NewTicketModalProps) {
       priority: data.priority as TicketPriority, // Assert type from enum value to imported type
       team_id: data.team_id ? parseInt(data.team_id, 10) : undefined,
       category_id: data.category_id ? parseInt(data.category_id, 10) : undefined,
-      workspace_id: currentUser.workspace_id, // Add workspace_id from the authenticated user
+      workspace_id: currentUser.workspace_id, // useAuth guarantees this is a number
       due_date: new Date().toISOString(), // Add current date as default due_date
       sent_from_id: currentUser.id, // Add the current user's ID as sent_from_id
     };

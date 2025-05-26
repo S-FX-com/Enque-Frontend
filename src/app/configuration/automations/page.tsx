@@ -9,32 +9,12 @@ import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
 import { Terminal, Info, AlertCircle, Plus, Clock, Trash2, Edit, Calendar } from 'lucide-react';
-import { Input } from '@/components/ui/input';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { RichTextEditor } from '@/components/tiptap/RichTextEditor';
+import AutomationModalMui from '@/components/modals/AutomationModalMui';
 import {
   getAutomations,
-  createAutomation,
-  updateAutomation,
   deleteAutomation,
   toggleAutomation,
   runAutomation,
@@ -44,16 +24,8 @@ import {
 export default function AutomationsConfigPage() {
   const queryClient = useQueryClient();
   const { user, isLoading: isLoadingAuthUser } = useAuth();
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedAutomation, setSelectedAutomation] = useState<Automation | null>(null);
-  const [automationName, setAutomationName] = useState('');
-  const [automationDescription, setAutomationDescription] = useState('');
-  const [automationType, setAutomationType] = useState('scheduled');
-  const [frequency, setFrequency] = useState('weekly');
-  const [day, setDay] = useState('monday');
-  const [time, setTime] = useState('09:00');
-  const [subject, setSubject] = useState('');
-  const [content, setContent] = useState('');
   const [activeTab, setActiveTab] = useState('active');
 
   const currentUserRole = user?.role;
@@ -69,48 +41,6 @@ export default function AutomationsConfigPage() {
     queryFn: () => getAutomations(workspaceId!),
     enabled: !!workspaceId,
     staleTime: 5 * 60 * 1000,
-  });
-
-  const createAutomationMutation = useMutation({
-    mutationFn: async (
-      automation: Omit<Automation, 'id' | 'workspace_id' | 'created_at' | 'updated_at'>
-    ) => {
-      if (!workspaceId) throw new Error('Workspace ID is missing');
-      return createAutomation(workspaceId, automation);
-    },
-    onSuccess: () => {
-      toast.success('Automation created successfully!');
-      queryClient.invalidateQueries({ queryKey: ['automations', workspaceId] });
-      setIsDialogOpen(false);
-      resetForm();
-    },
-    onError: error => {
-      console.error('Failed to create automation:', error);
-      toast.error(`Failed to create automation: ${error.message}`);
-    },
-  });
-
-  const updateAutomationMutation = useMutation({
-    mutationFn: async (
-      automation: { id: number } & Omit<
-        Automation,
-        'id' | 'workspace_id' | 'created_at' | 'updated_at'
-      >
-    ) => {
-      if (!workspaceId) throw new Error('Workspace ID is missing');
-      const { id, ...updateData } = automation;
-      return updateAutomation(workspaceId, id, updateData);
-    },
-    onSuccess: () => {
-      toast.success('Automation updated successfully!');
-      queryClient.invalidateQueries({ queryKey: ['automations', workspaceId] });
-      setIsDialogOpen(false);
-      resetForm();
-    },
-    onError: error => {
-      console.error('Failed to update automation:', error);
-      toast.error(`Failed to update automation: ${error.message}`);
-    },
   });
 
   const deleteAutomationMutation = useMutation({
@@ -157,60 +87,9 @@ export default function AutomationsConfigPage() {
     },
   });
 
-  const handleCreateOrUpdate = () => {
-    if (automationName.trim() === '') {
-      toast.error('Automation name cannot be empty');
-      return;
-    }
-
-    if (subject.trim() === '') {
-      toast.error('Email subject cannot be empty');
-      return;
-    }
-
-    if (content.trim() === '') {
-      toast.error('Email content cannot be empty');
-      return;
-    }
-
-    const automation = {
-      name: automationName,
-      description: automationDescription,
-      is_enabled: selectedAutomation?.is_enabled || false,
-      type: automationType,
-      schedule: {
-        frequency,
-        day,
-        time,
-      },
-      template: {
-        subject,
-        content,
-      },
-      filters: selectedAutomation?.filters || {},
-    };
-
-    if (selectedAutomation) {
-      updateAutomationMutation.mutate({
-        id: selectedAutomation.id,
-        ...automation,
-      });
-    } else {
-      createAutomationMutation.mutate(automation);
-    }
-  };
-
   const handleEdit = (automation: Automation) => {
     setSelectedAutomation(automation);
-    setAutomationName(automation.name);
-    setAutomationDescription(automation.description || '');
-    setAutomationType(automation.type);
-    setFrequency(automation.schedule.frequency);
-    setDay(automation.schedule.day);
-    setTime(automation.schedule.time);
-    setSubject(automation.template.subject);
-    setContent(automation.template.content);
-    setIsDialogOpen(true);
+    setIsModalOpen(true);
   };
 
   const handleDelete = (id: number) => {
@@ -230,23 +109,16 @@ export default function AutomationsConfigPage() {
     runAutomationMutation.mutate(id);
   };
 
-  const resetForm = () => {
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setTimeout(() => {
     setSelectedAutomation(null);
-    setAutomationName('');
-    setAutomationDescription('');
-    setAutomationType('scheduled');
-    setFrequency('weekly');
-    setDay('monday');
-    setTime('09:00');
-    setSubject('');
-    setContent('');
+    }, 100);
   };
 
-  const handleDialogOpenChange = (open: boolean) => {
-    setIsDialogOpen(open);
-    if (!open) {
-      resetForm();
-    }
+  const handleOpenCreateModal = () => {
+    setSelectedAutomation(null);
+    setIsModalOpen(true);
   };
 
   const getFilteredAutomations = () => {
@@ -297,175 +169,31 @@ export default function AutomationsConfigPage() {
               <CardTitle className="text-xl">Automations</CardTitle>
               <CardDescription>Schedule automated emails and notifications</CardDescription>
             </div>
-            <Dialog open={isDialogOpen} onOpenChange={handleDialogOpenChange}>
-              <DialogTrigger asChild>
-                <Button onClick={() => resetForm()}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  New Automation
+            <Button 
+              variant="default" 
+              className="ml-auto flex items-center gap-2"
+              onClick={handleOpenCreateModal}
+            >
+              <Plus size={16} /> New Automation
                 </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-2xl">
-                <DialogHeader>
-                  <DialogTitle>
-                    {selectedAutomation ? 'Edit Automation' : 'Create New Automation'}
-                  </DialogTitle>
-                  <DialogDescription>
-                    {selectedAutomation
-                      ? 'Update this automation to schedule emails and notifications.'
-                      : 'Create a new automation to schedule emails and notifications.'}
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4 py-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Name</Label>
-                    <Input
-                      id="name"
-                      placeholder="Enter a descriptive name"
-                      value={automationName}
-                      onChange={e => setAutomationName(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="description">Description (Optional)</Label>
-                    <Input
-                      id="description"
-                      placeholder="Enter a brief description"
-                      value={automationDescription}
-                      onChange={e => setAutomationDescription(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="type">Automation Type</Label>
-                    <Select value={automationType} onValueChange={setAutomationType}>
-                      <SelectTrigger id="type">
-                        <SelectValue placeholder="Select automation type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="scheduled">Scheduled Email</SelectItem>
-                        <SelectItem value="notification">System Notification</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-4 border rounded-md p-4">
-                    <h4 className="font-medium">Schedule Settings</h4>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="frequency">Frequency</Label>
-                        <Select value={frequency} onValueChange={setFrequency}>
-                          <SelectTrigger id="frequency">
-                            <SelectValue placeholder="Select frequency" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="daily">Daily</SelectItem>
-                            <SelectItem value="weekly">Weekly</SelectItem>
-                            <SelectItem value="monthly">Monthly</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      {frequency === 'weekly' && (
-                        <div className="space-y-2">
-                          <Label htmlFor="day">Day of Week</Label>
-                          <Select value={day} onValueChange={setDay}>
-                            <SelectTrigger id="day">
-                              <SelectValue placeholder="Select day" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="monday">Monday</SelectItem>
-                              <SelectItem value="tuesday">Tuesday</SelectItem>
-                              <SelectItem value="wednesday">Wednesday</SelectItem>
-                              <SelectItem value="thursday">Thursday</SelectItem>
-                              <SelectItem value="friday">Friday</SelectItem>
-                              <SelectItem value="saturday">Saturday</SelectItem>
-                              <SelectItem value="sunday">Sunday</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      )}
-
-                      {frequency === 'monthly' && (
-                        <div className="space-y-2">
-                          <Label htmlFor="day">Day of Month</Label>
-                          <Select value={day} onValueChange={setDay}>
-                            <SelectTrigger id="day">
-                              <SelectValue placeholder="Select day" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {[...Array(28)].map((_, i) => (
-                                <SelectItem key={i} value={(i + 1).toString()}>
-                                  {i + 1}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      )}
-
-                      <div className="space-y-2">
-                        <Label htmlFor="time">Time</Label>
-                        <Input
-                          id="time"
-                          type="time"
-                          value={time}
-                          onChange={e => setTime(e.target.value)}
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4 border rounded-md p-4">
-                    <h4 className="font-medium">Email Template</h4>
-                    <div className="space-y-2">
-                      <Label htmlFor="subject">Subject</Label>
-                      <Input
-                        id="subject"
-                        placeholder="Enter email subject"
-                        value={subject}
-                        onChange={e => setSubject(e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="content">Content</Label>
-                      <RichTextEditor
-                        content={content}
-                        onChange={setContent}
-                        placeholder="Enter email content..."
-                      />
-                      <p className="text-xs text-muted-foreground mt-1">
-                        You can use placeholders like [Customer Name], [Ticket ID], etc.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-                    Cancel
-                  </Button>
-                  <Button onClick={handleCreateOrUpdate}>
-                    {createAutomationMutation.isPending || updateAutomationMutation.isPending
-                      ? 'Saving...'
-                      : selectedAutomation
-                        ? 'Update Automation'
-                        : 'Create Automation'}
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+            <AutomationModalMui
+              open={isModalOpen}
+              onClose={handleCloseModal}
+              automationToEdit={selectedAutomation}
+              workspaceId={workspaceId}
+            />
           </div>
         </CardHeader>
         <CardContent>
           <Alert className="mb-6">
             <Info className="h-4 w-4" />
-            <AlertTitle>About Automations</AlertTitle>
+            <AlertTitle>Sobre las Automatizaciones</AlertTitle>
             <AlertDescription>
               <p className="mb-2">
-                Automations help you schedule recurring emails and notifications to customers and
-                team members.
+                Las automatizaciones te permiten programar correos electrónicos recurrentes.
               </p>
               <p>
-                You can use placeholders in your templates that will be automatically replaced with
-                actual data.
+                Puedes usar marcadores en tus plantillas que serán reemplazados automáticamente con datos reales.
               </p>
             </AlertDescription>
           </Alert>
@@ -548,7 +276,7 @@ export default function AutomationsConfigPage() {
                   ? 'No active automations found'
                   : 'No inactive automations found'}
               </p>
-              <Button onClick={() => setIsDialogOpen(true)} variant="outline">
+              <Button onClick={handleOpenCreateModal} variant="outline">
                 Create your first automation
               </Button>
             </div>

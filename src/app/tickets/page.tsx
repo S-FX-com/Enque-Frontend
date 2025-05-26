@@ -17,14 +17,13 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Settings2, Trash2, ChevronLeft, ChevronRight, UserIcon, UsersIcon } from 'lucide-react';
 import { MultiSelectFilter, type OptionType } from '@/components/filters/multi-select-filter';
 import {
-  useInfiniteQuery,
   useQuery,
   useQueryClient,
   type InfiniteData,
   useMutation,
 } from '@tanstack/react-query';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
-import { getTickets, updateTicket, deleteTicket } from '@/services/ticket';
+import { updateTicket, deleteTicket } from '@/services/ticket';
 import { toast } from 'sonner';
 import {
   AlertDialog,
@@ -50,6 +49,7 @@ import type { IUser } from '@/typescript/user';
 import type { ICompany } from '@/typescript/company';
 import type { ICategory } from '@/typescript/category';
 import { Collapsible, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { useGlobalTicketsContext } from '@/providers/global-tickets-provider';
 
 import type { Agent } from '@/typescript/agent';
 import { formatRelativeTime, cn } from '@/lib/utils';
@@ -62,11 +62,17 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
-const LOAD_LIMIT = 20;
-
-type TicketPage = ITicket[];
-
 function TicketsClientContent() {
+  const {
+    allTicketsData,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoadingTickets,
+    isTicketsError,
+    ticketsError,
+  } = useGlobalTicketsContext();
+
   const queryClient = useQueryClient();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -173,48 +179,6 @@ function TicketsClientContent() {
         label: category.name!,
       }));
   }, [categoriesData]);
-
-  const {
-    data: ticketsQueryData,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-    isLoading: isLoadingTickets,
-    isError: isTicketsError,
-    error: ticketsError,
-  } = useInfiniteQuery<
-    TicketPage,
-    Error,
-    InfiniteData<TicketPage, number>,
-    readonly ['tickets'],
-    number
-  >({
-    queryKey: ['tickets'],
-    queryFn: async ({ pageParam = 0 }) => {
-      console.log(`Fetching tickets with skip: ${pageParam}`);
-
-      const tickets = await getTickets({ skip: pageParam, limit: LOAD_LIMIT });
-      return tickets;
-    },
-    getNextPageParam: (lastPage, allPages) => {
-      if (!lastPage || lastPage.length < LOAD_LIMIT) {
-        console.log('No next page detected.');
-        return undefined;
-      }
-
-      const nextPageParam = allPages.flat().length;
-      console.log(`Next page param (skip): ${nextPageParam}`);
-      return nextPageParam;
-    },
-    initialPageParam: 0,
-    staleTime: 0,
-    refetchInterval: 15000,
-    refetchIntervalInBackground: true,
-  });
-  const allTicketsData = React.useMemo(
-    () => ticketsQueryData?.pages?.flat() ?? [],
-    [ticketsQueryData]
-  );
 
   const filteredTicketsData = useMemo(() => {
     let tickets = allTicketsData;
@@ -336,7 +300,7 @@ function TicketsClientContent() {
 
   const handleTicketUpdate = useCallback(
     (updatedTicket: ITicket) => {
-      queryClient.setQueryData<InfiniteData<TicketPage, number>>(['tickets'], oldData => {
+      queryClient.setQueryData<InfiniteData<ITicket[], number>>(['tickets'], oldData => {
         if (!oldData) return oldData;
         const newPages = oldData.pages.map((page: ITicket[]) =>
           page.map(t => (t.id === updatedTicket.id ? updatedTicket : t))
@@ -426,11 +390,11 @@ function TicketsClientContent() {
     onMutate: async ticketIdsToDelete => {
       await queryClient.cancelQueries({ queryKey: ['tickets'] });
 
-      const previousTicketsData = queryClient.getQueryData<InfiniteData<TicketPage, number>>([
+      const previousTicketsData = queryClient.getQueryData<InfiniteData<ITicket[], number>>([
         'tickets',
       ]);
 
-      queryClient.setQueryData<InfiniteData<TicketPage, number>>(['tickets'], oldData => {
+      queryClient.setQueryData<InfiniteData<ITicket[], number>>(['tickets'], oldData => {
         if (!oldData) return oldData;
         const newPages = oldData.pages.map(page =>
           page.filter(ticket => !ticketIdsToDelete.includes(ticket.id))
@@ -446,7 +410,7 @@ function TicketsClientContent() {
     onError: (
       err: Error,
       ticketIdsToDelete,
-      context: { previousTicketsData?: InfiniteData<TicketPage, number> } | undefined
+      context: { previousTicketsData?: InfiniteData<ITicket[], number> } | undefined
     ) => {
       toast.error(`Error deleting tickets: ${err.message}`);
       console.error(`Error deleting tickets: ${err.message}`);
@@ -587,11 +551,11 @@ function TicketsClientContent() {
     onMutate: async ({ ticketIds, teamId }) => {
       await queryClient.cancelQueries({ queryKey: ['tickets'] });
 
-      const previousTicketsData = queryClient.getQueryData<InfiniteData<TicketPage, number>>([
+      const previousTicketsData = queryClient.getQueryData<InfiniteData<ITicket[], number>>([
         'tickets',
       ]);
 
-      queryClient.setQueryData<InfiniteData<TicketPage, number>>(['tickets'], oldData => {
+      queryClient.setQueryData<InfiniteData<ITicket[], number>>(['tickets'], oldData => {
         if (!oldData) return oldData;
 
         const newPages = oldData.pages.map(page =>
@@ -620,7 +584,7 @@ function TicketsClientContent() {
     onError: (
       err: Error,
       variables,
-      context: { previousTicketsData?: InfiniteData<TicketPage, number> } | undefined
+      context: { previousTicketsData?: InfiniteData<ITicket[], number> } | undefined
     ) => {
       toast.error(`Error assigning tickets to team: ${err.message}`);
       console.error(`Error assigning tickets to team: ${err.message}`);
@@ -673,11 +637,11 @@ function TicketsClientContent() {
     onMutate: async ({ ticketIds, agentId }) => {
       await queryClient.cancelQueries({ queryKey: ['tickets'] });
 
-      const previousTicketsData = queryClient.getQueryData<InfiniteData<TicketPage, number>>([
+      const previousTicketsData = queryClient.getQueryData<InfiniteData<ITicket[], number>>([
         'tickets',
       ]);
 
-      queryClient.setQueryData<InfiniteData<TicketPage, number>>(['tickets'], oldData => {
+      queryClient.setQueryData<InfiniteData<ITicket[], number>>(['tickets'], oldData => {
         if (!oldData) return oldData;
 
         const newPages = oldData.pages.map(page =>
@@ -706,7 +670,7 @@ function TicketsClientContent() {
     onError: (
       err: Error,
       variables,
-      context: { previousTicketsData?: InfiniteData<TicketPage, number> } | undefined
+      context: { previousTicketsData?: InfiniteData<ITicket[], number> } | undefined
     ) => {
       toast.error(`Error assigning tickets: ${err.message}`);
       console.error(`Error assigning tickets: ${err.message}`);

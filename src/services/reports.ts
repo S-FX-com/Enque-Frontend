@@ -7,7 +7,7 @@ import { fetchAPI } from '@/lib/fetch-api'; // Removed unused BaseResponse
 // Assuming TaskStatus and TaskPriority enums/types are available or defined here/imported
 // For simplicity, using string literals for now. Import actual types if available.
 type TaskStatus = 'Unread' | 'Open' | 'Closed';
-type TaskPriority = 'Low' | 'Medium' | 'High';
+type TaskPriority = 'Low' | 'Medium' | 'High' | 'Critical';
 
 export interface ReportSummary {
   created_tickets: number;

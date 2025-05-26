@@ -10,7 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Terminal, Info, AlertCircle, Plus, ArrowRight, Trash2, Edit, Copy } from 'lucide-react';
+import { Terminal, Info, AlertCircle, Plus, ArrowRight, Trash2, Edit, Copy, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import {
   Dialog,
@@ -35,7 +35,7 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
   getWorkflows,
   createWorkflow,
@@ -44,7 +44,11 @@ import {
   toggleWorkflow,
   duplicateWorkflow,
   getWorkflowTriggers,
+  getWorkflowActions,
   type Workflow,
+  type WorkflowTrigger,
+  type WorkflowAction,
+  type MessageAnalysisRule,
 } from '@/services/workflows';
 
 export default function WorkflowsConfigPage() {
@@ -55,7 +59,21 @@ export default function WorkflowsConfigPage() {
   const [workflowName, setWorkflowName] = useState('');
   const [workflowDescription, setWorkflowDescription] = useState('');
   const [workflowTrigger, setWorkflowTrigger] = useState('');
+  const [workflowActions, setWorkflowActions] = useState<WorkflowAction[]>([]);
+  const [messageAnalysisRules, setMessageAnalysisRules] = useState<MessageAnalysisRule>({
+    keywords: [],
+    exclude_keywords: [],
+    sentiment_threshold: 0.3,
+    urgency_keywords: [
+      'urgent', 'asap', 'emergency', 'critical', 'immediately', 'now', 'right now',
+      'crisis', 'disaster', 'broken', 'down', 'not working', 'stopped working',
+      'deadline', 'due today', 'overdue', 'time sensitive', 'priority', 'important'
+    ],
+    language: 'en',
+    min_confidence: 0.7,
+  });
   const [activeTab, setActiveTab] = useState('active');
+  const [modalTab, setModalTab] = useState('basic');
 
   const currentUserRole = user?.role;
   const workspaceId = user?.workspace_id;
@@ -75,6 +93,13 @@ export default function WorkflowsConfigPage() {
   const { data: triggers } = useQuery({
     queryKey: ['workflowTriggers', workspaceId],
     queryFn: () => getWorkflowTriggers(workspaceId!),
+    enabled: !!workspaceId,
+    staleTime: 30 * 60 * 1000,
+  });
+
+  const { data: actionOptions } = useQuery({
+    queryKey: ['workflowActions', workspaceId],
+    queryFn: () => getWorkflowActions(workspaceId!),
     enabled: !!workspaceId,
     staleTime: 30 * 60 * 1000,
   });
@@ -174,13 +199,19 @@ export default function WorkflowsConfigPage() {
       return;
     }
 
+    if (workflowActions.length === 0) {
+      toast.error('You must add at least one action');
+      return;
+    }
+
     const commonWorkflowData = {
       name: workflowName,
       description: workflowDescription,
       is_enabled: selectedWorkflow?.is_enabled || false,
       trigger: workflowTrigger,
-      conditions: selectedWorkflow?.conditions || [],
-      actions: selectedWorkflow?.actions || [{ type: 'no_action', config: {} }],
+      conditions: [],
+      actions: workflowActions,
+      message_analysis_rules: isContentBasedTrigger(workflowTrigger) ? messageAnalysisRules : undefined,
     };
 
     if (selectedWorkflow && selectedWorkflow.id) {
@@ -193,11 +224,15 @@ export default function WorkflowsConfigPage() {
     }
   };
 
-  const handleEdit = (workflow: any) => {
+  const handleEdit = (workflow: Workflow) => {
     setSelectedWorkflow(workflow);
     setWorkflowName(workflow.name);
     setWorkflowDescription(workflow.description || '');
     setWorkflowTrigger(workflow.trigger);
+    setWorkflowActions(workflow.actions || []);
+    if (workflow.message_analysis_rules) {
+      setMessageAnalysisRules(workflow.message_analysis_rules);
+    }
     setIsDialogOpen(true);
   };
 
@@ -223,6 +258,20 @@ export default function WorkflowsConfigPage() {
     setWorkflowName('');
     setWorkflowDescription('');
     setWorkflowTrigger('');
+    setWorkflowActions([]);
+    setMessageAnalysisRules({
+      keywords: [],
+      exclude_keywords: [],
+      sentiment_threshold: 0.3,
+      urgency_keywords: [
+        'urgent', 'asap', 'emergency', 'critical', 'immediately', 'now', 'right now',
+        'crisis', 'disaster', 'broken', 'down', 'not working', 'stopped working',
+        'deadline', 'due today', 'overdue', 'time sensitive', 'priority', 'important'
+      ],
+      language: 'en',
+      min_confidence: 0.7,
+    });
+    setModalTab('basic');
   };
 
   const handleDialogOpenChange = (open: boolean) => {
@@ -230,6 +279,36 @@ export default function WorkflowsConfigPage() {
     if (!open) {
       resetForm();
     }
+  };
+
+  const isContentBasedTrigger = (trigger: string) => {
+    return trigger.startsWith('message.');
+  };
+
+  const addAction = () => {
+    setWorkflowActions([
+      ...workflowActions,
+      { type: '', config: {} },
+    ]);
+  };
+
+  const updateAction = (index: number, field: keyof WorkflowAction, value: string | Record<string, unknown>) => {
+    const updated = [...workflowActions];
+    updated[index] = { ...updated[index], [field]: value };
+    setWorkflowActions(updated);
+  };
+
+  const removeAction = (index: number) => {
+    setWorkflowActions(workflowActions.filter((_, i) => i !== index));
+  };
+
+  const updateActionConfig = (index: number, configKey: string, configValue: string | number | boolean) => {
+    const updated = [...workflowActions];
+    updated[index] = {
+      ...updated[index],
+      config: { ...updated[index].config, [configKey]: configValue },
+    };
+    setWorkflowActions(updated);
   };
 
   const getFilteredWorkflows = () => {
@@ -240,17 +319,61 @@ export default function WorkflowsConfigPage() {
   };
 
   const getTriggerLabel = (trigger: string) => {
-    const triggerMap: Record<string, string> = {
-      'ticket.created': 'Ticket Created',
-      'ticket.updated': 'Ticket Updated',
-      'ticket.closed': 'Ticket Closed',
-      'ticket.reopened': 'Ticket Reopened',
-      'sla.warning': 'SLA Warning',
-      'sla.breach': 'SLA Breach',
-      'agent.assigned': 'Agent Assigned',
-      'customer.replied': 'Customer Replied',
-    };
-    return triggerMap[trigger] || trigger;
+    return triggers?.find(t => t.value === trigger)?.label || trigger;
+  };
+
+  const getActionLabel = (actionType: string) => {
+    return actionOptions?.find(a => a.id === actionType)?.name || actionType;
+  };
+
+  const renderActionConfig = (action: WorkflowAction, index: number) => {
+    const actionOption = actionOptions?.find(a => a.id === action.type);
+    if (!actionOption) return null;
+
+    const schema = actionOption.config_schema as { properties?: Record<string, { type?: string; enum?: string[]; description?: string }> };
+    const properties = schema?.properties || {};
+
+    return (
+      <div className="mt-2 space-y-2 p-3 bg-gray-50 rounded">
+        {Object.entries(properties).map(([key, property]) => (
+          <div key={key} className="space-y-1">
+            <Label className="text-xs">{property.description || key}</Label>
+            {property.type === 'string' && property.enum ? (
+              <Select
+                value={action.config[key] as string || ''}
+                onValueChange={(value) => updateActionConfig(index, key, value)}
+              >
+                <SelectTrigger className="h-8">
+                  <SelectValue placeholder={`Select ${key}`} />
+                </SelectTrigger>
+                <SelectContent>
+                  {property.enum.map((option: string) => (
+                    <SelectItem key={option} value={option}>
+                      {option}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : property.type === 'string' ? (
+              <Input
+                className="h-8"
+                placeholder={property.description || `Enter ${key}`}
+                value={action.config[key] as string || ''}
+                onChange={(e) => updateActionConfig(index, key, e.target.value)}
+              />
+            ) : property.type === 'number' || property.type === 'integer' ? (
+              <Input
+                className="h-8"
+                type="number"
+                placeholder={property.description || `Enter ${key}`}
+                value={action.config[key] as number || ''}
+                onChange={(e) => updateActionConfig(index, key, Number(e.target.value))}
+              />
+            ) : null}
+          </div>
+        ))}
+      </div>
+    );
   };
 
   if (currentUserRole !== 'admin') {
@@ -283,7 +406,7 @@ export default function WorkflowsConfigPage() {
                   New Workflow
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-2xl">
+              <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>
                     {selectedWorkflow ? 'Edit Workflow' : 'Create New Workflow'}
@@ -294,53 +417,113 @@ export default function WorkflowsConfigPage() {
                       : 'Create a new workflow to automate your ticket handling process.'}
                   </DialogDescription>
                 </DialogHeader>
-                <div className="space-y-4 py-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Name</Label>
-                    <Input
-                      id="name"
-                      placeholder="Enter a descriptive name"
-                      value={workflowName}
-                      onChange={e => setWorkflowName(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="description">Description (Optional)</Label>
-                    <Input
-                      id="description"
-                      placeholder="Enter a brief description"
-                      value={workflowDescription}
-                      onChange={e => setWorkflowDescription(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="trigger">Trigger Event</Label>
-                    <Select value={workflowTrigger} onValueChange={setWorkflowTrigger}>
-                      <SelectTrigger id="trigger">
-                        <SelectValue placeholder="Select a trigger event" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {triggers?.map((trigger: any) => (
-                          <SelectItem key={trigger.value} value={trigger.value}>
-                            {trigger.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                
+                <Tabs value={modalTab} onValueChange={setModalTab} className="w-full">
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="basic">Basic</TabsTrigger>
+                    <TabsTrigger value="actions">Actions</TabsTrigger>
+                  </TabsList>
+                  
+                  <div className="mt-4">
+                    <TabsContent value="basic" className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="name">Name</Label>
+                        <Input
+                          id="name"
+                          placeholder="Enter a descriptive name"
+                          value={workflowName}
+                          onChange={e => setWorkflowName(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="description">Description (Optional)</Label>
+                        <Input
+                          id="description"
+                          placeholder="Enter a brief description"
+                          value={workflowDescription}
+                          onChange={e => setWorkflowDescription(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="trigger">Trigger Event</Label>
+                        <Select value={workflowTrigger} onValueChange={setWorkflowTrigger}>
+                          <SelectTrigger id="trigger">
+                            <SelectValue placeholder="Select a trigger event" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {triggers?.map((trigger: WorkflowTrigger) => (
+                              <SelectItem key={trigger.value} value={trigger.value}>
+                                {trigger.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {triggers?.find(t => t.value === workflowTrigger)?.description && (
+                          <p className="text-sm text-muted-foreground">
+                            {triggers.find(t => t.value === workflowTrigger)?.description}
+                          </p>
+                        )}
+                      </div>
+                    </TabsContent>
 
-                  {/* For a complete implementation, you would add UI for conditions and actions here */}
-                  {selectedWorkflow && (
-                    <Alert>
-                      <Info className="h-4 w-4" />
-                      <AlertTitle>Workflow Configuration</AlertTitle>
-                      <AlertDescription>
-                        To edit conditions and actions, please use the full workflow editor after
-                        saving.
-                      </AlertDescription>
-                    </Alert>
-                  )}
-                </div>
+                    <TabsContent value="actions" className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <Label>Workflow Actions</Label>
+                        <Button size="sm" onClick={addAction}>
+                          <Plus className="h-4 w-4 mr-1" />
+                          Add Action
+                        </Button>
+                      </div>
+                      
+                      {workflowActions.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">
+                          No actions configured. Add at least one action to define what happens when this workflow triggers.
+                        </p>
+                      ) : (
+                        <div className="space-y-3">
+                          {workflowActions.map((action, index) => (
+                            <div key={index} className="p-3 border rounded space-y-2">
+                              <div className="flex items-center gap-2">
+                                <Select
+                                  value={action.type}
+                                  onValueChange={(value) => updateAction(index, 'type', value)}
+                                >
+                                  <SelectTrigger className="flex-1">
+                                    <SelectValue placeholder="Select an action" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {actionOptions?.map((option) => (
+                                      <SelectItem key={option.id} value={option.id}>
+                                        {option.name}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => removeAction(index)}
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </div>
+                              
+                              {action.type && renderActionConfig(action, index)}
+                              
+                              {actionOptions?.find(a => a.id === action.type)?.description && (
+                                <p className="text-xs text-muted-foreground">
+                                  {actionOptions.find(a => a.id === action.type)?.description}
+                                </p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </TabsContent>
+                  </div>
+                </Tabs>
+
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
                     Cancel
@@ -456,35 +639,13 @@ export default function WorkflowsConfigPage() {
                     <AccordionContent>
                       <div className="pl-10 pt-2 pb-4">
                         <div className="space-y-4">
-                          {workflow.conditions.length > 0 && (
-                            <div>
-                              <h4 className="text-sm font-medium mb-2">Conditions:</h4>
-                              <div className="space-y-2">
-                                {workflow.conditions.map((condition: any, index: number) => (
-                                  <div key={index} className="flex items-center gap-2 text-sm">
-                                    <span>If</span>
-                                    <Badge variant="outline">{condition.field}</Badge>
-                                    <span>{condition.operator}</span>
-                                    <Badge variant="outline">{condition.value}</Badge>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-
                           <div>
                             <h4 className="text-sm font-medium mb-2">Actions:</h4>
                             <div className="space-y-2">
-                              {workflow.actions.map((action: any, index: number) => (
+                              {workflow.actions.map((action: WorkflowAction, index: number) => (
                                 <div key={index} className="flex items-center gap-2 text-sm">
                                   <ArrowRight className="h-3 w-3" />
-                                  <span>
-                                    {action.type === 'assign_to_agent' && 'Assign to agent'}
-                                    {action.type === 'add_tag' && `Add tag "${action.config.tag}"`}
-                                    {action.type === 'send_notification' &&
-                                      `Send ${action.config.channel} notification`}
-                                    {action.type === 'no_action' && 'No action defined'}
-                                  </span>
+                                  <span>{getActionLabel(action.type)}</span>
                                 </div>
                               ))}
                             </div>

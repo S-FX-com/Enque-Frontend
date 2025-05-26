@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import '@cyntler/react-doc-viewer/dist/index.css';
 import { formatDistanceToNow } from 'date-fns';
 import Avatar from 'boring-avatars';
+import Image from 'next/image';
 import { IComment, IAttachment } from '@/typescript/comment';
 import { cn } from '@/lib/utils';
 import { ChevronsUpDown, Download as DownloadIcon } from 'lucide-react';
@@ -62,9 +63,10 @@ function findQuoteStartIndex(html: string): number {
     /From:.*?</i, // Basic check for lines starting with From:
     /Sent from my /i, // e.g., Sent from my iPhone
     // HTML quote elements
-    /<div class="gmail_quote">/i,
-    /<blockquote class="gmail_quote">/i,
-    /<blockquote.*?type="cite">/i,
+    /<div class="gmail_quote/i, // Modified to catch any class that starts with gmail_quote
+    /<blockquote class="gmail_quote/i, // Modified to catch any class that starts with gmail_quote
+    /<blockquote/i, // Any blockquote element
+    /<div class="gmail_attr"/i, // Gmail attribute div
     // Separators (look for one *after* the potential start)
     /<hr\s*style=["'][^"']*border-top:\s*1px\s*solid\s*[^;]+;["']/i, // Outlook HR
     /<hr/i, // General hr, check later if it's the first one
@@ -156,15 +158,17 @@ const formatFileSize = (bytes: number, decimals = 2) => {
 const cleanReplyPreamble = (html: string): string => {
   if (!html) return '';
 
+  // Traducir encabezados de citas en español a inglés
   const spanishReplyHeaderPattern =
-    /El (?:lun|mar|mié|jue|vie|sáb|dom), \d{1,2} (?:ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic) \d{4} a la\(s\) \d{1,2}:\d{2}(?:&#8239;|\s)?(?:a\.m\.|p\.m\.), [^<]+ \([^)]+\) escribió:/i;
+    /El (?:lun|mar|mié|jue|vie|sáb|dom), \d{1,2} (?:ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic) \d{4} a la\(s\) \d{1,2}:\d{2}(?:&#8239;|\s)?(?:a\.m\.|p\.m\.), ([^<]+) \(([^)]+)\) escribió:/i;
 
-  let cleanedHtml = html.replace(spanishReplyHeaderPattern, '');
+  // Reemplazar encabezados en español con formato en inglés
+  let cleanedHtml = html.replace(spanishReplyHeaderPattern, (match, name, email) => {
+    return `On [DATE], ${name} (${email}) wrote:`;
+  });
 
   cleanedHtml = cleanedHtml.replace(/<p>\s*<\/p>/gi, '<p><br></p>');
-
   cleanedHtml = cleanedHtml.replace(/^\s*(?:<br\s*\/?>\s*)+/i, '');
-
   cleanedHtml = cleanedHtml.replace(/(?:<br\s*\/?>\s*)+$/i, '');
 
   return cleanedHtml.trim();
@@ -200,6 +204,8 @@ export function ConversationMessageItem({ comment }: Props) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [selectedAttachment, setSelectedAttachment] = useState<IAttachment | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [selectedImageSrc, setSelectedImageSrc] = useState<string | null>(null);
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false);
 
   let senderName = 'Unknown Sender';
   let senderIdentifier = 'unknown';
@@ -207,6 +213,16 @@ export function ConversationMessageItem({ comment }: Props) {
   let isUserReply = false;
   const isInitialMessage = comment.id === -1;
   const isAgentMessage = !!comment.agent;
+
+  // Check for auto-response
+  const autoResponseMatch = fullContent.match(/<auto-response>(.*?)<\/auto-response>/);
+  const isAutoResponse = !!autoResponseMatch;
+  const autoResponseType = autoResponseMatch ? autoResponseMatch[1] : null;
+
+  // Remove auto-response tag from content
+  if (isAutoResponse) {
+    fullContent = fullContent.replace(/<auto-response>.*?<\/auto-response>/, '').trim();
+  }
 
   const parsedSender = parseSenderFromContent(fullContent);
 
@@ -231,6 +247,12 @@ export function ConversationMessageItem({ comment }: Props) {
   } else if (comment.user) {
     senderName = comment.user.name || 'User';
     senderIdentifier = comment.user.email || `user-${comment.user.id}`;
+  }
+
+  // Override display for auto-responses
+  if (isAutoResponse) {
+    senderName = 'System';
+    senderIdentifier = 'system@enque.cc';
   }
 
   let formattedDate = comment.created_at;
@@ -295,11 +317,20 @@ export function ConversationMessageItem({ comment }: Props) {
       const parser = new DOMParser();
       const doc = parser.parseFromString(currentDisplayReplyPart, 'text/html');
 
-      const imgElements = doc.querySelectorAll('img.email-extracted-image');
+      // Hacer clickeable tanto las imágenes de email como las subidas por agentes
+      const imgElements = doc.querySelectorAll('img');
 
       imgElements.forEach(img => {
         const imgElement = img as HTMLImageElement;
         imgElement.style.cursor = 'pointer';
+        // Mejorar el tamaño de las imágenes de agentes
+        if (!imgElement.classList.contains('email-extracted-image')) {
+          imgElement.style.maxWidth = '300px';
+          imgElement.style.maxHeight = '200px';
+          imgElement.style.width = 'auto';
+          imgElement.style.height = 'auto';
+          imgElement.style.objectFit = 'contain';
+        }
       });
     };
 
@@ -308,12 +339,18 @@ export function ConversationMessageItem({ comment }: Props) {
 
   const handleImageClick = (e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
-    if (target.tagName === 'IMG' && target.classList.contains('email-extracted-image')) {
+    if (target.tagName === 'IMG') {
       const src = target.getAttribute('src');
       if (src) {
-        window.open(src, '_blank');
+        setSelectedImageSrc(src);
+        setIsImageModalOpen(true);
       }
     }
+  };
+
+  const handleCloseImageModal = () => {
+    setIsImageModalOpen(false);
+    setSelectedImageSrc(null);
   };
 
   const handlePreviewAttachment = (attachment: IAttachment) => {
@@ -353,9 +390,11 @@ export function ConversationMessageItem({ comment }: Props) {
           'flex items-start space-x-3 py-4 border-b border-slate-200 dark:border-slate-700 last:border-b-0',
           comment.is_private
             ? 'bg-yellow-50 dark:bg-yellow-800/30 p-3 rounded-md'
-            : applyAgentBackground
-              ? 'bg-slate-50 dark:bg-slate-800/50 p-3 rounded-md'
-              : 'p-3 rounded-md'
+            : isAutoResponse
+              ? 'bg-blue-50 dark:bg-blue-900/30 p-3 rounded-md border-l-4 border-blue-500'
+              : applyAgentBackground
+                ? 'bg-slate-50 dark:bg-slate-800/50 p-3 rounded-md'
+                : 'p-3 rounded-md'
         )}
       >
         <Avatar size={40} name={senderIdentifier} variant="beam" colors={avatarColors} />
@@ -363,7 +402,12 @@ export function ConversationMessageItem({ comment }: Props) {
           <div className="mb-1">
             <p className="text-sm font-medium leading-none">
               {senderName}
-              {comment.is_private && !isOnlyAttachmentPlaceholder && (
+              {isAutoResponse && (
+                <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                  🤖 Auto Response {autoResponseType && `(${autoResponseType.replace('_', ' ')})`}
+                </span>
+              )}
+              {comment.is_private && !isOnlyAttachmentPlaceholder && !isAutoResponse && (
                 <span className="ml-2 text-xs text-yellow-700 dark:text-yellow-400">
                   (Private Note)
                 </span>
@@ -383,27 +427,25 @@ export function ConversationMessageItem({ comment }: Props) {
               />
             )}
 
-            {showToggleButton && !isOnlyAttachmentPlaceholder && (
-              <button
-                type="button"
-                onClick={() => setIsExpanded(!isExpanded)}
-                className="text-xs text-muted-foreground hover:text-foreground mt-2 inline-flex items-center gap-1 p-1 rounded bg-slate-100 dark:bg-slate-700/50 hover:bg-slate-200 dark:hover:bg-slate-600/50"
-                aria-label={isExpanded ? 'Show less' : 'Show full message'}
-              >
-                <ChevronsUpDown className="h-3 w-3 flex-shrink-0" />
-                {isExpanded ? 'Show less' : 'Show full message'}
-              </button>
+            {showToggleButton && (
+              <div className="mt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsExpanded(!isExpanded)}
+                  className="text-xs text-muted-foreground hover:text-foreground mt-2 inline-flex items-center gap-1 p-1 rounded bg-slate-100 dark:bg-slate-700/50 hover:bg-slate-200 dark:hover:bg-slate-600/50"
+                >
+                  <ChevronsUpDown className="h-3 w-3 flex-shrink-0" />
+                  {isExpanded ? 'Show less' : 'Show quoted text'}
+                </button>
+                
+                {isExpanded && displayQuotedPart && (
+                  <div 
+                    className="mt-2 p-2 border-l-2 border-gray-200 dark:border-gray-700 text-muted-foreground" 
+                    dangerouslySetInnerHTML={{ __html: displayQuotedPart }}
+                  />
+                )}
+              </div>
             )}
-
-            {showToggleButton &&
-              isExpanded &&
-              displayQuotedPart &&
-              !isOnlyAttachmentPlaceholder && (
-                <div
-                  className="mt-2 pt-2 border-t border-dashed border-slate-300 dark:border-slate-600 text-black dark:text-slate-200 text-xs prose dark:prose-invert max-w-none whitespace-pre-line prose-a:text-blue-600 dark:prose-a:text-blue-400 prose-a:underline"
-                  dangerouslySetInnerHTML={{ __html: displayQuotedPart || '' }}
-                />
-              )}
 
             {comment.attachments && comment.attachments.length > 0 && (
               <div
@@ -528,6 +570,64 @@ export function ConversationMessageItem({ comment }: Props) {
         </Modal>
       )}
 
+      {selectedImageSrc && (
+        <Modal
+          open={isImageModalOpen}
+          onClose={handleCloseImageModal}
+          aria-labelledby="image-preview-title"
+          aria-describedby="image-preview-content"
+        >
+          <Box sx={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: '90vw',
+            maxWidth: '900px',
+            height: '85vh',
+            bgcolor: 'background.paper',
+            border: '2px solid #000',
+            boxShadow: 24,
+            p: 1,
+            display: 'flex',
+            flexDirection: 'column',
+          }}>
+            <Box sx={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              mb: 1,
+            }}>
+              <div></div>
+              <IconButton onClick={handleCloseImageModal} aria-label="Cerrar vista previa">
+                <MuiCloseIcon />
+              </IconButton>
+            </Box>
+            <Box sx={{
+              flexGrow: 1,
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              overflow: 'hidden',
+            }}>
+              <Image
+                src={selectedImageSrc}
+                alt="Image Preview"
+                width={1000}
+                height={1000}
+                unoptimized={true}
+                style={{ 
+                  maxWidth: '100%', 
+                  maxHeight: '100%', 
+                  objectFit: 'contain',
+                  borderRadius: '4px'
+                }}
+              />
+            </Box>
+          </Box>
+        </Modal>
+      )}
+
       <style jsx global>{`
         #msdoc-iframe {
           width: 100% !important;
@@ -576,6 +676,11 @@ export function ConversationMessageItem({ comment }: Props) {
         .prose .email-signature img {
           margin-top: 0.25em !important; /* Reducido para acercar la imagen */
           margin-bottom: 0 !important;
+          width: 150px !important;
+          height: 92px !important;
+          max-width: 150px !important;
+          max-height: 92px !important;
+          object-fit: scale-down !important;
         }
         /* Asegurar que el subrayado se muestre correctamente */
         .prose a {
@@ -589,6 +694,29 @@ export function ConversationMessageItem({ comment }: Props) {
         .prose .email-signature strong {
           font-size: 0.9em !important; /* Hacemos la fuente un poco más pequeña */
           line-height: 0.6 !important; /* Aplicar también aquí para consistencia */
+        }
+
+        /* Estilos para el texto citado */
+        .mt-2.p-2.border-l-2.border-gray-200.dark\\:border-gray-700.text-muted-foreground {
+          font-size: 0.8em !important;
+          line-height: 1 !important;
+        }
+        
+        /* Asegurar que todos los elementos dentro del texto citado sean más pequeños */
+        .mt-2.p-2.border-l-2.border-gray-200.dark\\:border-gray-700.text-muted-foreground *,
+        .gmail_quote_container,
+        .gmail_quote,
+        .gmail_quote * {
+          font-size: 0.85em !important;
+          line-height: 1 !important;
+        }
+        
+        /* Estilos específicos para el encabezado de citas */
+        .gmail_attr {
+          font-size: 0.8em !important;
+          color: #6b7280 !important; /* text-gray-500 */
+          margin-bottom: 0.5em !important;
+          line-height: 1 !important;
         }
       `}</style>
     </>

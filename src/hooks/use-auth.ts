@@ -6,7 +6,8 @@ import { getAuthToken, removeAuthToken } from '@/lib/auth';
 import type { Agent } from '@/typescript/agent';
 
 // Define the structure of the decoded JWT payload, extending the correct Agent type
-interface DecodedToken extends Agent {
+interface DecodedToken extends Omit<Agent, 'workspace_id'> {
+  workspace_id: string | number; // JWT might send as string
   exp: number;
   iat: number;
   sub: string; // Subject should be the agent ID as a string
@@ -29,6 +30,27 @@ export function useAuth() {
           removeAuthToken();
           setUser(null);
         } else {
+          // Convert workspace_id to number if it's a string
+          let workspaceId: number;
+          if (typeof decoded.workspace_id === 'number') {
+            workspaceId = decoded.workspace_id;
+          } else if (typeof decoded.workspace_id === 'string') {
+            workspaceId = parseInt(decoded.workspace_id, 10);
+            if (isNaN(workspaceId)) {
+              console.error('Invalid workspace_id in token:', decoded.workspace_id);
+              removeAuthToken();
+              setUser(null);
+              setIsLoading(false);
+              return;
+            }
+          } else {
+            console.error('workspace_id is missing or invalid in token:', decoded.workspace_id);
+            removeAuthToken();
+            setUser(null);
+            setIsLoading(false);
+            return;
+          }
+
           // Map decoded payload to Agent structure
           const agentData: Agent = {
             id: parseInt(decoded.sub, 10),
@@ -36,7 +58,7 @@ export function useAuth() {
             email: decoded.email,
             role: decoded.role,
             is_active: decoded.is_active !== undefined ? decoded.is_active : true,
-            workspace_id: decoded.workspace_id,
+            workspace_id: workspaceId, // Use converted workspace_id
             // Include new fields from token if available, else null/undefined
             job_title: decoded.job_title || null,
             phone_number: decoded.phone_number || null,

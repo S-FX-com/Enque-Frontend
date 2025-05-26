@@ -1,6 +1,6 @@
 import { fetchAPI } from '@/lib/fetch-api';
 
-// Define types for workflows
+// Define types for workflows with enhanced message analysis
 export interface WorkflowCondition {
   field: string;
   operator: string;
@@ -9,7 +9,16 @@ export interface WorkflowCondition {
 
 export interface WorkflowAction {
   type: string;
-  config: Record<string, any>;
+  config: Record<string, unknown>;
+}
+
+export interface MessageAnalysisRule {
+  keywords: string[];
+  exclude_keywords: string[];
+  sentiment_threshold?: number; // -1 to 1 scale
+  urgency_keywords: string[];
+  language?: string;
+  min_confidence: number;
 }
 
 export interface Workflow {
@@ -18,11 +27,36 @@ export interface Workflow {
   description: string;
   is_enabled: boolean;
   trigger: string;
+  message_analysis_rules?: MessageAnalysisRule; // New field for content analysis
   conditions: WorkflowCondition[];
   actions: WorkflowAction[];
   workspace_id: number;
   created_at: string;
   updated_at: string;
+}
+
+// Define specific types for API responses
+export interface WorkflowTrigger {
+  value: string;
+  label: string;
+  description: string;
+}
+
+export interface WorkflowActionOption {
+  id: string;
+  name: string;
+  description: string;
+  config_schema: Record<string, unknown>;
+}
+
+// Message analysis result type
+export interface MessageAnalysisResult {
+  sentiment: number; // -1 to 1
+  urgency_level: string; // low, medium, high
+  keywords_found: string[];
+  categories: string[];
+  language: string;
+  confidence: number;
 }
 
 const API_BASE_URL =
@@ -188,7 +222,7 @@ export const toggleWorkflow = async (
 
   try {
     const url = `${API_BASE_URL}/v1/workspaces/${workspaceId}/workflows/${workflowId}/toggle`;
-    const response = await fetchAPI.PUT<Workflow>(url, { is_enabled: isEnabled });
+    const response = await fetchAPI.POST<Workflow>(url, { is_enabled: isEnabled });
 
     if (!response || !response.data) {
       console.error(`Failed to toggle workflow ${workflowId} or data is missing`);
@@ -234,21 +268,21 @@ export const duplicateWorkflow = async (
 };
 
 /**
- * Gets available triggers for workflows.
+ * Fetches available workflow triggers.
  * @param workspaceId The ID of the workspace.
- * @returns A promise that resolves to an array of available triggers.
+ * @returns A promise that resolves to available triggers.
  */
 export const getWorkflowTriggers = async (
   workspaceId: number
-): Promise<{ id: string; name: string; description: string }[]> => {
+): Promise<WorkflowTrigger[]> => {
   if (!workspaceId) {
     console.error('getWorkflowTriggers requires a valid workspaceId');
     throw new Error('Invalid workspace ID provided');
   }
 
   try {
-    const url = `${API_BASE_URL}/v1/workspaces/${workspaceId}/workflows/triggers`;
-    const response = await fetchAPI.GET<{ id: string; name: string; description: string }[]>(url);
+    const url = `${API_BASE_URL}/v1/workspaces/${workspaceId}/triggers`;
+    const response = await fetchAPI.GET<WorkflowTrigger[]>(url);
 
     if (!response || !response.data) {
       console.error('Failed to fetch workflow triggers or data is missing');
@@ -263,26 +297,21 @@ export const getWorkflowTriggers = async (
 };
 
 /**
- * Gets available actions for workflows.
+ * Fetches available workflow actions.
  * @param workspaceId The ID of the workspace.
- * @returns A promise that resolves to an array of available actions.
+ * @returns A promise that resolves to available actions.
  */
 export const getWorkflowActions = async (
   workspaceId: number
-): Promise<
-  { id: string; name: string; description: string; config_schema: Record<string, any> }[]
-> => {
+): Promise<WorkflowActionOption[]> => {
   if (!workspaceId) {
     console.error('getWorkflowActions requires a valid workspaceId');
     throw new Error('Invalid workspace ID provided');
   }
 
   try {
-    const url = `${API_BASE_URL}/v1/workspaces/${workspaceId}/workflows/actions`;
-    const response =
-      await fetchAPI.GET<
-        { id: string; name: string; description: string; config_schema: Record<string, any> }[]
-      >(url);
+    const url = `${API_BASE_URL}/v1/workspaces/${workspaceId}/actions`;
+    const response = await fetchAPI.GET<WorkflowActionOption[]>(url);
 
     if (!response || !response.data) {
       console.error('Failed to fetch workflow actions or data is missing');
@@ -292,6 +321,58 @@ export const getWorkflowActions = async (
     return response.data;
   } catch (error) {
     console.error('Error fetching workflow actions:', error);
+    throw error;
+  }
+};
+
+/**
+ * Test message analysis functionality.
+ * @param workspaceId The ID of the workspace.
+ * @param message The message to analyze.
+ * @param analysisRules Optional analysis rules.
+ * @returns A promise that resolves to the analysis result.
+ */
+export const testMessageAnalysis = async (
+  workspaceId: number,
+  message: string,
+  analysisRules?: MessageAnalysisRule
+): Promise<{
+  message: string;
+  analysis: MessageAnalysisResult;
+  analysis_rules?: MessageAnalysisRule;
+}> => {
+  if (!workspaceId) {
+    console.error('testMessageAnalysis requires a valid workspaceId');
+    throw new Error('Invalid workspace ID provided');
+  }
+
+  if (!message || !message.trim()) {
+    console.error('testMessageAnalysis requires a valid message');
+    throw new Error('Invalid message provided');
+  }
+
+  try {
+    const url = `${API_BASE_URL}/v1/workspaces/${workspaceId}/test-analysis`;
+    const requestBody: Record<string, unknown> = { message };
+    
+    if (analysisRules) {
+      requestBody.analysis_rules = analysisRules;
+    }
+
+    const response = await fetchAPI.POST<{
+      message: string;
+      analysis: MessageAnalysisResult;
+      analysis_rules?: MessageAnalysisRule;
+    }>(url, requestBody);
+
+    if (!response || !response.data) {
+      console.error('Failed to test message analysis or data is missing');
+      throw new Error('Failed to test message analysis');
+    }
+
+    return response.data;
+  } catch (error) {
+    console.error('Error testing message analysis:', error);
     throw error;
   }
 };

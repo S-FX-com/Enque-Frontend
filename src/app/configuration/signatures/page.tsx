@@ -49,7 +49,7 @@ export default function GlobalSignatureConfigPage() {
 <p><strong>[Agent Name]</strong><br>
 <em>[Agent Role]</em><br>
 <em>Your Company Name</em></p>
-<p><img src="" alt="" width="150" height="92"></p>
+<p><img src="" alt="" width="120" height="75"></p>
       `);
       setIsEnabled(true);
     }

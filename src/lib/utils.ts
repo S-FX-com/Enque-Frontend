@@ -80,6 +80,9 @@ export const getPriorityVariant = (
   priority: TicketPriority | string | undefined
 ): 'destructive' | 'default' | 'secondary' => {
   switch (priority) {
+    case 'Critical':
+    case 'critical': // Allow lowercase
+      return 'destructive';
     case 'High':
     case 'high': // Allow lowercase
       return 'destructive';

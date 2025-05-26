@@ -49,7 +49,7 @@ export function TicketConversation({ ticket, onTicketUpdate }: Props) {
     queryFn: () => getCommentsByTaskId(ticket.id),
     enabled: !!ticket?.id,
     staleTime: 1 * 60 * 1000,
-    refetchInterval: 13000,
+    refetchInterval: 5000,
     refetchIntervalInBackground: true,
   });
   const currentAgentId = currentUser?.id;
@@ -137,7 +137,19 @@ export function TicketConversation({ ticket, onTicketUpdate }: Props) {
         // Cualquier otro cierre/apertura de párrafo
         .replace(/<\/p>\s*<p>/g, '<br>');
 
-      signatureToUse = `<div class="email-signature text-gray-500">${signatureToUse}</div>`;
+      // Forzar tamaño pequeño para imágenes en la firma
+      signatureToUse = signatureToUse.replace(
+        /<img([^>]*?)width="300"([^>]*?)height="200"([^>]*?)>/g,
+        '<img$1width="120"$2height="75"$3style="width: 120px; height: 75px; max-width: 120px; max-height: 75px; object-fit: scale-down;">'
+      );
+      
+      // También manejar imágenes que puedan tener diferentes tamaños pero siguen siendo de la firma
+      signatureToUse = signatureToUse.replace(
+        /<img([^>]*?)style="[^"]*width:\s*auto[^"]*"([^>]*?)>/g,
+        '<img$1style="width: 120px; height: 75px; max-width: 120px; max-height: 75px; object-fit: scale-down;"$2>'
+      );
+
+      signatureToUse = `<div class="email-signature text-gray-500" style="margin-top: 16px; padding-top: 12px; border-top: 1px solid #e5e7eb;">${signatureToUse}</div>`;
     }
 
     const currentTicketId = ticket.id;
@@ -147,7 +159,7 @@ export function TicketConversation({ ticket, onTicketUpdate }: Props) {
     const initialContent = signatureToUse ? `${greeting}${signatureToUse}` : greeting;
 
     console.log(
-      `[TicketConversation Effect] Running. Ticket: ${currentTicketId}, Prev Ticket: ${prevTicketId}, Signature available: ${!!signatureToUse}`
+      `[TicketConversation] Ticket ${currentTicketId} | Signature: ${!!signatureToUse}`
     );
     setReplyContent(initialContent);
     setEditorKey(prevKey => prevKey + 1);

@@ -105,9 +105,7 @@ export function Sidebar() {
     queryKey: ['ticketsCount', 'all'],
     queryFn: async () => {
       const tickets = await getTickets();
-
-      const ticketsTotal = tickets.filter(ticket => ticket.status !== 'Closed');
-      return ticketsTotal.length || 0;
+      return tickets.length || 0;
     },
     staleTime: 1000 * 60 * 5, // 5 minutes
     refetchInterval: 30000, // Refetch every 30 seconds
@@ -119,9 +117,7 @@ export function Sidebar() {
     queryFn: async () => {
       if (!user?.id) return 0;
       const tickets = await getTickets({}, `/v1/tasks/assignee/${user.id}`);
-
-      const ticketsTotal = tickets.filter(ticket => ticket.status !== 'Closed');
-      return ticketsTotal.length || 0;
+      return tickets.length || 0;
     },
     enabled: !!user?.id && !isLoadingUser,
     staleTime: 1000 * 60 * 5, // 5 minutes

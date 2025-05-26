@@ -40,53 +40,61 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const backgroundRefresh = () => {
-        // Buscar todas las queries de tickets
-        const hasTicketsQuery = queryClient.getQueryCache().findAll({
+        // Buscar todas las queries activas de tickets que realmente tienen datos
+        const hasActiveTicketsQuery = queryClient.getQueryCache().findAll({
           queryKey: ['tickets'],
+          predicate: query => query.state.status === 'success',
         });
-        const hasMyTicketsQuery = queryClient.getQueryCache().findAll({
-          queryKey: ['tickets', 'my'],
+        
+        const hasActiveMyTicketsQuery = queryClient.getQueryCache().findAll({
+          predicate: query => 
+            Array.isArray(query.queryKey) && 
+            query.queryKey.length >= 2 && 
+            query.queryKey[0] === 'tickets' && 
+            query.queryKey[1] === 'my' &&
+            query.state.status === 'success',
         });
 
-        // Buscar todas las queries de comentarios
-        const commentsQueries = queryClient.getQueryCache().findAll({
-          predicate: query => Array.isArray(query.queryKey) && query.queryKey[0] === 'comments',
+        // Buscar todas las queries de comentarios activas
+        const activeCommentsQueries = queryClient.getQueryCache().findAll({
+          predicate: query => 
+            Array.isArray(query.queryKey) && 
+            query.queryKey[0] === 'comments' &&
+            query.state.status === 'success',
         });
 
-        if (hasTicketsQuery.length > 0) {
+        if (hasActiveTicketsQuery.length > 0) {
           console.log('Background refresh: Refreshing All Tickets');
           queryClient.refetchQueries({
             queryKey: ['tickets'],
-            type: 'all',
+            type: 'active',
             exact: false,
           });
         }
 
-        if (hasMyTicketsQuery.length > 0) {
+        if (hasActiveMyTicketsQuery.length > 0) {
           console.log('Background refresh: Refreshing My Tickets');
           queryClient.refetchQueries({
             queryKey: ['tickets', 'my'],
-            type: 'all',
-            exact: true,
+            type: 'active',
+            exact: false,
           });
         }
 
         // Refrescar todos los comentarios abiertos
-        if (commentsQueries.length > 0) {
-          console.log(`Background refresh: Refreshing ${commentsQueries.length} comment threads`);
-          commentsQueries.forEach(query => {
+        if (activeCommentsQueries.length > 0) {
+          console.log(`Background refresh: Refreshing ${activeCommentsQueries.length} comment threads`);
+          activeCommentsQueries.forEach(query => {
             queryClient.refetchQueries({
               queryKey: query.queryKey,
-              type: 'all',
+              type: 'active',
               exact: true,
             });
           });
         }
       };
 
-      // Intervalo global de actualización - 30 segundos es suficiente ya que los componentes
-      // individuales tienen sus propios intervalos de actualización también
-      const intervalId = setInterval(backgroundRefresh, 30000);
+      const intervalId = setInterval(backgroundRefresh, 10000);
 
       return () => {
         clearInterval(intervalId);

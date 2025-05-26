@@ -120,11 +120,7 @@ export function RichTextEditor({
       StarterKit.configure({
         // Configure StarterKit extensions as needed
         // Ensure paragraph is enabled (default in StarterKit)
-        paragraph: {
-          HTMLAttributes: {
-            class: 'paragraph',
-          },
-        },
+        paragraph: {},
         heading: false, // Disable headings if not needed
         blockquote: false,
         codeBlock: false,
@@ -156,13 +152,7 @@ export function RichTextEditor({
       }),
       // Add HardBreak extension separately
       // This handles Shift+Enter and might influence Enter behavior in lists
-      HardBreak.configure({
-        // Configurar para preservar breaks
-        keepMarks: true,
-        HTMLAttributes: {
-          class: 'hard-break',
-        },
-      }),
+      HardBreak.configure(),
       Link.configure({
         // Enables link commands
         openOnClick: false,
@@ -183,9 +173,9 @@ export function RichTextEditor({
         inline: false,
         allowBase64: false,
         HTMLAttributes: {
-          width: 150,
-          height: 92,
-          style: 'width: 150px; height: 92px; max-width: 150px; object-fit: scale-down;',
+          width: 300,
+          height: 200,
+          style: 'width: auto; height: auto; max-width: 300px; max-height: 200px; object-fit: contain; border-radius: 4px;',
         },
       }).extend({
         // Extend the Image extension to add custom attribute handling
@@ -193,7 +183,7 @@ export function RichTextEditor({
           return {
             ...this.parent?.(), // Keep existing attributes like src, alt, title
             width: {
-              default: 150,
+              default: 300,
               // Parse width attribute from HTML
               parseHTML: element => element.getAttribute('width'),
               // Render width attribute back to HTML
@@ -202,7 +192,7 @@ export function RichTextEditor({
               },
             },
             height: {
-              default: 92,
+              default: 200,
               // Parse height attribute from HTML
               parseHTML: element => element.getAttribute('height'),
               // Render height attribute back to HTML
@@ -212,7 +202,7 @@ export function RichTextEditor({
             },
             // Keep style attribute handling if we decide to use it later, otherwise remove
             style: {
-              default: 'width: 150px; height: 92px; max-width: 150px; object-fit: scale-down;',
+              default: 'width: auto; height: auto; max-width: 300px; max-height: 200px; object-fit: contain; border-radius: 4px;',
               parseHTML: element => element.getAttribute('style'),
               renderHTML: attributes => {
                 return { style: attributes.style };
@@ -227,14 +217,8 @@ export function RichTextEditor({
     content: content,
     editable: !disabled,
     onUpdate: ({ editor }) => {
-      // Obtener el HTML y asegurarse de que los párrafos vacíos tengan <br>
-      const html = editor.getHTML();
-
-      // Reemplazar párrafos vacíos con párrafos que contengan <br>
-      const fixedHtml = html.replace(/<p>\s*<\/p>/gi, '<p><br></p>');
-
-      // Pasar el HTML modificado
-      onChange(fixedHtml);
+      // Get HTML content and pass it up
+      onChange(editor.getHTML());
     },
     // Basic editor styling directly or via CSS file
     editorProps: {

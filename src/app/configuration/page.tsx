@@ -260,7 +260,7 @@ export default function ClientPage() {
               const content = (
                 <div
                   className={`flex gap-2 flex-col items-center justify-center p-6 rounded-xl h-full ${item.href ? 'cursor-pointer' : 'cursor-default'}
-									${item.highlight ? 'bg-primary text-primary-foreground' : 'bg-background hover:bg-muted/50'}`}
+                  ${item.highlight ? 'bg-primary text-primary-foreground' : 'bg-background hover:bg-muted/50'}`}
                 >
                   <item.icon />
                   <span className="text-sm font-semibold text-center">{item.name}</span>

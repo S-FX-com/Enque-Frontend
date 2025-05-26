@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
 import { ThemeProvider } from '@/components/providers/theme-provider';
 import { QueryProvider } from '@/components/providers/query-provider'; // Import QueryProvider
+import { GlobalTicketsProvider } from '@/providers/global-tickets-provider';
 import { Toaster } from 'sonner';
 
 const geistSans = Geist({
@@ -38,9 +39,9 @@ export default function RootLayout({
           disableTransitionOnChange={false}
         >
           <QueryProvider>
-            {' '}
-            {/* Wrap children with QueryProvider */}
+            <GlobalTicketsProvider>
             {children}
+            </GlobalTicketsProvider>
             {/* Customize sonner Toaster appearance */}
             <Toaster
               position="bottom-right" // Change position to bottom-right
@@ -54,6 +55,8 @@ export default function RootLayout({
                   warning:
                     'bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-500 dark:border-yellow-600 text-yellow-700 dark:text-yellow-400',
                   info: 'bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-500 dark:border-blue-600 text-blue-700 dark:text-blue-400',
+                  // Nuevo estilo para notificaciones de tickets - gris claro tipo iPhone
+                  default: 'bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-200 shadow-lg backdrop-blur-sm'
                 },
               }}
             />

@@ -105,6 +105,21 @@ export const getCurrentUser = async (): Promise<UserSession | null> => {
     const userData = decodeToken(token);
     if (!userData) return null;
 
+    // Convert workspace_id to number if it's a string (from JWT)
+    let workspaceId: number;
+    if (typeof userData.workspace_id === 'number') {
+      workspaceId = userData.workspace_id;
+    } else if (typeof userData.workspace_id === 'string') {
+      workspaceId = parseInt(userData.workspace_id, 10);
+      if (isNaN(workspaceId)) {
+        logger.error('Invalid workspace_id in token:', userData.workspace_id);
+        return null;
+      }
+    } else {
+      logger.error('workspace_id is missing or invalid in token:', userData.workspace_id);
+      return null;
+    }
+
     // Convertir UserPayload a UserSession con valores predeterminados
     // Include new fields, defaulting to null if not present in token
     return {
@@ -112,7 +127,7 @@ export const getCurrentUser = async (): Promise<UserSession | null> => {
       name: userData.name || 'Usuario Enque',
       email: userData.email || 'usuario@enque.cc',
       role: userData.role || 'user',
-      workspace_id: userData.workspace_id || 0,
+      workspace_id: workspaceId, // Use converted workspace_id
       job_title: userData.job_title || null,
       phone_number: userData.phone_number || null,
       email_signature: userData.email_signature || null, // Add email_signature

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   BellIcon,
@@ -28,7 +28,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { handleLogout, UserSession } from '@/lib/auth';
 import BoringAvatar from 'boring-avatars';
 import { ModeToggle } from './mode-toggle';
-import { getNotifications, clearAllNotifications } from '@/services/activity';
+import { getNotifications, clearAllNotifications, showNotificationToast } from '@/services/activity';
 import { Activity } from '@/typescript/activity';
 import { formatRelativeTime } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -59,6 +59,7 @@ export function Topbar({
   const queryClient = useQueryClient();
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isClearingNotifications, setIsClearingNotifications] = useState(false);
+  const [lastNotificationId, setLastNotificationId] = useState<number | null>(null);
   const pathname = usePathname();
 
   // Fetch notifications when the popover might open or user changes
@@ -72,6 +73,24 @@ export function Topbar({
     staleTime: 1000 * 60, // Refetch after 1 minute if stale
     refetchInterval: 1000 * 60 * 2, // Optional: Refetch every 2 minutes
   });
+
+  // Comprobar si hay nuevas notificaciones y mostrar toast para la más reciente
+  useEffect(() => {
+    if (notifications.length > 0) {
+      const newestNotification = notifications[0]; // Las notificaciones vienen ordenadas con la más reciente primero
+      
+      // Comprobar si esta notificación es nueva (no mostrada anteriormente)
+      if (lastNotificationId === null || newestNotification.id > lastNotificationId) {
+        // Actualizar el ID de la última notificación
+        setLastNotificationId(newestNotification.id);
+        
+        // Mostrar notificación toast solo para las nuevas
+        if (lastNotificationId !== null) {
+          showNotificationToast(newestNotification);
+        }
+      }
+    }
+  }, [notifications, lastNotificationId]);
 
   // Function to clear all notifications
   const handleClearAllNotifications = async () => {
@@ -204,6 +223,7 @@ export function Topbar({
                         notifications.map(notification => {
                           // Determine avatar details and colors based on source type and creator/agent
                           const isTicketCreation = notification.source_type === 'Ticket';
+                          const isComment = notification.source_type === 'Comment';
                           const isUserCreator =
                             isTicketCreation &&
                             (notification.creator_user_id || notification.creator_user_email);
@@ -234,10 +254,11 @@ export function Topbar({
                               <div className="text-sm flex-1">
                                 <p>
                                   <span className="font-medium">{displayName}</span>{' '}
-                                  {/* Always show "logged a new ticket" for Ticket source type */}
-                                  {isTicketCreation ? 'logged a new ticket' : notification.action}
-                                  {/* Display ticket ID, but link is outside */}
-                                  {isTicketCreation && notification.source_id && (
+                                  {/* Show different text based on notification type */}
+                                  {isTicketCreation ? 'logged a new ticket' : 
+                                   isComment ? 'commented on ticket' : notification.action}
+                                  {/* Display ticket ID for both tickets and comments */}
+                                  {(isTicketCreation || isComment) && notification.source_id && (
                                     <span className="text-primary ml-1">
                                       #{notification.source_id}
                                     </span>
@@ -252,9 +273,8 @@ export function Topbar({
                             </div>
                           );
 
-                          // Wrap with Link only if it's a ticket notification with an ID
-                          // Use query parameter to signal opening the ticket panel
-                          return isTicketCreation && notification.source_id ? (
+                          // Wrap with Link for both tickets and comments
+                          return (isTicketCreation || isComment) && notification.source_id ? (
                             <Link
                               href={`/tickets?openTicket=${notification.source_id}`}
                               key={notification.id}

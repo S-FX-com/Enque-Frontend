@@ -16,7 +16,10 @@ export interface Automation {
     subject: string;
     content: string;
   };
-  filters: Record<string, any>;
+  filters: {
+    recipients?: string[];
+    [key: string]: unknown;
+  };
   workspace_id: number;
   created_at: string;
   updated_at: string;

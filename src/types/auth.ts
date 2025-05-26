@@ -3,7 +3,7 @@ export interface UserPayload {
   email: string;
   name: string;
   role: string;
-  workspace_id: number;
+  workspace_id: string | number; // Can be string from JWT token
   job_title?: string | null;
   phone_number?: string | null;
   email_signature?: string | null; // Add email_signature

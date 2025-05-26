@@ -9,30 +9,6 @@
   margin-bottom: 0.5em; /* Ajustar margen inferior si es necesario */
 }
 
-/* Asegurar que los párrafos vacíos tengan altura adecuada */
-.ProseMirror p:empty,
-.ProseMirror p:has(.ProseMirror-trailingBreak) {
-  min-height: 1.4em; /* Coincide con la altura de línea */
-  display: block;
-}
-
-/* Forzar un min-height en los párrafos con BR */
-.ProseMirror p > br,
-.ProseMirror p > .ProseMirror-trailingBreak {
-  line-height: 1.4em;
-  display: block;
-  content: '';
-  margin-top: 0.2em;
-}
-
-.ProseMirror p.is-empty:first-child::before {
-  color: #adb5bd;
-  content: attr(data-placeholder);
-  float: left;
-  height: 0;
-  pointer-events: none;
-}
-
 .email-signature,
 .ProseMirror .email-signature {
   color: #6b7280 !important;
@@ -71,6 +47,19 @@
   margin-top: -5px !important;
 }
 
+.email-signature img {
+  width: 120px !important;
+  height: 75px !important;
+  max-width: 120px !important;
+  max-height: 75px !important;
+  object-fit: scale-down !important;
+  margin-top: 0.25em !important;
+  margin-bottom: 0 !important;
+  display: block !important;
+  float: left !important;
+  clear: left !important;
+}
+
 .prose .email-signature,
 .prose .email-signature p {
   color: #6b7280 !important;
@@ -105,13 +94,20 @@
 .dark .ProseMirror a[href] {
   color: theme('colors.blue.400') !important;
 }
-.ProseMirror img[width][height] {
-  width: var(--img-width, 150px) !important;
-  height: var(--img-height, 92px) !important;
-  max-width: var(--img-width, 150px) !important; /* Ensure max-width matches */
-  object-fit: scale-down; /* Changed from contain to scale-down to better preserve aspect ratio */
-  margin-top: 0.5em !important; /* Add some margin back */
+.ProseMirror img {
+  display: block !important;
+  float: left !important;
+  clear: left !important;
+  margin-top: 0.5em !important;
   margin-bottom: 0.5em !important;
+  margin-right: 0.5em !important;
+}
+
+.ProseMirror img[width][height] {
+  object-fit: scale-down !important;
+  display: block !important;
+  float: left !important;
+  clear: left !important;
 }
 
 .ProseMirror img:not([width]):not([height]) {
@@ -151,4 +147,13 @@
 .dark .ProseMirror ol,
 .dark .ProseMirror li {
   color: theme('colors.slate.200');
+}
+
+/* Específico para logos de firmas - forzar tamaño sin afectar otras imágenes */
+.ProseMirror img[width="300"][height="200"] {
+  width: 120px !important;
+  height: 75px !important;
+  max-width: 120px !important;
+  max-height: 75px !important;
+  object-fit: scale-down !important;
 }

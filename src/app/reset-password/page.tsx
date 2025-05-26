@@ -16,17 +16,135 @@ import Image from 'next/image';
 import { authService } from '@/services/auth'; // Import the whole service
 import { setAuthToken } from '@/lib/auth';
 
+// Validaciones de contraseña robustas que coinciden con el backend
 const passwordResetSchema = z
   .object({
-    new_password: z.string().min(8, 'Password must be at least 8 characters long'),
+    new_password: z
+      .string()
+      .min(8, 'Password must be at least 8 characters')
+      .max(128, 'Password cannot be more than 128 characters')
+      .regex(/[a-z]/, 'Must contain at least one lowercase letter')
+      .regex(/[A-Z]/, 'Must contain at least one uppercase letter')
+      .regex(/\d/, 'Must contain at least one number')
+      .regex(/[!@#$%^&*()_+\-=\[\]{};':\"\\|,.<>\/?~`]/, 'Must contain at least one special character')
+      .refine((password) => {
+        const commonPasswords = [
+          'password', '123456', 'password123', 'admin', 'qwerty',
+          'letmein', 'welcome', 'monkey', 'dragon', 'master',
+          'hello', 'freedom', 'whatever', 'qazwsx', 'trustno1'
+        ];
+        return !commonPasswords.includes(password.toLowerCase());
+      }, 'Cannot be a common password'),
     confirmPassword: z.string(),
   })
   .refine(data => data.new_password === data.confirmPassword, {
-    message: "Passwords don't match",
+    message: 'Passwords do not match',
     path: ['confirmPassword'],
   });
 
 type PasswordResetFormData = z.infer<typeof passwordResetSchema>;
+
+// Función para evaluar la fuerza de la contraseña
+interface PasswordRequirement {
+  label: string;
+  test: (password: string) => boolean;
+}
+
+const passwordRequirements: PasswordRequirement[] = [
+  { label: 'At least 8 characters', test: (p) => p.length >= 8 },
+  { label: 'One lowercase letter', test: (p) => /[a-z]/.test(p) },
+  { label: 'One uppercase letter', test: (p) => /[A-Z]/.test(p) },
+  { label: 'One number', test: (p) => /\d/.test(p) },
+  { label: 'One special character', test: (p) => /[!@#$%^&*()_+\-=\[\]{};':\"\\|,.<>\/?~`]/.test(p) },
+];
+
+function PasswordStrengthIndicator({ password, onValidationChange }: { 
+  password: string; 
+  onValidationChange?: (missingRequirements: string[]) => void;
+}) {
+  const [lastCheckedPassword, setLastCheckedPassword] = useState('');
+  
+  const passedRequirements = passwordRequirements.filter(req => req.test(password));
+  const failedRequirements = passwordRequirements.filter(req => !req.test(password));
+  const strengthPercentage = (passedRequirements.length / passwordRequirements.length) * 100;
+  
+  // Determinar el color y texto de la barra según la fuerza
+  const getStrengthColor = () => {
+    if (strengthPercentage < 40) return 'bg-red-500';
+    if (strengthPercentage < 80) return 'bg-yellow-500';
+    return 'bg-green-500';
+  };
+
+  const getStrengthText = () => {
+    if (strengthPercentage < 40) return 'Weak';
+    if (strengthPercentage < 80) return 'Medium';
+    return 'Strong';
+  };
+
+  // Mostrar notificación cuando la contraseña cambie y tenga caracteres pero no sea válida
+  useEffect(() => {
+    if (password.length > 0 && password !== lastCheckedPassword && failedRequirements.length > 0) {
+      const missingRequirements = failedRequirements.map(req => req.label);
+      
+      // Solo mostrar toast si hay al menos 3 caracteres para evitar spam
+      if (password.length >= 3) {
+        toast.error('Password requirements not met', {
+          description: `Missing: ${missingRequirements.join(', ')}`,
+          duration: 3000,
+        });
+      }
+      
+      if (onValidationChange) {
+        onValidationChange(missingRequirements);
+      }
+      
+      setLastCheckedPassword(password);
+    } else if (password.length === 0) {
+      setLastCheckedPassword('');
+    }
+  }, [password, failedRequirements, lastCheckedPassword, onValidationChange]);
+
+  if (password.length === 0) return null;
+
+  return (
+    <div className="mt-3 space-y-2">
+      <div className="flex justify-between items-center text-sm">
+        <span className="text-gray-600">Password Strength</span>
+        <span className={`font-medium ${
+          strengthPercentage < 40 ? 'text-red-600' : 
+          strengthPercentage < 80 ? 'text-yellow-600' : 'text-green-600'
+        }`}>
+          {getStrengthText()}
+        </span>
+      </div>
+      
+      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+        <div
+          className={`h-2 rounded-full transition-all duration-300 ease-in-out ${getStrengthColor()}`}
+          style={{ width: `${strengthPercentage}%` }}
+        />
+      </div>
+      
+      {/* Indicadores de requisitos cumplidos */}
+      <div className="flex space-x-1">
+        {passwordRequirements.map((_, index) => (
+          <div
+            key={index}
+            className={`h-1 flex-1 rounded transition-all duration-200 ${
+              index < passedRequirements.length 
+                ? getStrengthColor()
+                : 'bg-gray-200 dark:bg-gray-600'
+            }`}
+          />
+        ))}
+      </div>
+      
+      <p className="text-xs text-gray-500 mt-1">
+        {passedRequirements.length} of {passwordRequirements.length} requirements met
+      </p>
+    </div>
+  );
+}
 
 function ResetPasswordForm() {
   const router = useRouter();
@@ -38,10 +156,13 @@ function ResetPasswordForm() {
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<PasswordResetFormData>({
     resolver: zodResolver(passwordResetSchema),
   });
+
+  const newPassword = watch('new_password', '');
 
   const mutation = useMutation({
     mutationFn: async (data: { new_password_str: string; token_str: string }) => {
@@ -112,7 +233,7 @@ function ResetPasswordForm() {
           <Image src="/enque.png" alt="Enque Logo" width={150} height={49} priority />
         </Link>
       </div>
-      <Card className="w-full max-w-md">
+      <Card className="w-full max-w-lg">
         <CardHeader>
           <CardTitle className="text-2xl font-bold text-center">Reset Your Password</CardTitle>
           <CardDescription className="text-center">Enter your new password below.</CardDescription>
@@ -147,6 +268,7 @@ function ResetPasswordForm() {
                 {errors.new_password && (
                   <p className="text-xs text-red-500 mt-1">{errors.new_password.message}</p>
                 )}
+                <PasswordStrengthIndicator password={newPassword} />
               </div>
               <div>
                 <Label htmlFor="confirmPassword" className="mb-1 block">

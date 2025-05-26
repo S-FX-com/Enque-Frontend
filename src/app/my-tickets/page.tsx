@@ -116,7 +116,7 @@ function MyTicketsClientContent() {
     TicketPage,
     Error,
     InfiniteData<TicketPage, number>,
-    readonly ['tickets', 'my', number | undefined],
+    readonly [string, ...unknown[]],
     number
   >({
     queryKey: ['tickets', 'my', currentUser?.id],
@@ -134,7 +134,7 @@ function MyTicketsClientContent() {
     },
     initialPageParam: 0,
     staleTime: 1000 * 60,
-    refetchInterval: 9000,
+    refetchInterval: 2000,
     refetchIntervalInBackground: true,
     enabled: !!currentUser?.id,
   });
