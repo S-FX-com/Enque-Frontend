@@ -29,7 +29,7 @@ interface TokenResponse {
 }
 
 // Endpoint del servicio
-const SERVICE_ENDPOINT = `${AppConfigs.api}/v1/auth`;
+const SERVICE_ENDPOINT = `${AppConfigs.api}/auth`;
 
 export const authService = {
   // Login
