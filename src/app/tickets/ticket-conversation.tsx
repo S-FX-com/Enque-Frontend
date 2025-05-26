@@ -6,7 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Send, Mail, Loader2 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Send, Mail, Loader2, MessageSquare, Search, X, Hash, Clock } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { ITicket } from '@/typescript/ticket';
 import { IComment } from '@/typescript/comment';
 import { Agent } from '@/typescript/agent';
@@ -24,6 +28,12 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { uploadAttachments } from '@/services/attachmentService';
 import { getEnabledGlobalSignature } from '@/services/global-signature';
+import {
+  getCannedReplies,
+  getCannedRepliesByCategory,
+  searchCannedRepliesByTags,
+  CannedReply,
+} from '@/services/canned-replies';
 
 interface Props {
   ticket: ITicket;
@@ -39,6 +49,11 @@ export function TicketConversation({ ticket, onTicketUpdate }: Props) {
   const prevTicketIdRef = useRef<number | null>(null);
   const [selectedAttachments, setSelectedAttachments] = useState<File[]>([]);
 
+  // Canned replies state
+  const [cannedRepliesOpen, setCannedRepliesOpen] = useState(false);
+  const [cannedSearchTerm, setCannedSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('');
+
   const {
     data: comments = [],
     isLoading: isLoadingComments,
@@ -52,6 +67,7 @@ export function TicketConversation({ ticket, onTicketUpdate }: Props) {
     refetchInterval: 13000,
     refetchIntervalInBackground: true,
   });
+
   const currentAgentId = currentUser?.id;
   const { data: currentAgentData } = useQuery<Agent>({
     queryKey: ['agent', currentAgentId],
@@ -68,12 +84,49 @@ export function TicketConversation({ ticket, onTicketUpdate }: Props) {
     staleTime: 5 * 60 * 1000,
   });
 
+  // Fetch canned replies
+  const { data: cannedReplies = [], isLoading: isLoadingCannedReplies } = useQuery<CannedReply[]>({
+    queryKey: ['cannedReplies', workspaceId],
+    queryFn: () => getCannedReplies(workspaceId!, { enabledOnly: true }),
+    enabled: !!workspaceId,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Filter canned replies based on search and category
+  const filteredCannedReplies = React.useMemo(() => {
+    let filtered = cannedReplies;
+
+    // Filter by category
+    if (selectedCategory) {
+      filtered = filtered.filter(reply => reply.category === selectedCategory);
+    }
+
+    // Filter by search term
+    if (cannedSearchTerm) {
+      const searchLower = cannedSearchTerm.toLowerCase();
+      filtered = filtered.filter(
+        reply =>
+          reply.title.toLowerCase().includes(searchLower) ||
+          reply.content.toLowerCase().includes(searchLower) ||
+          reply.tags?.some(tag => tag.toLowerCase().includes(searchLower))
+      );
+    }
+
+    return filtered;
+  }, [cannedReplies, selectedCategory, cannedSearchTerm]);
+
+  // Get unique categories
+  const categories = React.useMemo(() => {
+    const cats = cannedReplies.map(reply => reply.category).filter((cat): cat is string => !!cat);
+    return Array.from(new Set(cats));
+  }, [cannedReplies]);
+
   // --- Combine initial message and comments ---
   const conversationItems = React.useMemo(() => {
     const items: IComment[] = [...comments];
 
     let initialMessageContent: string | null | undefined = null;
-    let initialMessageSender: IComment['user'] = null; // Esto es IUser | null
+    let initialMessageSender: IComment['user'] = null;
 
     if (ticket.description) {
       initialMessageContent = ticket.description;
@@ -83,18 +136,15 @@ export function TicketConversation({ ticket, onTicketUpdate }: Props) {
       initialMessageSender = ticket.user;
     }
 
-    // Modificación: Crear el mensaje inicial si hay contenido, incluso si initialMessageSender es null.
     if (initialMessageContent && ticket.created_at) {
       const initialComment: IComment = {
         id: -1,
         content: initialMessageContent,
         created_at: ticket.created_at,
         updated_at: ticket.created_at,
-        user: initialMessageSender, // Puede ser null, ConversationMessageItem debería manejarlo
+        user: initialMessageSender,
         agent: null,
         ticket_id: ticket.id,
-        // Usar ticket.workspace_id de forma segura. Asumiendo que ITicket tiene workspace_id no nulo.
-        // Si initialMessageSender existe, su workspace_id debería coincidir con ticket.workspace_id.
         workspace_id: ticket.workspace_id,
         is_private: false,
       };
@@ -107,34 +157,24 @@ export function TicketConversation({ ticket, onTicketUpdate }: Props) {
   }, [comments, ticket]);
 
   useEffect(() => {
-    // Usar firma global si está disponible Y activada, sin importar si hay firma personal
     let signatureToUse = '';
 
-    // Si hay una firma global disponible (esto ya garantiza que esté activada por usar getEnabledGlobalSignature)
     if (globalSignatureData?.content) {
       signatureToUse = globalSignatureData.content
         .replace(/\[Agent Name\]/g, currentAgentData?.name || '')
         .replace(/\[Agent Role\]/g, currentAgentData?.job_title || '-');
     } else if (currentAgentData?.email_signature) {
-      // Solo usar firma personal si no hay firma global activada
       signatureToUse = currentAgentData.email_signature;
     }
 
-    // Envolver la firma en un div con clase para poder aplicar el estilo gris
     if (signatureToUse) {
-      // Aplicar formato GoDesk - Convertir multiple párrafos en formato con <br>
       signatureToUse = signatureToUse
-        // Reemplazar combinación </strong></p><p><em> con </strong><br><em>
         .replace(/<\/strong><\/p>\s*<p>\s*<em>/g, '</strong><br><em>')
-        // Reemplazar combinación </em></p><p><em> con </em><br><em>
         .replace(/<\/em><\/p>\s*<p>\s*<em>/g, '</em><br><em>')
-        // Otros patrones comunes en firmas
         .replace(/<\/strong><\/p>\s*<p>/g, '</strong><br>')
         .replace(/<\/em><\/p>\s*<p>/g, '</em><br>')
-        // Separar nombre/título/compañía/etc
         .replace(/<\/p>\s*<p>\s*<strong>/g, '<br><strong>')
         .replace(/<\/p>\s*<p>\s*<em>/g, '<br><em>')
-        // Cualquier otro cierre/apertura de párrafo
         .replace(/<\/p>\s*<p>/g, '<br>');
 
       signatureToUse = `<div class="email-signature text-gray-500">${signatureToUse}</div>`;
@@ -159,12 +199,66 @@ export function TicketConversation({ ticket, onTicketUpdate }: Props) {
     prevTicketIdRef.current = currentTicketId;
   }, [ticket.id, ticket.user?.name, currentAgentData, globalSignatureData]);
 
-  // Manejar cambios en adjuntos seleccionados
   const handleAttachmentsChange = (files: File[]) => {
     setSelectedAttachments(files);
   };
 
-  // Procesar adjuntos y enviar comentario
+  // Handle canned reply selection
+  const handleCannedReplySelect = (cannedReply: CannedReply) => {
+    // Replace placeholders in canned reply content
+    let content = cannedReply.content;
+    const userName = ticket.user?.name || 'there';
+    const agentName = currentAgentData?.name || '';
+
+    content = content
+      .replace(/\[Customer Name\]/g, userName)
+      .replace(/\[Agent Name\]/g, agentName)
+      .replace(/\[Ticket ID\]/g, ticket.id.toString())
+      .replace(/\[Ticket Title\]/g, ticket.title || '');
+
+    // If it's a private note, just set the content without greeting or signature
+    if (isPrivateNote) {
+      setReplyContent(content);
+    } else {
+      // For regular replies, maintain the greeting and signature structure
+      const greeting = `<p>Hi ${userName},</p><p><br></p>`;
+
+      // Get signature
+      let signatureToUse = '';
+      if (globalSignatureData?.content) {
+        signatureToUse = globalSignatureData.content
+          .replace(/\[Agent Name\]/g, currentAgentData?.name || '')
+          .replace(/\[Agent Role\]/g, currentAgentData?.job_title || '-');
+      } else if (currentAgentData?.email_signature) {
+        signatureToUse = currentAgentData.email_signature;
+      }
+
+      if (signatureToUse) {
+        signatureToUse = signatureToUse
+          .replace(/<\/strong><\/p>\s*<p>\s*<em>/g, '</strong><br><em>')
+          .replace(/<\/em><\/p>\s*<p>\s*<em>/g, '</em><br><em>')
+          .replace(/<\/strong><\/p>\s*<p>/g, '</strong><br>')
+          .replace(/<\/em><\/p>\s*<p>/g, '</em><br>')
+          .replace(/<\/p>\s*<p>\s*<strong>/g, '<br><strong>')
+          .replace(/<\/p>\s*<p>\s*<em>/g, '<br><em>')
+          .replace(/<\/p>\s*<p>/g, '<br>');
+
+        signatureToUse = `<div class="email-signature text-gray-500">${signatureToUse}</div>`;
+      }
+
+      const fullContent = signatureToUse
+        ? `${greeting}${content}<p><br></p>${signatureToUse}`
+        : `${greeting}${content}`;
+
+      setReplyContent(fullContent);
+    }
+
+    setCannedRepliesOpen(false);
+    setCannedSearchTerm('');
+    setSelectedCategory('');
+    setEditorKey(prev => prev + 1);
+  };
+
   const sendComment = async (content: string, isPrivate: boolean): Promise<CommentResponseData> => {
     if (!currentUser) {
       toast.error('Authentication error. User not found.');
@@ -173,7 +267,6 @@ export function TicketConversation({ ticket, onTicketUpdate }: Props) {
 
     let attachmentIds: number[] = [];
 
-    // Si hay adjuntos, primero subirlos y obtener sus IDs
     if (selectedAttachments && selectedAttachments.length > 0) {
       try {
         const uploaded = await uploadAttachments(selectedAttachments);
@@ -186,7 +279,6 @@ export function TicketConversation({ ticket, onTicketUpdate }: Props) {
       }
     }
 
-    // Crear el comentario con los IDs de adjuntos
     const payload: CreateCommentPayload = {
       content,
       ticket_id: ticket.id,
@@ -202,12 +294,9 @@ export function TicketConversation({ ticket, onTicketUpdate }: Props) {
   const createCommentMutation = useMutation({
     mutationFn: () => sendComment(replyContent, isPrivateNote),
     onSuccess: (data: CommentResponseData) => {
-      // Mostrar inmediatamente el nuevo comentario actualizando la caché directamente
       if (data.comment) {
         queryClient.setQueryData<IComment[]>(['comments', ticket.id], oldComments => {
-          // Si no hay comentarios previos, crear un array con el nuevo comentario
           if (!oldComments) return [data.comment];
-          // Asegurarse de que el comentario no esté ya en la lista
           if (!oldComments.some(comment => comment.id === data.comment.id)) {
             return [data.comment, ...oldComments];
           }
@@ -215,28 +304,22 @@ export function TicketConversation({ ticket, onTicketUpdate }: Props) {
         });
       }
 
-      // También invalida para asegurar sincronización con el servidor
       queryClient.invalidateQueries({ queryKey: ['comments', ticket.id] });
 
-      // Reset form state
       setReplyContent('');
-      setSelectedAttachments([]); // Limpiar adjuntos después de enviar exitosamente
+      setSelectedAttachments([]);
       setIsPrivateNote(false);
-      setEditorKey(prev => prev + 1); // Resetear editor por completo para limpiar cualquier estado residual
+      setEditorKey(prev => prev + 1);
 
-      // Show success message
       toast.success('Reply sent successfully.');
 
-      // If the updated ticket data includes a new assignee, update the ticket in the cache
       if (data.task && onTicketUpdate) {
         console.log('Ticket updated from comment creation:', data.task);
         onTicketUpdate(data.task);
 
-        // Update the ticket in the cache
         queryClient.setQueryData(['ticket', ticket.id], data.task);
         queryClient.invalidateQueries({ queryKey: ['tickets'] });
 
-        // Show notification if the assignee changed
         if (data.assignee_changed && currentUser) {
           toast.info(`You were automatically assigned to this ticket.`);
         }
@@ -271,12 +354,12 @@ export function TicketConversation({ ticket, onTicketUpdate }: Props) {
           </div>
         </CardContent>
       </Card>
+
       <Card className="flex-1 flex flex-col min-h-0">
         <CardHeader className="pb-2 flex-shrink-0">
           <CardTitle className="text-lg">Conversation</CardTitle>
         </CardHeader>
         <CardContent className="flex-1 overflow-y-auto space-y-4">
-          {/* Render based on loading/error state first */}
           {isLoadingComments && (
             <div className="space-y-4">
               <Skeleton className="h-16 w-full" />
@@ -289,7 +372,6 @@ export function TicketConversation({ ticket, onTicketUpdate }: Props) {
             </div>
           )}
 
-          {/* Render conversation items if not loading and no error */}
           {!isLoadingComments &&
             !isCommentsError &&
             (conversationItems.length === 0 ? (
@@ -298,7 +380,6 @@ export function TicketConversation({ ticket, onTicketUpdate }: Props) {
               </div>
             ) : (
               conversationItems.map(item => (
-                // Use item.id for real comments, and a stable key for the initial message
                 <ConversationMessageItem
                   key={item.id === -1 ? 'initial-message' : item.id}
                   comment={item}
@@ -307,6 +388,7 @@ export function TicketConversation({ ticket, onTicketUpdate }: Props) {
             ))}
         </CardContent>
       </Card>
+
       <Card>
         <CardContent className="p-4 space-y-3">
           <RichTextEditor
@@ -322,16 +404,138 @@ export function TicketConversation({ ticket, onTicketUpdate }: Props) {
               {createCommentMutation.error?.message || 'Failed to send reply.'}
             </p>
           )}
+
           <div className="flex justify-between items-center pt-2">
-            <div className="flex items-center space-x-2">
-              <Switch
-                id="private-note"
-                checked={isPrivateNote}
-                onCheckedChange={handlePrivateNoteChange}
-                disabled={createCommentMutation.isPending}
-              />
-              <Label htmlFor="private-note">Private Note</Label>
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="private-note"
+                  checked={isPrivateNote}
+                  onCheckedChange={handlePrivateNoteChange}
+                  disabled={createCommentMutation.isPending}
+                />
+                <Label htmlFor="private-note">Private Note</Label>
+              </div>
+
+              {/* Canned Replies Popover */}
+              <Popover open={cannedRepliesOpen} onOpenChange={setCannedRepliesOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={createCommentMutation.isPending || isLoadingCannedReplies}
+                  >
+                    <MessageSquare className="mr-2 h-4 w-4" />
+                    Templates
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-96 p-0" align="start">
+                  <div className="p-4 border-b">
+                    <h3 className="font-semibold text-sm mb-3">Canned Replies</h3>
+
+                    {/* Search */}
+                    <div className="relative mb-3">
+                      <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Search templates..."
+                        value={cannedSearchTerm}
+                        onChange={e => setCannedSearchTerm(e.target.value)}
+                        className="pl-8"
+                      />
+                    </div>
+
+                    {/* Category Filter */}
+                    {categories.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        <Button
+                          variant={selectedCategory === '' ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => setSelectedCategory('')}
+                          className="h-6 text-xs"
+                        >
+                          All
+                        </Button>
+                        {categories.map(category => (
+                          <Button
+                            key={category}
+                            variant={selectedCategory === category ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => setSelectedCategory(category)}
+                            className="h-6 text-xs"
+                          >
+                            {category}
+                          </Button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <ScrollArea className="h-64">
+                    <div className="p-2">
+                      {isLoadingCannedReplies ? (
+                        <div className="space-y-2">
+                          <Skeleton className="h-12 w-full" />
+                          <Skeleton className="h-12 w-full" />
+                          <Skeleton className="h-12 w-full" />
+                        </div>
+                      ) : filteredCannedReplies.length === 0 ? (
+                        <div className="text-center text-muted-foreground py-4 text-sm">
+                          {cannedSearchTerm || selectedCategory
+                            ? 'No templates match your search'
+                            : 'No templates available'}
+                        </div>
+                      ) : (
+                        filteredCannedReplies.map(reply => (
+                          <div
+                            key={reply.id}
+                            className="p-3 hover:bg-accent rounded-lg cursor-pointer border mb-2"
+                            onClick={() => handleCannedReplySelect(reply)}
+                          >
+                            <div className="flex items-start justify-between mb-1">
+                              <h4 className="font-medium text-sm truncate flex-1">{reply.title}</h4>
+                              <div className="flex items-center gap-1 ml-2">
+                                {reply.usage_count > 0 && (
+                                  <Badge variant="secondary" className="text-xs">
+                                    <Clock className="w-3 h-3 mr-1" />
+                                    {reply.usage_count}
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+
+                            <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
+                              {reply.content.replace(/<[^>]*>/g, '').substring(0, 100)}...
+                            </p>
+
+                            <div className="flex items-center justify-between">
+                              <div className="flex flex-wrap gap-1">
+                                {reply.category && (
+                                  <Badge variant="outline" className="text-xs">
+                                    <Hash className="w-2 h-2 mr-1" />
+                                    {reply.category}
+                                  </Badge>
+                                )}
+                                {reply.tags?.slice(0, 2).map(tag => (
+                                  <Badge key={tag} variant="secondary" className="text-xs">
+                                    {tag}
+                                  </Badge>
+                                ))}
+                                {reply.tags && reply.tags.length > 2 && (
+                                  <Badge variant="secondary" className="text-xs">
+                                    +{reply.tags.length - 2}
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </ScrollArea>
+                </PopoverContent>
+              </Popover>
             </div>
+
             <Button
               onClick={handleSendReply}
               disabled={
