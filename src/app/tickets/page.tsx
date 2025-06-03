@@ -50,6 +50,7 @@ import type { ICompany } from '@/typescript/company';
 import type { ICategory } from '@/typescript/category';
 import { Collapsible, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useGlobalTicketsContext } from '@/providers/global-tickets-provider';
+import { useAuth } from '@/hooks/use-auth';
 
 import type { Agent } from '@/typescript/agent';
 import { formatRelativeTime, cn } from '@/lib/utils';
@@ -63,6 +64,7 @@ import {
 } from '@/components/ui/select';
 
 function TicketsClientContent() {
+  const { user } = useAuth();
   const {
     allTicketsData,
     fetchNextPage,
@@ -402,24 +404,52 @@ function TicketsClientContent() {
         return { ...oldData, pages: newPages };
       });
 
+      // Optimistically update sidebar counters
+      const currentAllCount = queryClient.getQueryData<number>(['ticketsCount', 'all']) || 0;
+      const currentMyCount = queryClient.getQueryData<number>(['ticketsCount', 'my', user?.id]) || 0;
+      
+      // Get tickets being deleted to count how many are active
+      const allTickets = previousTicketsData?.pages.flat() || [];
+      const deletedTickets = allTickets.filter(ticket => ticketIdsToDelete.includes(ticket.id));
+      const activeDeletedCount = deletedTickets.filter(ticket => 
+        ticket.status !== 'Closed' && ticket.status !== 'Resolved'
+      ).length;
+      const myActiveDeletedCount = deletedTickets.filter(ticket => 
+        ticket.assignee_id === user?.id && ticket.status !== 'Closed' && ticket.status !== 'Resolved'
+      ).length;
+
+      // Update counters optimistically
+      queryClient.setQueryData(['ticketsCount', 'all'], Math.max(0, currentAllCount - activeDeletedCount));
+      if (user?.id) {
+        queryClient.setQueryData(['ticketsCount', 'my', user.id], Math.max(0, currentMyCount - myActiveDeletedCount));
+      }
+
       setSelectedTicketIds(new Set());
       setIsDeleteDialogOpen(false);
 
-      return { previousTicketsData };
+      return { previousTicketsData, previousAllCount: currentAllCount, previousMyCount: currentMyCount };
     },
     onError: (
       err: Error,
-      ticketIdsToDelete,
-      context: { previousTicketsData?: InfiniteData<ITicket[], number> } | undefined
+      ticketIdsToDelete: number[],
+      context: { previousTicketsData?: InfiniteData<ITicket[], number>; previousAllCount?: number; previousMyCount?: number } | undefined
     ) => {
       toast.error(`Error deleting tickets: ${err.message}`);
       console.error(`Error deleting tickets: ${err.message}`);
       if (context?.previousTicketsData) {
         queryClient.setQueryData(['tickets'], context.previousTicketsData);
       }
+      // Revert counter updates on error
+      if (context?.previousAllCount !== undefined) {
+        queryClient.setQueryData(['ticketsCount', 'all'], context.previousAllCount);
+      }
+      if (context?.previousMyCount !== undefined && user?.id) {
+        queryClient.setQueryData(['ticketsCount', 'my', user.id], context.previousMyCount);
+      }
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['tickets'] });
+      queryClient.invalidateQueries({ queryKey: ['agentTeams'] });
     },
   });
   const handleDeleteConfirm = () => {
@@ -428,22 +458,59 @@ function TicketsClientContent() {
     }
   };
 
+  // Mutation para manejar el cambio de estado de Unread a Open
+  const markAsReadMutation = useMutation({
+    mutationFn: async (ticket: ITicket) => {
+      return updateTicket(ticket.id, { status: 'Open' });
+    },
+    onMutate: async (ticket) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['tickets'] });
+      
+      // Snapshot the previous value
+      const previousTicketsData = queryClient.getQueryData<InfiniteData<ITicket[], number>>([
+        'tickets',
+      ]);
+
+      // Optimistically update to Open status
+      queryClient.setQueryData<InfiniteData<ITicket[], number>>(['tickets'], oldData => {
+        if (!oldData) return oldData;
+        const newPages = oldData.pages.map(page =>
+          page.map(t => (t.id === ticket.id ? { ...t, status: 'Open' as const } : t))
+        );
+        return { ...oldData, pages: newPages };
+      });
+
+      return { previousTicketsData };
+    },
+    onError: (
+      err: Error,
+      ticket: ITicket,
+      context: { previousTicketsData?: InfiniteData<ITicket[], number> } | undefined
+    ) => {
+      console.error(`Failed to update ticket ${ticket.id} status to Open:`, err);
+      if (context?.previousTicketsData) {
+        queryClient.setQueryData(['tickets'], context.previousTicketsData);
+      }
+    },
+    onSuccess: (updatedTicket, ticket) => {
+      console.log(`Backend updated successfully for ticket ${ticket.id}`);
+      // Update the selected ticket if it's the same one
+      if (selectedTicket?.id === ticket.id) {
+        setSelectedTicket({ ...ticket, status: 'Open' as const });
+      }
+    },
+  });
+
   const handleTicketClick = useCallback(
     async (ticket: ITicket) => {
       setSelectedTicket(ticket);
       if (ticket.status === 'Unread') {
         console.log(`Ticket ${ticket.id} is Unread, updating to Open.`);
-        const optimisticUpdate = { ...ticket, status: 'Open' as const };
-        handleTicketUpdate(optimisticUpdate);
-        try {
-          await updateTicket(ticket.id, { status: 'Open' });
-          console.log(`Backend updated successfully for ticket ${ticket.id}`);
-        } catch (error) {
-          console.error(`Failed to update ticket ${ticket.id} status to Open in backend:`, error);
-        }
+        markAsReadMutation.mutate(ticket);
       }
     },
-    [handleTicketUpdate]
+    [markAsReadMutation]
   );
 
   const handleCloseDetail = useCallback(() => {
@@ -594,13 +661,7 @@ function TicketsClientContent() {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['tickets'] });
-
       queryClient.invalidateQueries({ queryKey: ['agentTeams'] });
-
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-      queryClient.invalidateQueries({ queryKey: ['teamsStats'] });
-
-      queryClient.invalidateQueries({ queryKey: ['ticketsCount'] });
     },
   });
 
@@ -680,9 +741,7 @@ function TicketsClientContent() {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['tickets'] });
-
       queryClient.invalidateQueries({ queryKey: ['ticketsCount', 'my'] });
-
       queryClient.invalidateQueries({ queryKey: ['ticketsCount'] });
     },
   });

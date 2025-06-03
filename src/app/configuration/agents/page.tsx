@@ -15,15 +15,14 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Avatar } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import BoringAvatar from 'boring-avatars';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Trash2, UserCheck, Clock } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { NewAgentModal } from '@/components/modals/new-agent-modal'; // Import the new modal
+import { useAgentAvatar } from '@/hooks/use-agent-avatar';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -52,6 +51,31 @@ const pendingColumns = [
   { accessorKey: 'created_at', header: 'Invited' },
 ];
 
+// Component to render agent avatar using the hook
+function AgentAvatarCell({ agent, showPendingBadge = false }: { agent: Agent; showPendingBadge?: boolean }) {
+  const { AvatarComponent } = useAgentAvatar({
+    agent,
+    size: 24,
+    variant: 'beam',
+    className: 'border',
+  });
+
+  return (
+    <div className="flex items-center gap-2">
+      <div className="h-6 w-6 relative overflow-hidden rounded-full border">
+        {AvatarComponent}
+      </div>
+      <span>{agent.name || '-'}</span>
+      {showPendingBadge && (
+        <Badge variant="outline" className="ml-2">
+          <Clock className="h-3 w-3 mr-1" />
+          Pending
+        </Badge>
+      )}
+    </div>
+  );
+}
+
 export default function AgentsPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -69,8 +93,6 @@ export default function AgentsPage() {
   const [selectedAgentIds, setSelectedAgentIds] = useState<Set<number>>(new Set());
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isNewAgentModalOpen, setIsNewAgentModalOpen] = useState(false); // State for the new agent modal
-
-  const avatarColors = ['#1D73F4', '#D4E4FA'];
 
   // Filter agents based on active status
   const activeAgents = agents.filter(agent => agent.is_active);
@@ -311,17 +333,7 @@ export default function AgentsPage() {
                         className="font-medium cursor-pointer px-6 py-4"
                         onClick={() => handleRowClick(agent.id)}
                       >
-                        <div className="flex items-center gap-2">
-                          <Avatar className="h-6 w-6 border">
-                            <BoringAvatar
-                              size={24}
-                              name={agent.email || agent.name || ''}
-                              variant="beam"
-                              colors={avatarColors}
-                            />
-                          </Avatar>
-                          <span>{agent.name || '-'}</span>
-                        </div>
+                        <AgentAvatarCell agent={agent} />
                       </TableCell>
                       <TableCell className="px-6 py-4">{agent.email || '-'}</TableCell>
                       <TableCell className="px-6 py-4">{agent.phone_number || '-'}</TableCell>
@@ -420,21 +432,7 @@ export default function AgentsPage() {
                             className="font-medium cursor-pointer px-6 py-4"
                             onClick={() => handleRowClick(agent.id)}
                           >
-                            <div className="flex items-center gap-2">
-                              <Avatar className="h-6 w-6 border">
-                                <BoringAvatar
-                                  size={24}
-                                  name={agent.email || agent.name || ''}
-                                  variant="beam"
-                                  colors={avatarColors}
-                                />
-                              </Avatar>
-                              <span>{agent.name || '-'}</span>
-                              <Badge variant="outline" className="ml-2">
-                                <Clock className="h-3 w-3 mr-1" />
-                                Pending
-                              </Badge>
-                            </div>
+                            <AgentAvatarCell agent={agent} showPendingBadge />
                           </TableCell>
                           <TableCell className="px-6 py-4">{agent.email || '-'}</TableCell>
                           <TableCell className="px-6 py-4">

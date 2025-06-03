@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -10,7 +10,6 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardDescription } from '@/components/ui/card'; // Removed CardTitle
 import { useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import Link from 'next/link';
 import Image from 'next/image';
 import { authService } from '@/services/auth';
 
@@ -22,6 +21,15 @@ type ForgotPasswordFormData = z.infer<typeof forgotPasswordSchema>;
 
 export default function ForgotPasswordPage() {
   const [message, setMessage] = useState<string | null>(null);
+  const [backToSignInUrl, setBackToSignInUrl] = useState('/signin');
+
+  // Set the correct back to sign in URL based on current origin
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const currentOrigin = window.location.origin;
+      setBackToSignInUrl(`${currentOrigin}/signin`);
+    }
+  }, []);
 
   const {
     register,
@@ -102,9 +110,9 @@ export default function ForgotPasswordPage() {
             </form>
           )}
           <div className="mt-6 text-center">
-            <Link href="/signin" className="text-sm text-primary hover:underline">
+            <a href={backToSignInUrl} className="text-sm text-primary hover:underline">
               Back to Sign In
-            </Link>
+            </a>
           </div>
         </CardContent>
       </Card>

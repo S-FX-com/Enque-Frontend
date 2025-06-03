@@ -3,33 +3,30 @@ import { fetchAPI } from '@/lib/fetch-api';
 // Updated types to match backend schema
 export interface CannedReply {
   id: number;
-  title: string;
+  name: string;
+  description?: string;
   content: string;
   workspace_id: number;
   created_by_agent_id: number;
   is_enabled: boolean;
-  category?: string;
-  tags?: string[];
   usage_count: number;
   created_at: string;
   updated_at: string;
 }
 
 export interface CannedReplyCreate {
-  title: string;
+  name: string;
+  description?: string;
   content: string;
   workspace_id: number;
   is_enabled?: boolean;
-  category?: string;
-  tags?: string[];
 }
 
 export interface CannedReplyUpdate {
-  title?: string;
+  name?: string;
+  description?: string;
   content?: string;
   is_enabled?: boolean;
-  category?: string;
-  tags?: string[];
 }
 
 export interface CannedReplyListResponse {
@@ -42,8 +39,6 @@ export interface CannedReplyListResponse {
 export interface CannedReplyStats {
   total_count: number;
   enabled_count: number;
-  categories: string[];
-  tags: string[];
 }
 
 const API_BASE_URL =
@@ -86,75 +81,6 @@ export const getCannedReplies = async (
 };
 
 /**
- * Fetches canned replies by category.
- */
-export const getCannedRepliesByCategory = async (
-  workspaceId: number,
-  category: string,
-  options?: { skip?: number; limit?: number }
-): Promise<CannedReply[]> => {
-  if (!workspaceId || !category) {
-    throw new Error('Invalid parameters provided');
-  }
-
-  try {
-    const params = new URLSearchParams({
-      workspace_id: workspaceId.toString(),
-      category,
-      skip: (options?.skip || 0).toString(),
-      limit: (options?.limit || 100).toString(),
-    });
-
-    const url = `${API_BASE_URL}/v1/canned-replies/category?${params.toString()}`;
-    const response = await fetchAPI.GET<CannedReply[]>(url);
-
-    if (!response?.data) {
-      throw new Error('Failed to fetch canned replies by category');
-    }
-
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching canned replies by category:', error);
-    throw error;
-  }
-};
-
-/**
- * Searches canned replies by tags.
- */
-export const searchCannedRepliesByTags = async (
-  workspaceId: number,
-  tags: string[],
-  options?: { skip?: number; limit?: number }
-): Promise<CannedReply[]> => {
-  if (!workspaceId || !tags.length) {
-    throw new Error('Invalid parameters provided');
-  }
-
-  try {
-    const params = new URLSearchParams({
-      workspace_id: workspaceId.toString(),
-      skip: (options?.skip || 0).toString(),
-      limit: (options?.limit || 100).toString(),
-    });
-
-    tags.forEach(tag => params.append('tags', tag));
-
-    const url = `${API_BASE_URL}/v1/canned-replies/search?${params.toString()}`;
-    const response = await fetchAPI.GET<CannedReply[]>(url);
-
-    if (!response?.data) {
-      throw new Error('Failed to search canned replies by tags');
-    }
-
-    return response.data;
-  } catch (error) {
-    console.error('Error searching canned replies by tags:', error);
-    throw error;
-  }
-};
-
-/**
  * Fetches a specific canned reply by ID.
  */
 export const getCannedReply = async (id: number): Promise<CannedReply> => {
@@ -181,8 +107,8 @@ export const getCannedReply = async (id: number): Promise<CannedReply> => {
  * Creates a new canned reply.
  */
 export const createCannedReply = async (data: CannedReplyCreate): Promise<CannedReply> => {
-  if (!data.title || !data.content || !data.workspace_id) {
-    throw new Error('Title, content, and workspace ID are required');
+  if (!data.name || !data.content || !data.workspace_id) {
+    throw new Error('Name, content, and workspace ID are required');
   }
 
   try {
@@ -236,7 +162,11 @@ export const deleteCannedReply = async (id: number): Promise<void> => {
 
   try {
     const url = `${API_BASE_URL}/v1/canned-replies/${id}`;
-    await fetchAPI.DELETE<void>(url);
+    const response = await fetchAPI.DELETE(url);
+
+    if (!response?.success) {
+      throw new Error('Failed to delete canned reply');
+    }
   } catch (error) {
     console.error(`Error deleting canned reply ${id}:`, error);
     throw error;
@@ -244,7 +174,7 @@ export const deleteCannedReply = async (id: number): Promise<void> => {
 };
 
 /**
- * Gets canned reply statistics for a workspace.
+ * Fetches canned reply statistics for a workspace.
  */
 export const getCannedReplyStats = async (workspaceId: number): Promise<CannedReplyStats> => {
   if (!workspaceId) {
@@ -252,7 +182,11 @@ export const getCannedReplyStats = async (workspaceId: number): Promise<CannedRe
   }
 
   try {
-    const url = `${API_BASE_URL}/v1/canned-replies/stats?workspace_id=${workspaceId}`;
+    const params = new URLSearchParams({
+      workspace_id: workspaceId.toString(),
+    });
+
+    const url = `${API_BASE_URL}/v1/canned-replies/stats?${params.toString()}`;
     const response = await fetchAPI.GET<CannedReplyStats>(url);
 
     if (!response?.data) {

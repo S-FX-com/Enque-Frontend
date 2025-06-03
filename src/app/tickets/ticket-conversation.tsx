@@ -7,7 +7,14 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Send, Mail, Loader2, MessageSquare, Search, Hash, Clock } from 'lucide-react';
+import {
+  Send,
+  Mail,
+  Clock,
+  Loader2,
+  MessageSquare,
+  Search,
+} from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -90,34 +97,28 @@ export function TicketConversation({ ticket, onTicketUpdate }: Props) {
     staleTime: 5 * 60 * 1000,
   });
 
-  // Filter canned replies based on search and category
+  // Filter canned replies based on search
   const filteredCannedReplies = React.useMemo(() => {
     let filtered = cannedReplies;
-
-    // Filter by category
-    if (selectedCategory) {
-      filtered = filtered.filter(reply => reply.category === selectedCategory);
-    }
 
     // Filter by search term
     if (cannedSearchTerm) {
       const searchLower = cannedSearchTerm.toLowerCase();
       filtered = filtered.filter(
         reply =>
-          reply.title.toLowerCase().includes(searchLower) ||
+          reply.name.toLowerCase().includes(searchLower) ||
           reply.content.toLowerCase().includes(searchLower) ||
-          reply.tags?.some(tag => tag.toLowerCase().includes(searchLower))
+          (reply.description && reply.description.toLowerCase().includes(searchLower))
       );
     }
 
     return filtered;
-  }, [cannedReplies, selectedCategory, cannedSearchTerm]);
+  }, [cannedReplies, cannedSearchTerm]);
 
-  // Get unique categories
+  // Get unique categories - now empty since we don't use categories anymore
   const categories = React.useMemo(() => {
-    const cats = cannedReplies.map(reply => reply.category).filter((cat): cat is string => !!cat);
-    return Array.from(new Set(cats));
-  }, [cannedReplies]);
+    return [];
+  }, []);
 
   // --- Combine initial message and comments ---
   const conversationItems = React.useMemo(() => {
@@ -178,21 +179,25 @@ export function TicketConversation({ ticket, onTicketUpdate }: Props) {
       // Forzar tamaño pequeño para imágenes en la firma
       signatureToUse = signatureToUse.replace(
         /<img([^>]*?)width="300"([^>]*?)height="200"([^>]*?)>/g,
-        '<img$1width="120"$2height="75"$3style="width: 120px; height: 75px; max-width: 120px; max-height: 75px; object-fit: scale-down;">'
+        '<img$1width="120"$2height="75"$3style="width: 120px; height: 75px; max-width: 120px; max-height: 75px; object-fit: scale-down; border-radius: 4px;">'
       );
       
       // También manejar imágenes que puedan tener diferentes tamaños pero siguen siendo de la firma
       signatureToUse = signatureToUse.replace(
         /<img([^>]*?)style="[^"]*width:\s*auto[^"]*"([^>]*?)>/g,
-        '<img$1style="width: 120px; height: 75px; max-width: 120px; max-height: 75px; object-fit: scale-down;"$2>'
+        '<img$1style="width: 120px; height: 75px; max-width: 120px; max-height: 75px; object-fit: scale-down; border-radius: 4px;"$2>'
       );
 
-      signatureToUse = `<div class="email-signature text-gray-500" style="margin-top: 16px; padding-top: 12px; border-top: 1px solid #e5e7eb;">${signatureToUse}</div>`;
+      // Mejorar la separación visual de la firma con espaciado adicional
+      signatureToUse = `<div class="email-signature text-gray-500" style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #e5e7eb; clear: both;">${signatureToUse}</div>`;
     }
 
     const currentTicketId = ticket.id;
     const userName = ticket.user?.name || 'there';
-    const greeting = `<p>Hi ${userName},</p><p><br></p>`;
+    
+    // Crear un contenedor para el contenido del mensaje con separación clara de la firma
+    const greeting = `<p>Hi ${userName},</p><div class="message-content" style="min-height: 60px; margin-bottom: 16px;"><p><br></p></div>`;
+    
     const prevTicketId = prevTicketIdRef.current;
     const initialContent = signatureToUse ? `${greeting}${signatureToUse}` : greeting;
 
@@ -502,7 +507,7 @@ export function TicketConversation({ ticket, onTicketUpdate }: Props) {
                             onClick={() => handleCannedReplySelect(reply)}
                           >
                             <div className="flex items-start justify-between mb-1">
-                              <h4 className="font-medium text-sm truncate flex-1">{reply.title}</h4>
+                              <h4 className="font-medium text-sm truncate flex-1">{reply.name}</h4>
                               <div className="flex items-center gap-1 ml-2">
                                 {reply.usage_count > 0 && (
                                   <Badge variant="secondary" className="text-xs">
@@ -514,29 +519,8 @@ export function TicketConversation({ ticket, onTicketUpdate }: Props) {
                             </div>
 
                             <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
-                              {reply.content.replace(/<[^>]*>/g, '').substring(0, 100)}...
+                              {reply.description || reply.content.replace(/<[^>]*>/g, '').substring(0, 100) + '...'}
                             </p>
-
-                            <div className="flex items-center justify-between">
-                              <div className="flex flex-wrap gap-1">
-                                {reply.category && (
-                                  <Badge variant="outline" className="text-xs">
-                                    <Hash className="w-2 h-2 mr-1" />
-                                    {reply.category}
-                                  </Badge>
-                                )}
-                                {reply.tags?.slice(0, 2).map(tag => (
-                                  <Badge key={tag} variant="secondary" className="text-xs">
-                                    {tag}
-                                  </Badge>
-                                ))}
-                                {reply.tags && reply.tags.length > 2 && (
-                                  <Badge variant="secondary" className="text-xs">
-                                    +{reply.tags.length - 2}
-                                  </Badge>
-                                )}
-                              </div>
-                            </div>
                           </div>
                         ))
                       )}

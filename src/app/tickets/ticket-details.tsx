@@ -80,50 +80,108 @@ export function TicketDetail({ ticket: initialTicket, onClose, onTicketUpdate }:
     {
       field: 'priority' | 'assignee_id' | 'team_id' | 'category_id';
       value: string | null;
-      originalFieldValue: TicketPriority | number | null;
+      originalFieldValue: string | number | null;
     },
     { previousTicket: ITicket | null }
   >({
     mutationFn: async ({ field, value }) => {
-      if (!ticket) throw new Error('No ticket selected for update');
+      if (!ticket) throw new Error('No ticket selected');
+      let updateValue: TicketStatus | TicketPriority | number | null;
 
-      let updatePayloadValue: TicketStatus | TicketPriority | number | null;
       if (field === 'assignee_id' || field === 'team_id' || field === 'category_id') {
-        updatePayloadValue = value === 'null' || value === null ? null : parseInt(value, 10);
-        if (typeof updatePayloadValue === 'number' && isNaN(updatePayloadValue)) {
-          throw new Error(`Invalid ${field} selected: ${value}`);
+        updateValue = value === 'null' || value === null ? null : parseInt(value, 10);
+        if (typeof updateValue === 'number' && isNaN(updateValue)) {
+          throw new Error(`Invalid ${field}: ${value}`);
         }
       } else {
-        updatePayloadValue = value as TicketPriority;
+        updateValue = value as TicketPriority;
       }
 
-      const updatedTicketData = await updateTicket(ticket.id, { [field]: updatePayloadValue });
-      if (!updatedTicketData) {
-        throw new Error(`API failed to update ticket ${field}`);
-      }
-      return updatedTicketData;
+      return updateTicket(ticket.id, { [field]: updateValue });
     },
-    onMutate: async () => {
-      // Ya no necesitamos hacer actualización optimista aquí, solo guardar estado previo
+    onMutate: async ({ field, value, originalFieldValue }) => {
       if (!ticket) return { previousTicket: null };
 
-      // Guardamos una copia del ticket antes de la actualización para posible reversión
-      return { previousTicket: { ...ticket } };
-    },
-    onError: (error, variables, context) => {
-      console.error(`Error updating ticket ${variables.field}:`, error);
-      toast.error(`Failed to update ticket ${variables.field}. Reverting changes.`);
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['tickets', ticket.id] });
+      
+      // Snapshot the previous value
+      const previousTicket = queryClient.getQueryData<ITicket>(['tickets', ticket.id]) || ticket;
 
-      // Revertir al estado anterior si hay error
-      if (context?.previousTicket) {
-        setTicket(context.previousTicket);
-        if (onTicketUpdate) {
-          onTicketUpdate(context.previousTicket);
+      let optimisticUpdateValue: TicketStatus | TicketPriority | number | null;
+      if (field === 'assignee_id' || field === 'team_id' || field === 'category_id') {
+        optimisticUpdateValue = value === 'null' || value === null ? null : parseInt(value, 10);
+        if (typeof optimisticUpdateValue === 'number' && isNaN(optimisticUpdateValue)) {
+          optimisticUpdateValue = null;
+        }
+      } else {
+        optimisticUpdateValue = value as TicketPriority;
+      }
+
+      // Optimistically update to the new value
+      const optimisticTicket: ITicket = {
+        ...previousTicket,
+        [field]: optimisticUpdateValue,
+      };
+
+      queryClient.setQueryData(['tickets', ticket.id], optimisticTicket);
+
+      // Update parent immediately
+      if (onTicketUpdate) {
+        onTicketUpdate(optimisticTicket);
+      }
+
+      // Optimistically update team counters when team_id changes
+      if (field === 'team_id') {
+        const currentUser = await getCurrentUser();
+        if (currentUser?.id) {
+          // Get current agentTeams data
+          const agentTeamsKey = ['agentTeams', currentUser.id, currentUser.role];
+          const currentAgentTeams = queryClient.getQueryData<Team[]>(agentTeamsKey) || [];
+          
+          // Only proceed if ticket is active (not closed/resolved)
+          if (ticket.status !== 'Closed' && ticket.status !== 'Resolved') {
+            const previousTeamId = originalFieldValue as number | null;
+            const newTeamId = optimisticUpdateValue as number | null;
+
+            // Update team counters optimistically
+            const updatedAgentTeams = currentAgentTeams.map(team => {
+              if (team.id === previousTeamId && previousTeamId !== null) {
+                // Decrease counter for previous team
+                return {
+                  ...team,
+                  ticket_count: Math.max(0, (team.ticket_count || 0) - 1)
+                };
+              } else if (team.id === newTeamId && newTeamId !== null) {
+                // Increase counter for new team
+                return {
+                  ...team,
+                  ticket_count: (team.ticket_count || 0) + 1
+                };
+              }
+              return team;
+            });
+            
+            queryClient.setQueryData(agentTeamsKey, updatedAgentTeams);
+          }
+        }
+      }
+
+      return { previousTicket };
+    },
+    onError: (error, { field }) => {
+      toast.error(
+        `Error updating ${field}: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+      if (ticket) {
+        // Revert team counter changes on error
+        if (field === 'team_id') {
+          queryClient.invalidateQueries({ queryKey: ['agentTeams'] });
         }
       }
     },
     onSuccess: async (data, variables) => {
-      // No es necesario actualizar el estado aquí ya que se hizo optimistamente
+      // No es necesario actualizar el estado aquí ya que se hizo optimisticamente
       // Solo invalidamos las consultas necesarias para mantener sincronización
       const currentUser = await getCurrentUser();
       const currentUserId = currentUser?.id;
@@ -165,7 +223,7 @@ export function TicketDetail({ ticket: initialTicket, onClose, onTicketUpdate }:
   ) => {
     if (!ticket) return;
 
-    // Aplicar el valor optimista inmediatamente
+    // Validar el valor antes de procesarlo
     let optimisticUpdateValue: TicketStatus | TicketPriority | number | null;
     if (field === 'assignee_id' || field === 'team_id' || field === 'category_id') {
       optimisticUpdateValue = value === 'null' || value === null ? null : parseInt(value, 10);
@@ -182,21 +240,11 @@ export function TicketDetail({ ticket: initialTicket, onClose, onTicketUpdate }:
       return;
     }
 
-    // Aplicar actualización optimista al estado local inmediatamente
-    const updatedTicket = {
-      ...ticket,
-      [field]: optimisticUpdateValue,
-    };
-    setTicket(updatedTicket);
+    // Obtener el valor original para la mutation
+    const currentFieldValue = ticket[field] ?? null;
 
-    // Llamar al callback para actualizar el padre inmediatamente
-    if (onTicketUpdate) {
-      onTicketUpdate(updatedTicket);
-    }
-
-    // Iniciar la actualización en segundo plano
-    const originalFieldValue = ticket[field] ?? null;
-    updateFieldMutation.mutate({ field, value, originalFieldValue });
+    // Iniciar la actualización (la actualización optimista se hace en onMutate)
+    updateFieldMutation.mutate({ field, value, originalFieldValue: currentFieldValue });
   };
   const closeTicketMutation = useMutation<ITicket, Error, void, { previousTicket: ITicket | null }>(
     {

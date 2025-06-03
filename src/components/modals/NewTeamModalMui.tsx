@@ -166,7 +166,7 @@ const NewTeamModalMui: React.FC<NewTeamModalMuiProps> = ({ open, onClose, agents
       try {
         const currentUser = await getCurrentUser(); // Get current user for the ID
         if (currentUser && currentUser.id) {
-          specificAgentTeamsKey = ['agentTeams', currentUser.id];
+          specificAgentTeamsKey = ['agentTeams', currentUser.id, currentUser.role];
           queryClient.setQueryData<Team[]>(specificAgentTeamsKey, (oldAgentTeams = []) => {
             if (oldAgentTeams.find(t => t.id === newTeam.id)) {
               return oldAgentTeams.map(t => (t.id === newTeam.id ? newTeam : t));

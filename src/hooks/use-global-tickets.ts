@@ -36,16 +36,19 @@ export function useGlobalTickets(enabled: boolean = true) {
       return allPages.flat().length;
     },
     initialPageParam: 0,
-    staleTime: 0,
-    refetchInterval: enabled ? 3000 : false, // Solo refetch si está habilitado
-    refetchIntervalInBackground: enabled,
-    // Estas opciones mantienen la query activa incluso cuando no está visible
-    refetchOnWindowFocus: enabled,
-    refetchOnMount: enabled,
+    staleTime: 1000 * 60 * 2, // 2 minutos - datos frescos por más tiempo
+    refetchInterval: enabled ? 30000 : false, // Refetch cada 30 segundos (menos agresivo)
+    refetchIntervalInBackground: false, // No refetch en background para evitar lentitud
+    // Configuración optimizada para navegación rápida
+    refetchOnWindowFocus: false, // No refetch automático al hacer foco
+    refetchOnMount: 'always', // Siempre refetch pero no bloquea UI
     refetchOnReconnect: enabled,
     enabled: enabled, // Controla si la query debe ejecutarse
-    // Evita que se pause cuando la página no es visible
-    networkMode: 'always',
+    // Configuración para mostrar datos en caché inmediatamente
+    networkMode: 'online',
+    // Configuraciones para mejor UX
+    placeholderData: (previousData) => previousData, // Mantener datos previos mientras carga
+    gcTime: 1000 * 60 * 10, // 10 minutos en caché
   });
 
   const allTicketsData = ticketsQueryData?.pages?.flat() ?? [];

@@ -32,6 +32,8 @@ import { getNotifications, clearAllNotifications, showNotificationToast } from '
 import { Activity } from '@/typescript/activity';
 import { formatRelativeTime } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useAgentAvatar } from '@/hooks/use-agent-avatar';
+import { getAgentById } from '@/services/agent';
 
 // Define avatar color palettes (copied from conversation-message-item)
 const agentAvatarColors = ['#1D73F4', '#D4E4FA'];
@@ -61,6 +63,41 @@ export function Topbar({
   const [isClearingNotifications, setIsClearingNotifications] = useState(false);
   const [lastNotificationId, setLastNotificationId] = useState<number | null>(null);
   const pathname = usePathname();
+
+  // Get updated user data from backend (for fresh avatar and other data)
+  const { data: updatedUserData } = useQuery({
+    queryKey: ['agent', user?.id],
+    queryFn: () => getAgentById(user!.id),
+    enabled: !!user?.id,
+    staleTime: 1000 * 60 * 2, // Cache for 2 minutes
+  });
+
+  // Use updated data from backend if available, otherwise fall back to session data
+  const currentUserData = updatedUserData || user;
+
+  // Convert UserSession to Agent-like object for avatar display
+  const userAsAgent = currentUserData ? {
+    id: currentUserData.id,
+    name: currentUserData.name,
+    email: currentUserData.email,
+    role: currentUserData.role as 'admin' | 'agent' | 'manager',
+    is_active: true,
+    workspace_id: currentUserData.workspace_id,
+    job_title: currentUserData.job_title,
+    phone_number: currentUserData.phone_number,
+    email_signature: currentUserData.email_signature,
+    avatar: currentUserData.avatar,
+    created_at: '',
+    updated_at: '',
+  } : null;
+
+  // Get current user data for avatar display
+  const { AvatarComponent: UserAvatarComponent } = useAgentAvatar({
+    agent: userAsAgent,
+    size: 40,
+    variant: 'beam',
+    className: 'border',
+  });
 
   // Fetch notifications when the popover might open or user changes
   const { data: notifications = [], isLoading: isLoadingNotifications } = useQuery<
@@ -309,22 +346,16 @@ export function Topbar({
         </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            {/* Restore original w-10 h-10 and remove size="icon" */}
+            {/* Use the UserAvatarComponent instead of BoringAvatar */}
             <Button variant="ghost" className="rounded-full overflow-hidden p-0 w-10 h-10 mx-0.5">
-              <BoringAvatar
-                size={40} // Restore original avatar size
-                // Use email as primary identifier, fallback to name or empty string
-                name={user?.email || user?.name || ''}
-                variant="beam"
-                colors={['#1D73F4', '#D4E4FA']} // Original agent colors
-              />
+              {UserAvatarComponent}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-56" align="end">
             <DropdownMenuLabel className="font-normal">
               <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium">{user?.name || 'User'}</p>
-                <p className="text-xs text-slate-500">{user?.email || 'user@example.com'}</p>
+                <p className="text-sm font-medium">{currentUserData?.name || 'User'}</p>
+                <p className="text-xs text-slate-500">{currentUserData?.email || 'user@example.com'}</p>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />

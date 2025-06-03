@@ -1,53 +1,37 @@
+import { logger } from '@/lib/logger';
 import { AppConfigs } from '@/configs';
-import { fetchAPI } from '@/lib/fetch-api';
 import { ServiceResponse } from '@/typescript';
-import {
-  IWorkspace,
-  ICreateWorkspace,
-  IUpdateWorkspace,
-  IGetWorkspace,
-} from '@/typescript/workspace';
+import { IWorkspace, ICreateWorkspace, IWorkspaceSetup, IWorkspaceSetupResponse } from '@/typescript/workspace';
+import { fetchAPI } from '@/lib/fetch-api';
 
-// Interfaces
-interface SubdomainAvailability {
-  available: boolean;
-}
-
-interface Workspace {
-  id: number;
-  name: string;
-  subdomain: string;
-  created_at: string;
-}
-
-// Endpoint del servicio
 const SERVICE_ENDPOINT = `${AppConfigs.api}/workspaces`;
 
-export const workspaceService = {
-  // Obtener workspace por ID o subdomain
-  async getWorkspace(paramsObj: IGetWorkspace): Promise<ServiceResponse<IWorkspace>> {
+const workspaceService = {
+  // Get workspace by subdomain
+  async getWorkspaceBySubdomain(subdomain: string): Promise<ServiceResponse<IWorkspace>> {
     try {
-      const queryParams = new URLSearchParams();
-      Object.entries(paramsObj).forEach(([key, value]) => {
-        if (value !== undefined) {
-          queryParams.append(`filter[${key}]`, String(value));
-        }
-      });
-
-      const data = await fetchAPI.GET<IWorkspace[]>(
-        `${SERVICE_ENDPOINT}?${queryParams.toString()}`
+      logger.info(`Getting workspace for subdomain: ${subdomain}`);
+      
+      const data = await fetchAPI.GET<IWorkspace>(
+        `${SERVICE_ENDPOINT}/by-subdomain/${subdomain}`,
+        false
       );
-      if (data.success && data.data && data.data.length > 0)
-        return { success: true, data: data.data[0] };
-
-      return { success: false, message: 'Workspace not found' };
+      
+      if (data.success) {
+        logger.info(`Workspace found: ${data.data?.subdomain}`);
+      } else {
+        logger.warn(`Workspace not found for subdomain: ${subdomain}`);
+      }
+      
+      return data;
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';
+      logger.error(`Error getting workspace by subdomain ${subdomain}:`, message);
       return { success: false, message };
     }
   },
 
-  // Crear un workspace
+  // Create a workspace (requires admin)
   async createWorkspace(dataToCreate: ICreateWorkspace): Promise<ServiceResponse<IWorkspace>> {
     try {
       const data = await fetchAPI.POST<IWorkspace>(
@@ -61,16 +45,35 @@ export const workspaceService = {
     }
   },
 
-  // Actualizar un workspace por ID
-  async updateWorkspaceById(
-    workspace_id: number,
-    dataToUpdate: Partial<IUpdateWorkspace>
-  ): Promise<ServiceResponse<IWorkspace>> {
+  // Initial workspace setup (public)
+  async setupWorkspace(setupData: IWorkspaceSetup): Promise<ServiceResponse<IWorkspaceSetupResponse>> {
     try {
-      const data = await fetchAPI.PUT<IWorkspace>(
-        `${SERVICE_ENDPOINT}/${workspace_id}`,
-        dataToUpdate as unknown as Record<string, unknown>
+      logger.info(`Setting up workspace: ${setupData.subdomain}`);
+      
+      const data = await fetchAPI.POST<IWorkspaceSetupResponse>(
+        `${SERVICE_ENDPOINT}/setup`,
+        setupData as unknown as Record<string, unknown>,
+        false // No authentication required
       );
+      
+      if (data.success) {
+        logger.info(`Workspace setup successful: ${data.data?.workspace.subdomain}`);
+      } else {
+        logger.error(`Workspace setup failed: ${data.message}`);
+      }
+      
+      return data;
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      logger.error(`Error during workspace setup:`, message);
+      return { success: false, message };
+    }
+  },
+
+  // Get workspace by ID
+  async getWorkspaceById(id: number): Promise<ServiceResponse<IWorkspace>> {
+    try {
+      const data = await fetchAPI.GET<IWorkspace>(`${SERVICE_ENDPOINT}/${id}`);
       return data;
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';
@@ -78,44 +81,27 @@ export const workspaceService = {
     }
   },
 
-  // Verificar disponibilidad de subdominio
-  async checkSubdomainAvailability(
-    subdomain: string
-  ): Promise<ServiceResponse<SubdomainAvailability>> {
+  // List all workspaces (admin)
+  async getWorkspaces(): Promise<ServiceResponse<IWorkspace[]>> {
     try {
-      const response = await fetchAPI.GET<SubdomainAvailability>(
-        `${SERVICE_ENDPOINT}/check-subdomain/${subdomain}`,
-        false
-      );
-      return response;
+      const data = await fetchAPI.GET<IWorkspace[]>(SERVICE_ENDPOINT);
+      return data;
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       return { success: false, message };
     }
   },
 
-  // Obtener workspace por subdominio
-  async getWorkspaceBySubdomain(subdomain: string): Promise<ServiceResponse<Workspace>> {
+  // Delete workspace
+  async deleteWorkspace(id: number): Promise<ServiceResponse<{ message: string }>> {
     try {
-      const response = await fetchAPI.GET<Workspace>(
-        `${SERVICE_ENDPOINT}/subdomain/${subdomain}`,
-        false
-      );
-      return response;
+      const data = await fetchAPI.DELETE<{ message: string }>(`${SERVICE_ENDPOINT}/${id}`);
+      return data;
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       return { success: false, message };
     }
-  },
-
-  // Obtener detalles del workspace actual (autenticado)
-  async getCurrentWorkspace(): Promise<ServiceResponse<Workspace>> {
-    try {
-      const response = await fetchAPI.GET<Workspace>(`${SERVICE_ENDPOINT}/current`);
-      return response;
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      return { success: false, message };
-    }
-  },
+  }
 };
+
+export { workspaceService };

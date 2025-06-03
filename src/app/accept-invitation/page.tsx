@@ -204,7 +204,7 @@ function AcceptInvitationForm() {
                 id="password"
                 type="password"
                 {...register('password')}
-                placeholder="********"
+                placeholder=""
               />
               {errors.password && (
                 <p className="text-xs text-red-500 mt-1">{errors.password.message}</p>
@@ -219,7 +219,7 @@ function AcceptInvitationForm() {
                 id="confirmPassword"
                 type="password"
                 {...register('confirmPassword')}
-                placeholder="********"
+                placeholder=""
               />
               {errors.confirmPassword && (
                 <p className="text-xs text-red-500 mt-1">{errors.confirmPassword.message}</p>

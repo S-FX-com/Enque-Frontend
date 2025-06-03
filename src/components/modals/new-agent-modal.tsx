@@ -34,6 +34,7 @@ const agentInviteSchema = z.object({
   role: z.enum(['agent', 'admin', 'manager'], {
     required_error: 'Role is required',
   }),
+  job_title: z.string().optional(),
 });
 
 type AgentInviteFormData = z.infer<typeof agentInviteSchema>;
@@ -124,6 +125,13 @@ export function NewAgentModal({ isOpen, onClose, onInviteSuccess }: NewAgentModa
             {/* Added mb-1 and block */}
             <Input id="email" type="email" {...register('email')} /> {/* Removed placeholder */}
             {errors.email && <p className="text-xs text-red-500 mt-1">{errors.email.message}</p>}
+          </div>
+          <div>
+            <Label htmlFor="job_title" className="mb-1 block">
+              Job Title
+            </Label>
+            <Input id="job_title" {...register('job_title')} />
+            {errors.job_title && <p className="text-xs text-red-500 mt-1">{errors.job_title.message}</p>}
           </div>
           <div>
             <Label htmlFor="role" className="mb-1 block">

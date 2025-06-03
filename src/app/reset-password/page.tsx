@@ -11,7 +11,6 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import Link from 'next/link';
 import Image from 'next/image';
 import { authService } from '@/services/auth'; // Import the whole service
 import { setAuthToken } from '@/lib/auth';
@@ -86,13 +85,7 @@ function PasswordStrengthIndicator({ password, onValidationChange }: {
     if (password.length > 0 && password !== lastCheckedPassword && failedRequirements.length > 0) {
       const missingRequirements = failedRequirements.map(req => req.label);
       
-      // Solo mostrar toast si hay al menos 3 caracteres para evitar spam
-      if (password.length >= 3) {
-        toast.error('Password requirements not met', {
-          description: `Missing: ${missingRequirements.join(', ')}`,
-          duration: 3000,
-        });
-      }
+ 
       
       if (onValidationChange) {
         onValidationChange(missingRequirements);
@@ -125,7 +118,6 @@ function PasswordStrengthIndicator({ password, onValidationChange }: {
         />
       </div>
       
-      {/* Indicadores de requisitos cumplidos */}
       <div className="flex space-x-1">
         {passwordRequirements.map((_, index) => (
           <div
@@ -152,6 +144,15 @@ function ResetPasswordForm() {
   const token = searchParams.get('token');
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [backToSignInUrl, setBackToSignInUrl] = useState('/signin');
+
+  // Set the correct back to sign in URL based on current origin
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const currentOrigin = window.location.origin;
+      setBackToSignInUrl(`${currentOrigin}/signin`);
+    }
+  }, []);
 
   const {
     register,
@@ -217,9 +218,9 @@ function ResetPasswordForm() {
             <p className="text-center text-red-500">
               The password reset link is missing or invalid.
             </p>
-            <Button onClick={() => router.push('/signin')} className="w-full mt-4">
-              Go to Sign In
-            </Button>
+            <a href={backToSignInUrl} className="w-full mt-4 inline-block">
+              <Button className="w-full">Go to Sign In</Button>
+            </a>
           </CardContent>
         </Card>
       </div>
@@ -229,9 +230,9 @@ function ResetPasswordForm() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-slate-100 dark:bg-slate-900 p-4">
       <div className="mb-8">
-        <Link href="/signin">
+        <a href={backToSignInUrl}>
           <Image src="/enque.png" alt="Enque Logo" width={150} height={49} priority />
-        </Link>
+        </a>
       </div>
       <Card className="w-full max-w-lg">
         <CardHeader>
@@ -263,7 +264,7 @@ function ResetPasswordForm() {
                   id="new_password"
                   type="password"
                   {...register('new_password')}
-                  placeholder="********"
+                  placeholder=""
                 />
                 {errors.new_password && (
                   <p className="text-xs text-red-500 mt-1">{errors.new_password.message}</p>
@@ -278,7 +279,7 @@ function ResetPasswordForm() {
                   id="confirmPassword"
                   type="password"
                   {...register('confirmPassword')}
-                  placeholder="********"
+                  placeholder=""
                 />
                 {errors.confirmPassword && (
                   <p className="text-xs text-red-500 mt-1">{errors.confirmPassword.message}</p>
@@ -294,9 +295,9 @@ function ResetPasswordForm() {
             </form>
           )}
           <div className="mt-6 text-center">
-            <Link href="/signin" className="text-sm text-primary hover:underline">
+            <a href={backToSignInUrl} className="text-sm text-primary hover:underline">
               Back to Sign In
-            </Link>
+            </a>
           </div>
         </CardContent>
       </Card>

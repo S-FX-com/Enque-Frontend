@@ -1,288 +1,327 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { useAuth } from '@/hooks/use-auth';
-import { toast } from 'sonner';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Switch } from '@/components/ui/switch';
-import { Terminal, Info, AlertCircle, Plus, Clock, Trash2, Edit, Calendar } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import AutomationModalMui from '@/components/modals/AutomationModalMui';
+import { getAutomations, deleteAutomation } from '@/services/automation';
+import { Automation } from '@/typescript/automation';
 import {
-  getAutomations,
-  deleteAutomation,
-  toggleAutomation,
-  runAutomation,
-  type Automation,
-} from '@/services/automations';
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Trash2, Settings } from 'lucide-react';
+import { toast } from 'sonner';
+import NewAutomationModalMui from '@/components/modals/NewAutomationModalMui';
+import EditAutomationModalMui from '@/components/modals/EditAutomationModalMui';
 
-export default function AutomationsConfigPage() {
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+
+const columns = [
+  { accessorKey: 'name', header: 'Name' },
+  { accessorKey: 'conditions', header: 'Conditions' },
+  { accessorKey: 'actions', header: 'Actions' },
+  { accessorKey: 'status', header: 'Status' },
+];
+
+export default function AutomationsPage() {
   const queryClient = useQueryClient();
-  const { user, isLoading: isLoadingAuthUser } = useAuth();
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedAutomation, setSelectedAutomation] = useState<Automation | null>(null);
-  const [activeTab, setActiveTab] = useState('active');
-
-  const currentUserRole = user?.role;
-  const workspaceId = user?.workspace_id;
-
   const {
-    data: automations,
-    isLoading: isLoadingAutomations,
-    isError: isAutomationsError,
-    error: automationsError,
-  } = useQuery({
-    queryKey: ['automations', workspaceId],
-    queryFn: () => getAutomations(workspaceId!),
-    enabled: !!workspaceId,
+    data: automations = [],
+    isLoading,
+    isError,
+    error,
+  } = useQuery<Automation[]>({
+    queryKey: ['automations'],
+    queryFn: () => getAutomations(),
     staleTime: 5 * 60 * 1000,
   });
+  const [selectedAutomationIds, setSelectedAutomationIds] = useState<Set<number>>(new Set());
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isNewAutomationModalOpen, setIsNewAutomationModalOpen] = useState(false);
+  const [isEditAutomationModalOpen, setIsEditAutomationModalOpen] = useState(false);
+  const [editingAutomationId, setEditingAutomationId] = useState<number | null>(null);
 
-  const deleteAutomationMutation = useMutation({
-    mutationFn: async (id: number) => {
-      if (!workspaceId) throw new Error('Workspace ID is missing');
-      return deleteAutomation(workspaceId, id);
-    },
-    onSuccess: () => {
-      toast.success('Automation deleted successfully!');
-      queryClient.invalidateQueries({ queryKey: ['automations', workspaceId] });
-    },
-    onError: error => {
-      console.error('Failed to delete automation:', error);
-      toast.error(`Failed to delete automation: ${error.message}`);
-    },
-  });
-
-  const toggleAutomationMutation = useMutation({
-    mutationFn: async ({ id, enabled }: { id: number; enabled: boolean }) => {
-      if (!workspaceId) throw new Error('Workspace ID is missing');
-      return toggleAutomation(workspaceId, id, enabled);
-    },
-    onSuccess: () => {
-      toast.success('Automation status updated successfully!');
-      queryClient.invalidateQueries({ queryKey: ['automations', workspaceId] });
-    },
-    onError: error => {
-      console.error('Failed to toggle automation:', error);
-      toast.error(`Failed to toggle automation: ${error.message}`);
-    },
-  });
-
-  const runAutomationMutation = useMutation({
-    mutationFn: async (id: number) => {
-      if (!workspaceId) throw new Error('Workspace ID is missing');
-      return runAutomation(workspaceId, id);
-    },
-    onSuccess: data => {
-      toast.success(data.message || 'Automation run successfully!');
-    },
-    onError: error => {
-      console.error('Failed to run automation:', error);
-      toast.error(`Failed to run automation: ${error.message}`);
-    },
-  });
-
-  const handleEdit = (automation: Automation) => {
-    setSelectedAutomation(automation);
-    setIsModalOpen(true);
+  const handleRowClick = (automationId: number) => {
+    setEditingAutomationId(automationId);
+    setIsEditAutomationModalOpen(true);
   };
 
-  const handleDelete = (id: number) => {
-    if (confirm('Are you sure you want to delete this automation?')) {
-      deleteAutomationMutation.mutate(id);
+  const handleSelectAllChange = (checked: boolean | 'indeterminate') => {
+    if (checked === true) {
+      setSelectedAutomationIds(new Set(automations.map(automation => automation.id)));
+    } else {
+      setSelectedAutomationIds(new Set());
     }
   };
 
-  const handleToggle = (id: number, currentStatus: boolean) => {
-    toggleAutomationMutation.mutate({
-      id,
-      enabled: !currentStatus,
+  const handleRowSelectChange = (automationId: number, checked: boolean | 'indeterminate') => {
+    setSelectedAutomationIds(prev => {
+      const next = new Set(prev);
+      if (checked === true) {
+        next.add(automationId);
+      } else {
+        next.delete(automationId);
+      }
+      return next;
     });
   };
 
-  const handleRun = (id: number) => {
-    runAutomationMutation.mutate(id);
-  };
+  const isAllSelected = automations.length > 0 && selectedAutomationIds.size === automations.length;
+  const isIndeterminate = selectedAutomationIds.size > 0 && selectedAutomationIds.size < automations.length;
+  const headerCheckboxState = isAllSelected ? true : isIndeterminate ? 'indeterminate' : false;
 
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
-    setTimeout(() => {
-    setSelectedAutomation(null);
-    }, 100);
-  };
+  const deleteAutomationsMutation = useMutation({
+    mutationFn: async (automationIds: number[]) => {
+      const results = await Promise.allSettled(automationIds.map(id => deleteAutomation(id)));
+      const failedDeletions = results.filter(result => result.status === 'rejected');
+      if (failedDeletions.length > 0) {
+        console.error('Some automation deletions failed:', failedDeletions);
+        throw new Error(`Failed to delete ${failedDeletions.length} workflow(s).`);
+      }
+      return results;
+    },
+    onMutate: async automationIdsToDelete => {
+      await queryClient.cancelQueries({ queryKey: ['automations'] });
+      const previousAutomations = queryClient.getQueryData<Automation[]>(['automations']);
+      queryClient.setQueryData<Automation[]>(['automations'], old =>
+        old ? old.filter(automation => !automationIdsToDelete.includes(automation.id)) : []
+      );
+      setSelectedAutomationIds(new Set());
+      setIsDeleteDialogOpen(false);
+      return { previousAutomations };
+    },
+    onError: (err, automationIdsToDelete, context) => {
+      toast.error(`Error deleting workflows: ${err.message}`);
+      if (context?.previousAutomations) {
+        queryClient.setQueryData(['automations'], context.previousAutomations);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['automations'] });
+    },
+  });
 
-  const handleOpenCreateModal = () => {
-    setSelectedAutomation(null);
-    setIsModalOpen(true);
-  };
-
-  const getFilteredAutomations = () => {
-    if (!automations) return [];
-    return automations.filter(automation =>
-      activeTab === 'active' ? automation.is_enabled : !automation.is_enabled
-    );
-  };
-
-  const getFrequencyLabel = (frequency: string, day: string) => {
-    if (frequency === 'daily') return 'Daily';
-    if (frequency === 'weekly') {
-      const days: Record<string, string> = {
-        monday: 'Every Monday',
-        tuesday: 'Every Tuesday',
-        wednesday: 'Every Wednesday',
-        thursday: 'Every Thursday',
-        friday: 'Every Friday',
-        saturday: 'Every Saturday',
-        sunday: 'Every Sunday',
-      };
-      return days[day] || 'Weekly';
+  const handleDeleteConfirm = () => {
+    if (selectedAutomationIds.size > 0) {
+      deleteAutomationsMutation.mutate(Array.from(selectedAutomationIds));
     }
-    if (frequency === 'monthly') return `Monthly (Day ${day})`;
-    return frequency;
   };
 
-  if (currentUserRole !== 'admin') {
-    return (
-      <div className="container">
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Access Denied</AlertTitle>
-          <AlertDescription>
-            Only administrators can access the automations settings.
-          </AlertDescription>
-        </Alert>
-      </div>
-    );
-  }
+  // Connect to the global New button
+  useEffect(() => {
+    (window as Window & typeof globalThis & { openNewAutomationModal?: () => void }).openNewAutomationModal =
+      () => setIsNewAutomationModalOpen(true);
+    return () => {
+      delete (window as Window & typeof globalThis & { openNewAutomationModal?: () => void })
+        .openNewAutomationModal;
+    };
+  }, []);
+
+  const getConditionsText = (automation: Automation) => {
+    if (automation.conditions.length === 0) return 'No conditions';
+    if (automation.conditions.length === 1) {
+      const condition = automation.conditions[0];
+      const operatorLabels = {
+        'eql': 'is',
+        'neql': 'is not', 
+        'con': 'contains',
+        'ncon': 'does not contain'
+      };
+      const operatorText = operatorLabels[condition.condition_operator as keyof typeof operatorLabels] || condition.condition_operator;
+      return `${condition.condition_type.toLowerCase().replace('_', ' ')} ${operatorText} ${condition.condition_value || ''}`;
+    }
+    return `${automation.conditions.length} conditions`;
+  };
+
+  const getActionsText = (automation: Automation) => {
+    if (automation.actions.length === 0) return 'No actions';
+    if (automation.actions.length === 1) {
+      const action = automation.actions[0];
+      return `${action.action_type.toLowerCase().replace('_', ' ')} ${action.action_value || ''}`;
+    }
+    return `${automation.actions.length} actions`;
+  };
 
   return (
-    <div className="space-y-5 max-w-4xl mx-auto">
-      <Card className="border-0 shadow-none">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-xl">Automations</CardTitle>
-              <CardDescription>Schedule automated emails and notifications</CardDescription>
-            </div>
-            <Button 
-              variant="default" 
-              className="ml-auto flex items-center gap-2"
-              onClick={handleOpenCreateModal}
-            >
-              <Plus size={16} /> New Automation
-                </Button>
-            <AutomationModalMui
-              open={isModalOpen}
-              onClose={handleCloseModal}
-              automationToEdit={selectedAutomation}
-              workspaceId={workspaceId}
-            />
-          </div>
-        </CardHeader>
-        <CardContent>
-          <Alert className="mb-6">
-            <Info className="h-4 w-4" />
-            <AlertTitle>Sobre las Automatizaciones</AlertTitle>
-            <AlertDescription>
-              <p className="mb-2">
-                Las automatizaciones te permiten programar correos electrónicos recurrentes.
-              </p>
-              <p>
-                Puedes usar marcadores en tus plantillas que serán reemplazados automáticamente con datos reales.
-              </p>
-            </AlertDescription>
-          </Alert>
-
-          <Tabs defaultValue="active" className="mb-6" onValueChange={setActiveTab}>
-            <TabsList>
-              <TabsTrigger value="active">Active Automations</TabsTrigger>
-              <TabsTrigger value="inactive">Inactive Automations</TabsTrigger>
-            </TabsList>
-          </Tabs>
-
-          {isLoadingAutomations || isLoadingAuthUser ? (
-            <div className="space-y-3">
-              <Skeleton className="h-24 w-full" />
-              <Skeleton className="h-24 w-full" />
-              <Skeleton className="h-24 w-full" />
-            </div>
-          ) : isAutomationsError ? (
-            <Alert variant="destructive">
-              <Terminal className="h-4 w-4" />
-              <AlertTitle>Error Loading Automations</AlertTitle>
-              <AlertDescription>
-                {automationsError instanceof Error
-                  ? automationsError.message
-                  : 'An unknown error occurred.'}
-              </AlertDescription>
-            </Alert>
-          ) : getFilteredAutomations().length > 0 ? (
-            <div className="space-y-4">
-              {getFilteredAutomations().map(automation => (
-                <Card key={automation.id} className="overflow-hidden">
-                  <div className="flex items-center justify-between p-6">
-                    <div className="flex items-center gap-4">
-                      <Switch
-                        id={`automation-active-${automation.id}`}
-                        checked={automation.is_enabled}
-                        onCheckedChange={() => handleToggle(automation.id, automation.is_enabled)}
-                        disabled={toggleAutomationMutation.isPending}
-                      />
-                      <div>
-                        <h3 className="font-medium">{automation.name}</h3>
-                        <p className="text-sm text-muted-foreground">{automation.description}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button variant="ghost" size="sm" onClick={() => handleEdit(automation)}>
-                        <Edit className="h-4 w-4 mr-2" />
-                        Edit
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => handleDelete(automation.id)}>
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Delete
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => handleRun(automation.id)}>
-                        <Calendar className="h-4 w-4 mr-2" />
-                        Run Now
-                      </Button>
-                    </div>
-                  </div>
-                  <div className="bg-muted px-6 py-3 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Clock className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm">
-                        {getFrequencyLabel(automation.schedule.frequency, automation.schedule.day)}{' '}
-                        at {automation.schedule.time}
-                      </span>
-                    </div>
-                    <Badge variant="outline" className="flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
-                      {automation.type === 'scheduled' ? 'Scheduled Email' : 'System Notification'}
-                    </Badge>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-8">
-              <p className="text-muted-foreground mb-4">
-                {activeTab === 'active'
-                  ? 'No active automations found'
-                  : 'No inactive automations found'}
-              </p>
-              <Button onClick={handleOpenCreateModal} variant="outline">
-                Create your first automation
+    <>
+      <div className="flex items-center justify-end py-4 flex-shrink-0">
+        {selectedAutomationIds.size > 0 && (
+          <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive" size="sm" disabled={deleteAutomationsMutation.isPending}>
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete ({selectedAutomationIds.size})
               </Button>
-            </div>
-          )}
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This action cannot be undone. This will permanently delete the selected
+                  {selectedAutomationIds.size === 1 ? ' workflow' : ' workflows'} and any related data.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={deleteAutomationsMutation.isPending}>
+                  Cancel
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleDeleteConfirm}
+                  disabled={deleteAutomationsMutation.isPending}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  {deleteAutomationsMutation.isPending ? 'Deleting...' : 'Delete'}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
+      </div>
+
+      <Card className="shadow-none border-0 flex-1 flex flex-col overflow-hidden">
+        <CardContent className="flex-1 overflow-hidden p-0">
+          <div className="h-full overflow-y-auto">
+            <Table>
+              <TableHeader className="sticky top-0 bg-white dark:bg-black z-10">
+                <TableRow className="border-b border-slate-200 dark:border-slate-700 hover:bg-transparent">
+                  <TableHead className="w-[50px] px-4">
+                    <Checkbox
+                      checked={headerCheckboxState}
+                      onCheckedChange={handleSelectAllChange}
+                      aria-label="Select all rows"
+                      disabled={isLoading || automations.length === 0}
+                    />
+                  </TableHead>
+                  {columns.map(column => (
+                    <TableHead key={column.accessorKey} className="px-6 py-4">
+                      {column.header}
+                    </TableHead>
+                  ))}
+                  <TableHead className="w-[50px] text-right px-6 py-4">
+                    <span className="sr-only">Actions</span>
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isLoading ? (
+                  Array.from({ length: 5 }).map((_, index) => (
+                    <TableRow key={`skeleton-${index}`}>
+                      <TableCell>
+                        <Skeleton className="h-4 w-4" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-8 w-full" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-8 w-full" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-8 w-full" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-8 w-8 ml-auto" />
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : isError ? (
+                  <TableRow>
+                    <TableCell
+                      colSpan={columns.length + 2}
+                      className="h-24 text-center text-red-500"
+                    >
+                      Error loading workflows:{' '}
+                      {error instanceof Error ? error.message : 'Unknown error'}
+                    </TableCell>
+                  </TableRow>
+                ) : automations.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={columns.length + 2} className="h-24 text-center">
+                      No workflows found.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  automations.map(automation => (
+                    <TableRow
+                      key={automation.id}
+                      className="hover:bg-muted/50 cursor-pointer"
+                      data-state={selectedAutomationIds.has(automation.id) ? 'selected' : ''}
+                      onClick={() => handleRowClick(automation.id)}
+                    >
+                      <TableCell className="px-4">
+                        <Checkbox
+                          checked={selectedAutomationIds.has(automation.id)}
+                          onCheckedChange={checked => handleRowSelectChange(automation.id, checked)}
+                          aria-label={`Select row for ${automation.name}`}
+                          onClick={e => e.stopPropagation()}
+                        />
+                      </TableCell>
+                      <TableCell className="font-medium px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          <Settings className="h-4 w-4 text-gray-500" />
+                          <span>{automation.name}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="px-6 py-4">
+                        <span className="text-sm text-gray-600">
+                          {getConditionsText(automation)}
+                        </span>
+                      </TableCell>
+                      <TableCell className="px-6 py-4">
+                        <span className="text-sm text-gray-600">
+                          {getActionsText(automation)}
+                        </span>
+                      </TableCell>
+                      <TableCell className="px-6 py-4">
+                        <span className={`text-sm font-medium text-gray-600 px-2 py-1 rounded-full ${
+                          automation.is_active 
+                            ? 'bg-green-100' 
+                            : ''
+                        }`}>
+                          {automation.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right px-6 py-4"> </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
-    </div>
+
+      <NewAutomationModalMui
+        open={isNewAutomationModalOpen}
+        onClose={() => setIsNewAutomationModalOpen(false)}
+        onCreateSuccess={() => {}}
+      />
+
+      <EditAutomationModalMui
+        open={isEditAutomationModalOpen}
+        onClose={() => {
+          setIsEditAutomationModalOpen(false);
+          setEditingAutomationId(null);
+        }}
+        automationId={editingAutomationId}
+        onUpdateSuccess={() => {}}
+      />
+    </>
   );
-}
+} 

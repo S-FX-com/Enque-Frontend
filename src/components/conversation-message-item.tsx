@@ -22,6 +22,7 @@ import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
 import MuiCloseIcon from '@mui/icons-material/Close';
+import { useAgentAvatar } from '@/hooks/use-agent-avatar';
 
 const fileTypeColors: { [key: string]: string } = {
   pdf: '#D93025',
@@ -383,6 +384,45 @@ export function ConversationMessageItem({ comment }: Props) {
     document.body.removeChild(link);
   };
 
+  // Prepare agent data for avatar hook when dealing with agent messages
+  const agentForAvatar = isAgentMessage ? comment.agent : null;
+  
+  // Use the agent avatar hook to get the appropriate avatar component
+  const { AvatarComponent: AgentAvatarComponent } = useAgentAvatar({
+    agent: agentForAvatar,
+    size: 40,
+    variant: 'beam',
+    className: 'border',
+  });
+
+  // Determine which avatar to render
+  const renderAvatar = () => {
+    // Always use user colors for initial messages and user replies, regardless of comment.agent
+    if (isInitialMessage || isUserReply) {
+      return (
+        <Avatar size={40} name={senderIdentifier} variant="beam" colors={userAvatarColors} />
+      );
+    }
+    
+    // For auto-responses and system messages, use system colors
+    if (isAutoResponse) {
+      return (
+        <Avatar size={40} name={senderIdentifier} variant="beam" colors={avatarColors} />
+      );
+    }
+    
+    // Only use agent avatar for messages that are ACTUALLY from agents (not user messages with comment.agent set)
+    // This means: has comment.agent AND is not a user reply AND is not initial message AND is not auto-response
+    if (isAgentMessage && !isUserReply && !isInitialMessage && !isAutoResponse) {
+      return AgentAvatarComponent;
+    }
+    
+    // For any other case (including users that might have comment.agent set), use user colors
+    return (
+      <Avatar size={40} name={senderIdentifier} variant="beam" colors={userAvatarColors} />
+    );
+  };
+
   return (
     <>
       <div
@@ -397,7 +437,7 @@ export function ConversationMessageItem({ comment }: Props) {
                 : 'p-3 rounded-md'
         )}
       >
-        <Avatar size={40} name={senderIdentifier} variant="beam" colors={avatarColors} />
+        {renderAvatar()}
         <div className="flex-1 min-w-0">
           <div className="mb-1">
             <p className="text-sm font-medium leading-none">

@@ -86,42 +86,53 @@ export function Sidebar() {
   const { user, isLoading: isLoadingUser } = useAuth();
 
   const { data: agentTeams } = useQuery<Team[], Error>({
-    queryKey: ['agentTeams', user?.id],
-    queryFn: () => {
+    queryKey: ['agentTeams', user?.id, user?.role],
+    queryFn: async () => {
       if (!user?.id) return Promise.resolve([]);
 
+      // Si el usuario es admin, mostrar todos los teams del workspace
       if (user.role === 'admin') {
         return getTeams();
       } else {
+        // Para agentes y managers, mostrar solo sus teams asignados
         return getAgentTeams(user.id);
       }
     },
     enabled: !!user?.id && !isLoadingUser,
-    staleTime: 1000 * 60 * 5,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    refetchInterval: 10000, // Refetch every 10 seconds
   });
 
-  // Add query for all tickets count
+  // Add query for all tickets count (excluding closed/resolved)
   const { data: allTicketsCount = 0 } = useQuery<number>({
     queryKey: ['ticketsCount', 'all'],
     queryFn: async () => {
       const tickets = await getTickets();
-      return tickets.length || 0;
+      // Filter out closed and resolved tickets to match My Teams behavior
+      const activeTickets = tickets.filter(ticket => 
+        ticket.status !== 'Closed' && ticket.status !== 'Resolved'
+      );
+      return activeTickets.length || 0;
     },
     staleTime: 1000 * 60 * 5, // 5 minutes
-    refetchInterval: 30000, // Refetch every 30 seconds
+    refetchInterval: 10000, // Refetch every 10 seconds
   });
 
-  // Add query for my tickets count
+  // Add query for my tickets count (excluding closed/resolved)
   const { data: myTicketsCount = 0 } = useQuery<number>({
     queryKey: ['ticketsCount', 'my', user?.id],
     queryFn: async () => {
       if (!user?.id) return 0;
       const tickets = await getTickets({}, `/v1/tasks/assignee/${user.id}`);
-      return tickets.length || 0;
+      // Filter out closed and resolved tickets to match My Teams behavior
+      const activeTickets = tickets.filter(ticket => 
+        ticket.status !== 'Closed' && ticket.status !== 'Resolved'
+      );
+      return activeTickets.length || 0;
     },
     enabled: !!user?.id && !isLoadingUser,
     staleTime: 1000 * 60 * 5, // 5 minutes
-    refetchInterval: 30000, // Refetch every 30 seconds
+    refetchInterval: 10000, // Refetch every 10 seconds
   });
 
   const mainItems = [

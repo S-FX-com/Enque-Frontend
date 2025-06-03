@@ -194,7 +194,7 @@ export const removeTeamMember = async (teamId: number, agentId: number): Promise
 /**
  * Fetches teams associated with a specific agent.
  * @param agentId The ID of the agent.
- * @returns A promise that resolves to an array of teams.
+ * @returns A promise that resolves to an array of teams with ticket counts including mailbox tickets.
  */
 export const getAgentTeams = async (agentId: number): Promise<Team[]> => {
   if (!agentId) {
@@ -202,9 +202,8 @@ export const getAgentTeams = async (agentId: number): Promise<Team[]> => {
     return []; // Return empty array if agentId is invalid
   }
   try {
-    // Assuming an endpoint like /v1/agents/{agent_id}/teams exists
-    // Adjust the URL if your backend endpoint is different
-    const url = `${API_BASE_URL}/v1/agents/${agentId}/teams`;
+    // Use the new endpoint that includes mailbox ticket counts
+    const url = `${API_BASE_URL}/v1/teams/agent/${agentId}`;
     const response = await fetchAPI.GET<Team[]>(url);
 
     if (!response || !response.data) {

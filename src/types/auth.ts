@@ -7,6 +7,7 @@ export interface UserPayload {
   job_title?: string | null;
   phone_number?: string | null;
   email_signature?: string | null; // Add email_signature
+  avatar?: string | null; // Add avatar field
   iat: number;
   exp: number;
 }

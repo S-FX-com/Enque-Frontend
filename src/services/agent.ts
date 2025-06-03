@@ -144,6 +144,7 @@ interface AgentInviteCreatePayload {
   email: string;
   role: 'agent' | 'admin' | 'manager';
   workspace_id: number;
+  job_title?: string;
 }
 
 /**
@@ -177,6 +178,7 @@ export async function inviteAgent(inviteData: AgentInviteCreatePayload): Promise
 interface TokenResponse {
   access_token: string;
   token_type: string;
+  workspace_subdomain?: string;
 }
 
 /**

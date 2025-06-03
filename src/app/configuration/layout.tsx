@@ -40,8 +40,12 @@ export default function ConfigurationLayout({ children }: { children: React.Reac
   const breadcrumbs = generateBreadcrumbs();
 
   // Determine the title based on the last breadcrumb
-  const title =
-    breadcrumbs.length > 0 ? breadcrumbs[breadcrumbs.length - 1].label : 'Configuration';
+  let title = breadcrumbs.length > 0 ? breadcrumbs[breadcrumbs.length - 1].label : 'Configuration';
+  
+  // Special case: change "Automations" to "Workflows"
+  if (title === 'Automations') {
+    title = 'Workflows';
+  }
 
   return (
     <AppLayout title={title} breadcrumbs={breadcrumbs}>

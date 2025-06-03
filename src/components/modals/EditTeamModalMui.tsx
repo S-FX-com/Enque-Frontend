@@ -210,7 +210,7 @@ const EditTeamModalMui: React.FC<EditTeamModalMuiProps> = ({
       try {
         const currentUser = await getCurrentUser();
         if (currentUser && currentUser.id) {
-          specificAgentTeamsKey = ['agentTeams', currentUser.id];
+          specificAgentTeamsKey = ['agentTeams', currentUser.id, currentUser.role];
           // Update if this team is in the current user's list, or add/remove if membership changed
           // This part is complex for edits; for now, just invalidate to refetch.
         }

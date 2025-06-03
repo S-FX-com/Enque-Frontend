@@ -5,7 +5,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Avatar } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -15,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import BoringAvatar from 'boring-avatars';
+import { AgentAvatar } from '@/components/agent/agent-avatar';
 import { useAuth } from '@/hooks/use-auth';
 import { toast } from 'sonner';
 import { getAgentById, updateAgentProfile } from '@/services/agent';
@@ -66,6 +65,7 @@ export default function ProfileSettingsPage() {
   const [editedPhoneNumber, setEditedPhoneNumber] = useState('');
   const [editedRole, setEditedRole] = useState('');
   const [editedSignature, setEditedSignature] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState<string | null | undefined>(undefined);
 
   const currentUserRole = user?.role;
 
@@ -97,6 +97,7 @@ export default function ProfileSettingsPage() {
       setEditedPhoneNumber(agentProfileData.phone_number || '');
       setEditedRole(agentProfileData.role || 'agent');
       setEditedSignature(agentProfileData.email_signature || '');
+      setAvatarUrl(agentProfileData.avatar);
     } else {
       setEditedName('');
       setEditedEmail('');
@@ -104,6 +105,7 @@ export default function ProfileSettingsPage() {
       setEditedPhoneNumber('');
       setEditedRole('agent');
       setEditedSignature('');
+      setAvatarUrl(undefined);
     }
   }, [agentProfileData]);
 
@@ -149,8 +151,6 @@ export default function ProfileSettingsPage() {
       : '...',
   };
 
-  const avatarColors = ['#1D73F4', '#D4E4FA'];
-
   const handleEditToggle = () => {
     if (isEditing) {
       if (agentProfileData) {
@@ -160,9 +160,17 @@ export default function ProfileSettingsPage() {
         setEditedPhoneNumber(agentProfileData.phone_number || '');
         setEditedRole(agentProfileData.role || 'agent');
         setEditedSignature(agentProfileData.email_signature || '');
+        setAvatarUrl(agentProfileData.avatar);
       }
     }
     setIsEditing(!isEditing);
+  };
+
+  const handleAvatarChange = (newAvatarUrl: string | null) => {
+    setAvatarUrl(newAvatarUrl);
+    // Immediately update the avatar
+    const payload: AgentUpdate = { avatar: newAvatarUrl };
+    updateProfileMutation.mutate(payload);
   };
 
   const handleSave = () => {
@@ -305,14 +313,15 @@ export default function ProfileSettingsPage() {
           <section className="mb-6">
             <h2 className="text-lg font-semibold mb-3">Avatar</h2>
             <div className="flex items-center gap-4">
-              <Avatar className="h-12 w-12 overflow-hidden border">
-                <BoringAvatar
-                  size={48}
-                  name={agentProfileData?.email || agentProfileData?.name || 'default-avatar'}
-                  variant="beam"
-                  colors={avatarColors}
-                />
-              </Avatar>
+              <AgentAvatar
+                avatarUrl={avatarUrl}
+                agentName={agentProfileData?.name || 'User'}
+                agentEmail={agentProfileData?.email}
+                onAvatarChange={handleAvatarChange}
+                isUpdating={updateProfileMutation.isPending}
+                size={64}
+                showEditButton={currentUserRole === 'admin' || agentProfileData?.id === user?.id}
+              />
             </div>
           </section>
 

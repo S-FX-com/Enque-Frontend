@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -13,7 +13,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Pencil, PlusCircle, Trash2, Users, ServerCrash } from 'lucide-react';
+import { Pencil, Trash2, Users, ServerCrash } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -212,6 +212,16 @@ const TeamsPage = () => {
     }
   };
 
+  // Exponer la función para abrir el modal al objeto window para el layout principal
+  useEffect(() => {
+    (window as Window & typeof globalThis & { openNewTeamModal?: () => void }).openNewTeamModal =
+      () => setIsNewModalOpen(true);
+    return () => {
+      delete (window as Window & typeof globalThis & { openNewTeamModal?: () => void })
+        .openNewTeamModal;
+    };
+  }, []);
+
   if (isLoadingTeams || isLoadingAgents) {
     return (
       <div className="p-4 md:p-8">
@@ -335,10 +345,6 @@ const TeamsPage = () => {
               </AlertDialogContent>
             </AlertDialog>
           )}
-          <Button onClick={() => setIsNewModalOpen(true)} size="sm" disabled={isLoadingAgents}>
-            <PlusCircle className="mr-2 h-4 w-4" />
-            New Team
-          </Button>
         </div>
       </div>
 
@@ -347,13 +353,8 @@ const TeamsPage = () => {
           <CardHeader className="text-center">
             <Users className="mx-auto h-12 w-12 text-gray-400" />
             <CardTitle className="mt-2">No Teams Found</CardTitle>
-            <CardDescription>Get started by creating a new team.</CardDescription>
+            <CardDescription>Get started by creating a new team using the &quot;New Team&quot; button in the top bar.</CardDescription>
           </CardHeader>
-          <CardContent className="text-center">
-            <Button onClick={() => setIsNewModalOpen(true)} disabled={isLoadingAgents}>
-              <PlusCircle className="mr-2 h-4 w-4" /> Create Your First Team
-            </Button>
-          </CardContent>
         </Card>
       )}
 

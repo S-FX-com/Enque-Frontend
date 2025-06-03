@@ -15,6 +15,7 @@ export interface UserSession {
   job_title?: string | null;
   phone_number?: string | null;
   email_signature?: string | null; // Add email_signature
+  avatar?: string | null; // Add avatar field
   iat: number;
   exp: number;
 }
@@ -131,6 +132,7 @@ export const getCurrentUser = async (): Promise<UserSession | null> => {
       job_title: userData.job_title || null,
       phone_number: userData.phone_number || null,
       email_signature: userData.email_signature || null, // Add email_signature
+      avatar: userData.avatar || null, // Add avatar field
       iat: userData.iat || 0,
       exp: userData.exp || 0,
     };

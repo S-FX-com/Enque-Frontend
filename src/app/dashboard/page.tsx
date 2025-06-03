@@ -3,15 +3,15 @@
 
 import React from 'react';
 import { useQuery, useQueries } from '@tanstack/react-query';
-import { getCurrentUser, UserSession } from '@/lib/auth';
+import { Badge } from '@/components/ui/badge';
+import { getAgentById } from '@/services/agent';
 import { getAssignedTasks, getTeamTasks } from '@/services/task';
 import { getAgentTeams } from '@/services/agent';
-import { Task, TaskStatus } from '@/typescript/task';
 import { Team } from '@/typescript/team';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import BoringAvatar from 'boring-avatars';
+import { Task, TaskStatus } from '@/typescript/task';
+import { useAgentAvatar } from '@/hooks/use-agent-avatar';
+import { useAuth } from '@/hooks/use-auth';
 import { format, parseISO } from 'date-fns';
-import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
 interface TeamStats extends Team {
@@ -21,23 +21,32 @@ interface TeamStats extends Team {
 }
 
 export default function DashboardPage() {
-  const useBoringAvatar = true;
+  const { user } = useAuth();
 
   const {
-    data: user,
+    data: userData,
     isLoading: isLoadingUser,
     isError: isUserError,
-  } = useQuery<UserSession | null, Error>({
-    queryKey: ['currentUser'],
-    queryFn: getCurrentUser,
-    staleTime: Infinity,
+  } = useQuery({
+    queryKey: ['agent', user?.id],
+    queryFn: () => getAgentById(user!.id),
+    enabled: !!user?.id,
+    staleTime: 1000 * 60 * 5,
+  });
+
+  // Get the user avatar component
+  const { AvatarComponent: UserAvatarComponent } = useAgentAvatar({
+    agent: userData,
+    size: 80,
+    variant: 'beam',
+    className: 'w-full h-full',
   });
 
   const { data: assignedTickets = [], isLoading: isLoadingAssignedTickets } = useQuery<
     Task[],
     Error
   >({
-    queryKey: ['assignedTickets', user?.id],
+    queryKey: ['agentTickets', user?.id],
     queryFn: () => (user?.id ? getAssignedTasks(user.id) : Promise.resolve([])),
     enabled: !!user?.id,
     staleTime: 1000 * 60,
@@ -62,7 +71,7 @@ export default function DashboardPage() {
   const isLoadingTeamTasks = teamTasksQueries.some(query => query.isLoading);
 
   const ticketsAssignedCount = assignedTickets.length;
-  const ticketsCompletedCount = assignedTickets.filter(t => t.status === TaskStatus.CLOSED).length;
+  const ticketsCompletedCount = assignedTickets.filter((t: Task) => t.status === TaskStatus.CLOSED).length;
   const teamsCount = userTeams.length;
 
   const teamsStats: TeamStats[] = userTeams.map((team, index) => {
@@ -70,9 +79,9 @@ export default function DashboardPage() {
     const teamTasks = queryResult.isSuccess ? queryResult.data : [];
 
     const ticketsOpen = teamTasks.filter(
-      t => t.status === TaskStatus.OPEN || t.status === TaskStatus.UNREAD
+      (t: Task) => t.status === TaskStatus.OPEN || t.status === TaskStatus.UNREAD
     ).length;
-    const ticketsWithUser = teamTasks.filter(t => t.user_id === user?.id).length;
+    const ticketsWithUser = teamTasks.filter((t: Task) => t.user_id === user?.id).length;
     const ticketsAssigned = teamTasks.length;
 
     return {
@@ -116,26 +125,14 @@ export default function DashboardPage() {
       <div className="bg-white dark:bg-black rounded-lg p-6 flex flex-col items-center">
         <div className="relative mb-4">
           <div className="w-20 h-20 rounded-full">
-            {useBoringAvatar ? (
-              <BoringAvatar
-                size={80}
-                name={user.email || user.name || ''}
-                variant="beam"
-                colors={['#1D73F4', '#D4E4FA']}
-              />
-            ) : (
-              <Avatar className="w-full h-full">
-                <AvatarImage src="https://via.placeholder.com/96" alt={user.name} />
-                <AvatarFallback>{user.name?.charAt(0) || ''}</AvatarFallback>
-              </Avatar>
-            )}
+            {UserAvatarComponent}
           </div>
           <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 rounded-full border-2 border-white dark:border-black"></div>
         </div>
 
-        <h2 className="text-xl font-semibold text-center">{user.name}</h2>
+        <h2 className="text-xl font-semibold text-center">{userData?.name || user.name}</h2>
         <p className="text-slate-500 dark:text-slate-400 mb-6 text-center capitalize">
-          {user.role}
+          {userData?.role || user.role}
         </p>
 
         <div className="flex justify-between w-full">
