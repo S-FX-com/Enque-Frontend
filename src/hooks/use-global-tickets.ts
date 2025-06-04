@@ -25,7 +25,6 @@ export function useGlobalTickets(enabled: boolean = true) {
   >({
     queryKey: ['tickets'],
     queryFn: async ({ pageParam = 0 }) => {
-      console.log(`Global: Fetching tickets with skip: ${pageParam}`);
       const tickets = await getTickets({ skip: pageParam, limit: LOAD_LIMIT });
       return tickets;
     },

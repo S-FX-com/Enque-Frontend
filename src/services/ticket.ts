@@ -28,7 +28,6 @@ export async function getTickets(
     if (user_id !== undefined) queryParams.append('user_id', String(user_id));
     if (team_id !== undefined) queryParams.append('team_id', String(team_id));
     const url = `${API_BASE_URL}${endpointPath}?${queryParams.toString()}`;
-    console.log('Fetching tickets with URL:', url);
     const response = await fetchAPI.GET<ITicket[]>(url);
     if (response && response.success && response.data) {
       return response.data;
@@ -172,7 +171,6 @@ type TicketCreatePayload = {
 export async function createTicket(ticketData: TicketCreatePayload): Promise<ITicket | null> {
   try {
     const url = `${API_BASE_URL}/v1/tasks/`;
-    console.log('Sending create ticket payload:', ticketData);
     const response = await fetchAPI.POST<ITicket>(url, ticketData);
 
     if (response && response.success && response.data) {

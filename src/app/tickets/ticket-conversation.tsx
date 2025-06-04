@@ -68,9 +68,10 @@ export function TicketConversation({ ticket, onTicketUpdate }: Props) {
     queryKey: ['comments', ticket.id],
     queryFn: () => getCommentsByTaskId(ticket.id),
     enabled: !!ticket?.id,
-    staleTime: 1 * 60 * 1000,
-    refetchInterval: 5000,
-    refetchIntervalInBackground: true,
+    staleTime: 2 * 60 * 1000, // 2 minutos - más tiempo para evitar refetch constante
+    refetchInterval: 10000, // 10 segundos en lugar de 5
+    refetchIntervalInBackground: false, // No refetch en background
+    refetchOnWindowFocus: false, // No refetch al volver a la ventana
   });
 
   const currentAgentId = currentUser?.id;
@@ -155,6 +156,33 @@ export function TicketConversation({ ticket, onTicketUpdate }: Props) {
     return items;
   }, [comments, ticket]);
 
+  // Precarga inteligente de contenido S3 - cargar múltiples comentarios en paralelo
+  useEffect(() => {
+    if (comments.length > 0) {
+      // Encontrar todos los comentarios S3 que necesiten contenido
+      const s3Comments = comments.filter(comment => 
+        comment.s3_html_url && comment.content?.startsWith('[MIGRATED_TO_S3]')
+      );
+      
+      if (s3Comments.length > 0) {
+        // Precargar hasta 5 comentarios S3 en paralelo para mejor UX
+        const commentsToPreload = s3Comments.slice(0, 5);
+        
+        // Precargar todos en paralelo con Promise.allSettled para que los fallos no afecten otros
+        Promise.allSettled(
+          commentsToPreload.map(async (comment) => {
+            try {
+              const { getCommentS3Content } = await import('@/services/comment');
+              await getCommentS3Content(comment.id);
+            } catch {
+              // Silently fail individual loads
+            }
+          })
+        );
+      }
+    }
+  }, [comments.length, comments]); // Agregar 'comments' para satisfacer el hook de dependencias
+
   useEffect(() => {
     let signatureToUse = '';
 
@@ -201,14 +229,10 @@ export function TicketConversation({ ticket, onTicketUpdate }: Props) {
     const prevTicketId = prevTicketIdRef.current;
     const initialContent = signatureToUse ? `${greeting}${signatureToUse}` : greeting;
 
-    console.log(
-      `[TicketConversation] Ticket ${currentTicketId} | Signature: ${!!signatureToUse}`
-    );
     setReplyContent(initialContent);
     setEditorKey(prevKey => prevKey + 1);
 
     if (currentTicketId !== prevTicketId) {
-      console.log('  Ticket ID changed. Resetting private note switch.');
       setIsPrivateNote(false);
     }
     prevTicketIdRef.current = currentTicketId;
@@ -308,19 +332,60 @@ export function TicketConversation({ ticket, onTicketUpdate }: Props) {
 
   const createCommentMutation = useMutation({
     mutationFn: () => sendComment(replyContent, isPrivateNote),
-    onSuccess: (data: CommentResponseData) => {
-      if (data.comment) {
-        queryClient.setQueryData<IComment[]>(['comments', ticket.id], oldComments => {
-          if (!oldComments) return [data.comment];
-          if (!oldComments.some(comment => comment.id === data.comment.id)) {
-            return [data.comment, ...oldComments];
-          }
-          return oldComments;
-        });
-      }
+    onMutate: async () => {
+      // Cancelar queries salientes para evitar que sobrescriban nuestro update optimista
+      await queryClient.cancelQueries({ queryKey: ['comments', ticket.id] });
 
+      // Snapshot del estado anterior
+      const previousComments = queryClient.getQueryData(['comments', ticket.id]);
+
+      // Crear comentario optimista para mostrar inmediatamente
+      const optimisticComment: IComment = {
+        id: Date.now(), // ID temporal único
+        content: replyContent,
+        s3_html_url: null,
+        is_private: isPrivateNote,
+        ticket_id: ticket.id,
+        workspace_id: currentUser?.workspace_id || 0,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        agent: currentUser ? {
+          id: currentUser.id,
+          name: currentUser.name,
+          email: currentUser.email,
+          role: currentUser.role,
+          is_active: true,
+          workspace_id: currentUser.workspace_id,
+          created_at: currentUser.created_at || '',
+          updated_at: currentUser.updated_at || '',
+        } : null,
+        user: null,
+        attachments: selectedAttachments ? selectedAttachments.map((file, index) => ({
+          id: -(index + 1), // IDs temporales negativos
+          file_name: file.name,
+          content_type: file.type,
+          file_size: file.size,
+          size_text: `${(file.size / 1024).toFixed(1)} KB`,
+          download_url: '',
+          preview_url: null,
+          is_image: file.type.startsWith('image/'),
+          created_at: new Date().toISOString(),
+        })) : [],
+      };
+
+      // Actualizar optimistamente el cache
+      queryClient.setQueryData(['comments', ticket.id], (old: IComment[] | undefined) => {
+        return [...(old || []), optimisticComment];
+      });
+
+      // Retornar contexto para rollback si es necesario
+      return { previousComments };
+    },
+    onSuccess: (data: CommentResponseData) => {
+      // Invalidar queries para obtener el comentario real del servidor
       queryClient.invalidateQueries({ queryKey: ['comments', ticket.id] });
 
+      // Limpiar formulario
       setReplyContent('');
       setSelectedAttachments([]);
       setIsPrivateNote(false);
@@ -329,7 +394,6 @@ export function TicketConversation({ ticket, onTicketUpdate }: Props) {
       toast.success('Reply sent successfully.');
 
       if (data.task && onTicketUpdate) {
-        console.log('Ticket updated from comment creation:', data.task);
         onTicketUpdate(data.task);
 
         queryClient.setQueryData(['ticket', ticket.id], data.task);
@@ -340,7 +404,12 @@ export function TicketConversation({ ticket, onTicketUpdate }: Props) {
         }
       }
     },
-    onError: error => {
+    onError: (error, variables, context) => {
+      // Rollback en caso de error
+      if (context?.previousComments) {
+        queryClient.setQueryData(['comments', ticket.id], context.previousComments);
+      }
+      
       console.error('Failed to send reply:', error);
       toast.error(`Failed to send reply: ${error.message}`);
     },
@@ -375,7 +444,7 @@ export function TicketConversation({ ticket, onTicketUpdate }: Props) {
           <CardTitle className="text-lg">Conversation</CardTitle>
         </CardHeader>
         <CardContent className="flex-1 overflow-y-auto space-y-4">
-          {isLoadingComments && (
+          {isLoadingComments && conversationItems.length === 0 && (
             <div className="space-y-4">
               <Skeleton className="h-16 w-full" />
               <Skeleton className="h-16 w-full" />
@@ -387,20 +456,18 @@ export function TicketConversation({ ticket, onTicketUpdate }: Props) {
             </div>
           )}
 
-          {!isLoadingComments &&
-            !isCommentsError &&
-            (conversationItems.length === 0 ? (
-              <div className="text-center text-muted-foreground py-10">
-                No conversation history found.
-              </div>
-            ) : (
-              conversationItems.map(item => (
-                <ConversationMessageItem
-                  key={item.id === -1 ? 'initial-message' : item.id}
-                  comment={item}
-                />
-              ))
-            ))}
+          {conversationItems.length === 0 && !isLoadingComments && !isCommentsError ? (
+            <div className="text-center text-muted-foreground py-10">
+              No conversation history found.
+            </div>
+          ) : (
+            conversationItems.map(item => (
+              <ConversationMessageItem
+                key={item.id === -1 ? 'initial-message' : item.id}
+                comment={item}
+              />
+            ))
+          )}
         </CardContent>
       </Card>
 

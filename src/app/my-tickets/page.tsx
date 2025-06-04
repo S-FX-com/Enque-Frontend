@@ -302,7 +302,6 @@ function MyTicketsClientContent() {
     },
     onSuccess: (data, variables) => {
       toast.success(`${variables.length} ticket(s) deletion request sent.`);
-      console.log(`${variables.length} ticket(s) deletion attempted.`);
     },
     onMutate: async ticketIdsToDelete => {
       await queryClient.cancelQueries({ queryKey: ['tickets', 'my', currentUser?.id] });
@@ -478,7 +477,6 @@ function MyTicketsClientContent() {
       }
     },
     onSuccess: (updatedTicket, ticket) => {
-      console.log(`Backend updated successfully for ticket ${ticket.id}`);
       // Update the selected ticket if it's the same one
       if (selectedTicket?.id === ticket.id) {
         setSelectedTicket({ ...ticket, status: 'Open' as const });
@@ -494,7 +492,6 @@ function MyTicketsClientContent() {
       router.push(`${window.location.pathname}?${newSearchParams.toString()}`);
 
       if (ticket.status === 'Unread') {
-        console.log(`Ticket ${ticket.id} is Unread, updating to Open.`);
         markAsReadMutation.mutate(ticket);
       }
     },

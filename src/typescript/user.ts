@@ -18,7 +18,7 @@ export interface IAgent {
   id: number;
   name: string;
   email: string;
-  role: 'admin' | 'agent'; // Use specific roles
+  role: 'admin' | 'agent' | 'manager'; // Incluir todos los roles disponibles
   is_active: boolean;
   workspace_id: number;
   created_at: string;

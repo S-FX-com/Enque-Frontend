@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import '@cyntler/react-doc-viewer/dist/index.css';
 import { formatDistanceToNow } from 'date-fns';
 import Avatar from 'boring-avatars';
@@ -23,6 +23,8 @@ import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
 import MuiCloseIcon from '@mui/icons-material/Close';
 import { useAgentAvatar } from '@/hooks/use-agent-avatar';
+import { getCommentS3Content } from '@/services/comment';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const fileTypeColors: { [key: string]: string } = {
   pdf: '#D93025',
@@ -202,11 +204,61 @@ const muiModalStyle = {
 } as const;
 
 export function ConversationMessageItem({ comment }: Props) {
+  // Estado para contenido S3
+  const [s3Content, setS3Content] = useState<string | null>(null);
+  const [isLoadingS3, setIsLoadingS3] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [selectedAttachment, setSelectedAttachment] = useState<IAttachment | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [selectedImageSrc, setSelectedImageSrc] = useState<string | null>(null);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+
+  // Ref para el intersection observer
+  const commentRef = useRef<HTMLDivElement>(null);
+
+  // Detectar si el comentario está migrado a S3
+  const isMigratedToS3 = comment.s3_html_url && comment.content?.startsWith('[MIGRATED_TO_S3]');
+  
+  // Función estable para cargar contenido desde S3
+  const loadS3Content = useCallback(async () => {
+    if (!isMigratedToS3 || comment.id === -1 || s3Content || isLoadingS3) {
+      return;
+    }
+    
+    setIsLoadingS3(true);
+    try {
+      const response = await getCommentS3Content(comment.id);
+      
+      if (response.status === 'loaded_from_s3' && response.content) {
+        // Verificar si el contenido de S3 sigue siendo el placeholder (contenido corrupto)
+        if (response.content.startsWith('[MIGRATED_TO_S3]')) {
+          // Usar el contenido original pero limpio
+          const cleanContent = comment.content?.replace(/^\[MIGRATED_TO_S3\][^"]*"[^"]*"/, '').trim() || '';
+          setS3Content(cleanContent || 'Content temporarily unavailable');
+        } else {
+          setS3Content(response.content);
+        }
+      } else {
+        // Fallback al contenido de la base de datos
+        setS3Content(response.content);
+      }
+    } catch (error) {
+      console.error('Error loading S3 content:', error);
+      // Usar el contenido de la base de datos como fallback, pero sin el prefijo
+      const cleanContent = comment.content?.replace(/^\[MIGRATED_TO_S3\][^"]*"[^"]*"/, '').trim() || comment.content;
+      setS3Content(cleanContent);
+    } finally {
+      setIsLoadingS3(false);
+    }
+  }, [comment.id, comment.content, isMigratedToS3, s3Content, isLoadingS3]);
+
+  // Cargar contenido desde S3 inmediatamente para comentarios migrados
+  useEffect(() => {
+    if (isMigratedToS3 && !s3Content && !isLoadingS3) {
+      // Cargar inmediatamente sin esperar visibilidad para comentarios migrados
+      loadS3Content();
+    }
+  }, [isMigratedToS3, loadS3Content, s3Content, isLoadingS3]);
 
   let senderName = 'Unknown Sender';
   let senderIdentifier = 'unknown';
@@ -214,6 +266,11 @@ export function ConversationMessageItem({ comment }: Props) {
   let isUserReply = false;
   const isInitialMessage = comment.id === -1;
   const isAgentMessage = !!comment.agent;
+
+  // Usar contenido S3 si está disponible
+  if (isMigratedToS3 && s3Content) {
+    fullContent = s3Content;
+  }
 
   // Check for auto-response
   const autoResponseMatch = fullContent.match(/<auto-response>(.*?)<\/auto-response>/);
@@ -338,6 +395,32 @@ export function ConversationMessageItem({ comment }: Props) {
     makeImagesClickable();
   }, [currentDisplayReplyPart]);
 
+  // Prepare agent data for avatar hook when dealing with agent messages
+  const agentForAvatar = isAgentMessage ? comment.agent : null;
+  
+  // Use the agent avatar hook to get the appropriate avatar component
+  const { AvatarComponent: AgentAvatarComponent } = useAgentAvatar({
+    agent: agentForAvatar,
+    size: 40,
+    variant: 'beam',
+    className: 'border',
+  });
+
+  // AHORA, después de todos los hooks, verificar si mostrar skeleton
+  // Si es contenido S3 y aún no se ha cargado, mostrar skeleton
+  if (isMigratedToS3 && !s3Content) {
+    return (
+      <div className="flex items-start space-x-3 py-4 border-b border-slate-200 dark:border-slate-700 last:border-b-0 p-3 rounded-md">
+        <Skeleton className="h-10 w-10 rounded-full" />
+        <div className="flex-1 min-w-0 space-y-2">
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="h-3 w-20" />
+          <Skeleton className="h-16 w-full" />
+        </div>
+      </div>
+    );
+  }
+
   const handleImageClick = (e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
     if (target.tagName === 'IMG') {
@@ -368,32 +451,31 @@ export function ConversationMessageItem({ comment }: Props) {
     process.env.NEXT_PUBLIC_API_BASE_URL || 'https://enque-backend-production.up.railway.app/v1';
 
   const handleDownloadAttachment = (attachment: IAttachment) => {
-    // Código para adjuntos normales
-    const fullDownloadUrl = `${apiBaseUrl}${attachment.download_url.startsWith('/') ? attachment.download_url : '/' + attachment.download_url}`;
+    // Determinar si es URL completa (S3) o relativa (API)
+    let downloadUrl: string;
+    
+    if (attachment.download_url.startsWith('http')) {
+      // Es una URL completa de S3, usar directamente
+      downloadUrl = attachment.download_url;
+    } else {
+      // Es URL relativa de API, construir URL completa
+      downloadUrl = `${apiBaseUrl}${attachment.download_url.startsWith('/') ? attachment.download_url : '/' + attachment.download_url}`;
+    }
+    
     console.log(
-      'Attempting to download from absolute URL:',
-      fullDownloadUrl,
-      'Filename:',
-      attachment.file_name
+      'Downloading attachment:',
+      attachment.file_name,
+      'from URL:',
+      downloadUrl
     );
+    
     const link = document.createElement('a');
-    link.href = fullDownloadUrl;
+    link.href = downloadUrl;
     link.setAttribute('download', attachment.file_name);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
-
-  // Prepare agent data for avatar hook when dealing with agent messages
-  const agentForAvatar = isAgentMessage ? comment.agent : null;
-  
-  // Use the agent avatar hook to get the appropriate avatar component
-  const { AvatarComponent: AgentAvatarComponent } = useAgentAvatar({
-    agent: agentForAvatar,
-    size: 40,
-    variant: 'beam',
-    className: 'border',
-  });
 
   // Determine which avatar to render
   const renderAvatar = () => {
@@ -426,6 +508,7 @@ export function ConversationMessageItem({ comment }: Props) {
   return (
     <>
       <div
+        ref={commentRef}
         className={cn(
           'flex items-start space-x-3 py-4 border-b border-slate-200 dark:border-slate-700 last:border-b-0',
           comment.is_private
@@ -591,7 +674,9 @@ export function ConversationMessageItem({ comment }: Props) {
                 key={selectedAttachment.id}
                 documents={[
                   {
-                    uri: `${apiBaseUrl}${selectedAttachment.download_url.startsWith('/') ? selectedAttachment.download_url : '/' + selectedAttachment.download_url}`,
+                    uri: selectedAttachment.download_url.startsWith('http') 
+                      ? selectedAttachment.download_url 
+                      : `${apiBaseUrl}${selectedAttachment.download_url.startsWith('/') ? selectedAttachment.download_url : '/' + selectedAttachment.download_url}`,
                     fileName: selectedAttachment.file_name,
                     fileType: selectedAttachment.content_type,
                   },

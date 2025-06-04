@@ -139,9 +139,9 @@ export default function CannedRepliesConfigPage() {
               </CardDescription>
             </div>
             <Button onClick={handleCreateNew}>
-              <Plus className="mr-2 h-4 w-4" />
-              New Reply
-            </Button>
+                  <Plus className="mr-2 h-4 w-4" />
+                  New Reply
+                </Button>
           </div>
         </CardHeader>
       </Card>

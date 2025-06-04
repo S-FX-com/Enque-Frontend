@@ -105,3 +105,49 @@ export const createComment = async (
     }
   }
 };
+
+export interface S3ContentResponse {
+  status: 'content_in_database' | 'loaded_from_s3' | 's3_error_fallback';
+  content: string;
+  s3_url?: string;
+  message: string;
+}
+
+// Cache en memoria para contenido S3
+const s3ContentCache = new Map<number, S3ContentResponse>();
+
+/**
+ * Get comment content from S3 when it's stored there
+ * Includes intelligent caching to avoid repeated calls
+ * @param commentId 
+ * @returns 
+ */
+export async function getCommentS3Content(commentId: number): Promise<S3ContentResponse> {
+  // Verificar cache
+  if (s3ContentCache.has(commentId)) {
+    return s3ContentCache.get(commentId)!;
+  }
+
+  try {
+    const url = `${AppConfigs.api}/comments/${commentId}/s3-content`;
+    const response = await fetchAPI.GET<S3ContentResponse>(url);
+    
+    if (response && response.success && response.data) {
+      // Guardar en cache por 5 minutos
+      s3ContentCache.set(commentId, response.data);
+      
+      // Limpiar cache después de 5 minutos
+      setTimeout(() => {
+        s3ContentCache.delete(commentId);
+      }, 5 * 60 * 1000);
+      
+      return response.data;
+    } else {
+      const errorMsg = response?.message || 'Failed to get S3 content';
+      throw new Error(errorMsg);
+    }
+  } catch (error) {
+    console.error(`💥 Exception in getCommentS3Content for comment ${commentId}:`, error);
+    throw error;
+  }
+}

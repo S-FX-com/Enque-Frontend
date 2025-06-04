@@ -64,34 +64,17 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
         });
 
         if (hasActiveTicketsQuery.length > 0) {
-          console.log('Background refresh: Refreshing All Tickets');
-          queryClient.refetchQueries({
-            queryKey: ['tickets'],
-            type: 'active',
-            exact: false,
-          });
+          queryClient.invalidateQueries({ queryKey: ['tickets'] });
         }
 
         if (hasActiveMyTicketsQuery.length > 0) {
-          console.log('Background refresh: Refreshing My Tickets');
-          queryClient.refetchQueries({
-            queryKey: ['tickets', 'my'],
-            type: 'active',
-            exact: false,
-          });
+          queryClient.invalidateQueries({ queryKey: ['tickets', 'my'] });
         }
 
         // Refrescar todos los comentarios abiertos
-        if (activeCommentsQueries.length > 0) {
-          console.log(`Background refresh: Refreshing ${activeCommentsQueries.length} comment threads`);
-          activeCommentsQueries.forEach(query => {
-            queryClient.refetchQueries({
-              queryKey: query.queryKey,
-              type: 'active',
-              exact: true,
-            });
-          });
-        }
+        activeCommentsQueries.forEach((query) => {
+          queryClient.invalidateQueries({ queryKey: query.queryKey });
+        });
       };
 
       const intervalId = setInterval(backgroundRefresh, 10000);
