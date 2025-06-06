@@ -142,6 +142,30 @@ function SidebarContent() {
     refetchOnMount: false, // ❌ OPTIMIZADO: Solo si datos obsoletos
   });
 
+  // Add query for all tickets count
+  const { data: allTicketsCount = 0 } = useQuery<number>({
+    queryKey: ['ticketsCount', 'all'],
+    queryFn: async () => {
+      const tickets = await getTickets();
+      return tickets.length || 0;
+    },
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    refetchInterval: 30000, // Refetch every 30 seconds
+  });
+
+  // Add query for my tickets count
+  const { data: myTicketsCount = 0 } = useQuery<number>({
+    queryKey: ['ticketsCount', 'my', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return 0;
+      const tickets = await getTickets({}, `/v1/tasks/assignee/${user.id}`);
+      return tickets.length || 0;
+    },
+    enabled: !!user?.id && !isLoadingUser,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    refetchInterval: 30000, // Refetch every 30 seconds
+  });
+
   const mainItems = [
     {
       title: 'Dashboard',

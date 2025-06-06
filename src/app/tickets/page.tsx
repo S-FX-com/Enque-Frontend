@@ -263,7 +263,7 @@ function TicketsClientContent() {
   useEffect(() => {
     const ticketIdToOpen = searchParams.get('openTicket');
     const teamIdFromQuery = searchParams.get('teamId');
-
+    
     if (pathname === '/tickets') {
       if (teamIdFromQuery) {
         if (!selectedTeams.includes(teamIdFromQuery)) {
@@ -787,7 +787,6 @@ function TicketsClientContent() {
       });
     }
   };
-
   return (
     <div className="flex h-full gap-6">
       <div className="flex-1 flex flex-col h-full">
