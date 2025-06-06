@@ -16,12 +16,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Settings2, Trash2, ChevronLeft, ChevronRight, UserIcon, UsersIcon } from 'lucide-react';
 import { MultiSelectFilter, type OptionType } from '@/components/filters/multi-select-filter';
-import {
-  useQuery,
-  useQueryClient,
-  type InfiniteData,
-  useMutation,
-} from '@tanstack/react-query';
+import { useQuery, useQueryClient, type InfiniteData, useMutation } from '@tanstack/react-query';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { updateTicket, deleteTicket } from '@/services/ticket';
 import { toast } from 'sonner';
@@ -384,8 +379,8 @@ function TicketsClientContent() {
       }
       return results;
     },
-    onSuccess: (data, variables) => {
-      toast.success(`${variables.length} ticket(s) deletion request sent.`);
+    onSuccess: () => {
+      // ✅ NOTIFICACIÓN ELIMINADA: Eliminación silenciosa sin toast molesto
     },
     onMutate: async ticketIdsToDelete => {
       await queryClient.cancelQueries({ queryKey: ['tickets'] });
@@ -404,33 +399,53 @@ function TicketsClientContent() {
 
       // Optimistically update sidebar counters
       const currentAllCount = queryClient.getQueryData<number>(['ticketsCount', 'all']) || 0;
-      const currentMyCount = queryClient.getQueryData<number>(['ticketsCount', 'my', user?.id]) || 0;
-      
+      const currentMyCount =
+        queryClient.getQueryData<number>(['ticketsCount', 'my', user?.id]) || 0;
+
       // Get tickets being deleted to count how many are active
       const allTickets = previousTicketsData?.pages.flat() || [];
       const deletedTickets = allTickets.filter(ticket => ticketIdsToDelete.includes(ticket.id));
-      const activeDeletedCount = deletedTickets.filter(ticket => 
-        ticket.status !== 'Closed' && ticket.status !== 'Resolved'
+      const activeDeletedCount = deletedTickets.filter(
+        ticket => ticket.status !== 'Closed' && ticket.status !== 'Resolved'
       ).length;
-      const myActiveDeletedCount = deletedTickets.filter(ticket => 
-        ticket.assignee_id === user?.id && ticket.status !== 'Closed' && ticket.status !== 'Resolved'
+      const myActiveDeletedCount = deletedTickets.filter(
+        ticket =>
+          ticket.assignee_id === user?.id &&
+          ticket.status !== 'Closed' &&
+          ticket.status !== 'Resolved'
       ).length;
 
       // Update counters optimistically
-      queryClient.setQueryData(['ticketsCount', 'all'], Math.max(0, currentAllCount - activeDeletedCount));
+      queryClient.setQueryData(
+        ['ticketsCount', 'all'],
+        Math.max(0, currentAllCount - activeDeletedCount)
+      );
       if (user?.id) {
-        queryClient.setQueryData(['ticketsCount', 'my', user.id], Math.max(0, currentMyCount - myActiveDeletedCount));
+        queryClient.setQueryData(
+          ['ticketsCount', 'my', user.id],
+          Math.max(0, currentMyCount - myActiveDeletedCount)
+        );
       }
 
       setSelectedTicketIds(new Set());
       setIsDeleteDialogOpen(false);
 
-      return { previousTicketsData, previousAllCount: currentAllCount, previousMyCount: currentMyCount };
+      return {
+        previousTicketsData,
+        previousAllCount: currentAllCount,
+        previousMyCount: currentMyCount,
+      };
     },
     onError: (
       err: Error,
       ticketIdsToDelete: number[],
-      context: { previousTicketsData?: InfiniteData<ITicket[], number>; previousAllCount?: number; previousMyCount?: number } | undefined
+      context:
+        | {
+            previousTicketsData?: InfiniteData<ITicket[], number>;
+            previousAllCount?: number;
+            previousMyCount?: number;
+          }
+        | undefined
     ) => {
       toast.error(`Error deleting tickets: ${err.message}`);
       console.error(`Error deleting tickets: ${err.message}`);
@@ -461,10 +476,10 @@ function TicketsClientContent() {
     mutationFn: async (ticket: ITicket) => {
       return updateTicket(ticket.id, { status: 'Open' });
     },
-    onMutate: async (ticket) => {
+    onMutate: async ticket => {
       // Cancel any outgoing refetches
       await queryClient.cancelQueries({ queryKey: ['tickets'] });
-      
+
       // Snapshot the previous value
       const previousTicketsData = queryClient.getQueryData<InfiniteData<ITicket[], number>>([
         'tickets',
@@ -737,8 +752,9 @@ function TicketsClientContent() {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['tickets'] });
-      queryClient.invalidateQueries({ queryKey: ['ticketsCount', 'my'] });
-      queryClient.invalidateQueries({ queryKey: ['ticketsCount'] });
+      queryClient.invalidateQueries({ queryKey: ['ticketsCount', 'my', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['ticketsCount', 'all'] });
+      queryClient.invalidateQueries({ queryKey: ['agentTeams'] }); // Para actualizar contadores de teams
     },
   });
 

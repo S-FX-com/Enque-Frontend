@@ -131,7 +131,9 @@ export function NewAgentModal({ isOpen, onClose, onInviteSuccess }: NewAgentModa
               Job Title
             </Label>
             <Input id="job_title" {...register('job_title')} />
-            {errors.job_title && <p className="text-xs text-red-500 mt-1">{errors.job_title.message}</p>}
+            {errors.job_title && (
+              <p className="text-xs text-red-500 mt-1">{errors.job_title.message}</p>
+            )}
           </div>
           <div>
             <Label htmlFor="role" className="mb-1 block">

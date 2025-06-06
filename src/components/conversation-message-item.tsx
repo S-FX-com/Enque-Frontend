@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import '@cyntler/react-doc-viewer/dist/index.css';
 import { formatDistanceToNow } from 'date-fns';
+import { formatRelativeTime } from '@/lib/utils';
 import Avatar from 'boring-avatars';
 import Image from 'next/image';
 import { IComment, IAttachment } from '@/typescript/comment';
@@ -25,6 +26,7 @@ import MuiCloseIcon from '@mui/icons-material/Close';
 import { useAgentAvatar } from '@/hooks/use-agent-avatar';
 import { getCommentS3Content } from '@/services/comment';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
 
 const fileTypeColors: { [key: string]: string } = {
   pdf: '#D93025',
@@ -203,6 +205,138 @@ const muiModalStyle = {
   flexDirection: 'column',
 } as const;
 
+// Componente específico para el mensaje inicial del ticket
+interface InitialTicketMessageProps {
+  ticketId: number;
+  initialContent: string;
+  user: IComment['user'];
+  createdAt: string;
+}
+
+function InitialTicketMessage({
+  ticketId,
+  initialContent,
+  user,
+  createdAt,
+}: InitialTicketMessageProps) {
+  const [s3Content, setS3Content] = useState<string | null>(null);
+  const [isLoadingS3, setIsLoadingS3] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  // Detectar si el contenido inicial está migrado a S3
+  const isMigratedToS3 = initialContent?.startsWith('[MIGRATED_TO_S3]');
+
+  // Función para cargar contenido inicial desde S3
+  const loadInitialS3Content = useCallback(async () => {
+    if (!isMigratedToS3 || s3Content || isLoadingS3) {
+      return;
+    }
+
+    setIsLoadingS3(true);
+    try {
+      const { getTicketInitialContent } = await import('@/services/ticket');
+      const response = await getTicketInitialContent(ticketId);
+
+      if (response.status === 'loaded_from_s3' && response.content) {
+        setS3Content(response.content);
+      } else {
+        // Fallback al contenido procesado
+        let cleanContent = response.content;
+        if (cleanContent.startsWith('[MIGRATED_TO_S3]')) {
+          cleanContent = cleanContent.replace(/^\[MIGRATED_TO_S3\][^"]*"[^"]*"/, '').trim() || '';
+        }
+        setS3Content(cleanContent || 'Content temporarily unavailable');
+      }
+    } catch (error) {
+      console.error('Error loading initial S3 content:', error);
+      // Usar el contenido original pero limpio
+      const cleanContent =
+        initialContent?.replace(/^\[MIGRATED_TO_S3\][^"]*"[^"]*"/, '').trim() || initialContent;
+      setS3Content(cleanContent);
+    } finally {
+      setIsLoadingS3(false);
+    }
+  }, [ticketId, initialContent, isMigratedToS3, s3Content, isLoadingS3]);
+
+  // Cargar contenido desde S3 inmediatamente para contenido migrado
+  useEffect(() => {
+    if (isMigratedToS3 && !s3Content && !isLoadingS3) {
+      loadInitialS3Content();
+    }
+  }, [isMigratedToS3, loadInitialS3Content, s3Content, isLoadingS3]);
+
+  // Determinar el contenido a mostrar
+  let displayContent: string;
+  if (isMigratedToS3) {
+    if (isLoadingS3) {
+      displayContent =
+        '<div class="flex items-center gap-2 text-muted-foreground"><div class="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>Loading content...</div>';
+    } else {
+      displayContent = s3Content || initialContent;
+    }
+  } else {
+    displayContent = initialContent;
+  }
+
+  const senderName = user?.name || 'Unknown User';
+  const senderIdentifier = user?.email || 'unknown';
+
+  const truncateLength = 300;
+  const shouldTruncate = displayContent && displayContent.length > truncateLength;
+  const truncatedContent =
+    shouldTruncate && !isExpanded
+      ? displayContent.substring(0, truncateLength) + '...'
+      : displayContent;
+
+  return (
+    <div className="flex gap-3 p-4 border-l-4 border-blue-500 bg-blue-50 dark:bg-blue-950/20">
+      <div className="flex-shrink-0">
+        <Avatar
+          size={32}
+          name={senderIdentifier}
+          variant="beam"
+          colors={['#a3a948', '#edb92e', '#f85931', '#ce1836', '#009989']}
+        />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 mb-1">
+          <span className="text-sm font-medium text-blue-700 dark:text-blue-300">{senderName}</span>
+          <span className="text-xs text-muted-foreground">{formatRelativeTime(createdAt)}</span>
+          <Badge variant="outline" className="text-xs">
+            Initial Message
+          </Badge>
+        </div>
+
+        <div className="message-content">
+          {isLoadingS3 ? (
+            <div className="flex items-center gap-2 text-muted-foreground py-2">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+              <span className="text-sm">Loading content from S3...</span>
+            </div>
+          ) : (
+            <div
+              className="prose prose-sm max-w-none dark:prose-invert"
+              dangerouslySetInnerHTML={{ __html: truncatedContent || '' }}
+            />
+          )}
+
+          {shouldTruncate && !isLoadingS3 && (
+            <button
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="mt-2 text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+            >
+              {isExpanded ? 'Show less' : 'Show more'}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Export the InitialTicketMessage component for use in ticket conversation
+export { InitialTicketMessage };
+
 export function ConversationMessageItem({ comment }: Props) {
   // Estado para contenido S3
   const [s3Content, setS3Content] = useState<string | null>(null);
@@ -218,22 +352,23 @@ export function ConversationMessageItem({ comment }: Props) {
 
   // Detectar si el comentario está migrado a S3
   const isMigratedToS3 = comment.s3_html_url && comment.content?.startsWith('[MIGRATED_TO_S3]');
-  
+
   // Función estable para cargar contenido desde S3
   const loadS3Content = useCallback(async () => {
     if (!isMigratedToS3 || comment.id === -1 || s3Content || isLoadingS3) {
       return;
     }
-    
+
     setIsLoadingS3(true);
     try {
       const response = await getCommentS3Content(comment.id);
-      
+
       if (response.status === 'loaded_from_s3' && response.content) {
         // Verificar si el contenido de S3 sigue siendo el placeholder (contenido corrupto)
         if (response.content.startsWith('[MIGRATED_TO_S3]')) {
           // Usar el contenido original pero limpio
-          const cleanContent = comment.content?.replace(/^\[MIGRATED_TO_S3\][^"]*"[^"]*"/, '').trim() || '';
+          const cleanContent =
+            comment.content?.replace(/^\[MIGRATED_TO_S3\][^"]*"[^"]*"/, '').trim() || '';
           setS3Content(cleanContent || 'Content temporarily unavailable');
         } else {
           setS3Content(response.content);
@@ -245,7 +380,8 @@ export function ConversationMessageItem({ comment }: Props) {
     } catch (error) {
       console.error('Error loading S3 content:', error);
       // Usar el contenido de la base de datos como fallback, pero sin el prefijo
-      const cleanContent = comment.content?.replace(/^\[MIGRATED_TO_S3\][^"]*"[^"]*"/, '').trim() || comment.content;
+      const cleanContent =
+        comment.content?.replace(/^\[MIGRATED_TO_S3\][^"]*"[^"]*"/, '').trim() || comment.content;
       setS3Content(cleanContent);
     } finally {
       setIsLoadingS3(false);
@@ -397,7 +533,7 @@ export function ConversationMessageItem({ comment }: Props) {
 
   // Prepare agent data for avatar hook when dealing with agent messages
   const agentForAvatar = isAgentMessage ? comment.agent : null;
-  
+
   // Use the agent avatar hook to get the appropriate avatar component
   const { AvatarComponent: AgentAvatarComponent } = useAgentAvatar({
     agent: agentForAvatar,
@@ -453,7 +589,7 @@ export function ConversationMessageItem({ comment }: Props) {
   const handleDownloadAttachment = (attachment: IAttachment) => {
     // Determinar si es URL completa (S3) o relativa (API)
     let downloadUrl: string;
-    
+
     if (attachment.download_url.startsWith('http')) {
       // Es una URL completa de S3, usar directamente
       downloadUrl = attachment.download_url;
@@ -461,14 +597,9 @@ export function ConversationMessageItem({ comment }: Props) {
       // Es URL relativa de API, construir URL completa
       downloadUrl = `${apiBaseUrl}${attachment.download_url.startsWith('/') ? attachment.download_url : '/' + attachment.download_url}`;
     }
-    
-    console.log(
-      'Downloading attachment:',
-      attachment.file_name,
-      'from URL:',
-      downloadUrl
-    );
-    
+
+    console.log('Downloading attachment:', attachment.file_name, 'from URL:', downloadUrl);
+
     const link = document.createElement('a');
     link.href = downloadUrl;
     link.setAttribute('download', attachment.file_name);
@@ -481,28 +612,22 @@ export function ConversationMessageItem({ comment }: Props) {
   const renderAvatar = () => {
     // Always use user colors for initial messages and user replies, regardless of comment.agent
     if (isInitialMessage || isUserReply) {
-      return (
-        <Avatar size={40} name={senderIdentifier} variant="beam" colors={userAvatarColors} />
-      );
+      return <Avatar size={40} name={senderIdentifier} variant="beam" colors={userAvatarColors} />;
     }
-    
+
     // For auto-responses and system messages, use system colors
     if (isAutoResponse) {
-      return (
-        <Avatar size={40} name={senderIdentifier} variant="beam" colors={avatarColors} />
-      );
+      return <Avatar size={40} name={senderIdentifier} variant="beam" colors={avatarColors} />;
     }
-    
+
     // Only use agent avatar for messages that are ACTUALLY from agents (not user messages with comment.agent set)
     // This means: has comment.agent AND is not a user reply AND is not initial message AND is not auto-response
     if (isAgentMessage && !isUserReply && !isInitialMessage && !isAutoResponse) {
       return AgentAvatarComponent;
     }
-    
+
     // For any other case (including users that might have comment.agent set), use user colors
-    return (
-      <Avatar size={40} name={senderIdentifier} variant="beam" colors={userAvatarColors} />
-    );
+    return <Avatar size={40} name={senderIdentifier} variant="beam" colors={userAvatarColors} />;
   };
 
   return (
@@ -560,10 +685,10 @@ export function ConversationMessageItem({ comment }: Props) {
                   <ChevronsUpDown className="h-3 w-3 flex-shrink-0" />
                   {isExpanded ? 'Show less' : 'Show quoted text'}
                 </button>
-                
+
                 {isExpanded && displayQuotedPart && (
-                  <div 
-                    className="mt-2 p-2 border-l-2 border-gray-200 dark:border-gray-700 text-muted-foreground" 
+                  <div
+                    className="mt-2 p-2 border-l-2 border-gray-200 dark:border-gray-700 text-muted-foreground"
                     dangerouslySetInnerHTML={{ __html: displayQuotedPart }}
                   />
                 )}
@@ -674,8 +799,8 @@ export function ConversationMessageItem({ comment }: Props) {
                 key={selectedAttachment.id}
                 documents={[
                   {
-                    uri: selectedAttachment.download_url.startsWith('http') 
-                      ? selectedAttachment.download_url 
+                    uri: selectedAttachment.download_url.startsWith('http')
+                      ? selectedAttachment.download_url
                       : `${apiBaseUrl}${selectedAttachment.download_url.startsWith('/') ? selectedAttachment.download_url : '/' + selectedAttachment.download_url}`,
                     fileName: selectedAttachment.file_name,
                     fileType: selectedAttachment.content_type,
@@ -702,50 +827,56 @@ export function ConversationMessageItem({ comment }: Props) {
           aria-labelledby="image-preview-title"
           aria-describedby="image-preview-content"
         >
-          <Box sx={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            width: '90vw',
-            maxWidth: '900px',
-            height: '85vh',
-            bgcolor: 'background.paper',
-            border: '2px solid #000',
-            boxShadow: 24,
-            p: 1,
-            display: 'flex',
-            flexDirection: 'column',
-          }}>
-            <Box sx={{
+          <Box
+            sx={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              width: '90vw',
+              maxWidth: '900px',
+              height: '85vh',
+              bgcolor: 'background.paper',
+              border: '2px solid #000',
+              boxShadow: 24,
+              p: 1,
               display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              mb: 1,
-            }}>
+              flexDirection: 'column',
+            }}
+          >
+            <Box
+              sx={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                mb: 1,
+              }}
+            >
               <div></div>
               <IconButton onClick={handleCloseImageModal} aria-label="Cerrar vista previa">
                 <MuiCloseIcon />
               </IconButton>
             </Box>
-            <Box sx={{
-              flexGrow: 1,
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center',
-              overflow: 'hidden',
-            }}>
+            <Box
+              sx={{
+                flexGrow: 1,
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                overflow: 'hidden',
+              }}
+            >
               <Image
                 src={selectedImageSrc}
                 alt="Image Preview"
                 width={1000}
                 height={1000}
                 unoptimized={true}
-                style={{ 
-                  maxWidth: '100%', 
-                  maxHeight: '100%', 
+                style={{
+                  maxWidth: '100%',
+                  maxHeight: '100%',
                   objectFit: 'contain',
-                  borderRadius: '4px'
+                  borderRadius: '4px',
                 }}
               />
             </Box>
@@ -826,7 +957,7 @@ export function ConversationMessageItem({ comment }: Props) {
           font-size: 0.8em !important;
           line-height: 1 !important;
         }
-        
+
         /* Asegurar que todos los elementos dentro del texto citado sean más pequeños */
         .mt-2.p-2.border-l-2.border-gray-200.dark\\:border-gray-700.text-muted-foreground *,
         .gmail_quote_container,
@@ -835,7 +966,7 @@ export function ConversationMessageItem({ comment }: Props) {
           font-size: 0.85em !important;
           line-height: 1 !important;
         }
-        
+
         /* Estilos específicos para el encabezado de citas */
         .gmail_attr {
           font-size: 0.8em !important;

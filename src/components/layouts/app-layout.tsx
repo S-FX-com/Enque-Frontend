@@ -23,6 +23,7 @@ interface CustomWindow extends Window {
   openNewAgentModal?: () => void;
   openNewTeamModal?: () => void;
   openNewCategoryModal?: () => void;
+  openNewAutomationModal?: () => void;
 }
 
 export default function AppLayout({
@@ -52,6 +53,11 @@ export default function AppLayout({
       const customWindow = window as Window & typeof globalThis & CustomWindow;
       if (customWindow.openNewCategoryModal) {
         customWindow.openNewCategoryModal();
+      }
+    } else if (pathname === '/configuration/workflows') {
+      const customWindow = window as Window & typeof globalThis & CustomWindow;
+      if (customWindow.openNewAutomationModal) {
+        customWindow.openNewAutomationModal();
       }
     }
   };
@@ -85,7 +91,8 @@ export default function AppLayout({
               pathname === '/tickets' ||
               pathname === '/configuration/agents' ||
               pathname === '/configuration/teams' ||
-              pathname === '/configuration/categories'
+              pathname === '/configuration/categories' ||
+              pathname === '/configuration/workflows'
                 ? handleNewTicketClick
                 : undefined
             }

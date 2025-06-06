@@ -81,7 +81,8 @@ export function RichTextToolbar({ editor, onAttachmentsChange }: Props) {
           alt: selectedFile?.name || 'Uploaded Image', // Use file name as alt text
           width: 300,
           height: 200,
-          style: 'width: auto; height: auto; max-width: 300px; max-height: 200px; object-fit: contain; border-radius: 4px;',
+          style:
+            'width: auto; height: auto; max-width: 300px; max-height: 200px; object-fit: contain; border-radius: 4px;',
         };
         editor.chain().focus().setImage(attrs).run();
       }
@@ -139,7 +140,8 @@ export function RichTextToolbar({ editor, onAttachmentsChange }: Props) {
           alt: 'Signature Image',
           width: 300,
           height: 200,
-          style: 'width: auto; height: auto; max-width: 300px; max-height: 200px; object-fit: contain; border-radius: 4px;',
+          style:
+            'width: auto; height: auto; max-width: 300px; max-height: 200px; object-fit: contain; border-radius: 4px;',
         };
       editor.chain().focus().setImage(attrs).run();
     }

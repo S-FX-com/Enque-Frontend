@@ -43,7 +43,7 @@ export default function Home() {
     setSubdomainError(null);
 
     const workspaceCheckUrl = `${AppConfigs.api}/workspaces/by-subdomain/${trimmedSubdomain}`;
-      
+
     try {
       console.log(`Checking workspace existence: ${workspaceCheckUrl}`);
       const response = await fetch(workspaceCheckUrl);

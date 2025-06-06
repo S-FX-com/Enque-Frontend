@@ -189,7 +189,7 @@ export const authService = {
     try {
       // Determinar si estamos en un subdominio y obtener el workspace_id
       let workspaceId: number | undefined;
-      
+
       if (typeof window !== 'undefined') {
         const hostname = window.location.hostname;
         const isSubdomain = hostname !== AppConfigs.baseUrl && hostname.endsWith(AppConfigs.domain);
@@ -202,7 +202,9 @@ export const authService = {
             const workspaceResponse = await workspaceService.getWorkspaceBySubdomain(subdomain);
             if (workspaceResponse.success && workspaceResponse.data) {
               workspaceId = workspaceResponse.data.id;
-              logger.info(`Workspace ID obtenido para password reset en ${subdomain}: ${workspaceId}`);
+              logger.info(
+                `Workspace ID obtenido para password reset en ${subdomain}: ${workspaceId}`
+              );
             }
           } catch (error) {
             logger.error(
@@ -235,7 +237,7 @@ export const authService = {
       }
 
       const responseData = await fetchResponse.json();
-      
+
       // The backend is designed to always return a generic success message for this endpoint
       // for security reasons (not to reveal if an email is registered or not).
       return { success: true, data: responseData };

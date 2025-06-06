@@ -88,7 +88,10 @@ function MyTicketsClientContent() {
   const { data: usersData = [] } = useQuery<IUser[]>({
     queryKey: ['users'],
     queryFn: getUsers,
-    staleTime: 1000 * 60 * 5,
+    staleTime: 1000 * 60 * 10,
+    refetchInterval: false,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
   });
 
   const userOptions: OptionType[] = useMemo(() => {
@@ -133,9 +136,11 @@ function MyTicketsClientContent() {
       return allPages.flat().length;
     },
     initialPageParam: 0,
-    staleTime: 1000 * 60,
-    refetchInterval: 2000,
-    refetchIntervalInBackground: true,
+    staleTime: 1000 * 60 * 5,
+    refetchInterval: false,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
     enabled: !!currentUser?.id,
   });
 
@@ -300,8 +305,8 @@ function MyTicketsClientContent() {
       }
       return results;
     },
-    onSuccess: (data, variables) => {
-      toast.success(`${variables.length} ticket(s) deletion request sent.`);
+    onSuccess: () => {
+      // ✅ NOTIFICACIÓN ELIMINADA: Eliminación silenciosa sin toast molesto
     },
     onMutate: async ticketIdsToDelete => {
       await queryClient.cancelQueries({ queryKey: ['tickets', 'my', currentUser?.id] });
@@ -323,32 +328,52 @@ function MyTicketsClientContent() {
 
       // Optimistically update sidebar counters
       const currentAllCount = queryClient.getQueryData<number>(['ticketsCount', 'all']) || 0;
-      const currentMyCount = queryClient.getQueryData<number>(['ticketsCount', 'my', currentUser?.id]) || 0;
-      
+      const currentMyCount =
+        queryClient.getQueryData<number>(['ticketsCount', 'my', currentUser?.id]) || 0;
+
       // Get tickets being deleted to count how many are active
       const allTickets = previousTicketsData?.pages.flat() || [];
       const deletedTickets = allTickets.filter(ticket => ticketIdsToDelete.includes(ticket.id));
-      const activeDeletedCount = deletedTickets.filter(ticket => 
-        ticket.status !== 'Closed' && ticket.status !== 'Resolved'
+      const activeDeletedCount = deletedTickets.filter(
+        ticket => ticket.status !== 'Closed' && ticket.status !== 'Resolved'
       ).length;
-      const myActiveDeletedCount = deletedTickets.filter(ticket => 
-        ticket.assignee_id === currentUser?.id && ticket.status !== 'Closed' && ticket.status !== 'Resolved'
+      const myActiveDeletedCount = deletedTickets.filter(
+        ticket =>
+          ticket.assignee_id === currentUser?.id &&
+          ticket.status !== 'Closed' &&
+          ticket.status !== 'Resolved'
       ).length;
 
       // Update counters optimistically
-      queryClient.setQueryData(['ticketsCount', 'all'], Math.max(0, currentAllCount - activeDeletedCount));
+      queryClient.setQueryData(
+        ['ticketsCount', 'all'],
+        Math.max(0, currentAllCount - activeDeletedCount)
+      );
       if (currentUser?.id) {
-        queryClient.setQueryData(['ticketsCount', 'my', currentUser.id], Math.max(0, currentMyCount - myActiveDeletedCount));
+        queryClient.setQueryData(
+          ['ticketsCount', 'my', currentUser.id],
+          Math.max(0, currentMyCount - myActiveDeletedCount)
+        );
       }
 
       setSelectedTicketIds(new Set());
       setIsDeleteDialogOpen(false);
-      return { previousTicketsData, previousAllCount: currentAllCount, previousMyCount: currentMyCount };
+      return {
+        previousTicketsData,
+        previousAllCount: currentAllCount,
+        previousMyCount: currentMyCount,
+      };
     },
     onError: (
       err: Error,
       ticketIdsToDelete: number[],
-      context: { previousTicketsData?: InfiniteData<TicketPage, number>; previousAllCount?: number; previousMyCount?: number } | undefined
+      context:
+        | {
+            previousTicketsData?: InfiniteData<TicketPage, number>;
+            previousAllCount?: number;
+            previousMyCount?: number;
+          }
+        | undefined
     ) => {
       toast.error(`Error deleting tickets: ${err.message}`);
       console.error(`Error deleting tickets mutation: ${err.message}`);
@@ -424,27 +449,32 @@ function MyTicketsClientContent() {
     mutationFn: async (ticket: ITicket) => {
       return updateTicket(ticket.id, { status: 'Open' });
     },
-    onMutate: async (ticket) => {
+    onMutate: async ticket => {
       // Cancel any outgoing refetches
       await queryClient.cancelQueries({ queryKey: ['tickets', 'my', currentUser?.id] });
       await queryClient.cancelQueries({ queryKey: ['tickets'] });
-      
+
       // Snapshot the previous values
       const previousMyTicketsData = queryClient.getQueryData<InfiniteData<ITicket[], number>>([
-        'tickets', 'my', currentUser?.id
+        'tickets',
+        'my',
+        currentUser?.id,
       ]);
       const previousTicketsData = queryClient.getQueryData<InfiniteData<ITicket[], number>>([
-        'tickets'
+        'tickets',
       ]);
 
       // Optimistically update My Tickets cache
-      queryClient.setQueryData<InfiniteData<ITicket[], number>>(['tickets', 'my', currentUser?.id], oldData => {
-        if (!oldData) return oldData;
-        const newPages = oldData.pages.map(page =>
-          page.map(t => (t.id === ticket.id ? { ...t, status: 'Open' as const } : t))
-        );
-        return { ...oldData, pages: newPages };
-      });
+      queryClient.setQueryData<InfiniteData<ITicket[], number>>(
+        ['tickets', 'my', currentUser?.id],
+        oldData => {
+          if (!oldData) return oldData;
+          const newPages = oldData.pages.map(page =>
+            page.map(t => (t.id === ticket.id ? { ...t, status: 'Open' as const } : t))
+          );
+          return { ...oldData, pages: newPages };
+        }
+      );
 
       // Optimistically update Global Tickets cache
       queryClient.setQueryData<InfiniteData<ITicket[], number>>(['tickets'], oldData => {
@@ -460,14 +490,16 @@ function MyTicketsClientContent() {
     onError: (
       err: Error,
       ticket: ITicket,
-      context: { 
-        previousMyTicketsData?: InfiniteData<ITicket[], number>;
-        previousTicketsData?: InfiniteData<ITicket[], number>;
-      } | undefined
+      context:
+        | {
+            previousMyTicketsData?: InfiniteData<ITicket[], number>;
+            previousTicketsData?: InfiniteData<ITicket[], number>;
+          }
+        | undefined
     ) => {
       console.error(`Failed to update ticket ${ticket.id} status to Open:`, err);
       toast.error(`Failed to mark ticket #${ticket.id} as Open.`);
-      
+
       // Revert changes on error
       if (context?.previousMyTicketsData) {
         queryClient.setQueryData(['tickets', 'my', currentUser?.id], context.previousMyTicketsData);

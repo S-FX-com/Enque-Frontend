@@ -1,7 +1,12 @@
 import { logger } from '@/lib/logger';
 import { AppConfigs } from '@/configs';
 import { ServiceResponse } from '@/typescript';
-import { IWorkspace, ICreateWorkspace, IWorkspaceSetup, IWorkspaceSetupResponse } from '@/typescript/workspace';
+import {
+  IWorkspace,
+  ICreateWorkspace,
+  IWorkspaceSetup,
+  IWorkspaceSetupResponse,
+} from '@/typescript/workspace';
 import { fetchAPI } from '@/lib/fetch-api';
 
 const SERVICE_ENDPOINT = `${AppConfigs.api}/workspaces`;
@@ -11,18 +16,18 @@ const workspaceService = {
   async getWorkspaceBySubdomain(subdomain: string): Promise<ServiceResponse<IWorkspace>> {
     try {
       logger.info(`Getting workspace for subdomain: ${subdomain}`);
-      
+
       const data = await fetchAPI.GET<IWorkspace>(
         `${SERVICE_ENDPOINT}/by-subdomain/${subdomain}`,
         false
       );
-      
+
       if (data.success) {
         logger.info(`Workspace found: ${data.data?.subdomain}`);
       } else {
         logger.warn(`Workspace not found for subdomain: ${subdomain}`);
       }
-      
+
       return data;
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';
@@ -46,22 +51,24 @@ const workspaceService = {
   },
 
   // Initial workspace setup (public)
-  async setupWorkspace(setupData: IWorkspaceSetup): Promise<ServiceResponse<IWorkspaceSetupResponse>> {
+  async setupWorkspace(
+    setupData: IWorkspaceSetup
+  ): Promise<ServiceResponse<IWorkspaceSetupResponse>> {
     try {
       logger.info(`Setting up workspace: ${setupData.subdomain}`);
-      
+
       const data = await fetchAPI.POST<IWorkspaceSetupResponse>(
         `${SERVICE_ENDPOINT}/setup`,
         setupData as unknown as Record<string, unknown>,
         false // No authentication required
       );
-      
+
       if (data.success) {
         logger.info(`Workspace setup successful: ${data.data?.workspace.subdomain}`);
       } else {
         logger.error(`Workspace setup failed: ${data.message}`);
       }
-      
+
       return data;
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';
@@ -101,7 +108,7 @@ const workspaceService = {
       const message = error instanceof Error ? error.message : 'Unknown error';
       return { success: false, message };
     }
-  }
+  },
 };
 
 export { workspaceService };

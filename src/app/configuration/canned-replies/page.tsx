@@ -9,14 +9,7 @@ import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Switch } from '@/components/ui/switch';
-import {
-  Terminal,
-  Info,
-  AlertCircle,
-  Plus,
-  Trash2,
-  Edit,
-} from 'lucide-react';
+import { Terminal, Info, AlertCircle, Plus, Trash2, Edit } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -139,9 +132,9 @@ export default function CannedRepliesConfigPage() {
               </CardDescription>
             </div>
             <Button onClick={handleCreateNew}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  New Reply
-                </Button>
+              <Plus className="mr-2 h-4 w-4" />
+              New Reply
+            </Button>
           </div>
         </CardHeader>
       </Card>

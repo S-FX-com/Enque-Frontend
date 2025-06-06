@@ -126,7 +126,11 @@ export function AgentAvatar({
         {showEditButton && !isUpdating && showOverlay && (
           <div
             className="absolute top-0 left-0 rounded-full bg-black/50 text-white cursor-pointer flex items-center justify-center"
-            style={{ height: avatarSize, width: avatarSize, fontSize: Math.round(avatarSize * 0.4) }}
+            style={{
+              height: avatarSize,
+              width: avatarSize,
+              fontSize: Math.round(avatarSize * 0.4),
+            }}
             title="Upload avatar (max. 2MB)"
             onClick={() => fileInputRef.current?.click()}
           >
@@ -155,4 +159,4 @@ export function AgentAvatar({
       )}
     </div>
   );
-} 
+}

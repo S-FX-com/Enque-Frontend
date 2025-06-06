@@ -1,25 +1,25 @@
 export enum ConditionType {
-  DESCRIPTION = "DESCRIPTION",
-  NOTE = "NOTE", 
-  USER = "USER",
-  AGENT = "AGENT",
-  COMPANY = "COMPANY",
-  PRIORITY = "PRIORITY",
-  CATEGORY = "CATEGORY"
+  DESCRIPTION = 'DESCRIPTION',
+  NOTE = 'NOTE',
+  USER = 'USER',
+  AGENT = 'AGENT',
+  COMPANY = 'COMPANY',
+  PRIORITY = 'PRIORITY',
+  CATEGORY = 'CATEGORY',
 }
 
 export enum ConditionOperator {
-  EQL = "eql",
-  NEQL = "neql", 
-  CON = "con",
-  NCON = "ncon"
+  EQL = 'eql',
+  NEQL = 'neql',
+  CON = 'con',
+  NCON = 'ncon',
 }
 
 export enum ActionType {
-  SET_AGENT = "SET_AGENT",
-  SET_PRIORITY = "SET_PRIORITY",
-  SET_STATUS = "SET_STATUS",
-  SET_TEAM = "SET_TEAM"
+  SET_AGENT = 'SET_AGENT',
+  SET_PRIORITY = 'SET_PRIORITY',
+  SET_STATUS = 'SET_STATUS',
+  SET_TEAM = 'SET_TEAM',
 }
 
 export interface AutomationCondition {
@@ -75,4 +75,4 @@ export interface AutomationUpdate {
   is_active?: boolean;
   conditions?: AutomationConditionCreate[];
   actions?: AutomationActionCreate[];
-} 
+}

@@ -81,8 +81,9 @@ const MyTeamsList: React.FC<MyTeamsListProps> = ({ agentTeams, isLoadingUser, us
   );
 };
 
-export function Sidebar() {
+function SidebarContent() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { user, isLoading: isLoadingUser } = useAuth();
 
   const { data: agentTeams } = useQuery<Team[], Error>({
@@ -99,8 +100,10 @@ export function Sidebar() {
       }
     },
     enabled: !!user?.id && !isLoadingUser,
-    staleTime: 1000 * 60 * 5, // 5 minutes
-    refetchInterval: 10000, // Refetch every 10 seconds
+    staleTime: 1000 * 60 * 10, // ✅ OPTIMIZADO: 10 minutos (era 5)
+    refetchInterval: false, // ❌ REMOVIDO: No más polling - usar Socket.IO
+    refetchOnWindowFocus: false, // ❌ REMOVIDO: Sin refetch al hacer foco
+    refetchOnMount: false, // ❌ OPTIMIZADO: Solo si datos obsoletos
   });
 
   // Add query for all tickets count (excluding closed/resolved)
@@ -109,13 +112,15 @@ export function Sidebar() {
     queryFn: async () => {
       const tickets = await getTickets();
       // Filter out closed and resolved tickets to match My Teams behavior
-      const activeTickets = tickets.filter(ticket => 
-        ticket.status !== 'Closed' && ticket.status !== 'Resolved'
+      const activeTickets = tickets.filter(
+        ticket => ticket.status !== 'Closed' && ticket.status !== 'Resolved'
       );
       return activeTickets.length || 0;
     },
-    staleTime: 1000 * 60 * 5, // 5 minutes
-    refetchInterval: 10000, // Refetch every 10 seconds
+    staleTime: 1000 * 60 * 10, // ✅ OPTIMIZADO: 10 minutos (era 5)
+    refetchInterval: false, // ❌ REMOVIDO: No más polling - usar Socket.IO
+    refetchOnWindowFocus: false, // ❌ REMOVIDO: Sin refetch al hacer foco
+    refetchOnMount: false, // ❌ OPTIMIZADO: Solo si datos obsoletos
   });
 
   // Add query for my tickets count (excluding closed/resolved)
@@ -125,14 +130,16 @@ export function Sidebar() {
       if (!user?.id) return 0;
       const tickets = await getTickets({}, `/v1/tasks/assignee/${user.id}`);
       // Filter out closed and resolved tickets to match My Teams behavior
-      const activeTickets = tickets.filter(ticket => 
-        ticket.status !== 'Closed' && ticket.status !== 'Resolved'
+      const activeTickets = tickets.filter(
+        ticket => ticket.status !== 'Closed' && ticket.status !== 'Resolved'
       );
       return activeTickets.length || 0;
     },
     enabled: !!user?.id && !isLoadingUser,
-    staleTime: 1000 * 60 * 5, // 5 minutes
-    refetchInterval: 10000, // Refetch every 10 seconds
+    staleTime: 1000 * 60 * 10, // ✅ OPTIMIZADO: 10 minutos (era 5)
+    refetchInterval: false, // ❌ REMOVIDO: No más polling - usar Socket.IO
+    refetchOnWindowFocus: false, // ❌ REMOVIDO: Sin refetch al hacer foco
+    refetchOnMount: false, // ❌ OPTIMIZADO: Solo si datos obsoletos
   });
 
   const mainItems = [
@@ -270,7 +277,11 @@ export function Sidebar() {
       <div className="flex-1 overflow-y-auto">
         <nav className="space-y-1 px-4">
           {mainItems.map(item => {
-            const isActive = pathname === item.href;
+            // Lógica especial para "All Tickets": solo activo si no hay teamId en query params
+            const isActive =
+              item.title === 'All Tickets'
+                ? pathname === item.href && !searchParams.get('teamId')
+                : pathname === item.href;
             const IconComponent = item.icon;
 
             return (
@@ -355,5 +366,19 @@ export function Sidebar() {
         </nav>
       </div>
     </div>
+  );
+}
+
+export function Sidebar() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex h-screen w-64 flex-col bg-white dark:bg-black py-6 px-4">
+          Loading...
+        </div>
+      }
+    >
+      <SidebarContent />
+    </Suspense>
   );
 }

@@ -51,9 +51,12 @@ export const toggleNotificationSetting = async (
   settingId: number,
   enabled: boolean
 ): Promise<ApiSuccessResponse> => {
-  const response = await apiClient.put<ApiSuccessResponse>(`/notifications/${workspaceId}/toggle/${settingId}`, {
-    is_enabled: enabled,
-  });
+  const response = await apiClient.put<ApiSuccessResponse>(
+    `/notifications/${workspaceId}/toggle/${settingId}`,
+    {
+      is_enabled: enabled,
+    }
+  );
   return response.data;
 };
 
@@ -69,9 +72,12 @@ export const updateNotificationTemplate = async ({
   templateId: number;
   content: string;
 }): Promise<ApiSuccessResponse> => {
-  const response = await apiClient.put<ApiSuccessResponse>(`/notifications/${workspaceId}/template/${templateId}`, {
-    content,
-  });
+  const response = await apiClient.put<ApiSuccessResponse>(
+    `/notifications/${workspaceId}/template/${templateId}`,
+    {
+      content,
+    }
+  );
   return response.data;
 };
 
@@ -84,11 +90,14 @@ export const connectNotificationChannel = async (
   config: Record<string, unknown>
 ): Promise<ApiSuccessResponse> => {
   if (channel === 'teams') {
-    const response = await apiClient.post<ApiSuccessResponse>(`/notifications/${workspaceId}/connect/teams`, {
-      webhook_url: config.webhook_url || '',
-    });
+    const response = await apiClient.post<ApiSuccessResponse>(
+      `/notifications/${workspaceId}/connect/teams`,
+      {
+        webhook_url: config.webhook_url || '',
+      }
+    );
     return response.data;
   }
-  
+
   throw new Error(`Unsupported notification channel: ${channel}`);
-}; 
+};

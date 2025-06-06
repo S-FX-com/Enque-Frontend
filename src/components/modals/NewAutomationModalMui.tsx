@@ -28,13 +28,13 @@ import { getTeams } from '@/services/team';
 import { getUsers } from '@/services/user';
 import { getCompanies } from '@/services/company';
 import { getCategories } from '@/services/category';
-import { 
-  Automation, 
-  ConditionType, 
-  ConditionOperator, 
-  ActionType, 
-  AutomationConditionCreate, 
-  AutomationActionCreate 
+import {
+  Automation,
+  ConditionType,
+  ConditionOperator,
+  ActionType,
+  AutomationConditionCreate,
+  AutomationActionCreate,
 } from '@/typescript/automation';
 import { useAuth } from '@/hooks/use-auth';
 
@@ -44,20 +44,24 @@ interface NewAutomationModalMuiProps {
   onCreateSuccess?: (automation: Automation) => void;
 }
 
-export default function NewAutomationModalMui({ 
-  open, 
-  onClose, 
-  onCreateSuccess 
+export default function NewAutomationModalMui({
+  open,
+  onClose,
+  onCreateSuccess,
 }: NewAutomationModalMuiProps) {
   const queryClient = useQueryClient();
   const { user: currentUser } = useAuth();
-  
+
   const [name, setName] = useState('');
   const [conditions, setConditions] = useState<AutomationConditionCreate[]>([
-    { condition_type: ConditionType.DESCRIPTION, condition_operator: ConditionOperator.EQL, condition_value: '' }
+    {
+      condition_type: ConditionType.DESCRIPTION,
+      condition_operator: ConditionOperator.EQL,
+      condition_value: '',
+    },
   ]);
   const [actions, setActions] = useState<AutomationActionCreate[]>([
-    { action_type: ActionType.SET_AGENT, action_value: '' }
+    { action_type: ActionType.SET_AGENT, action_value: '' },
   ]);
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -93,7 +97,11 @@ export default function NewAutomationModalMui({
   });
 
   const mutation = useMutation({
-    mutationFn: async (data: { name: string; conditions: AutomationConditionCreate[]; actions: AutomationActionCreate[] }) => {
+    mutationFn: async (data: {
+      name: string;
+      conditions: AutomationConditionCreate[];
+      actions: AutomationActionCreate[];
+    }) => {
       if (!currentUser?.workspace_id) {
         throw new Error('Workspace ID is missing. Cannot create automation.');
       }
@@ -122,18 +130,18 @@ export default function NewAutomationModalMui({
 
   const handleSubmit = () => {
     setFormError(null);
-    
+
     // Validación básica
     if (!name.trim()) {
       setFormError('Name is required');
       return;
     }
-    
+
     if (conditions.length === 0) {
       setFormError('At least one condition is required');
       return;
     }
-    
+
     if (actions.length === 0) {
       setFormError('At least one action is required');
       return;
@@ -160,14 +168,27 @@ export default function NewAutomationModalMui({
 
   const handleCloseAndReset = () => {
     setName('');
-    setConditions([{ condition_type: ConditionType.DESCRIPTION, condition_operator: ConditionOperator.EQL, condition_value: '' }]);
+    setConditions([
+      {
+        condition_type: ConditionType.DESCRIPTION,
+        condition_operator: ConditionOperator.EQL,
+        condition_value: '',
+      },
+    ]);
     setActions([{ action_type: ActionType.SET_AGENT, action_value: '' }]);
     setFormError(null);
     onClose();
   };
 
   const addCondition = () => {
-    setConditions([...conditions, { condition_type: ConditionType.DESCRIPTION, condition_operator: ConditionOperator.EQL, condition_value: '' }]);
+    setConditions([
+      ...conditions,
+      {
+        condition_type: ConditionType.DESCRIPTION,
+        condition_operator: ConditionOperator.EQL,
+        condition_value: '',
+      },
+    ]);
   };
 
   const removeCondition = (index: number) => {
@@ -176,14 +197,18 @@ export default function NewAutomationModalMui({
     }
   };
 
-  const updateCondition = (index: number, field: keyof AutomationConditionCreate, value: string | ConditionType | ConditionOperator) => {
+  const updateCondition = (
+    index: number,
+    field: keyof AutomationConditionCreate,
+    value: string | ConditionType | ConditionOperator
+  ) => {
     const newConditions = [...conditions];
     if (field === 'condition_type') {
       // Reset condition_value when condition_type changes
-      newConditions[index] = { 
-        ...newConditions[index], 
-        condition_type: value as ConditionType, 
-        condition_value: '' 
+      newConditions[index] = {
+        ...newConditions[index],
+        condition_type: value as ConditionType,
+        condition_value: '',
       };
     } else {
       newConditions[index] = { ...newConditions[index], [field]: value };
@@ -201,7 +226,11 @@ export default function NewAutomationModalMui({
     }
   };
 
-  const updateAction = (index: number, field: keyof AutomationActionCreate, value: string | ActionType) => {
+  const updateAction = (
+    index: number,
+    field: keyof AutomationActionCreate,
+    value: string | ActionType
+  ) => {
     const newActions = [...actions];
     if (field === 'action_type') {
       // Reset action_value when action_type changes
@@ -236,11 +265,13 @@ export default function NewAutomationModalMui({
             <InputLabel>Select Agent</InputLabel>
             <Select
               value={action.action_value || ''}
-              onChange={(e: SelectChangeEvent) => updateAction(index, 'action_value', e.target.value)}
+              onChange={(e: SelectChangeEvent) =>
+                updateAction(index, 'action_value', e.target.value)
+              }
               label="Select Agent"
               required
             >
-              {agents.map((agent) => (
+              {agents.map(agent => (
                 <MenuItem key={agent.id} value={agent.email}>
                   {agent.name} ({agent.email})
                 </MenuItem>
@@ -255,11 +286,13 @@ export default function NewAutomationModalMui({
             <InputLabel>Select Team</InputLabel>
             <Select
               value={action.action_value || ''}
-              onChange={(e: SelectChangeEvent) => updateAction(index, 'action_value', e.target.value)}
+              onChange={(e: SelectChangeEvent) =>
+                updateAction(index, 'action_value', e.target.value)
+              }
               label="Select Team"
               required
             >
-              {teams.map((team) => (
+              {teams.map(team => (
                 <MenuItem key={team.id} value={team.name}>
                   {team.name}
                 </MenuItem>
@@ -274,11 +307,13 @@ export default function NewAutomationModalMui({
             <InputLabel>Select Priority</InputLabel>
             <Select
               value={action.action_value || ''}
-              onChange={(e: SelectChangeEvent) => updateAction(index, 'action_value', e.target.value)}
+              onChange={(e: SelectChangeEvent) =>
+                updateAction(index, 'action_value', e.target.value)
+              }
               label="Select Priority"
               required
             >
-              {priorityOptions.map((option) => (
+              {priorityOptions.map(option => (
                 <MenuItem key={option.value} value={option.value}>
                   {option.label}
                 </MenuItem>
@@ -293,11 +328,13 @@ export default function NewAutomationModalMui({
             <InputLabel>Select Status</InputLabel>
             <Select
               value={action.action_value || ''}
-              onChange={(e: SelectChangeEvent) => updateAction(index, 'action_value', e.target.value)}
+              onChange={(e: SelectChangeEvent) =>
+                updateAction(index, 'action_value', e.target.value)
+              }
               label="Select Status"
               required
             >
-              {statusOptions.map((option) => (
+              {statusOptions.map(option => (
                 <MenuItem key={option.value} value={option.value}>
                   {option.label}
                 </MenuItem>
@@ -312,7 +349,7 @@ export default function NewAutomationModalMui({
             size="small"
             label="Value"
             value={action.action_value || ''}
-            onChange={(e) => updateAction(index, 'action_value', e.target.value)}
+            onChange={e => updateAction(index, 'action_value', e.target.value)}
             sx={{ flexGrow: 1 }}
             required
           />
@@ -328,11 +365,13 @@ export default function NewAutomationModalMui({
             <InputLabel>Select Priority</InputLabel>
             <Select
               value={condition.condition_value || ''}
-              onChange={(e: SelectChangeEvent) => updateCondition(index, 'condition_value', e.target.value)}
+              onChange={(e: SelectChangeEvent) =>
+                updateCondition(index, 'condition_value', e.target.value)
+              }
               label="Select Priority"
               required
             >
-              {priorityOptions.map((option) => (
+              {priorityOptions.map(option => (
                 <MenuItem key={option.value} value={option.value}>
                   {option.label}
                 </MenuItem>
@@ -347,11 +386,13 @@ export default function NewAutomationModalMui({
             <InputLabel>Select User</InputLabel>
             <Select
               value={condition.condition_value || ''}
-              onChange={(e: SelectChangeEvent) => updateCondition(index, 'condition_value', e.target.value)}
+              onChange={(e: SelectChangeEvent) =>
+                updateCondition(index, 'condition_value', e.target.value)
+              }
               label="Select User"
               required
             >
-              {users.map((user) => (
+              {users.map(user => (
                 <MenuItem key={user.id} value={user.email}>
                   {user.name} ({user.email})
                 </MenuItem>
@@ -366,11 +407,13 @@ export default function NewAutomationModalMui({
             <InputLabel>Select Agent</InputLabel>
             <Select
               value={condition.condition_value || ''}
-              onChange={(e: SelectChangeEvent) => updateCondition(index, 'condition_value', e.target.value)}
+              onChange={(e: SelectChangeEvent) =>
+                updateCondition(index, 'condition_value', e.target.value)
+              }
               label="Select Agent"
               required
             >
-              {agents.map((agent) => (
+              {agents.map(agent => (
                 <MenuItem key={agent.id} value={agent.email}>
                   {agent.name} ({agent.email})
                 </MenuItem>
@@ -385,11 +428,13 @@ export default function NewAutomationModalMui({
             <InputLabel>Select Company</InputLabel>
             <Select
               value={condition.condition_value || ''}
-              onChange={(e: SelectChangeEvent) => updateCondition(index, 'condition_value', e.target.value)}
+              onChange={(e: SelectChangeEvent) =>
+                updateCondition(index, 'condition_value', e.target.value)
+              }
               label="Select Company"
               required
             >
-              {companies.map((company) => (
+              {companies.map(company => (
                 <MenuItem key={company.id} value={company.name}>
                   {company.name}
                 </MenuItem>
@@ -404,11 +449,13 @@ export default function NewAutomationModalMui({
             <InputLabel>Select Category</InputLabel>
             <Select
               value={condition.condition_value || ''}
-              onChange={(e: SelectChangeEvent) => updateCondition(index, 'condition_value', e.target.value)}
+              onChange={(e: SelectChangeEvent) =>
+                updateCondition(index, 'condition_value', e.target.value)
+              }
               label="Select Category"
               required
             >
-              {categories.map((category) => (
+              {categories.map(category => (
                 <MenuItem key={category.id} value={category.name}>
                   {category.name}
                 </MenuItem>
@@ -424,7 +471,7 @@ export default function NewAutomationModalMui({
             size="small"
             label="Value"
             value={condition.condition_value || ''}
-            onChange={(e) => updateCondition(index, 'condition_value', e.target.value)}
+            onChange={e => updateCondition(index, 'condition_value', e.target.value)}
             sx={{ flexGrow: 1 }}
             required
           />
@@ -473,7 +520,7 @@ export default function NewAutomationModalMui({
           fullWidth
           variant="outlined"
           value={name}
-          onChange={(e) => setName(e.target.value)}
+          onChange={e => setName(e.target.value)}
           required
           error={!!formError && !name.trim()}
           helperText={!!formError && !name.trim() ? 'Name is required' : ''}
@@ -484,16 +531,13 @@ export default function NewAutomationModalMui({
 
         {/* Conditions Section */}
         <Box sx={{ mb: 3 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+          <Box
+            sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}
+          >
             <Typography variant="h6" component="h3">
               Conditions
             </Typography>
-            <Button
-              variant="outlined"
-              size="small"
-              startIcon={<Add />}
-              onClick={addCondition}
-            >
+            <Button variant="outlined" size="small" startIcon={<Add />} onClick={addCondition}>
               Add Condition
             </Button>
           </Box>
@@ -503,12 +547,14 @@ export default function NewAutomationModalMui({
               <Typography variant="body2" sx={{ mt: 2, minWidth: 20 }}>
                 If:
               </Typography>
-              
+
               <FormControl size="small" sx={{ minWidth: 120 }}>
                 <InputLabel>Field</InputLabel>
                 <Select
                   value={condition.condition_type}
-                  onChange={(e: SelectChangeEvent) => updateCondition(index, 'condition_type', e.target.value as ConditionType)}
+                  onChange={(e: SelectChangeEvent) =>
+                    updateCondition(index, 'condition_type', e.target.value as ConditionType)
+                  }
                   label="Field"
                 >
                   {Object.entries(conditionTypeLabels).map(([value, label]) => (
@@ -523,7 +569,13 @@ export default function NewAutomationModalMui({
                 <InputLabel>Operator</InputLabel>
                 <Select
                   value={condition.condition_operator || ConditionOperator.EQL}
-                  onChange={(e: SelectChangeEvent) => updateCondition(index, 'condition_operator', e.target.value as ConditionOperator)}
+                  onChange={(e: SelectChangeEvent) =>
+                    updateCondition(
+                      index,
+                      'condition_operator',
+                      e.target.value as ConditionOperator
+                    )
+                  }
                   label="Operator"
                 >
                   {Object.entries(conditionOperatorLabels).map(([value, label]) => (
@@ -552,16 +604,13 @@ export default function NewAutomationModalMui({
 
         {/* Actions Section */}
         <Box sx={{ mb: 3 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+          <Box
+            sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}
+          >
             <Typography variant="h6" component="h3">
               Actions
             </Typography>
-            <Button
-              variant="outlined"
-              size="small"
-              startIcon={<Add />}
-              onClick={addAction}
-            >
+            <Button variant="outlined" size="small" startIcon={<Add />} onClick={addAction}>
               Add Action
             </Button>
           </Box>
@@ -571,12 +620,14 @@ export default function NewAutomationModalMui({
               <Typography variant="body2" sx={{ mt: 2, minWidth: 30 }}>
                 Then:
               </Typography>
-              
+
               <FormControl size="small" sx={{ minWidth: 120 }}>
                 <InputLabel>Action</InputLabel>
                 <Select
                   value={action.action_type}
-                  onChange={(e: SelectChangeEvent) => updateAction(index, 'action_type', e.target.value as ActionType)}
+                  onChange={(e: SelectChangeEvent) =>
+                    updateAction(index, 'action_type', e.target.value as ActionType)
+                  }
                   label="Action"
                 >
                   {Object.entries(actionTypeLabels).map(([value, label]) => (
@@ -612,14 +663,10 @@ export default function NewAutomationModalMui({
         <Button onClick={handleCloseAndReset} disabled={mutation.isPending}>
           Cancel
         </Button>
-        <Button 
-          onClick={handleSubmit} 
-          variant="contained" 
-          disabled={mutation.isPending}
-        >
+        <Button onClick={handleSubmit} variant="contained" disabled={mutation.isPending}>
           {mutation.isPending ? 'Creating...' : 'Create Workflow'}
         </Button>
       </DialogActions>
     </Dialog>
   );
-} 
+}

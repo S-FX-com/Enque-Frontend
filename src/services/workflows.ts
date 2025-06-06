@@ -272,9 +272,7 @@ export const duplicateWorkflow = async (
  * @param workspaceId The ID of the workspace.
  * @returns A promise that resolves to available triggers.
  */
-export const getWorkflowTriggers = async (
-  workspaceId: number
-): Promise<WorkflowTrigger[]> => {
+export const getWorkflowTriggers = async (workspaceId: number): Promise<WorkflowTrigger[]> => {
   if (!workspaceId) {
     console.error('getWorkflowTriggers requires a valid workspaceId');
     throw new Error('Invalid workspace ID provided');
@@ -301,9 +299,7 @@ export const getWorkflowTriggers = async (
  * @param workspaceId The ID of the workspace.
  * @returns A promise that resolves to available actions.
  */
-export const getWorkflowActions = async (
-  workspaceId: number
-): Promise<WorkflowActionOption[]> => {
+export const getWorkflowActions = async (workspaceId: number): Promise<WorkflowActionOption[]> => {
   if (!workspaceId) {
     console.error('getWorkflowActions requires a valid workspaceId');
     throw new Error('Invalid workspace ID provided');
@@ -354,7 +350,7 @@ export const testMessageAnalysis = async (
   try {
     const url = `${API_BASE_URL}/v1/workspaces/${workspaceId}/test-analysis`;
     const requestBody: Record<string, unknown> = { message };
-    
+
     if (analysisRules) {
       requestBody.analysis_rules = analysisRules;
     }

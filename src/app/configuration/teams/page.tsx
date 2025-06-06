@@ -353,7 +353,10 @@ const TeamsPage = () => {
           <CardHeader className="text-center">
             <Users className="mx-auto h-12 w-12 text-gray-400" />
             <CardTitle className="mt-2">No Teams Found</CardTitle>
-            <CardDescription>Get started by creating a new team using the &quot;New Team&quot; button in the top bar.</CardDescription>
+            <CardDescription>
+              Get started by creating a new team using the &quot;New Team&quot; button in the top
+              bar.
+            </CardDescription>
           </CardHeader>
         </Card>
       )}

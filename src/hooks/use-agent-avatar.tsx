@@ -20,10 +20,10 @@ export function useAgentAvatar({
 
   const AvatarComponent = React.useMemo(() => {
     const avatarColors = ['#1D73F4', '#D4E4FA'];
-    
+
     if (agent?.avatar) {
       return (
-        <div 
+        <div
           className={`relative rounded-full overflow-hidden ${className}`}
           style={{ width: size, height: size }}
         >
@@ -45,12 +45,7 @@ export function useAgentAvatar({
 
     return (
       <div className={`rounded-full overflow-hidden ${className}`}>
-        <BoringAvatar
-          size={size}
-          name={fallbackName}
-          variant={variant}
-          colors={avatarColors}
-        />
+        <BoringAvatar size={size} name={fallbackName} variant={variant} colors={avatarColors} />
       </div>
     );
   }, [agent?.avatar, agent?.name, size, variant, className, fallbackName]);
@@ -60,4 +55,4 @@ export function useAgentAvatar({
     hasCustomAvatar: !!agent?.avatar,
     fallbackName,
   };
-} 
+}

@@ -10,10 +10,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Terminal, Info, AlertCircle, Mail, Users } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import {
-  getNotificationSettings,
-  toggleNotificationSetting,
-} from '@/services/notifications';
+import { getNotificationSettings, toggleNotificationSetting } from '@/services/notifications';
 import { useState } from 'react';
 
 // Definir un tipo para los ajustes de notificaciones
@@ -60,7 +57,7 @@ export default function NotificationsConfigPage() {
       // La actualización optimista ya manejó el cambio de UI
       setUpdatingSettingId(null);
     },
-    onError: (error) => {
+    onError: error => {
       console.error('Failed to toggle notification setting:', error);
       toast.error(`Failed to update setting: ${error.message}`);
       setUpdatingSettingId(null);
@@ -77,38 +74,38 @@ export default function NotificationsConfigPage() {
 
     // Optimistic update
     const newValue = !(currentValue || false);
-    
+
     // Clonar los ajustes actuales para actualización optimista
     const optimisticSettings = JSON.parse(JSON.stringify(notificationSettings));
-    
+
     // Buscar y actualizar optimistamente el ajuste correspondiente
     const updateSettingById = (obj: NotificationSettingsObject) => {
       if (!obj) return false;
-      
+
       // Comprobar si el objeto actual tiene el ID correcto
       if (obj.id === settingId) {
         obj.is_enabled = newValue;
         return true;
       }
-      
+
       // Recorrer recursivamente todas las propiedades del objeto
       for (const key in obj) {
         if (typeof obj[key] === 'object' && obj[key] !== null) {
           if (updateSettingById(obj[key] as NotificationSettingsObject)) return true;
         }
       }
-      
+
       return false;
     };
-    
+
     // Actualizar optimistamente
     if (optimisticSettings) {
       updateSettingById(optimisticSettings);
-      
+
       // Actualizar la caché inmediatamente
       queryClient.setQueryData(['notificationSettings', workspaceId], optimisticSettings);
     }
-    
+
     // Realizar la petición al servidor
     toggleSettingMutation.mutate({
       settingId,
@@ -149,7 +146,8 @@ export default function NotificationsConfigPage() {
             <AlertTitle>About Notifications</AlertTitle>
             <AlertDescription>
               <p>
-                Configure when and how notifications are sent to agents and clients. Enable or disable different notification types.
+                Configure when and how notifications are sent to agents and clients. Enable or
+                disable different notification types.
               </p>
             </AlertDescription>
           </Alert>
@@ -211,7 +209,10 @@ export default function NotificationsConfigPage() {
                                   notificationSettings?.agents.email.new_ticket_created.is_enabled
                                 )
                               }
-                              disabled={updatingSettingId === (notificationSettings?.agents.email.new_ticket_created.id || 0)}
+                              disabled={
+                                updatingSettingId ===
+                                (notificationSettings?.agents.email.new_ticket_created.id || 0)
+                              }
                             />
                             <Label htmlFor="new-ticket-email">
                               {notificationSettings?.agents.email.new_ticket_created.is_enabled
@@ -240,7 +241,10 @@ export default function NotificationsConfigPage() {
                                   notificationSettings?.agents.email.new_response.is_enabled
                                 )
                               }
-                              disabled={updatingSettingId === (notificationSettings?.agents.email.new_response.id || 0)}
+                              disabled={
+                                updatingSettingId ===
+                                (notificationSettings?.agents.email.new_response.id || 0)
+                              }
                             />
                             <Label htmlFor="new-response-email">
                               {notificationSettings?.agents.email.new_response.is_enabled
@@ -271,7 +275,10 @@ export default function NotificationsConfigPage() {
                                   notificationSettings?.agents.email.ticket_assigned.is_enabled
                                 )
                               }
-                              disabled={updatingSettingId === (notificationSettings?.agents.email.ticket_assigned.id || 0)}
+                              disabled={
+                                updatingSettingId ===
+                                (notificationSettings?.agents.email.ticket_assigned.id || 0)
+                              }
                             />
                             <Label htmlFor="ticket-assigned-email">
                               {notificationSettings?.agents.email.ticket_assigned.is_enabled
@@ -306,8 +313,10 @@ export default function NotificationsConfigPage() {
                               notificationSettings?.users.email.new_ticket_created.is_enabled
                             )
                           }
-                          disabled={updatingSettingId === (notificationSettings?.users.email.new_ticket_created.id || 0)}
-
+                          disabled={
+                            updatingSettingId ===
+                            (notificationSettings?.users.email.new_ticket_created.id || 0)
+                          }
                         />
                         <Label htmlFor="ticket-created-client">
                           {notificationSettings?.users.email.new_ticket_created.is_enabled
@@ -336,8 +345,10 @@ export default function NotificationsConfigPage() {
                               notificationSettings?.users.email.ticket_resolved.is_enabled
                             )
                           }
-                          disabled={updatingSettingId === (notificationSettings?.users.email.ticket_resolved.id || 0)}
-
+                          disabled={
+                            updatingSettingId ===
+                            (notificationSettings?.users.email.ticket_resolved.id || 0)
+                          }
                         />
                         <Label htmlFor="ticket-resolved-client">
                           {notificationSettings?.users.email.ticket_resolved.is_enabled

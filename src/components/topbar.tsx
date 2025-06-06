@@ -28,7 +28,11 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { handleLogout, UserSession } from '@/lib/auth';
 import BoringAvatar from 'boring-avatars';
 import { ModeToggle } from './mode-toggle';
-import { getNotifications, clearAllNotifications, showNotificationToast } from '@/services/activity';
+import {
+  getNotifications,
+  clearAllNotifications,
+  showNotificationToast,
+} from '@/services/activity';
 import { Activity } from '@/typescript/activity';
 import { formatRelativeTime } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -76,20 +80,22 @@ export function Topbar({
   const currentUserData = updatedUserData || user;
 
   // Convert UserSession to Agent-like object for avatar display
-  const userAsAgent = currentUserData ? {
-    id: currentUserData.id,
-    name: currentUserData.name,
-    email: currentUserData.email,
-    role: currentUserData.role as 'admin' | 'agent' | 'manager',
-    is_active: true,
-    workspace_id: currentUserData.workspace_id,
-    job_title: currentUserData.job_title,
-    phone_number: currentUserData.phone_number,
-    email_signature: currentUserData.email_signature,
-    avatar: currentUserData.avatar,
-    created_at: '',
-    updated_at: '',
-  } : null;
+  const userAsAgent = currentUserData
+    ? {
+        id: currentUserData.id,
+        name: currentUserData.name,
+        email: currentUserData.email,
+        role: currentUserData.role as 'admin' | 'agent' | 'manager',
+        is_active: true,
+        workspace_id: currentUserData.workspace_id,
+        job_title: currentUserData.job_title,
+        phone_number: currentUserData.phone_number,
+        email_signature: currentUserData.email_signature,
+        avatar: currentUserData.avatar,
+        created_at: '',
+        updated_at: '',
+      }
+    : null;
 
   // Get current user data for avatar display
   const { AvatarComponent: UserAvatarComponent } = useAgentAvatar({
@@ -115,12 +121,12 @@ export function Topbar({
   useEffect(() => {
     if (notifications.length > 0) {
       const newestNotification = notifications[0]; // Las notificaciones vienen ordenadas con la más reciente primero
-      
+
       // Comprobar si esta notificación es nueva (no mostrada anteriormente)
       if (lastNotificationId === null || newestNotification.id > lastNotificationId) {
         // Actualizar el ID de la última notificación
         setLastNotificationId(newestNotification.id);
-        
+
         // Mostrar notificación toast solo para las nuevas
         if (lastNotificationId !== null) {
           showNotificationToast(newestNotification);
@@ -292,8 +298,11 @@ export function Topbar({
                                 <p>
                                   <span className="font-medium">{displayName}</span>{' '}
                                   {/* Show different text based on notification type */}
-                                  {isTicketCreation ? 'logged a new ticket' : 
-                                   isComment ? 'commented on ticket' : notification.action}
+                                  {isTicketCreation
+                                    ? 'logged a new ticket'
+                                    : isComment
+                                      ? 'commented on ticket'
+                                      : notification.action}
                                   {/* Display ticket ID for both tickets and comments */}
                                   {(isTicketCreation || isComment) && notification.source_id && (
                                     <span className="text-primary ml-1">
@@ -355,7 +364,9 @@ export function Topbar({
             <DropdownMenuLabel className="font-normal">
               <div className="flex flex-col space-y-1">
                 <p className="text-sm font-medium">{currentUserData?.name || 'User'}</p>
-                <p className="text-xs text-slate-500">{currentUserData?.email || 'user@example.com'}</p>
+                <p className="text-xs text-slate-500">
+                  {currentUserData?.email || 'user@example.com'}
+                </p>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />

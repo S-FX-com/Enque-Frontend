@@ -113,7 +113,10 @@ export const createCannedReply = async (data: CannedReplyCreate): Promise<Canned
 
   try {
     const url = `${API_BASE_URL}/v1/canned-replies/`;
-    const response = await fetchAPI.POST<CannedReply>(url, data as unknown as Record<string, unknown>);
+    const response = await fetchAPI.POST<CannedReply>(
+      url,
+      data as unknown as Record<string, unknown>
+    );
 
     if (!response?.data) {
       throw new Error('Failed to create canned reply');
@@ -139,7 +142,10 @@ export const updateCannedReply = async (
 
   try {
     const url = `${API_BASE_URL}/v1/canned-replies/${id}`;
-    const response = await fetchAPI.PUT<CannedReply>(url, data as unknown as Record<string, unknown>);
+    const response = await fetchAPI.PUT<CannedReply>(
+      url,
+      data as unknown as Record<string, unknown>
+    );
 
     if (!response?.data) {
       throw new Error('Failed to update canned reply');

@@ -55,12 +55,16 @@ function MailboxConnectionCard({
   onReconnect,
 }: MailboxConnectionCardProps) {
   const [selectedOption, setSelectedOption] = useState<string>(
-    connection.is_global ? 'global' : connection.team_ids.length === 1 ? connection.team_ids[0].toString() : 'multiple'
+    connection.is_global
+      ? 'global'
+      : connection.team_ids.length === 1
+        ? connection.team_ids[0].toString()
+        : 'multiple'
   );
 
   const handleSelectionChange = (value: string) => {
     setSelectedOption(value);
-    
+
     if (value === 'global') {
       onVisibilityChange(connection.id, true, []);
     } else {
@@ -74,16 +78,16 @@ function MailboxConnectionCard({
       return { label: 'Everyone', icon: Globe, variant: 'secondary' as const };
     } else if (connection.teams.length === 1) {
       const team = connection.teams[0];
-      return { 
-        label: `${team.icon_name || '👥'} ${team.name}`, 
-        icon: Users, 
-        variant: 'outline' as const 
+      return {
+        label: `${team.icon_name || '👥'} ${team.name}`,
+        icon: Users,
+        variant: 'outline' as const,
       };
     } else if (connection.teams.length > 1) {
-      return { 
-        label: `${connection.teams.length} Teams`, 
-        icon: Users, 
-        variant: 'outline' as const 
+      return {
+        label: `${connection.teams.length} Teams`,
+        icon: Users,
+        variant: 'outline' as const,
       };
     } else {
       return { label: 'No Access', icon: Users, variant: 'destructive' as const };
@@ -132,7 +136,7 @@ function MailboxConnectionCard({
           </Button>
         </div>
       </div>
-      
+
       {/* Visibility Selection */}
       <div className="flex items-center space-x-3">
         <Settings className="h-4 w-4 text-muted-foreground" />
@@ -366,14 +370,18 @@ export default function MailboxPage() {
     }
   };
 
-  const handleVisibilityChange = async (connectionId: number, isGlobal: boolean, selectedTeamIds: number[] = []) => {
+  const handleVisibilityChange = async (
+    connectionId: number,
+    isGlobal: boolean,
+    selectedTeamIds: number[] = []
+  ) => {
     setUpdatingVisibilityId(connectionId);
     setError(null);
     try {
       const apiUrlBase =
         process.env.NEXT_PUBLIC_API_BASE_URL || 'https://enque-backend-production.up.railway.app';
       const updateUrl = `${apiUrlBase}/v1/microsoft/connection/${connectionId}`;
-      
+
       const updateData = {
         is_global: isGlobal,
         team_ids: selectedTeamIds,
@@ -420,7 +428,7 @@ export default function MailboxPage() {
             ) : connections.length > 0 ? (
               <ul className="space-y-4">
                 {connections.map(conn => (
-                  <MailboxConnectionCard 
+                  <MailboxConnectionCard
                     key={conn.id}
                     connection={conn}
                     teams={teams}

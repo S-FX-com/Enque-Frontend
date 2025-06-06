@@ -140,7 +140,7 @@ export default function AlertsConfigPage() {
 
   const handleEditAlert = (alertKey: string, alert: SystemAlert | undefined) => {
     if (!alert) return;
-    
+
     setCurrentAlert(alert);
     setAlertMessage(alert.message);
     setAlertSeverity(alert.severity);
@@ -177,7 +177,7 @@ export default function AlertsConfigPage() {
 
   const handleEditNotification = (key: string, notification: AdminNotification | undefined) => {
     if (!notification) return;
-    
+
     setCurrentAlert(notification);
     setEmailChannel(notification.channels.includes('email'));
     setInAppChannel(notification.channels.includes('in_app'));
@@ -196,7 +196,8 @@ export default function AlertsConfigPage() {
     const updatedNotification = {
       channels,
       template: currentTemplate,
-      threshold: currentAlert.key === 'high_ticket_volume' ? Number.parseInt(thresholdValue) : undefined,
+      threshold:
+        currentAlert.key === 'high_ticket_volume' ? Number.parseInt(thresholdValue) : undefined,
     };
 
     updateNotificationMutation.mutate({
@@ -737,13 +738,13 @@ export default function AlertsConfigPage() {
               <DialogHeader>
                 <DialogTitle>
                   {currentAlert && 'template' in currentAlert
-                      ? 'Edit Admin Notification'
-                      : 'Edit System Alert'}
+                    ? 'Edit Admin Notification'
+                    : 'Edit System Alert'}
                 </DialogTitle>
                 <DialogDescription>
                   {currentAlert && 'template' in currentAlert
-                      ? 'Configure how administrators are notified about important events.'
-                      : 'Configure how system alerts are displayed to users.'}
+                    ? 'Configure how administrators are notified about important events.'
+                    : 'Configure how system alerts are displayed to users.'}
                 </DialogDescription>
               </DialogHeader>
               <div className="py-4">
@@ -854,8 +855,8 @@ export default function AlertsConfigPage() {
                 <Button
                   onClick={
                     currentAlert && 'template' in currentAlert
-                        ? handleSaveNotification
-                        : handleSaveAlert
+                      ? handleSaveNotification
+                      : handleSaveAlert
                   }
                   disabled={updateAlertMutation.isPending || updateNotificationMutation.isPending}
                 >

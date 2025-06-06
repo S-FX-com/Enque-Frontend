@@ -104,7 +104,7 @@ export function TicketDetail({ ticket: initialTicket, onClose, onTicketUpdate }:
 
       // Cancel any outgoing refetches
       await queryClient.cancelQueries({ queryKey: ['tickets', ticket.id] });
-      
+
       // Snapshot the previous value
       const previousTicket = queryClient.getQueryData<ITicket>(['tickets', ticket.id]) || ticket;
 
@@ -138,7 +138,7 @@ export function TicketDetail({ ticket: initialTicket, onClose, onTicketUpdate }:
           // Get current agentTeams data
           const agentTeamsKey = ['agentTeams', currentUser.id, currentUser.role];
           const currentAgentTeams = queryClient.getQueryData<Team[]>(agentTeamsKey) || [];
-          
+
           // Only proceed if ticket is active (not closed/resolved)
           if (ticket.status !== 'Closed' && ticket.status !== 'Resolved') {
             const previousTeamId = originalFieldValue as number | null;
@@ -150,18 +150,18 @@ export function TicketDetail({ ticket: initialTicket, onClose, onTicketUpdate }:
                 // Decrease counter for previous team
                 return {
                   ...team,
-                  ticket_count: Math.max(0, (team.ticket_count || 0) - 1)
+                  ticket_count: Math.max(0, (team.ticket_count || 0) - 1),
                 };
               } else if (team.id === newTeamId && newTeamId !== null) {
                 // Increase counter for new team
                 return {
                   ...team,
-                  ticket_count: (team.ticket_count || 0) + 1
+                  ticket_count: (team.ticket_count || 0) + 1,
                 };
               }
               return team;
             });
-            
+
             queryClient.setQueryData(agentTeamsKey, updatedAgentTeams);
           }
         }

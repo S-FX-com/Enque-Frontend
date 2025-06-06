@@ -15,12 +15,12 @@ import {
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { RichTextEditor } from '@/components/tiptap/RichTextEditor';
-import { 
-  createCannedReply, 
+import {
+  createCannedReply,
   updateCannedReply,
   type CannedReply,
   type CannedReplyCreate,
-  type CannedReplyUpdate 
+  type CannedReplyUpdate,
 } from '@/services/canned-replies';
 import { useAuth } from '@/hooks/use-auth';
 
@@ -32,16 +32,16 @@ interface CannedReplyModalMuiProps {
   onUpdateSuccess?: (cannedReply: CannedReply) => void;
 }
 
-export default function CannedReplyModalMui({ 
-  open, 
-  onClose, 
+export default function CannedReplyModalMui({
+  open,
+  onClose,
   cannedReply = null,
   onCreateSuccess,
-  onUpdateSuccess 
+  onUpdateSuccess,
 }: CannedReplyModalMuiProps) {
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  
+
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [content, setContent] = useState('');
@@ -160,15 +160,12 @@ export default function CannedReplyModalMui({
 
   return (
     <Dialog open={open} onClose={handleCloseAndReset} maxWidth="md" fullWidth>
-      <DialogTitle>
-        {isEditing ? 'Edit Canned Reply' : 'Create New Canned Reply'}
-      </DialogTitle>
+      <DialogTitle>{isEditing ? 'Edit Canned Reply' : 'Create New Canned Reply'}</DialogTitle>
       <DialogContent>
         <DialogContentText sx={{ mb: 2 }}>
-          {isEditing 
+          {isEditing
             ? 'Update this canned reply for your team to use.'
-            : 'Create a new canned reply for your team to use when responding to tickets.'
-          }
+            : 'Create a new canned reply for your team to use when responding to tickets.'}
         </DialogContentText>
 
         {/* Name Field */}
@@ -180,7 +177,7 @@ export default function CannedReplyModalMui({
           fullWidth
           variant="outlined"
           value={name}
-          onChange={(e) => setName(e.target.value)}
+          onChange={e => setName(e.target.value)}
           required
           error={!!formError && !name.trim()}
           helperText={!!formError && !name.trim() ? 'Name is required' : ''}
@@ -195,7 +192,7 @@ export default function CannedReplyModalMui({
           fullWidth
           variant="outlined"
           value={description}
-          onChange={(e) => setDescription(e.target.value)}
+          onChange={e => setDescription(e.target.value)}
           multiline
           rows={2}
           placeholder="Optional description for this canned reply"
@@ -204,13 +201,15 @@ export default function CannedReplyModalMui({
 
         {/* Content Field */}
         <div style={{ marginBottom: 16 }}>
-          <label style={{ 
-            display: 'block', 
-            marginBottom: 8, 
-            fontSize: '0.875rem',
-            fontWeight: 500,
-            color: 'rgba(0, 0, 0, 0.87)'
-          }}>
+          <label
+            style={{
+              display: 'block',
+              marginBottom: 8,
+              fontSize: '0.875rem',
+              fontWeight: 500,
+              color: 'rgba(0, 0, 0, 0.87)',
+            }}
+          >
             Content *
           </label>
           <RichTextEditor
@@ -222,22 +221,19 @@ export default function CannedReplyModalMui({
 
         {/* Enabled Switch */}
         <FormControlLabel
-          control={
-            <Switch
-              checked={isEnabled}
-              onChange={(e) => setIsEnabled(e.target.checked)}
-            />
-          }
+          control={<Switch checked={isEnabled} onChange={e => setIsEnabled(e.target.checked)} />}
           label={isEnabled ? 'Enabled' : 'Disabled'}
           sx={{ mb: 2 }}
         />
 
         {formError && (
-          <div style={{ 
-            color: '#d32f2f', 
-            fontSize: '0.875rem', 
-            marginTop: 8 
-          }}>
+          <div
+            style={{
+              color: '#d32f2f',
+              fontSize: '0.875rem',
+              marginTop: 8,
+            }}
+          >
             {formError}
           </div>
         )}
@@ -247,17 +243,16 @@ export default function CannedReplyModalMui({
         <Button onClick={handleCloseAndReset} disabled={isLoading}>
           Cancel
         </Button>
-        <Button 
-          onClick={handleSubmit} 
-          variant="contained" 
-          disabled={isLoading}
-        >
-          {isLoading 
-            ? (isEditing ? 'Updating...' : 'Creating...') 
-            : (isEditing ? 'Update Reply' : 'Create Reply')
-          }
+        <Button onClick={handleSubmit} variant="contained" disabled={isLoading}>
+          {isLoading
+            ? isEditing
+              ? 'Updating...'
+              : 'Creating...'
+            : isEditing
+              ? 'Update Reply'
+              : 'Create Reply'}
         </Button>
       </DialogActions>
     </Dialog>
   );
-} 
+}

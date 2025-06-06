@@ -71,7 +71,9 @@ export default function DashboardPage() {
   const isLoadingTeamTasks = teamTasksQueries.some(query => query.isLoading);
 
   const ticketsAssignedCount = assignedTickets.length;
-  const ticketsCompletedCount = assignedTickets.filter((t: Task) => t.status === TaskStatus.CLOSED).length;
+  const ticketsCompletedCount = assignedTickets.filter(
+    (t: Task) => t.status === TaskStatus.CLOSED
+  ).length;
   const teamsCount = userTeams.length;
 
   const teamsStats: TeamStats[] = userTeams.map((team, index) => {
@@ -124,9 +126,7 @@ export default function DashboardPage() {
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <div className="bg-white dark:bg-black rounded-lg p-6 flex flex-col items-center">
         <div className="relative mb-4">
-          <div className="w-20 h-20 rounded-full">
-            {UserAvatarComponent}
-          </div>
+          <div className="w-20 h-20 rounded-full">{UserAvatarComponent}</div>
           <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 rounded-full border-2 border-white dark:border-black"></div>
         </div>
 

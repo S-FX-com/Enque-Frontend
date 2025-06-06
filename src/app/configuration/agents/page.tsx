@@ -52,7 +52,13 @@ const pendingColumns = [
 ];
 
 // Component to render agent avatar using the hook
-function AgentAvatarCell({ agent, showPendingBadge = false }: { agent: Agent; showPendingBadge?: boolean }) {
+function AgentAvatarCell({
+  agent,
+  showPendingBadge = false,
+}: {
+  agent: Agent;
+  showPendingBadge?: boolean;
+}) {
   const { AvatarComponent } = useAgentAvatar({
     agent,
     size: 24,
@@ -62,9 +68,7 @@ function AgentAvatarCell({ agent, showPendingBadge = false }: { agent: Agent; sh
 
   return (
     <div className="flex items-center gap-2">
-      <div className="h-6 w-6 relative overflow-hidden rounded-full border">
-        {AvatarComponent}
-      </div>
+      <div className="h-6 w-6 relative overflow-hidden rounded-full border">{AvatarComponent}</div>
       <span>{agent.name || '-'}</span>
       {showPendingBadge && (
         <Badge variant="outline" className="ml-2">
@@ -136,7 +140,7 @@ export default function AgentsPage() {
     const date = new Date(dateString);
     const now = new Date();
     const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-    
+
     if (diffInSeconds < 60) return 'Just now';
     if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
     if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
@@ -234,15 +238,15 @@ export default function AgentsPage() {
           <div className="h-full overflow-y-auto">
             <Tabs defaultValue="active" className="flex-1" onValueChange={setActiveTab}>
               <TabsList className="grid w-full grid-cols-2 mb-4 bg-gray-100 dark:bg-gray-800">
-                <TabsTrigger 
-                  value="active" 
+                <TabsTrigger
+                  value="active"
                   className="flex items-center gap-2 data-[state=active]:bg-[#f4f7fe] data-[state=active]:text-blue-600 data-[state=active]:border-blue-200 data-[state=active]:shadow-sm"
                 >
                   <UserCheck className="h-4 w-4" />
                   Active ({activeAgents.length})
                 </TabsTrigger>
-                <TabsTrigger 
-                  value="pending" 
+                <TabsTrigger
+                  value="pending"
                   className="flex items-center gap-2 data-[state=active]:bg-[#f4f7fe] data-[state=active]:text-blue-600 data-[state=active]:border-blue-200 data-[state=active]:shadow-sm"
                 >
                   <Clock className="h-4 w-4" />
@@ -250,106 +254,106 @@ export default function AgentsPage() {
                 </TabsTrigger>
               </TabsList>
               <TabsContent value="active">
-            <Table>
-              <TableHeader className="sticky top-0 bg-white dark:bg-black z-10">
-                <TableRow className="border-b border-slate-200 dark:border-slate-700 hover:bg-transparent">
-                  <TableHead className="w-[50px] px-4">
-                    <Checkbox
-                      checked={headerCheckboxState}
-                      onCheckedChange={handleSelectAllChange}
-                      aria-label="Select all rows"
-                          disabled={isLoading || activeAgents.length === 0}
-                    />
-                  </TableHead>
-                  {columns.map(column => (
-                    <TableHead key={column.accessorKey} className="px-6 py-4">
-                      {column.header}
-                    </TableHead>
-                  ))}
-                  <TableHead className="w-[50px] text-right px-6 py-4">
-                    <span className="sr-only">Actions</span>
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoading ? (
-                  Array.from({ length: 5 }).map((_, index) => (
-                    <TableRow key={`skeleton-${index}`}>
-                      <TableCell>
-                        <Skeleton className="h-4 w-4" />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-8 w-full" />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-8 w-full" />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-8 w-full" />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-8 w-full" />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-8 w-full" />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-8 w-8 ml-auto" />
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : isError ? (
-                  <TableRow>
-                    <TableCell
-                      colSpan={columns.length + 2}
-                      className="h-24 text-center text-red-500"
-                    >
-                      Error loading agents:{' '}
-                      {error instanceof Error ? error.message : 'Unknown error'}
-                    </TableCell>
-                  </TableRow>
-                    ) : activeAgents.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={columns.length + 2} className="h-24 text-center">
-                          No active agents found.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                      activeAgents.map(agent => (
-                    <TableRow
-                      key={agent.id}
-                      className="hover:bg-muted/50"
-                      data-state={selectedAgentIds.has(agent.id) ? 'selected' : ''}
-                    >
-                      <TableCell className="px-4">
+                <Table>
+                  <TableHeader className="sticky top-0 bg-white dark:bg-black z-10">
+                    <TableRow className="border-b border-slate-200 dark:border-slate-700 hover:bg-transparent">
+                      <TableHead className="w-[50px] px-4">
                         <Checkbox
-                          checked={selectedAgentIds.has(agent.id)}
-                          onCheckedChange={checked => handleRowSelectChange(agent.id, checked)}
-                          aria-label={`Select row for ${agent.name}`}
-                          onClick={e => e.stopPropagation()}
+                          checked={headerCheckboxState}
+                          onCheckedChange={handleSelectAllChange}
+                          aria-label="Select all rows"
+                          disabled={isLoading || activeAgents.length === 0}
                         />
-                      </TableCell>
-                      <TableCell
-                        className="font-medium cursor-pointer px-6 py-4"
-                        onClick={() => handleRowClick(agent.id)}
-                      >
-                        <AgentAvatarCell agent={agent} />
-                      </TableCell>
-                      <TableCell className="px-6 py-4">{agent.email || '-'}</TableCell>
-                      <TableCell className="px-6 py-4">{agent.phone_number || '-'}</TableCell>
-                      <TableCell className="px-6 py-4">{agent.job_title || '-'}</TableCell>
-                      <TableCell className="capitalize px-6 py-4">
-                        {agent.role === 'admin' ? 'True' : 'False'}
-                      </TableCell>
-                      <TableCell className="px-6 py-4">
-                        {agent.email_signature ? 'Custom' : 'Global'}
-                      </TableCell>
-                      <TableCell className="text-right px-6 py-4"> </TableCell>
+                      </TableHead>
+                      {columns.map(column => (
+                        <TableHead key={column.accessorKey} className="px-6 py-4">
+                          {column.header}
+                        </TableHead>
+                      ))}
+                      <TableHead className="w-[50px] text-right px-6 py-4">
+                        <span className="sr-only">Actions</span>
+                      </TableHead>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {isLoading ? (
+                      Array.from({ length: 5 }).map((_, index) => (
+                        <TableRow key={`skeleton-${index}`}>
+                          <TableCell>
+                            <Skeleton className="h-4 w-4" />
+                          </TableCell>
+                          <TableCell>
+                            <Skeleton className="h-8 w-full" />
+                          </TableCell>
+                          <TableCell>
+                            <Skeleton className="h-8 w-full" />
+                          </TableCell>
+                          <TableCell>
+                            <Skeleton className="h-8 w-full" />
+                          </TableCell>
+                          <TableCell>
+                            <Skeleton className="h-8 w-full" />
+                          </TableCell>
+                          <TableCell>
+                            <Skeleton className="h-8 w-full" />
+                          </TableCell>
+                          <TableCell>
+                            <Skeleton className="h-8 w-8 ml-auto" />
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : isError ? (
+                      <TableRow>
+                        <TableCell
+                          colSpan={columns.length + 2}
+                          className="h-24 text-center text-red-500"
+                        >
+                          Error loading agents:{' '}
+                          {error instanceof Error ? error.message : 'Unknown error'}
+                        </TableCell>
+                      </TableRow>
+                    ) : activeAgents.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={columns.length + 2} className="h-24 text-center">
+                          No active agents found.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      activeAgents.map(agent => (
+                        <TableRow
+                          key={agent.id}
+                          className="hover:bg-muted/50"
+                          data-state={selectedAgentIds.has(agent.id) ? 'selected' : ''}
+                        >
+                          <TableCell className="px-4">
+                            <Checkbox
+                              checked={selectedAgentIds.has(agent.id)}
+                              onCheckedChange={checked => handleRowSelectChange(agent.id, checked)}
+                              aria-label={`Select row for ${agent.name}`}
+                              onClick={e => e.stopPropagation()}
+                            />
+                          </TableCell>
+                          <TableCell
+                            className="font-medium cursor-pointer px-6 py-4"
+                            onClick={() => handleRowClick(agent.id)}
+                          >
+                            <AgentAvatarCell agent={agent} />
+                          </TableCell>
+                          <TableCell className="px-6 py-4">{agent.email || '-'}</TableCell>
+                          <TableCell className="px-6 py-4">{agent.phone_number || '-'}</TableCell>
+                          <TableCell className="px-6 py-4">{agent.job_title || '-'}</TableCell>
+                          <TableCell className="capitalize px-6 py-4">
+                            {agent.role === 'admin' ? 'True' : 'False'}
+                          </TableCell>
+                          <TableCell className="px-6 py-4">
+                            {agent.email_signature ? 'Custom' : 'Global'}
+                          </TableCell>
+                          <TableCell className="text-right px-6 py-4"> </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
               </TabsContent>
               <TabsContent value="pending">
                 <Table>
@@ -440,7 +444,9 @@ export default function AgentsPage() {
                               {agent.role}
                             </Badge>
                           </TableCell>
-                          <TableCell className="px-6 py-4">{formatRelativeTime(agent.created_at)}</TableCell>
+                          <TableCell className="px-6 py-4">
+                            {formatRelativeTime(agent.created_at)}
+                          </TableCell>
                           <TableCell className="text-right px-6 py-4"> </TableCell>
                         </TableRow>
                       ))

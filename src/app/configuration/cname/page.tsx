@@ -192,8 +192,8 @@ export default function CnameConfigPage() {
                 name.
               </p>
               <p>
-                After setting up your domain, you&apos;ll need to configure DNS records with your domain
-                provider and verify ownership.
+                After setting up your domain, you&apos;ll need to configure DNS records with your
+                domain provider and verify ownership.
               </p>
             </AlertDescription>
           </Alert>

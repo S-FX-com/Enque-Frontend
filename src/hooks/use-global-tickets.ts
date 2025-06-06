@@ -35,18 +35,15 @@ export function useGlobalTickets(enabled: boolean = true) {
       return allPages.flat().length;
     },
     initialPageParam: 0,
-    staleTime: 1000 * 60 * 2, // 2 minutos - datos frescos por más tiempo
-    refetchInterval: enabled ? 30000 : false, // Refetch cada 30 segundos (menos agresivo)
-    refetchIntervalInBackground: false, // No refetch en background para evitar lentitud
-    // Configuración optimizada para navegación rápida
-    refetchOnWindowFocus: false, // No refetch automático al hacer foco
-    refetchOnMount: 'always', // Siempre refetch pero no bloquea UI
-    refetchOnReconnect: enabled,
+    staleTime: 1000 * 60 * 5, // 5 minutos - datos frescos por más tiempo
+    refetchInterval: false, // ❌ REMOVIDO: Ya no hacemos polling - usamos Socket.IO
+    refetchIntervalInBackground: false, // ❌ REMOVIDO: Sin refetch en background
+    refetchOnWindowFocus: false, // ❌ REMOVIDO: Sin refetch automático al hacer foco
+    refetchOnMount: false, // ❌ OPTIMIZADO: Solo refetch si los datos están obsoletos
+    refetchOnReconnect: 'always', // ✅ CONSERVADO: Refetch al reconectar internet
     enabled: enabled, // Controla si la query debe ejecutarse
-    // Configuración para mostrar datos en caché inmediatamente
     networkMode: 'online',
-    // Configuraciones para mejor UX
-    placeholderData: (previousData) => previousData, // Mantener datos previos mientras carga
+    placeholderData: previousData => previousData, // Mantener datos previos mientras carga
     gcTime: 1000 * 60 * 10, // 10 minutos en caché
   });
 
@@ -62,4 +59,4 @@ export function useGlobalTickets(enabled: boolean = true) {
     ticketsError,
     queryClient,
   };
-} 
+}

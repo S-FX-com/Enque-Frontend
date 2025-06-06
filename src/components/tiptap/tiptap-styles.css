@@ -182,8 +182,8 @@
 }
 
 /* Forzar tamaño específico para logos que vengan como 300x200 pero son de firma */
-.ProseMirror .email-signature img[width="300"][height="200"],
-.email-signature img[width="300"][height="200"] {
+.ProseMirror .email-signature img[width='300'][height='200'],
+.email-signature img[width='300'][height='200'] {
   width: 120px !important;
   height: 75px !important;
   max-width: 120px !important;

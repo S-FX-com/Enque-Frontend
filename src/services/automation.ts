@@ -38,7 +38,10 @@ export async function getAutomationById(automationId: number): Promise<Automatio
     if (response && response.success && response.data) {
       return response.data;
     } else {
-      console.error(`Error fetching automation ${automationId}:`, response?.message || 'Unknown API error');
+      console.error(
+        `Error fetching automation ${automationId}:`,
+        response?.message || 'Unknown API error'
+      );
       throw new Error(response?.message || `Automation with ID ${automationId} not found`);
     }
   } catch (error) {
@@ -103,7 +106,9 @@ export async function updateAutomation(
     }
   } catch (error) {
     console.error(`Error updating automation ${automationId} (catch block):`, error);
-    throw new Error(error instanceof Error ? error.message : `Failed to update automation ${automationId}`);
+    throw new Error(
+      error instanceof Error ? error.message : `Failed to update automation ${automationId}`
+    );
   }
 }
 
@@ -119,7 +124,10 @@ export async function deleteAutomation(automationId: number): Promise<void> {
     const response = await fetchAPI.DELETE<unknown>(url);
 
     if (!response || !response.success) {
-      console.error(`Error deleting automation ${automationId}:`, response?.message || 'Unknown API error');
+      console.error(
+        `Error deleting automation ${automationId}:`,
+        response?.message || 'Unknown API error'
+      );
       throw new Error(response?.message || `Failed to delete automation ${automationId}`);
     }
     console.log(`Automation ${automationId} deleted successfully.`);
@@ -153,4 +161,4 @@ export async function getAutomationStats(): Promise<{
     console.error('Error fetching automation stats (catch block):', error);
     return { total_count: 0, active_count: 0 };
   }
-} 
+}

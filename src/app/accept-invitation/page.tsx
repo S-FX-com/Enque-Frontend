@@ -25,12 +25,27 @@ const passwordSchema = z
       .regex(/[a-z]/, 'Must contain at least one lowercase letter')
       .regex(/[A-Z]/, 'Must contain at least one uppercase letter')
       .regex(/\d/, 'Must contain at least one number')
-      .regex(/[!@#$%^&*()_+\-=\[\]{};':\"\\|,.<>\/?~`]/, 'Must contain at least one special character')
-      .refine((password) => {
+      .regex(
+        /[!@#$%^&*()_+\-=\[\]{};':\"\\|,.<>\/?~`]/,
+        'Must contain at least one special character'
+      )
+      .refine(password => {
         const commonPasswords = [
-          'password', '123456', 'password123', 'admin', 'qwerty',
-          'letmein', 'welcome', 'monkey', 'dragon', 'master',
-          'hello', 'freedom', 'whatever', 'qazwsx', 'trustno1'
+          'password',
+          '123456',
+          'password123',
+          'admin',
+          'qwerty',
+          'letmein',
+          'welcome',
+          'monkey',
+          'dragon',
+          'master',
+          'hello',
+          'freedom',
+          'whatever',
+          'qazwsx',
+          'trustno1',
         ];
         return !commonPasswords.includes(password.toLowerCase());
       }, 'Cannot be a common password'),
@@ -50,19 +65,17 @@ interface PasswordRequirement {
 }
 
 const passwordRequirements: PasswordRequirement[] = [
-  { label: 'At least 8 characters', test: (p) => p.length >= 8 },
-  { label: 'One lowercase letter', test: (p) => /[a-z]/.test(p) },
-  { label: 'One uppercase letter', test: (p) => /[A-Z]/.test(p) },
-  { label: 'One number', test: (p) => /\d/.test(p) },
-  { label: 'One special character', test: (p) => /[!@#$%^&*()_+\-=\[\]{};':\"\\|,.<>\/?~`]/.test(p) },
+  { label: 'At least 8 characters', test: p => p.length >= 8 },
+  { label: 'One lowercase letter', test: p => /[a-z]/.test(p) },
+  { label: 'One uppercase letter', test: p => /[A-Z]/.test(p) },
+  { label: 'One number', test: p => /\d/.test(p) },
+  { label: 'One special character', test: p => /[!@#$%^&*()_+\-=\[\]{};':\"\\|,.<>\/?~`]/.test(p) },
 ];
 
-function PasswordStrengthIndicator({ password }: { 
-  password: string;
-}) {
+function PasswordStrengthIndicator({ password }: { password: string }) {
   const passedRequirements = passwordRequirements.filter(req => req.test(password));
   const strengthPercentage = (passedRequirements.length / passwordRequirements.length) * 100;
-  
+
   // Determinar el color y texto de la barra según la fuerza
   const getStrengthColor = () => {
     if (strengthPercentage < 40) return 'bg-red-500';
@@ -82,14 +95,19 @@ function PasswordStrengthIndicator({ password }: {
     <div className="mt-3 space-y-2">
       <div className="flex justify-between items-center text-sm">
         <span className="text-gray-600">Password Strength</span>
-        <span className={`font-medium ${
-          strengthPercentage < 40 ? 'text-red-600' : 
-          strengthPercentage < 80 ? 'text-yellow-600' : 'text-green-600'
-        }`}>
+        <span
+          className={`font-medium ${
+            strengthPercentage < 40
+              ? 'text-red-600'
+              : strengthPercentage < 80
+                ? 'text-yellow-600'
+                : 'text-green-600'
+          }`}
+        >
           {getStrengthText()}
         </span>
       </div>
-      
+
       <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
         <div
           className={`h-2 rounded-full transition-all duration-300 ease-in-out ${getStrengthColor()}`}
@@ -127,7 +145,9 @@ function AcceptInvitationForm() {
       window.location.href = '/dashboard';
     },
     onError: (error: Error) => {
-      setError(error.message || 'Error activating account. The link may be invalid or have expired.');
+      setError(
+        error.message || 'Error activating account. The link may be invalid or have expired.'
+      );
       toast.error(error.message || 'Error activating account.');
     },
   });
@@ -200,12 +220,7 @@ function AcceptInvitationForm() {
               <Label htmlFor="password" className="mb-1 block">
                 New Password
               </Label>
-              <Input
-                id="password"
-                type="password"
-                {...register('password')}
-                placeholder=""
-              />
+              <Input id="password" type="password" {...register('password')} placeholder="" />
               {errors.password && (
                 <p className="text-xs text-red-500 mt-1">{errors.password.message}</p>
               )}

@@ -6,19 +6,26 @@ import { persistQueryClient } from '@tanstack/react-query-persist-client';
 import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
 import { get, set, del } from 'idb-keyval';
 
-export function QueryProvider({ children }: { children: React.ReactNode }) {
-  const [queryClient] = React.useState(
-    () =>
-      new QueryClient({
-        defaultOptions: {
-          queries: {
-            staleTime: 1000 * 30,
-            gcTime: 1000 * 60 * 60 * 24,
-          },
-        },
-      })
-  );
+// Crear un QueryClient con configuraciones optimizadas
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // 5 minutos por defecto
+      gcTime: 1000 * 60 * 10, // 10 minutos en cache
+      refetchOnWindowFocus: false, // ❌ Sin refetch al hacer foco
+      refetchOnMount: false, // ❌ Solo refetch si datos obsoletos
+      refetchInterval: false, // ❌ Sin polling automático - usamos Socket.IO
+      refetchIntervalInBackground: false, // ❌ Sin polling en background
+      retry: 2, // Reintentar 2 veces antes de fallar
+      retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000),
+    },
+    mutations: {
+      retry: 1, // Reintentar mutaciones 1 vez
+    },
+  },
+});
 
+export function QueryProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const asyncStoragePersister = createAsyncStoragePersister({
@@ -35,55 +42,7 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
         maxAge: 1000 * 60 * 60 * 24,
       });
     }
-  }, [queryClient]);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const backgroundRefresh = () => {
-        // Buscar todas las queries activas de tickets que realmente tienen datos
-        const hasActiveTicketsQuery = queryClient.getQueryCache().findAll({
-          queryKey: ['tickets'],
-          predicate: query => query.state.status === 'success',
-        });
-        
-        const hasActiveMyTicketsQuery = queryClient.getQueryCache().findAll({
-          predicate: query => 
-            Array.isArray(query.queryKey) && 
-            query.queryKey.length >= 2 && 
-            query.queryKey[0] === 'tickets' && 
-            query.queryKey[1] === 'my' &&
-            query.state.status === 'success',
-        });
-
-        // Buscar todas las queries de comentarios activas
-        const activeCommentsQueries = queryClient.getQueryCache().findAll({
-          predicate: query => 
-            Array.isArray(query.queryKey) && 
-            query.queryKey[0] === 'comments' &&
-            query.state.status === 'success',
-        });
-
-        if (hasActiveTicketsQuery.length > 0) {
-          queryClient.invalidateQueries({ queryKey: ['tickets'] });
-        }
-
-        if (hasActiveMyTicketsQuery.length > 0) {
-          queryClient.invalidateQueries({ queryKey: ['tickets', 'my'] });
-        }
-
-        // Refrescar todos los comentarios abiertos
-        activeCommentsQueries.forEach((query) => {
-          queryClient.invalidateQueries({ queryKey: query.queryKey });
-        });
-      };
-
-      const intervalId = setInterval(backgroundRefresh, 10000);
-
-      return () => {
-        clearInterval(intervalId);
-      };
-    }
-  }, [queryClient]);
+  }, []); // ✅ Removida dependencia innecesaria de queryClient
 
   return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
 }

@@ -1,7 +1,8 @@
 import axios from 'axios';
 import { getAuthToken } from '@/lib/auth';
 
-const baseURL = process.env.NEXT_PUBLIC_API_URL || 'https://enque-backend-production.up.railway.app/v1';
+const baseURL =
+  process.env.NEXT_PUBLIC_API_URL || 'https://enque-backend-production.up.railway.app/v1';
 
 export const apiClient = axios.create({
   baseURL,
@@ -12,7 +13,7 @@ export const apiClient = axios.create({
 
 // Añadir interceptor para incluir el token de autenticación
 apiClient.interceptors.request.use(
-  (config) => {
+  config => {
     const token = getAuthToken();
     if (token) {
       // Asegurarse de que headers existe
@@ -21,18 +22,18 @@ apiClient.interceptors.request.use(
     }
     return config;
   },
-  (error) => {
+  error => {
     return Promise.reject(error);
   }
 );
 
 // Interceptor para manejar respuestas
 apiClient.interceptors.response.use(
-  (response) => {
+  response => {
     return response;
   },
-  (error) => {
+  error => {
     console.error('API request error:', error.response || error.message || error);
     return Promise.reject(error);
   }
-); 
+);

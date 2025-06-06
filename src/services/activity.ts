@@ -60,9 +60,9 @@ export const showNotificationToast = (notification: Activity): void => {
   // Determine the content type based on notification type
   const isTicketCreation = notification.source_type === 'Ticket';
   const isComment = notification.source_type === 'Comment';
-  const isUserCreator = isTicketCreation && 
-    (notification.creator_user_id || notification.creator_user_email);
-  
+  const isUserCreator =
+    isTicketCreation && (notification.creator_user_id || notification.creator_user_email);
+
   const displayName = isUserCreator
     ? notification.creator_user_name || 'User'
     : notification.agent?.name || 'System';
@@ -70,13 +70,14 @@ export const showNotificationToast = (notification: Activity): void => {
   // Text for toast notification title and description
   let title = '';
   let description = '';
-  
+
   if (isTicketCreation && notification.source_id) {
     title = `New ticket from ${displayName}`;
     description = `${displayName} logged a new ticket #${notification.source_id}`;
   } else if (isComment && notification.source_id) {
     title = `New comment from ${displayName}`;
-    description = notification.action || `${displayName} commented on ticket #${notification.source_id}`;
+    description =
+      notification.action || `${displayName} commented on ticket #${notification.source_id}`;
   } else {
     title = `New notification from ${displayName}`;
     description = notification.action || 'Unspecified action';
@@ -92,14 +93,14 @@ export const showNotificationToast = (notification: Activity): void => {
         label: 'View',
         onClick: () => {
           window.location.href = `/tickets?openTicket=${notification.source_id}`;
-        }
-      }
+        },
+      },
     });
   } else {
     // For other notifications use normal toast
     toast(title, {
       description,
-      duration: 5000 // 5 seconds
+      duration: 5000, // 5 seconds
     });
   }
 };

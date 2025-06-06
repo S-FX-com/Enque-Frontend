@@ -14,30 +14,32 @@ import { workspaceService } from '@/services/workspace';
 import { IWorkspaceSetup } from '@/typescript/workspace';
 import { toast } from 'sonner';
 
-const setupSchema = z.object({
-  subdomain: z
-    .string()
-    .min(3, 'Subdomain must be at least 3 characters')
-    .max(50, 'Subdomain cannot be more than 50 characters')
-    .regex(/^[a-zA-Z0-9\-]+$/, 'Only letters, numbers and hyphens are allowed')
-    .toLowerCase(),
-  admin_name: z
-    .string()
-    .min(2, 'Name must be at least 2 characters')
-    .max(100, 'Name cannot be more than 100 characters'),
-  admin_email: z
-    .string()
-    .email('Please enter a valid email'),
-  admin_password: z
-    .string()
-    .min(8, 'Password must be at least 8 characters')
-    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/, 
-      'Password must contain at least: 1 lowercase, 1 uppercase, 1 number and 1 special character'),
-  confirmPassword: z.string()
-}).refine((data) => data.admin_password === data.confirmPassword, {
-  message: 'Passwords do not match',
-  path: ['confirmPassword'],
-});
+const setupSchema = z
+  .object({
+    subdomain: z
+      .string()
+      .min(3, 'Subdomain must be at least 3 characters')
+      .max(50, 'Subdomain cannot be more than 50 characters')
+      .regex(/^[a-zA-Z0-9\-]+$/, 'Only letters, numbers and hyphens are allowed')
+      .toLowerCase(),
+    admin_name: z
+      .string()
+      .min(2, 'Name must be at least 2 characters')
+      .max(100, 'Name cannot be more than 100 characters'),
+    admin_email: z.string().email('Please enter a valid email'),
+    admin_password: z
+      .string()
+      .min(8, 'Password must be at least 8 characters')
+      .regex(
+        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/,
+        'Password must contain at least: 1 lowercase, 1 uppercase, 1 number and 1 special character'
+      ),
+    confirmPassword: z.string(),
+  })
+  .refine(data => data.admin_password === data.confirmPassword, {
+    message: 'Passwords do not match',
+    path: ['confirmPassword'],
+  });
 
 type SetupFormData = z.infer<typeof setupSchema>;
 
@@ -58,7 +60,7 @@ export default function SetupPage() {
 
   const onSubmit = async (data: SetupFormData) => {
     setIsLoading(true);
-    
+
     try {
       const setupData: IWorkspaceSetup = {
         subdomain: data.subdomain,
@@ -72,10 +74,10 @@ export default function SetupPage() {
       if (response.success && response.data) {
         // Save token to localStorage
         localStorage.setItem('token', response.data.access_token);
-        
+
         setSetupComplete(true);
         toast.success('Workspace created successfully!');
-        
+
         // Redirect to dashboard after 2 seconds
         setTimeout(() => {
           window.location.href = `https://${data.subdomain}.enque.cc/dashboard`;
@@ -152,20 +154,14 @@ export default function SetupPage() {
                 </div>
               </div>
               {errors.subdomain && (
-                <p className="text-sm text-red-600 dark:text-red-400">
-                  {errors.subdomain.message}
-                </p>
+                <p className="text-sm text-red-600 dark:text-red-400">{errors.subdomain.message}</p>
               )}
             </div>
 
             {/* Admin Name */}
             <div className="space-y-2">
               <Label htmlFor="admin_name">Administrator Name</Label>
-              <Input
-                id="admin_name"
-                placeholder="John Doe"
-                {...register('admin_name')}
-              />
+              <Input id="admin_name" placeholder="John Doe" {...register('admin_name')} />
               {errors.admin_name && (
                 <p className="text-sm text-red-600 dark:text-red-400">
                   {errors.admin_name.message}
@@ -221,11 +217,7 @@ export default function SetupPage() {
               )}
             </div>
 
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={isLoading}
-            >
+            <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -253,4 +245,4 @@ export default function SetupPage() {
       </Card>
     </div>
   );
-} 
+}

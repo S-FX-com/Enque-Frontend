@@ -119,8 +119,8 @@ const s3ContentCache = new Map<number, S3ContentResponse>();
 /**
  * Get comment content from S3 when it's stored there
  * Includes intelligent caching to avoid repeated calls
- * @param commentId 
- * @returns 
+ * @param commentId
+ * @returns
  */
 export async function getCommentS3Content(commentId: number): Promise<S3ContentResponse> {
   // Verificar cache
@@ -131,16 +131,19 @@ export async function getCommentS3Content(commentId: number): Promise<S3ContentR
   try {
     const url = `${AppConfigs.api}/comments/${commentId}/s3-content`;
     const response = await fetchAPI.GET<S3ContentResponse>(url);
-    
+
     if (response && response.success && response.data) {
       // Guardar en cache por 5 minutos
       s3ContentCache.set(commentId, response.data);
-      
+
       // Limpiar cache después de 5 minutos
-      setTimeout(() => {
-        s3ContentCache.delete(commentId);
-      }, 5 * 60 * 1000);
-      
+      setTimeout(
+        () => {
+          s3ContentCache.delete(commentId);
+        },
+        5 * 60 * 1000
+      );
+
       return response.data;
     } else {
       const errorMsg = response?.message || 'Failed to get S3 content';

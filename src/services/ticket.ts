@@ -185,3 +185,85 @@ export async function createTicket(ticketData: TicketCreatePayload): Promise<ITi
     throw error;
   }
 }
+
+export interface InitialContentResponse {
+  status: 'content_in_database' | 'loaded_from_s3' | 's3_error_fallback' | 'no_initial_comment';
+  content: string;
+  s3_url?: string;
+  message: string;
+}
+
+/**
+ * Get initial ticket content from S3 when it's stored there
+ * @param ticketId - The ticket ID
+ * @returns Promise with the initial content response
+ */
+export async function getTicketInitialContent(ticketId: number): Promise<InitialContentResponse> {
+  try {
+    const url = `${API_BASE_URL}/v1/tasks/${ticketId}/initial-content`;
+    const response = await fetchAPI.GET<InitialContentResponse>(url);
+
+    if (response && response.success && response.data) {
+      return response.data;
+    } else {
+      const errorMsg = response?.message || 'Failed to get initial ticket content';
+      throw new Error(errorMsg);
+    }
+  } catch (error) {
+    console.error(` Exception in getTicketInitialContent for ticket ${ticketId}:`, error);
+    throw error;
+  }
+}
+
+export interface TicketHtmlContent {
+  id: string | number;
+  content: string;
+  sender: {
+    type: 'user' | 'agent' | 'unknown';
+    name: string;
+    email: string;
+    created_at: string;
+  };
+  is_private: boolean;
+  attachments: Array<{
+    id: number;
+    file_name: string;
+    content_type: string;
+    file_size: number;
+    s3_url?: string;
+    download_url: string;
+  }>;
+  created_at: string;
+}
+
+export interface TicketHtmlResponse {
+  status: 'success';
+  ticket_id: number;
+  ticket_title: string;
+  total_items: number;
+  contents: TicketHtmlContent[];
+  message: string;
+}
+
+/**
+ * Get complete ticket HTML content (initial + all comments) directly from S3 in one optimized call
+ * This avoids multiple S3 calls and reduces loading times significantly
+ * @param ticketId - The ticket ID
+ * @returns Promise with the complete HTML content response
+ */
+export async function getTicketHtmlContent(ticketId: number): Promise<TicketHtmlResponse> {
+  try {
+    const url = `${API_BASE_URL}/v1/tasks/${ticketId}/html-content`;
+    const response = await fetchAPI.GET<TicketHtmlResponse>(url);
+
+    if (response && response.success && response.data) {
+      return response.data;
+    } else {
+      const errorMsg = response?.message || 'Failed to get ticket HTML content';
+      throw new Error(errorMsg);
+    }
+  } catch (error) {
+    console.error(` Exception in getTicketHtmlContent for ticket ${ticketId}:`, error);
+    throw error;
+  }
+}

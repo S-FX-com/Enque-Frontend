@@ -175,7 +175,8 @@ export function RichTextEditor({
         HTMLAttributes: {
           width: 300,
           height: 200,
-          style: 'width: auto; height: auto; max-width: 300px; max-height: 200px; object-fit: contain; border-radius: 4px;',
+          style:
+            'width: auto; height: auto; max-width: 300px; max-height: 200px; object-fit: contain; border-radius: 4px;',
         },
       }).extend({
         // Extend the Image extension to add custom attribute handling
@@ -202,7 +203,8 @@ export function RichTextEditor({
             },
             // Keep style attribute handling if we decide to use it later, otherwise remove
             style: {
-              default: 'width: auto; height: auto; max-width: 300px; max-height: 200px; object-fit: contain; border-radius: 4px;',
+              default:
+                'width: auto; height: auto; max-width: 300px; max-height: 200px; object-fit: contain; border-radius: 4px;',
               parseHTML: element => element.getAttribute('style'),
               renderHTML: attributes => {
                 return { style: attributes.style };

@@ -7,14 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import {
-  Send,
-  Mail,
-  Clock,
-  Loader2,
-  MessageSquare,
-  Search,
-} from 'lucide-react';
+import { Send, Mail, Clock, Loader2, MessageSquare, Search } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -28,22 +21,323 @@ import {
   CreateCommentPayload,
   CommentResponseData,
 } from '@/services/comment';
+import { getTicketHtmlContent, TicketHtmlContent } from '@/services/ticket';
 import { ConversationMessageItem } from '@/components/conversation-message-item';
+import { InitialTicketMessage } from '@/components/conversation-message-item';
 import { useAuth } from '@/hooks/use-auth';
 import { RichTextEditor } from '@/components/tiptap/RichTextEditor';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { uploadAttachments } from '@/services/attachmentService';
 import { getEnabledGlobalSignature } from '@/services/global-signature';
-import {
-  getCannedReplies,
-  CannedReply,
-} from '@/services/canned-replies';
+import { getCannedReplies, CannedReply } from '@/services/canned-replies';
+import { formatRelativeTime } from '@/lib/utils';
+import BoringAvatar from 'boring-avatars';
 
 interface Props {
   ticket: ITicket;
   onTicketUpdate?: (updatedTicket: ITicket) => void;
 }
+
+// Componente optimizado para renderizar contenido HTML del ticket
+interface OptimizedMessageItemProps {
+  content: TicketHtmlContent;
+  isInitial?: boolean;
+}
+
+// ✅ HELPER FUNCTION - copiada del componente original para detectar quoted text
+function findQuoteStartIndex(html: string): number {
+  const patterns = [
+    // Common email quote headers
+    /On .*? wrote:/i,
+    /From:.*?</i, // Basic check for lines starting with From:
+    /Sent from my /i, // e.g., Sent from my iPhone
+    // HTML quote elements
+    /<div class="gmail_quote/i, // Modified to catch any class that starts with gmail_quote
+    /<blockquote class="gmail_quote/i, // Modified to catch any class that starts with gmail_quote
+    /<blockquote/i, // Any blockquote element
+    /<div class="gmail_attr"/i, // Gmail attribute div
+    // Separators (look for one *after* the potential start)
+    /<hr\s*style=["'][^"']*border-top:\s*1px\s*solid\s*[^;]+;["']/i, // Outlook HR
+    /<hr/i, // General hr, check later if it's the first one
+    // Forwarded message indicators
+    /---------- Forwarded message ---------/i,
+    /Begin forwarded message:/i,
+  ];
+  let earliestIndex = -1;
+
+  for (const pattern of patterns) {
+    const match = html.match(pattern);
+    if (match && match.index !== undefined) {
+      if (pattern.source === '<hr/i' && match.index < 10) {
+        continue;
+      }
+      if (earliestIndex === -1 || match.index < earliestIndex) {
+        earliestIndex = match.index;
+      }
+    }
+  }
+  return earliestIndex;
+}
+
+function OptimizedMessageItem({ content, isInitial = false }: OptimizedMessageItemProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  // ✅ EXTRAER INFORMACIÓN DEL SENDER DESDE EL HTML (como hacía el componente original)
+  const senderInfo = React.useMemo(() => {
+    const htmlContent = content.content || '';
+
+    // 1. Extraer información del tag original-sender ANTES de limpiarlo
+    const metadataMatch = htmlContent.match(/<original-sender>(.*?)\|(.*?)<\/original-sender>/);
+    if (metadataMatch && metadataMatch[1] && metadataMatch[2]) {
+      return {
+        name: metadataMatch[1].trim(),
+        email: metadataMatch[2].trim(),
+        isUserReply: true,
+        type: 'user',
+      };
+    }
+
+    // 2. Si no hay original-sender, usar información del sender del endpoint
+    const isAgentMessage = content.sender.type === 'agent';
+    return {
+      name: content.sender.name || (isAgentMessage ? 'Agent' : 'User'),
+      email: content.sender.email || 'unknown',
+      isUserReply: !isAgentMessage && !isInitial,
+      type: isAgentMessage ? 'agent' : 'user',
+    };
+  }, [content.content, content.sender, isInitial]);
+
+  // ✅ PROCESAR EL CONTENIDO HTML igual que el componente original
+  const processedContent = React.useMemo(() => {
+    let htmlContent = content.content || '';
+
+    // 1. Limpiar el tag original-sender (DESPUÉS de extraer la información)
+    if (htmlContent.includes('<original-sender>')) {
+      htmlContent = htmlContent.replace(/<original-sender>.*?<\/original-sender>/g, '');
+    }
+
+    // 2. Limpiar meta tags y elementos HTML innecesarios
+    htmlContent = htmlContent.replace(/<meta[^>]*>/gi, '');
+    htmlContent = htmlContent.replace(/^\s*<html[^>]*>/gi, '');
+    htmlContent = htmlContent.replace(/<\/html>\s*$/gi, '');
+    htmlContent = htmlContent.replace(/^\s*<head[^>]*>[\s\S]*?<\/head>/gi, '');
+    htmlContent = htmlContent.replace(/^\s*<body[^>]*>/gi, '');
+    htmlContent = htmlContent.replace(/<\/body>\s*$/gi, '');
+
+    // 3. Preservar párrafos vacíos
+    htmlContent = htmlContent.replace(/<p>\s*<\/p>/gi, '<p><br></p>');
+
+    // 4. Limpiar espacios en blanco excesivos
+    htmlContent = htmlContent.replace(/^\s*(?:<br\s*\/?>\s*)+/i, '');
+    htmlContent = htmlContent.replace(/(?:<br\s*\/?>\s*)+$/i, '');
+
+    return htmlContent.trim();
+  }, [content.content]);
+
+  // ✅ USAR LA INFORMACIÓN EXTRAÍDA PARA SENDER Y AVATAR
+  const senderName = senderInfo.name;
+  const senderIdentifier = senderInfo.email;
+
+  // ✅ LÓGICA CORRECTA PARA QUOTED TEXT (como el componente original)
+  const { displayReplyPart, displayQuotedPart, showToggleButton } = React.useMemo(() => {
+    let displayReplyPart = processedContent;
+    let displayQuotedPart: string | null = null;
+    let showToggleButton = false;
+
+    // Solo buscar quoted text en user replies
+    if (senderInfo.isUserReply && processedContent) {
+      const quoteStartIndex = findQuoteStartIndex(processedContent);
+      if (quoteStartIndex !== -1) {
+        displayReplyPart = processedContent.substring(0, quoteStartIndex);
+        displayQuotedPart = processedContent.substring(quoteStartIndex);
+
+        // Solo mostrar toggle si el quoted text tiene contenido real (>20 chars sin HTML)
+        if (displayQuotedPart.replace(/<[^>]*>/g, '').trim().length > 20) {
+          showToggleButton = true;
+        } else {
+          // Si quoted text es muy corto, mostrar todo junto
+          displayReplyPart = processedContent;
+          displayQuotedPart = null;
+        }
+      }
+    }
+
+    return { displayReplyPart, displayQuotedPart, showToggleButton };
+  }, [processedContent, senderInfo.isUserReply]);
+
+  // ✅ CONFIGURAR COLORES DE AVATAR según el tipo (como el componente original)
+  const agentAvatarColors = ['#1D73F4', '#D4E4FA'];
+  const userAvatarColors = ['#a3a948', '#edb92e', '#f85931', '#ce1836', '#009989'];
+
+  // Usar colores de usuario para mensajes iniciales y user replies, agente para el resto
+  const avatarColors =
+    isInitial || senderInfo.isUserReply || senderInfo.type === 'user'
+      ? userAvatarColors
+      : agentAvatarColors;
+
+  // ✅ APLICAR FONDO GRIS SOLO PARA AGENTES (como el componente original)
+  const isAgentMessage = senderInfo.type === 'agent';
+  const applyAgentBackground = isAgentMessage && !isInitial && !senderInfo.isUserReply;
+
+  // ✅ TODOS LOS MENSAJES USAN EL MISMO ESTILO BASE (sin azul especial para inicial)
+  const containerClasses = content.is_private
+    ? 'flex items-start space-x-3 py-4 border-b border-slate-200 dark:border-slate-700 last:border-b-0 bg-yellow-50 dark:bg-yellow-800/30 p-3 rounded-md'
+    : applyAgentBackground
+      ? 'flex items-start space-x-3 py-4 border-b border-slate-200 dark:border-slate-700 last:border-b-0 bg-slate-50 dark:bg-slate-800/50 p-3 rounded-md'
+      : 'flex items-start space-x-3 py-4 border-b border-slate-200 dark:border-slate-700 last:border-b-0 p-3 rounded-md';
+
+  return (
+    <div className={containerClasses}>
+      <div className="flex-shrink-0">
+        <BoringAvatar size={40} name={senderIdentifier} variant="beam" colors={avatarColors} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="mb-1">
+          <p className="text-sm font-medium leading-none">
+            {senderName}
+            {content.is_private && (
+              <span className="ml-2 text-xs text-yellow-700 dark:text-yellow-400">
+                (Private Note)
+              </span>
+            )}
+          </p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {formatRelativeTime(content.created_at)}
+          </p>
+        </div>
+
+        <div className="max-w-none break-words overflow-x-auto">
+          <div
+            className="text-sm text-black dark:text-white prose dark:prose-invert max-w-none whitespace-pre-line prose-a:text-blue-600 dark:prose-a:text-blue-400 prose-a:underline"
+            dangerouslySetInnerHTML={{ __html: displayReplyPart || '' }}
+          />
+
+          {/* ✅ SHOW QUOTED TEXT BUTTON - Solo para user replies con quoted content */}
+          {showToggleButton && (
+            <div className="mt-2">
+              <button
+                onClick={() => setIsExpanded(!isExpanded)}
+                className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1 p-1 rounded bg-slate-100 dark:bg-slate-700/50 hover:bg-slate-200 dark:hover:bg-slate-600/50"
+              >
+                <span className="h-3 w-3 flex-shrink-0">⏷</span>
+                {isExpanded ? 'Show less' : 'Show quoted text'}
+              </button>
+
+              {/* ✅ MOSTRAR QUOTED TEXT cuando está expandido */}
+              {isExpanded && displayQuotedPart && (
+                <div
+                  className="mt-2 p-2 border-l-2 border-gray-200 dark:border-gray-700 text-muted-foreground text-sm"
+                  dangerouslySetInnerHTML={{ __html: displayQuotedPart }}
+                />
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Render attachments if any */}
+        {content.attachments && content.attachments.length > 0 && (
+          <div className="mt-3 space-y-2">
+            <p className="text-xs text-muted-foreground">Attachments:</p>
+            <div className="flex flex-wrap gap-2">
+              {content.attachments.map(attachment => (
+                <a
+                  key={attachment.id}
+                  href={attachment.download_url}
+                  className="inline-flex items-center gap-1 text-xs bg-gray-100 dark:bg-gray-800 rounded px-2 py-1 hover:bg-gray-200 dark:hover:bg-gray-700"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  📎 {attachment.file_name}
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ✅ ESTILOS CSS GLOBALES para firmas y imágenes (copiados del componente original)
+const GlobalConversationStyles = () => (
+  <style jsx global>{`
+    /* Estilos para el cuerpo del mensaje en la conversación */
+    .prose p:not(.email-signature p):not(.email-signature) {
+      line-height: 1.2;
+      margin-top: 0.5em;
+      margin-bottom: 0.5em;
+    }
+
+    /* Párrafos vacíos */
+    .prose p:empty,
+    .prose p:has(br:only-child) {
+      min-height: 1.2em;
+      margin-top: 0.5em;
+      margin-bottom: 0.5em;
+    }
+
+    /* ✅ ESTILOS ESPECÍFICOS PARA LA FIRMA */
+    .prose .email-signature p,
+    .prose .email-signature {
+      color: #6b7280 !important;
+      margin-top: 0 !important;
+      margin-bottom: 0.1em !important;
+      line-height: 0.6 !important;
+    }
+
+    .prose .email-signature br {
+      line-height: 1 !important;
+    }
+
+    /* ✅ ESTILOS PARA IMÁGENES DE FIRMA - ESTE ERA EL PROBLEMA */
+    .prose .email-signature img {
+      margin-top: 0.25em !important;
+      margin-bottom: 0 !important;
+      width: 150px !important;
+      height: 92px !important;
+      max-width: 150px !important;
+      max-height: 92px !important;
+      object-fit: scale-down !important;
+    }
+
+    /* Texto de firma más pequeño */
+    .prose .email-signature,
+    .prose .email-signature p,
+    .prose .email-signature span,
+    .prose .email-signature em,
+    .prose .email-signature strong {
+      font-size: 0.9em !important;
+      line-height: 0.6 !important;
+    }
+
+    /* Links con subrayado */
+    .prose a {
+      text-decoration: underline !important;
+    }
+
+    /* Estilos para quoted text */
+    .mt-2.p-2.border-l-2.border-gray-200.dark\\:border-gray-700.text-muted-foreground {
+      font-size: 0.8em !important;
+      line-height: 1 !important;
+    }
+
+    .mt-2.p-2.border-l-2.border-gray-200.dark\\:border-gray-700.text-muted-foreground *,
+    .gmail_quote_container,
+    .gmail_quote,
+    .gmail_quote * {
+      font-size: 0.85em !important;
+      line-height: 1 !important;
+    }
+
+    .gmail_attr {
+      font-size: 0.8em !important;
+      color: #6b7280 !important;
+      margin-bottom: 0.5em !important;
+      line-height: 1 !important;
+    }
+  `}</style>
+);
 
 export function TicketConversation({ ticket, onTicketUpdate }: Props) {
   const queryClient = useQueryClient();
@@ -59,6 +353,27 @@ export function TicketConversation({ ticket, onTicketUpdate }: Props) {
   const [cannedSearchTerm, setCannedSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('');
 
+  // 🚀 NUEVA QUERY OPTIMIZADA: Una sola llamada para todo el contenido HTML
+  const {
+    data: htmlContent,
+    isLoading: isLoadingHtmlContent,
+    error: htmlContentError,
+    isError: isHtmlContentError,
+  } = useQuery({
+    queryKey: ['ticketHtml', ticket.id],
+    queryFn: () => getTicketHtmlContent(ticket.id),
+    enabled: !!ticket?.id,
+    staleTime: 1 * 60 * 1000, // 1 minuto - más fresco para actualizaciones inmediatas
+    refetchInterval: false, // Sin polling - usar Socket.IO
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: false,
+    refetchOnMount: 'always', // ✅ Siempre recargar al navegar a ticket
+    networkMode: 'online',
+    // ✅ OPTIMIZACIÓN: No mostrar loading si hay datos en cache
+    notifyOnChangeProps: ['data', 'error', 'isError'],
+  });
+
+  // 📉 QUERY FALLBACK: Solo si falla la query optimizada
   const {
     data: comments = [],
     isLoading: isLoadingComments,
@@ -67,11 +382,12 @@ export function TicketConversation({ ticket, onTicketUpdate }: Props) {
   } = useQuery<IComment[]>({
     queryKey: ['comments', ticket.id],
     queryFn: () => getCommentsByTaskId(ticket.id),
-    enabled: !!ticket?.id,
-    staleTime: 2 * 60 * 1000, // 2 minutos - más tiempo para evitar refetch constante
-    refetchInterval: 10000, // 10 segundos en lugar de 5
-    refetchIntervalInBackground: false, // No refetch en background
-    refetchOnWindowFocus: false, // No refetch al volver a la ventana
+    enabled: !!ticket?.id && isHtmlContentError, // Solo si falla la query principal
+    staleTime: 5 * 60 * 1000,
+    refetchInterval: false,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
   });
 
   const currentAgentId = currentUser?.id;
@@ -79,7 +395,10 @@ export function TicketConversation({ ticket, onTicketUpdate }: Props) {
     queryKey: ['agent', currentAgentId],
     queryFn: () => getAgentById(currentAgentId!),
     enabled: !!currentAgentId,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 10 * 60 * 1000,
+    refetchInterval: false,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
   });
 
   const workspaceId = currentUser?.workspace_id;
@@ -87,7 +406,10 @@ export function TicketConversation({ ticket, onTicketUpdate }: Props) {
     queryKey: ['globalSignature', workspaceId, 'enabled'],
     queryFn: () => getEnabledGlobalSignature(workspaceId!),
     enabled: !!workspaceId,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 10 * 60 * 1000,
+    refetchInterval: false,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
   });
 
   // Fetch canned replies
@@ -95,7 +417,10 @@ export function TicketConversation({ ticket, onTicketUpdate }: Props) {
     queryKey: ['cannedReplies', workspaceId],
     queryFn: () => getCannedReplies(workspaceId!, { enabledOnly: true }),
     enabled: !!workspaceId,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 10 * 60 * 1000,
+    refetchInterval: false,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
   });
 
   // Filter canned replies based on search
@@ -121,22 +446,46 @@ export function TicketConversation({ ticket, onTicketUpdate }: Props) {
     return [];
   }, []);
 
-  // --- Combine initial message and comments ---
+  // 🎯 LÓGICA PRINCIPAL: Usar contenido HTML optimizado o fallback a comentarios
   const conversationItems = React.useMemo(() => {
-    const items: IComment[] = [...comments];
+    // Si tenemos contenido HTML optimizado, usarlo
+    if (htmlContent?.contents) {
+      // ✅ ORDENAR EN ORDEN DESCENDENTE: más recientes arriba, inicial abajo
+      const sortedContents = [...htmlContent.contents].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
 
+      return {
+        items: sortedContents as (TicketHtmlContent | IComment)[],
+        isOptimized: true,
+        hasInitialMessage: htmlContent.contents.some(item => item.id === 'initial'),
+        totalItems: htmlContent.total_items,
+        initialMessageContent: undefined,
+        initialMessageSender: undefined,
+      };
+    }
+
+    // Fallback a la lógica anterior con comentarios
+    const items: IComment[] = [...comments];
     let initialMessageContent: string | null | undefined = null;
     let initialMessageSender: IComment['user'] = null;
+    let hasInitialMessage = false;
 
     if (ticket.description) {
       initialMessageContent = ticket.description;
       initialMessageSender = ticket.user;
+      hasInitialMessage = true;
     } else if (ticket.body?.email_body) {
       initialMessageContent = ticket.body.email_body;
       initialMessageSender = ticket.user;
+      hasInitialMessage = true;
     }
 
-    if (initialMessageContent && ticket.created_at) {
+    if (
+      initialMessageContent &&
+      ticket.created_at &&
+      !initialMessageContent.startsWith('[MIGRATED_TO_S3]')
+    ) {
       const initialComment: IComment = {
         id: -1,
         content: initialMessageContent,
@@ -151,37 +500,21 @@ export function TicketConversation({ ticket, onTicketUpdate }: Props) {
       items.push(initialComment);
     }
 
+    // ✅ ORDEN DESCENDENTE: mensajes más recientes arriba, inicial abajo
     items.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
-    return items;
-  }, [comments, ticket]);
+    return {
+      items: items as (TicketHtmlContent | IComment)[],
+      isOptimized: false,
+      hasInitialMessage,
+      initialMessageContent,
+      initialMessageSender,
+      totalItems: items.length,
+    };
+  }, [htmlContent, comments, ticket]);
 
-  // Precarga inteligente de contenido S3 - cargar múltiples comentarios en paralelo
-  useEffect(() => {
-    if (comments.length > 0) {
-      // Encontrar todos los comentarios S3 que necesiten contenido
-      const s3Comments = comments.filter(comment => 
-        comment.s3_html_url && comment.content?.startsWith('[MIGRATED_TO_S3]')
-      );
-      
-      if (s3Comments.length > 0) {
-        // Precargar hasta 5 comentarios S3 en paralelo para mejor UX
-        const commentsToPreload = s3Comments.slice(0, 5);
-        
-        // Precargar todos en paralelo con Promise.allSettled para que los fallos no afecten otros
-        Promise.allSettled(
-          commentsToPreload.map(async (comment) => {
-            try {
-              const { getCommentS3Content } = await import('@/services/comment');
-              await getCommentS3Content(comment.id);
-            } catch {
-              // Silently fail individual loads
-            }
-          })
-        );
-      }
-    }
-  }, [comments.length, comments]); // Agregar 'comments' para satisfacer el hook de dependencias
+  // Remove the S3 preloading effect since we're now using the optimized endpoint
+  // useEffect for S3 preloading is no longer needed
 
   useEffect(() => {
     let signatureToUse = '';
@@ -209,7 +542,7 @@ export function TicketConversation({ ticket, onTicketUpdate }: Props) {
         /<img([^>]*?)width="300"([^>]*?)height="200"([^>]*?)>/g,
         '<img$1width="120"$2height="75"$3style="width: 120px; height: 75px; max-width: 120px; max-height: 75px; object-fit: scale-down; border-radius: 4px;">'
       );
-      
+
       // También manejar imágenes que puedan tener diferentes tamaños pero siguen siendo de la firma
       signatureToUse = signatureToUse.replace(
         /<img([^>]*?)style="[^"]*width:\s*auto[^"]*"([^>]*?)>/g,
@@ -222,10 +555,10 @@ export function TicketConversation({ ticket, onTicketUpdate }: Props) {
 
     const currentTicketId = ticket.id;
     const userName = ticket.user?.name || 'there';
-    
+
     // Crear un contenedor para el contenido del mensaje con separación clara de la firma
     const greeting = `<p>Hi ${userName},</p><div class="message-content" style="min-height: 60px; margin-bottom: 16px;"><p><br></p></div>`;
-    
+
     const prevTicketId = prevTicketIdRef.current;
     const initialContent = signatureToUse ? `${greeting}${signatureToUse}` : greeting;
 
@@ -332,60 +665,12 @@ export function TicketConversation({ ticket, onTicketUpdate }: Props) {
 
   const createCommentMutation = useMutation({
     mutationFn: () => sendComment(replyContent, isPrivateNote),
-    onMutate: async () => {
-      // Cancelar queries salientes para evitar que sobrescriban nuestro update optimista
-      await queryClient.cancelQueries({ queryKey: ['comments', ticket.id] });
-
-      // Snapshot del estado anterior
-      const previousComments = queryClient.getQueryData(['comments', ticket.id]);
-
-      // Crear comentario optimista para mostrar inmediatamente
-      const optimisticComment: IComment = {
-        id: Date.now(), // ID temporal único
-        content: replyContent,
-        s3_html_url: null,
-        is_private: isPrivateNote,
-        ticket_id: ticket.id,
-        workspace_id: currentUser?.workspace_id || 0,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        agent: currentUser ? {
-          id: currentUser.id,
-          name: currentUser.name,
-          email: currentUser.email,
-          role: currentUser.role,
-          is_active: true,
-          workspace_id: currentUser.workspace_id,
-          created_at: currentUser.created_at || '',
-          updated_at: currentUser.updated_at || '',
-        } : null,
-        user: null,
-        attachments: selectedAttachments ? selectedAttachments.map((file, index) => ({
-          id: -(index + 1), // IDs temporales negativos
-          file_name: file.name,
-          content_type: file.type,
-          file_size: file.size,
-          size_text: `${(file.size / 1024).toFixed(1)} KB`,
-          download_url: '',
-          preview_url: null,
-          is_image: file.type.startsWith('image/'),
-          created_at: new Date().toISOString(),
-        })) : [],
-      };
-
-      // Actualizar optimistamente el cache
-      queryClient.setQueryData(['comments', ticket.id], (old: IComment[] | undefined) => {
-        return [...(old || []), optimisticComment];
-      });
-
-      // Retornar contexto para rollback si es necesario
-      return { previousComments };
-    },
     onSuccess: (data: CommentResponseData) => {
-      // Invalidar queries para obtener el comentario real del servidor
+      // Invalidar tanto la query optimizada como la de fallback
+      queryClient.invalidateQueries({ queryKey: ['ticketHtml', ticket.id] });
       queryClient.invalidateQueries({ queryKey: ['comments', ticket.id] });
 
-      // Limpiar formulario
+      // Limpiar formulario inmediatamente
       setReplyContent('');
       setSelectedAttachments([]);
       setIsPrivateNote(false);
@@ -404,12 +689,7 @@ export function TicketConversation({ ticket, onTicketUpdate }: Props) {
         }
       }
     },
-    onError: (error, variables, context) => {
-      // Rollback en caso de error
-      if (context?.previousComments) {
-        queryClient.setQueryData(['comments', ticket.id], context.previousComments);
-      }
-      
+    onError: error => {
       console.error('Failed to send reply:', error);
       toast.error(`Failed to send reply: ${error.message}`);
     },
@@ -426,6 +706,8 @@ export function TicketConversation({ ticket, onTicketUpdate }: Props) {
       setReplyContent('');
     }
   };
+
+  // ✅ Variables de loading ya no necesarias, manejadas directamente en JSX
 
   return (
     <div className="flex flex-col h-full space-y-6">
@@ -444,29 +726,64 @@ export function TicketConversation({ ticket, onTicketUpdate }: Props) {
           <CardTitle className="text-lg">Conversation</CardTitle>
         </CardHeader>
         <CardContent className="flex-1 overflow-y-auto space-y-4">
-          {isLoadingComments && conversationItems.length === 0 && (
-            <div className="space-y-4">
-              <Skeleton className="h-16 w-full" />
-              <Skeleton className="h-16 w-full" />
-            </div>
-          )}
-          {isCommentsError && !isLoadingComments && (
+          {/* ✅ LOADING OPTIMIZADO: Solo mostrar error si realmente falló */}
+          {isHtmlContentError && isCommentsError && !isLoadingHtmlContent && !isLoadingComments && (
             <div className="text-center text-red-500 py-4">
-              Failed to load conversation: {commentsError?.message || 'Unknown error'}
+              Failed to load conversation:{' '}
+              {htmlContentError?.message || commentsError?.message || 'Unknown error'}
             </div>
           )}
 
-          {conversationItems.length === 0 && !isLoadingComments && !isCommentsError ? (
+          {/* 🎯 SKELETON DISCRETO: Solo para carga inicial real sin datos previos */}
+          {isLoadingHtmlContent && !htmlContent && conversationItems.totalItems === 0 && (
+            <div className="space-y-4 animate-pulse">
+              <div className="bg-slate-100 dark:bg-slate-800 rounded-lg p-4 h-20"></div>
+              <div className="bg-slate-100 dark:bg-slate-800 rounded-lg p-4 h-16"></div>
+            </div>
+          )}
+
+          {conversationItems.totalItems === 0 &&
+          !isLoadingHtmlContent &&
+          !isLoadingComments &&
+          !(isHtmlContentError && isCommentsError) ? (
             <div className="text-center text-muted-foreground py-10">
               No conversation history found.
             </div>
           ) : (
-            conversationItems.map(item => (
-              <ConversationMessageItem
-                key={item.id === -1 ? 'initial-message' : item.id}
-                comment={item}
-              />
-            ))
+            <>
+              {/* 🚀 RENDERIZADO OPTIMIZADO */}
+              {conversationItems.isOptimized ? (
+                // Usar el nuevo componente optimizado
+                (conversationItems.items as TicketHtmlContent[]).map((item: TicketHtmlContent) => (
+                  <OptimizedMessageItem
+                    key={item.id}
+                    content={item}
+                    isInitial={item.id === 'initial'}
+                  />
+                ))
+              ) : (
+                // Fallback al renderizado anterior
+                <>
+                  {conversationItems.hasInitialMessage &&
+                    conversationItems.initialMessageContent?.startsWith('[MIGRATED_TO_S3]') && (
+                      <InitialTicketMessage
+                        key="initial-message-s3"
+                        ticketId={ticket.id}
+                        initialContent={conversationItems.initialMessageContent}
+                        user={conversationItems.initialMessageSender}
+                        createdAt={ticket.created_at}
+                      />
+                    )}
+
+                  {(conversationItems.items as IComment[]).map((item: IComment) => (
+                    <ConversationMessageItem
+                      key={item.id === -1 ? 'initial-message' : item.id}
+                      comment={item}
+                    />
+                  ))}
+                </>
+              )}
+            </>
           )}
         </CardContent>
       </Card>
@@ -586,7 +903,8 @@ export function TicketConversation({ ticket, onTicketUpdate }: Props) {
                             </div>
 
                             <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
-                              {reply.description || reply.content.replace(/<[^>]*>/g, '').substring(0, 100) + '...'}
+                              {reply.description ||
+                                reply.content.replace(/<[^>]*>/g, '').substring(0, 100) + '...'}
                             </p>
                           </div>
                         ))
@@ -618,6 +936,9 @@ export function TicketConversation({ ticket, onTicketUpdate }: Props) {
           </div>
         </CardContent>
       </Card>
+
+      {/* ✅ ESTILOS GLOBALES PARA FIRMAS E IMÁGENES */}
+      <GlobalConversationStyles />
     </div>
   );
 }

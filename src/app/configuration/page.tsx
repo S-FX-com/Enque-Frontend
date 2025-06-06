@@ -91,7 +91,7 @@ export default function ClientPage() {
               />
             </svg>
           ),
-          href: '/configuration/automations',
+          href: '/configuration/workflows',
         },
       ],
     },
