@@ -106,23 +106,6 @@ function SidebarContent() {
     refetchOnMount: false, // ❌ OPTIMIZADO: Solo si datos obsoletos
   });
 
-  // Add query for all tickets count (excluding closed/resolved)
-  const { data: allTicketsCount = 0 } = useQuery<number>({
-    queryKey: ['ticketsCount', 'all'],
-    queryFn: async () => {
-      const tickets = await getTickets();
-      // Filter out closed and resolved tickets to match My Teams behavior
-      const activeTickets = tickets.filter(
-        ticket => ticket.status !== 'Closed' && ticket.status !== 'Resolved'
-      );
-      return activeTickets.length || 0;
-    },
-    staleTime: 1000 * 60 * 10, // ✅ OPTIMIZADO: 10 minutos (era 5)
-    refetchInterval: false, // ❌ REMOVIDO: No más polling - usar Socket.IO
-    refetchOnWindowFocus: false, // ❌ REMOVIDO: Sin refetch al hacer foco
-    refetchOnMount: false, // ❌ OPTIMIZADO: Solo si datos obsoletos
-  });
-
   // Add query for my tickets count (excluding closed/resolved)
   const { data: myTicketsCount = 0 } = useQuery<number>({
     queryKey: ['ticketsCount', 'my', user?.id],
@@ -149,19 +132,6 @@ function SidebarContent() {
       const tickets = await getTickets();
       return tickets.length || 0;
     },
-    staleTime: 1000 * 60 * 5, // 5 minutes
-    refetchInterval: 30000, // Refetch every 30 seconds
-  });
-
-  // Add query for my tickets count
-  const { data: myTicketsCount = 0 } = useQuery<number>({
-    queryKey: ['ticketsCount', 'my', user?.id],
-    queryFn: async () => {
-      if (!user?.id) return 0;
-      const tickets = await getTickets({}, `/v1/tasks/assignee/${user.id}`);
-      return tickets.length || 0;
-    },
-    enabled: !!user?.id && !isLoadingUser,
     staleTime: 1000 * 60 * 5, // 5 minutes
     refetchInterval: 30000, // Refetch every 30 seconds
   });
