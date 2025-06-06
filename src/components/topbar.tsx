@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import {
   BellIcon,
@@ -62,42 +62,42 @@ export function Topbar({
   onNewTicketClick,
 }: TopbarProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const queryClient = useQueryClient();
+
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isClearingNotifications, setIsClearingNotifications] = useState(false);
   const [lastNotificationId, setLastNotificationId] = useState<number | null>(null);
-  const pathname = usePathname();
 
-  // Get updated user data from backend (for fresh avatar and other data)
+  // Agent data from backend (updated avatar, etc.)
   const { data: updatedUserData } = useQuery({
     queryKey: ['agent', user?.id],
     queryFn: () => getAgentById(user!.id),
     enabled: !!user?.id,
-    staleTime: 1000 * 60 * 2, // Cache for 2 minutes
+    staleTime: 1000 * 60 * 2,
   });
 
-  // Use updated data from backend if available, otherwise fall back to session data
-  const currentUserData = updatedUserData || user;
+  const currentUser = updatedUserData || user;
 
-  // Convert UserSession to Agent-like object for avatar display
-  const userAsAgent = currentUserData
-    ? {
-        id: currentUserData.id,
-        name: currentUserData.name,
-        email: currentUserData.email,
-        role: currentUserData.role as 'admin' | 'agent' | 'manager',
-        is_active: true,
-        workspace_id: currentUserData.workspace_id,
-        job_title: currentUserData.job_title,
-        phone_number: currentUserData.phone_number,
-        email_signature: currentUserData.email_signature,
-        avatar: currentUserData.avatar,
-        created_at: '',
-        updated_at: '',
-      }
-    : null;
+  // Memoize transformed user to avoid unnecessary recomputes
+  const userAsAgent = useMemo(() => {
+    if (!currentUser) return null;
+    return {
+      id: currentUser.id,
+      name: currentUser.name,
+      email: currentUser.email,
+      role: currentUser.role as 'admin' | 'agent' | 'manager',
+      is_active: true,
+      workspace_id: currentUser.workspace_id,
+      job_title: currentUser.job_title,
+      phone_number: currentUser.phone_number,
+      email_signature: currentUser.email_signature,
+      avatar: currentUser.avatar,
+      created_at: '',
+      updated_at: '',
+    };
+  }, [currentUser]);
 
-  // Get current user data for avatar display
   const { AvatarComponent: UserAvatarComponent } = useAgentAvatar({
     agent: userAsAgent,
     size: 40,
@@ -105,65 +105,54 @@ export function Topbar({
     className: 'border',
   });
 
-  // Fetch notifications when the popover might open or user changes
-  const { data: notifications = [], isLoading: isLoadingNotifications } = useQuery<
-    Activity[],
-    Error
-  >({
-    queryKey: ['notifications', user?.id], // Depend on user ID
-    queryFn: () => getNotifications(15), // Fetch recent 15 notifications
-    enabled: !!user?.id, // Only fetch if user is loaded
-    staleTime: 1000 * 60, // Refetch after 1 minute if stale
-    refetchInterval: 1000 * 60 * 2, // Optional: Refetch every 2 minutes
+  // Notifications
+  const { data: notifications = [], isLoading: isLoadingNotifications } = useQuery({
+    queryKey: ['notifications', user?.id],
+    queryFn: () => getNotifications(15),
+    enabled: !!user?.id,
+    staleTime: 1000 * 60,
+    refetchInterval: 1000 * 60 * 2,
   });
 
-  // Comprobar si hay nuevas notificaciones y mostrar toast para la más reciente
+  // Mostrar notificación si hay una nueva
   useEffect(() => {
-    if (notifications.length > 0) {
-      const newestNotification = notifications[0]; // Las notificaciones vienen ordenadas con la más reciente primero
+    const newest = notifications[0];
+    if (!newest) return;
 
-      // Comprobar si esta notificación es nueva (no mostrada anteriormente)
-      if (lastNotificationId === null || newestNotification.id > lastNotificationId) {
-        // Actualizar el ID de la última notificación
-        setLastNotificationId(newestNotification.id);
-
-        // Mostrar notificación toast solo para las nuevas
-        if (lastNotificationId !== null) {
-          showNotificationToast(newestNotification);
-        }
-      }
+    if (lastNotificationId === null || newest.id > lastNotificationId) {
+      if (lastNotificationId !== null) showNotificationToast(newest);
+      setLastNotificationId(newest.id);
     }
   }, [notifications, lastNotificationId]);
 
-  // Function to clear all notifications
-  const handleClearAllNotifications = async () => {
+  // Limpiar notificaciones
+  const handleClearAllNotifications = useCallback(async () => {
     if (isClearingNotifications) return;
+    setIsClearingNotifications(true);
 
     try {
-      setIsClearingNotifications(true);
       await clearAllNotifications();
-      // Invalidate and refetch notifications
-      queryClient.invalidateQueries({ queryKey: ['notifications'] });
-    } catch (error) {
-      console.error('Failed to clear notifications:', error);
+      await queryClient.invalidateQueries({ queryKey: ['notifications', user?.id] });
+    } catch (err) {
+      console.error('Error clearing notifications:', err);
     } finally {
       setIsClearingNotifications(false);
     }
-  };
+  }, [isClearingNotifications, queryClient, user?.id]);
 
-  // Function to clear cache (in-memory and persisted) and then logout
-  const logoutAndClearCache = () => {
-    console.log('Clearing React Query cache and persisted storage before logout...');
-    queryClient.clear(); // Clear the in-memory cache
-    // Attempt to remove the default persisted cache key
+  // Logout con limpieza de caché
+  const logoutAndClearCache = useCallback(() => {
+    console.log('Clearing cache...');
+    queryClient.clear();
+
     try {
       localStorage.removeItem('REACT_QUERY_OFFLINE_CACHE');
-    } catch (error) {
-      console.error('Failed to remove persisted cache from localStorage:', error);
-      // Continue logout even if removing item fails
+    } catch (err) {
+      console.error('Failed to remove localStorage cache:', err);
     }
-    handleLogout(); // Proceed with original logout logic
-  };
+
+    handleLogout();
+  }, [queryClient]);
 
   return (
     <div className="flex items-center justify-between w-full py-6">
@@ -363,10 +352,8 @@ export function Topbar({
           <DropdownMenuContent className="w-56" align="end">
             <DropdownMenuLabel className="font-normal">
               <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium">{currentUserData?.name || 'User'}</p>
-                <p className="text-xs text-slate-500">
-                  {currentUserData?.email || 'user@example.com'}
-                </p>
+                <p className="text-sm font-medium">{currentUser?.name || 'User'}</p>
+                <p className="text-xs text-slate-500">{currentUser?.email || 'user@example.com'}</p>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />

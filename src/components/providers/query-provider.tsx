@@ -1,48 +1,51 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { persistQueryClient } from '@tanstack/react-query-persist-client';
 import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
 import { get, set, del } from 'idb-keyval';
 
-// Crear un QueryClient con configuraciones optimizadas
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60 * 5, // 5 minutos por defecto
-      gcTime: 1000 * 60 * 10, // 10 minutos en cache
-      refetchOnWindowFocus: false, // ❌ Sin refetch al hacer foco
-      refetchOnMount: false, // ❌ Solo refetch si datos obsoletos
-      refetchInterval: false, // ❌ Sin polling automático - usamos Socket.IO
-      refetchIntervalInBackground: false, // ❌ Sin polling en background
-      retry: 2, // Reintentar 2 veces antes de fallar
-      retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000),
+      staleTime: 1000 * 60 * 5, // 5 min
+      gcTime: 1000 * 60 * 10, // 10 min
+      refetchOnWindowFocus: false,
+      refetchOnMount: false,
+      refetchInterval: false,
+      refetchIntervalInBackground: false,
+      retry: 2,
+      retryDelay: attempt => Math.min(1000 * 2 ** attempt, 30000),
     },
     mutations: {
-      retry: 1, // Reintentar mutaciones 1 vez
+      retry: 1,
     },
   },
 });
 
 export function QueryProvider({ children }: { children: React.ReactNode }) {
+  const initializedRef = useRef(false);
+
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const asyncStoragePersister = createAsyncStoragePersister({
+    if (typeof window !== 'undefined' && !initializedRef.current) {
+      initializedRef.current = true;
+
+      const persister = createAsyncStoragePersister({
         storage: {
-          getItem: async key => get(key),
-          setItem: async (key, value) => set(key, value),
-          removeItem: async key => del(key),
+          getItem: get,
+          setItem: set,
+          removeItem: del,
         },
       });
 
       persistQueryClient({
         queryClient,
-        persister: asyncStoragePersister,
-        maxAge: 1000 * 60 * 60 * 24,
+        persister,
+        maxAge: 1000 * 60 * 60 * 24, // 24 horas
       });
     }
-  }, []); // ✅ Removida dependencia innecesaria de queryClient
+  }, []);
 
   return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
 }
