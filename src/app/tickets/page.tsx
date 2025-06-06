@@ -46,7 +46,6 @@ import type { ICategory } from '@/typescript/category';
 import { Collapsible, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useGlobalTicketsContext } from '@/providers/global-tickets-provider';
 import { useAuth } from '@/hooks/use-auth';
-
 import type { Agent } from '@/typescript/agent';
 import { formatRelativeTime, cn } from '@/lib/utils';
 import { TicketDetail } from './ticket-details';
@@ -58,7 +57,24 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
+// Constants for filter options
+const STATUS_OPTIONS: OptionType[] = [
+  { value: 'Unread', label: 'Unread' },
+  { value: 'Open', label: 'Open' },
+  { value: 'With User', label: 'With User' },
+  { value: 'In Progress', label: 'In Progress' },
+  { value: 'Closed', label: 'Closed' },
+];
+
+const PRIORITY_OPTIONS: OptionType[] = [
+  { value: 'Low', label: 'Low' },
+  { value: 'Medium', label: 'Medium' },
+  { value: 'High', label: 'High' },
+  { value: 'Critical', label: 'Critical' },
+];
+
 function TicketsClientContent() {
+  // Context and hooks
   const { user } = useAuth();
   const {
     allTicketsData,
@@ -74,64 +90,45 @@ function TicketsClientContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
+
+  // State management
   const [selectedTicket, setSelectedTicket] = useState<ITicket | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [subjectInput, setSubjectInput] = useState('');
   const debouncedSubjectFilter = useDebounce(subjectInput, 300);
-  const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
-  const [selectedTeams, setSelectedTeams] = useState<string[]>([]);
-  const [selectedAgents, setSelectedAgents] = useState<string[]>([]);
-  const [selectedPriorities, setSelectedPriorities] = useState<string[]>([]);
-  const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
-  const [selectedCompanies, setSelectedCompanies] = useState<string[]>([]);
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [selectedFilters, setSelectedFilters] = useState({
+    statuses: [] as string[],
+    teams: [] as string[],
+    agents: [] as string[],
+    priorities: [] as string[],
+    users: [] as string[],
+    companies: [] as string[],
+    categories: [] as string[],
+  });
   const [selectedTicketIds, setSelectedTicketIds] = useState<Set<number>>(new Set());
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [filtersExpanded, setFiltersExpanded] = useState(false);
-  const [isAssignToAgentDialogOpen, setIsAssignToAgentDialogOpen] = useState(false);
-  const [isAssignToTeamDialogOpen, setIsAssignToTeamDialogOpen] = useState(false);
-  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
-  const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
+  const [dialogStates, setDialogStates] = useState({
+    delete: false,
+    assignToAgent: false,
+    assignToTeam: false,
+    filtersExpanded: false,
+  });
+  const [selectedAssignments, setSelectedAssignments] = useState({
+    agentId: null as string | null,
+    teamId: null as string | null,
+  });
 
-  const statusOptions: OptionType[] = [
-    { value: 'Unread', label: 'Unread' },
-    { value: 'Open', label: 'Open' },
-    { value: 'With User', label: 'With User' },
-    { value: 'In Progress', label: 'In Progress' },
-    { value: 'Closed', label: 'Closed' },
-  ];
-
-  const priorityOptions: OptionType[] = [
-    { value: 'Low', label: 'Low' },
-    { value: 'Medium', label: 'Medium' },
-    { value: 'High', label: 'High' },
-    { value: 'Critical', label: 'Critical' },
-  ];
-
+  // Data fetching
   const { data: agentsData = [] } = useQuery<Agent[]>({
     queryKey: ['agents'],
     queryFn: getAgents,
     staleTime: 1000 * 60 * 5,
   });
 
-  const agentOptions: OptionType[] = useMemo(() => {
-    return agentsData.map(agent => ({
-      value: agent.id.toString(),
-      label: agent.name,
-    }));
-  }, [agentsData]);
-
   const { data: teamsData = [] } = useQuery<Team[]>({
     queryKey: ['teams'],
     queryFn: getTeams,
     staleTime: 1000 * 60 * 5,
   });
-  const teamOptions: OptionType[] = useMemo(() => {
-    return teamsData.map(team => ({
-      value: team.id.toString(),
-      label: team.name,
-    }));
-  }, [teamsData]);
 
   const { data: usersData = [] } = useQuery<IUser[]>({
     queryKey: ['users'],
@@ -139,48 +136,87 @@ function TicketsClientContent() {
     staleTime: 1000 * 60 * 5,
   });
 
-  const userOptions: OptionType[] = useMemo(() => {
-    return usersData
-      .filter(user => user && user.id && user.name)
-      .map(user => ({
-        value: user.id.toString(),
-        label: user.name!,
-      }));
-  }, [usersData]);
-
   const { data: companiesData = [] } = useQuery<ICompany[]>({
     queryKey: ['companies'],
-    queryFn: () => getCompanies(),
+    queryFn: getCompanies,
     staleTime: 1000 * 60 * 5,
   });
-  const companyOptions: OptionType[] = useMemo(() => {
-    return companiesData
-      .filter(company => company && company.id && company.name)
-      .map(company => ({
-        value: company.id.toString(),
-        label: company.name!,
-      }));
-  }, [companiesData]);
 
   const { data: categoriesData = [] } = useQuery<ICategory[]>({
     queryKey: ['categories'],
-    queryFn: () => getCategories(),
+    queryFn: getCategories,
     staleTime: 1000 * 60 * 5,
   });
 
-  const categoryOptions: OptionType[] = useMemo(() => {
-    return categoriesData
-      .filter(category => category && category.id && category.name)
-      .map(category => ({
-        value: category.id.toString(),
-        label: category.name!,
-      }));
-  }, [categoriesData]);
+  // Memoized derived data
+  const agentOptions = useMemo(
+    () =>
+      agentsData.map(agent => ({
+        value: agent.id.toString(),
+        label: agent.name,
+      })),
+    [agentsData]
+  );
 
+  const teamOptions = useMemo(
+    () =>
+      teamsData.map(team => ({
+        value: team.id.toString(),
+        label: team.name,
+      })),
+    [teamsData]
+  );
+
+  const userOptions = useMemo(
+    () =>
+      usersData
+        .filter(user => user?.id && user.name)
+        .map(user => ({
+          value: user.id.toString(),
+          label: user.name!,
+        })),
+    [usersData]
+  );
+
+  const companyOptions = useMemo(
+    () =>
+      companiesData
+        .filter(company => company?.id && company.name)
+        .map(company => ({
+          value: company.id.toString(),
+          label: company.name!,
+        })),
+    [companiesData]
+  );
+
+  const categoryOptions = useMemo(
+    () =>
+      categoriesData
+        .filter(category => category?.id && category.name)
+        .map(category => ({
+          value: category.id.toString(),
+          label: category.name!,
+        })),
+    [categoriesData]
+  );
+
+  const agentIdToNameMap = useMemo(
+    () =>
+      agentsData.reduce(
+        (map, agent) => {
+          map[agent.id] = agent.name;
+          return map;
+        },
+        {} as Record<number, string>
+      ),
+    [agentsData]
+  );
+
+  // Filtered tickets
   const filteredTicketsData = useMemo(() => {
     let tickets = allTicketsData;
 
-    if (selectedStatuses.length === 0) {
+    if (selectedFilters.statuses.length === 0) {
       tickets = tickets.filter(ticket => ticket.status !== 'Closed');
     }
 
@@ -189,61 +225,67 @@ function TicketsClientContent() {
       tickets = tickets.filter(ticket => ticket.title.toLowerCase().includes(lowerCaseFilter));
     }
 
-    if (selectedStatuses.length > 0) {
-      tickets = tickets.filter(ticket => selectedStatuses.includes(ticket.status));
+    if (selectedFilters.statuses.length > 0) {
+      tickets = tickets.filter(ticket => selectedFilters.statuses.includes(ticket.status));
     }
-    if (selectedTeams.length > 0) {
-      const selectedTeamIds = selectedTeams.map(id => Number.parseInt(id, 10));
+
+    if (selectedFilters.teams.length > 0) {
+      const selectedTeamIds = selectedFilters.teams.map(id => parseInt(id, 10));
       tickets = tickets.filter(
         ticket => ticket.team_id && selectedTeamIds.includes(ticket.team_id)
       );
     }
 
-    if (selectedAgents.length > 0) {
-      const selectedAgentIds = selectedAgents.map(id => Number.parseInt(id, 10));
+    if (selectedFilters.agents.length > 0) {
+      const selectedAgentIds = selectedFilters.agents.map(id => parseInt(id, 10));
       tickets = tickets.filter(
         ticket => ticket.assignee_id && selectedAgentIds.includes(ticket.assignee_id)
       );
     }
 
-    if (selectedPriorities.length > 0) {
-      tickets = tickets.filter(ticket => selectedPriorities.includes(ticket.priority));
+    if (selectedFilters.priorities.length > 0) {
+      tickets = tickets.filter(ticket => selectedFilters.priorities.includes(ticket.priority));
     }
 
-    if (selectedUsers.length > 0) {
-      const selectedUserIds = selectedUsers.map(id => Number.parseInt(id, 10));
+    if (selectedFilters.users.length > 0) {
+      const selectedUserIds = selectedFilters.users.map(id => parseInt(id, 10));
       tickets = tickets.filter(
         ticket => ticket.user_id && selectedUserIds.includes(ticket.user_id)
       );
     }
 
-    if (selectedCompanies.length > 0) {
-      const selectedCompanyIds = selectedCompanies.map(id => Number.parseInt(id, 10));
+    if (selectedFilters.companies.length > 0) {
+      const selectedCompanyIds = selectedFilters.companies.map(id => parseInt(id, 10));
       tickets = tickets.filter(
         ticket => ticket.user?.company_id && selectedCompanyIds.includes(ticket.user.company_id)
       );
     }
 
-    if (selectedCategories.length > 0) {
-      const selectedCategoryIds = selectedCategories.map(id => Number.parseInt(id, 10));
+    if (selectedFilters.categories.length > 0) {
+      const selectedCategoryIds = selectedFilters.categories.map(id => parseInt(id, 10));
       tickets = tickets.filter(
         ticket => ticket.category_id && selectedCategoryIds.includes(ticket.category_id)
       );
     }
 
     return tickets;
-  }, [
-    allTicketsData,
-    debouncedSubjectFilter,
-    selectedStatuses,
-    selectedTeams,
-    selectedAgents,
-    selectedPriorities,
-    selectedUsers,
-    selectedCompanies,
-    selectedCategories,
-  ]);
+  }, [allTicketsData, debouncedSubjectFilter, selectedFilters]);
 
+  // Active filters count
+  const activeFiltersCount = useMemo(() => {
+    let count = 0;
+    if (debouncedSubjectFilter) count++;
+    count += selectedFilters.statuses.length;
+    count += selectedFilters.teams.length;
+    count += selectedFilters.agents.length;
+    count += selectedFilters.priorities.length;
+    count += selectedFilters.users.length;
+    count += selectedFilters.companies.length;
+    count += selectedFilters.categories.length;
+    return count;
+  }, [debouncedSubjectFilter, selectedFilters]);
+
+  // Effects
   useEffect(() => {
     const container = scrollContainerRef.current;
     const handleScroll = () => {
@@ -263,37 +305,267 @@ function TicketsClientContent() {
   useEffect(() => {
     const ticketIdToOpen = searchParams.get('openTicket');
     const teamIdFromQuery = searchParams.get('teamId');
-    
+
     if (pathname === '/tickets') {
       if (teamIdFromQuery) {
-        if (!selectedTeams.includes(teamIdFromQuery)) {
-          setSelectedTeams([teamIdFromQuery]);
+        if (!selectedFilters.teams.includes(teamIdFromQuery)) {
+          setSelectedFilters(prev => ({
+            ...prev,
+            teams: [teamIdFromQuery],
+          }));
         }
-      } else {
-        if (selectedTeams.length > 0) {
-          setSelectedTeams([]);
-        }
+      } else if (selectedFilters.teams.length > 0) {
+        setSelectedFilters(prev => ({
+          ...prev,
+          teams: [],
+        }));
       }
     }
 
     if (ticketIdToOpen && allTicketsData.length > 0) {
-      const ticket = allTicketsData.find(t => t.id === Number.parseInt(ticketIdToOpen, 10));
+      const ticket = allTicketsData.find(t => t.id === parseInt(ticketIdToOpen, 10));
       if (ticket) {
         setSelectedTicket(ticket);
       }
     }
-  }, [searchParams, allTicketsData, router, pathname, selectedTeams]);
+  }, [searchParams, allTicketsData, router, pathname, selectedFilters.teams]);
 
-  const agentIdToNameMap = React.useMemo(() => {
-    return agentsData.reduce(
-      (map, agent) => {
-        map[agent.id] = agent.name;
-        return map;
-      },
-      {} as Record<number, string>
-    );
-  }, [agentsData]);
+  // Mutations
+  const markAsReadMutation = useMutation({
+    mutationFn: async (ticket: ITicket) => {
+      return updateTicket(ticket.id, { status: 'Open' });
+    },
+    onMutate: async ticket => {
+      await queryClient.cancelQueries({ queryKey: ['tickets'] });
+      const previousTicketsData = queryClient.getQueryData<InfiniteData<ITicket[], number>>([
+        'tickets',
+      ]);
 
+      queryClient.setQueryData<InfiniteData<ITicket[], number>>(['tickets'], oldData => {
+        if (!oldData) return oldData;
+        return {
+          ...oldData,
+          pages: oldData.pages.map(page =>
+            page.map(t => (t.id === ticket.id ? { ...t, status: 'Open' as const } : t))
+          ),
+        };
+      });
+
+      return { previousTicketsData };
+    },
+    onError: (err, ticket, context) => {
+      console.error(`Failed to update ticket ${ticket.id} status to Open:`, err);
+      if (context?.previousTicketsData) {
+        queryClient.setQueryData(['tickets'], context.previousTicketsData);
+      }
+    },
+    onSuccess: (updatedTicket, ticket) => {
+      if (selectedTicket?.id === ticket.id) {
+        setSelectedTicket({ ...ticket, status: 'Open' as const });
+      }
+    },
+  });
+
+  const deleteTicketsMutation = useMutation({
+    mutationFn: async (ticketIds: number[]) => {
+      const results = await Promise.allSettled(ticketIds.map(id => deleteTicket(id)));
+      const failedDeletions = results
+        .filter((result): result is PromiseRejectedResult => result.status === 'rejected')
+        .map((result, index) => ({ reason: result.reason, id: ticketIds[index] }));
+
+      if (failedDeletions.length > 0) {
+        const errorMessages = failedDeletions
+          .map(({ reason, id }) => (reason as { message?: string })?.message || `Ticket ID ${id}`)
+          .join(', ');
+        throw new Error(`Failed to delete: ${errorMessages}`);
+      }
+
+      return results;
+    },
+    onMutate: async ticketIdsToDelete => {
+      await queryClient.cancelQueries({ queryKey: ['tickets'] });
+      const previousTicketsData = queryClient.getQueryData<InfiniteData<ITicket[], number>>([
+        'tickets',
+      ]);
+
+      queryClient.setQueryData<InfiniteData<ITicket[], number>>(['tickets'], oldData => {
+        if (!oldData) return oldData;
+        return {
+          ...oldData,
+          pages: oldData.pages.map(page =>
+            page.filter(ticket => !ticketIdsToDelete.includes(ticket.id))
+          ),
+        };
+      });
+
+      // Optimistic updates for counters
+      const currentAllCount = queryClient.getQueryData<number>(['ticketsCount', 'all']) || 0;
+      const currentMyCount =
+        queryClient.getQueryData<number>(['ticketsCount', 'my', user?.id]) || 0;
+
+      const allTickets = previousTicketsData?.pages.flat() || [];
+      const deletedTickets = allTickets.filter(ticket => ticketIdsToDelete.includes(ticket.id));
+      const activeDeletedCount = deletedTickets.filter(
+        ticket => ticket.status !== 'Closed' && ticket.status !== 'Resolved'
+      ).length;
+      const myActiveDeletedCount = deletedTickets.filter(
+        ticket =>
+          ticket.assignee_id === user?.id &&
+          ticket.status !== 'Closed' &&
+          ticket.status !== 'Resolved'
+      ).length;
+
+      queryClient.setQueryData(
+        ['ticketsCount', 'all'],
+        Math.max(0, currentAllCount - activeDeletedCount)
+      );
+      if (user?.id) {
+        queryClient.setQueryData(
+          ['ticketsCount', 'my', user.id],
+          Math.max(0, currentMyCount - myActiveDeletedCount)
+        );
+      }
+
+      setSelectedTicketIds(new Set());
+      setDialogStates(prev => ({ ...prev, delete: false }));
+
+      return {
+        previousTicketsData,
+        previousAllCount: currentAllCount,
+        previousMyCount: currentMyCount,
+      };
+    },
+    onError: (err, _, context) => {
+      toast.error(`Error deleting tickets: ${err.message}`);
+      if (context?.previousTicketsData) {
+        queryClient.setQueryData(['tickets'], context.previousTicketsData);
+      }
+      if (context?.previousAllCount !== undefined) {
+        queryClient.setQueryData(['ticketsCount', 'all'], context.previousAllCount);
+      }
+      if (context?.previousMyCount !== undefined && user?.id) {
+        queryClient.setQueryData(['ticketsCount', 'my', user.id], context.previousMyCount);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['tickets'] });
+      queryClient.invalidateQueries({ queryKey: ['agentTeams'] });
+    },
+  });
+
+  const bulkAssignToAgentMutation = useMutation({
+    mutationFn: async (payload: { ticketIds: number[]; agentId: number | undefined }) => {
+      const { ticketIds, agentId } = payload;
+      const results = await Promise.allSettled(
+        ticketIds.map(id => updateTicket(id, { assignee_id: agentId }))
+      );
+
+      const failedAssignments = results
+        .filter((result): result is PromiseRejectedResult => result.status === 'rejected')
+        .map((result, index) => ({ reason: result.reason, id: ticketIds[index] }));
+
+      if (failedAssignments.length > 0) {
+        const errorMessages = failedAssignments
+          .map(({ reason, id }) => (reason as { message?: string })?.message || `Ticket ID ${id}`)
+          .join(', ');
+        throw new Error(`Failed to assign: ${errorMessages}`);
+      }
+
+      return results;
+    },
+    onSuccess: (_, variables) => {
+      toast.success(`${variables.ticketIds.length} ticket(s) assigned successfully.`);
+    },
+    onMutate: async ({ ticketIds, agentId }) => {
+      await queryClient.cancelQueries({ queryKey: ['tickets'] });
+      const previousTicketsData = queryClient.getQueryData<InfiniteData<ITicket[], number>>([
+        'tickets',
+      ]);
+
+      queryClient.setQueryData<InfiniteData<ITicket[], number>>(['tickets'], oldData => {
+        if (!oldData) return oldData;
+        return {
+          ...oldData,
+          pages: oldData.pages.map(page =>
+            page.map(ticket =>
+              ticketIds.includes(ticket.id) ? { ...ticket, assignee_id: agentId } : ticket
+            )
+          ),
+        };
+      });
+
+      setSelectedTicketIds(new Set());
+      setDialogStates(prev => ({ ...prev, assignToAgent: false }));
+
+      return { previousTicketsData };
+    },
+    onError: (err: Error) => {
+      toast.error(`Error assigning tickets: ${err.message}`);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['tickets'] });
+      queryClient.invalidateQueries({ queryKey: ['ticketsCount', 'my', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['ticketsCount', 'all'] });
+      queryClient.invalidateQueries({ queryKey: ['agentTeams'] });
+    },
+  });
+
+  const bulkAssignToTeamMutation = useMutation({
+    mutationFn: async (payload: { ticketIds: number[]; teamId: number | undefined }) => {
+      const { ticketIds, teamId } = payload;
+      const results = await Promise.allSettled(
+        ticketIds.map(id => updateTicket(id, { team_id: teamId }))
+      );
+
+      const failedAssignments = results
+        .filter((result): result is PromiseRejectedResult => result.status === 'rejected')
+        .map((result, index) => ({ reason: result.reason, id: ticketIds[index] }));
+
+      if (failedAssignments.length > 0) {
+        const errorMessages = failedAssignments
+          .map(({ reason, id }) => (reason as { message?: string })?.message || `Ticket ID ${id}`)
+          .join(', ');
+        throw new Error(`Failed to assign: ${errorMessages}`);
+      }
+
+      return results;
+    },
+    onSuccess: (_, variables) => {
+      toast.success(`${variables.ticketIds.length} ticket(s) assigned to team successfully.`);
+    },
+    onMutate: async ({ ticketIds, teamId }) => {
+      await queryClient.cancelQueries({ queryKey: ['tickets'] });
+      const previousTicketsData = queryClient.getQueryData<InfiniteData<ITicket[], number>>([
+        'tickets',
+      ]);
+
+      queryClient.setQueryData<InfiniteData<ITicket[], number>>(['tickets'], oldData => {
+        if (!oldData) return oldData;
+        return {
+          ...oldData,
+          pages: oldData.pages.map(page =>
+            page.map(ticket =>
+              ticketIds.includes(ticket.id) ? { ...ticket, team_id: teamId } : ticket
+            )
+          ),
+        };
+      });
+
+      setSelectedTicketIds(new Set());
+      setDialogStates(prev => ({ ...prev, assignToTeam: false }));
+
+      return { previousTicketsData };
+    },
+    onError: (err: Error) => {
+      toast.error(`Error assigning tickets to team: ${err.message}`);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['tickets'] });
+      queryClient.invalidateQueries({ queryKey: ['agentTeams'] });
+    },
+  });
+
+  // Handlers
   const handleTicketUpdate = useCallback(
     (updatedTicket: ITicket) => {
       queryClient.setQueryData<InfiniteData<ITicket[], number>>(['tickets'], oldData => {
@@ -331,188 +603,18 @@ function TicketsClientContent() {
     });
   };
 
-  const isAllSelected =
-    allTicketsData.length > 0 && selectedTicketIds.size === allTicketsData.length;
-  const isIndeterminate =
-    selectedTicketIds.size > 0 && selectedTicketIds.size < allTicketsData.length;
-  const headerCheckboxState = isAllSelected ? true : isIndeterminate ? 'indeterminate' : false;
-  const deleteTicketsMutation = useMutation({
-    mutationFn: async (ticketIds: number[]) => {
-      const results = await Promise.allSettled(ticketIds.map(id => deleteTicket(id)));
-      const failedDeletions = results
-        .map((result, index) => ({ result, id: ticketIds[index] }))
-        .filter(item => item.result.status === 'rejected');
-
-      if (failedDeletions.length > 0) {
-        const errorMessages = failedDeletions
-          .map(item => {
-            const reason = (item.result as PromiseRejectedResult).reason;
-            const message = (reason as { message?: string })?.message || `Ticket ID ${item.id}`;
-            return message;
-          })
-          .join(', ');
-        throw new Error(`Failed to delete: ${errorMessages}`);
-      }
-
-      const nonSuccessResponses = results
-        .map((result, index) => ({ result, id: ticketIds[index] }))
-        .filter(item => {
-          if (item.result.status === 'fulfilled') {
-            const value = (
-              item.result as PromiseFulfilledResult<{ success: boolean; message?: string }>
-            ).value;
-            return !value.success;
-          }
-          return false;
-        });
-
-      if (nonSuccessResponses.length > 0) {
-        const errorMessages = nonSuccessResponses
-          .map(item => {
-            const response = (
-              item.result as PromiseFulfilledResult<{ success: boolean; message?: string }>
-            ).value;
-            return response.message || `Ticket ID ${item.id}`;
-          })
-          .join(', ');
-        throw new Error(`Failed to delete: ${errorMessages}`);
-      }
-      return results;
-    },
-    onSuccess: () => {
-      // ✅ NOTIFICACIÓN ELIMINADA: Eliminación silenciosa sin toast molesto
-    },
-    onMutate: async ticketIdsToDelete => {
-      await queryClient.cancelQueries({ queryKey: ['tickets'] });
-
-      const previousTicketsData = queryClient.getQueryData<InfiniteData<ITicket[], number>>([
-        'tickets',
-      ]);
-
-      queryClient.setQueryData<InfiniteData<ITicket[], number>>(['tickets'], oldData => {
-        if (!oldData) return oldData;
-        const newPages = oldData.pages.map(page =>
-          page.filter(ticket => !ticketIdsToDelete.includes(ticket.id))
-        );
-        return { ...oldData, pages: newPages };
-      });
-
-      // Optimistically update sidebar counters
-      const currentAllCount = queryClient.getQueryData<number>(['ticketsCount', 'all']) || 0;
-      const currentMyCount =
-        queryClient.getQueryData<number>(['ticketsCount', 'my', user?.id]) || 0;
-
-      // Get tickets being deleted to count how many are active
-      const allTickets = previousTicketsData?.pages.flat() || [];
-      const deletedTickets = allTickets.filter(ticket => ticketIdsToDelete.includes(ticket.id));
-      const activeDeletedCount = deletedTickets.filter(
-        ticket => ticket.status !== 'Closed' && ticket.status !== 'Resolved'
-      ).length;
-      const myActiveDeletedCount = deletedTickets.filter(
-        ticket =>
-          ticket.assignee_id === user?.id &&
-          ticket.status !== 'Closed' &&
-          ticket.status !== 'Resolved'
-      ).length;
-
-      // Update counters optimistically
-      queryClient.setQueryData(
-        ['ticketsCount', 'all'],
-        Math.max(0, currentAllCount - activeDeletedCount)
-      );
-      if (user?.id) {
-        queryClient.setQueryData(
-          ['ticketsCount', 'my', user.id],
-          Math.max(0, currentMyCount - myActiveDeletedCount)
-        );
-      }
-
-      setSelectedTicketIds(new Set());
-      setIsDeleteDialogOpen(false);
-
-      return {
-        previousTicketsData,
-        previousAllCount: currentAllCount,
-        previousMyCount: currentMyCount,
-      };
-    },
-    onError: (
-      err: Error,
-      ticketIdsToDelete: number[],
-      context:
-        | {
-            previousTicketsData?: InfiniteData<ITicket[], number>;
-            previousAllCount?: number;
-            previousMyCount?: number;
-          }
-        | undefined
-    ) => {
-      toast.error(`Error deleting tickets: ${err.message}`);
-      console.error(`Error deleting tickets: ${err.message}`);
-      if (context?.previousTicketsData) {
-        queryClient.setQueryData(['tickets'], context.previousTicketsData);
-      }
-      // Revert counter updates on error
-      if (context?.previousAllCount !== undefined) {
-        queryClient.setQueryData(['ticketsCount', 'all'], context.previousAllCount);
-      }
-      if (context?.previousMyCount !== undefined && user?.id) {
-        queryClient.setQueryData(['ticketsCount', 'my', user.id], context.previousMyCount);
-      }
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['tickets'] });
-      queryClient.invalidateQueries({ queryKey: ['agentTeams'] });
-    },
-  });
-  const handleDeleteConfirm = () => {
-    if (selectedTicketIds.size > 0) {
-      deleteTicketsMutation.mutate(Array.from(selectedTicketIds));
-    }
-  };
-
-  // Mutation para manejar el cambio de estado de Unread a Open
-  const markAsReadMutation = useMutation({
-    mutationFn: async (ticket: ITicket) => {
-      return updateTicket(ticket.id, { status: 'Open' });
-    },
-    onMutate: async ticket => {
-      // Cancel any outgoing refetches
-      await queryClient.cancelQueries({ queryKey: ['tickets'] });
-
-      // Snapshot the previous value
-      const previousTicketsData = queryClient.getQueryData<InfiniteData<ITicket[], number>>([
-        'tickets',
-      ]);
-
-      // Optimistically update to Open status
-      queryClient.setQueryData<InfiniteData<ITicket[], number>>(['tickets'], oldData => {
-        if (!oldData) return oldData;
-        const newPages = oldData.pages.map(page =>
-          page.map(t => (t.id === ticket.id ? { ...t, status: 'Open' as const } : t))
-        );
-        return { ...oldData, pages: newPages };
-      });
-
-      return { previousTicketsData };
-    },
-    onError: (
-      err: Error,
-      ticket: ITicket,
-      context: { previousTicketsData?: InfiniteData<ITicket[], number> } | undefined
-    ) => {
-      console.error(`Failed to update ticket ${ticket.id} status to Open:`, err);
-      if (context?.previousTicketsData) {
-        queryClient.setQueryData(['tickets'], context.previousTicketsData);
-      }
-    },
-    onSuccess: (updatedTicket, ticket) => {
-      // Update the selected ticket if it's the same one
-      if (selectedTicket?.id === ticket.id) {
-        setSelectedTicket({ ...ticket, status: 'Open' as const });
-      }
-    },
-  });
+  const clearAllFilters = useCallback(() => {
+    setSubjectInput('');
+    setSelectedFilters({
+      statuses: [],
+      teams: [],
+      agents: [],
+      priorities: [],
+      users: [],
+      companies: [],
+      categories: [],
+    });
+  }, []);
 
   const handleTicketClick = useCallback(
     async (ticket: ITicket) => {
@@ -531,240 +633,61 @@ function TicketsClientContent() {
     router.push(`${window.location.pathname}?${newSearchParams.toString()}`);
   }, [searchParams, router]);
 
-  const activeFiltersCount = useMemo(() => {
-    let count = 0;
-    if (debouncedSubjectFilter) count++;
-    count += selectedStatuses.length;
-    count += selectedTeams.length;
-    count += selectedAgents.length;
-    count += selectedPriorities.length;
-    count += selectedUsers.length;
-    count += selectedCompanies.length;
-    count += selectedCategories.length;
-    return count;
-  }, [
-    debouncedSubjectFilter,
-    selectedStatuses,
-    selectedTeams,
-    selectedAgents,
-    selectedPriorities,
-    selectedUsers,
-    selectedCompanies,
-    selectedCategories,
-  ]);
+  // Derived state
+  const isAllSelected =
+    allTicketsData.length > 0 && selectedTicketIds.size === allTicketsData.length;
+  const isIndeterminate =
+    selectedTicketIds.size > 0 && selectedTicketIds.size < allTicketsData.length;
+  const headerCheckboxState = isAllSelected ? true : isIndeterminate ? 'indeterminate' : false;
 
-  const clearAllFilters = useCallback(() => {
-    setSubjectInput('');
-    setSelectedStatuses([]);
-    setSelectedTeams([]);
-    setSelectedAgents([]);
-    setSelectedPriorities([]);
-    setSelectedUsers([]);
-    setSelectedCompanies([]);
-    setSelectedCategories([]);
-  }, []);
+  // Dialog handlers
+  const handleDeleteConfirm = () => {
+    if (selectedTicketIds.size > 0) {
+      deleteTicketsMutation.mutate(Array.from(selectedTicketIds));
+    }
+  };
 
   const handleOpenAssignToAgentDialog = () => {
     if (selectedTicketIds.size > 0) {
       const ticketsArray = allTicketsData.filter(ticket => selectedTicketIds.has(ticket.id));
-
       const firstTicket = ticketsArray[0];
       const allSameAgent = ticketsArray.every(
         ticket => ticket.assignee_id === firstTicket.assignee_id
       );
 
-      if (allSameAgent && firstTicket.assignee_id !== undefined) {
-        setSelectedAgentId(String(firstTicket.assignee_id));
-      }
+      setSelectedAssignments(prev => ({
+        ...prev,
+        agentId:
+          allSameAgent && firstTicket.assignee_id !== undefined
+            ? String(firstTicket.assignee_id)
+            : null,
+      }));
     }
-
-    setIsAssignToAgentDialogOpen(true);
+    setDialogStates(prev => ({ ...prev, assignToAgent: true }));
   };
 
   const handleOpenAssignToTeamDialog = () => {
     if (selectedTicketIds.size > 0) {
       const ticketsArray = allTicketsData.filter(ticket => selectedTicketIds.has(ticket.id));
-
       const firstTicket = ticketsArray[0];
       const allSameTeam = ticketsArray.every(ticket => ticket.team_id === firstTicket.team_id);
 
-      if (allSameTeam && firstTicket.team_id !== undefined) {
-        setSelectedTeamId(String(firstTicket.team_id));
-      }
+      setSelectedAssignments(prev => ({
+        ...prev,
+        teamId:
+          allSameTeam && firstTicket.team_id !== undefined ? String(firstTicket.team_id) : null,
+      }));
     }
-
-    setIsAssignToTeamDialogOpen(true);
+    setDialogStates(prev => ({ ...prev, assignToTeam: true }));
   };
-
-  const bulkAssignToTeamMutation = useMutation({
-    mutationFn: async (payload: { ticketIds: number[]; teamId: number | undefined }) => {
-      const { ticketIds, teamId } = payload;
-      const results = await Promise.allSettled(
-        ticketIds.map(id => updateTicket(id, { team_id: teamId }))
-      );
-
-      const failedAssignments = results
-        .map((result, index) => ({ result, id: ticketIds[index] }))
-        .filter(item => item.result.status === 'rejected');
-
-      if (failedAssignments.length > 0) {
-        const errorMessages = failedAssignments
-          .map(item => {
-            const reason = (item.result as PromiseRejectedResult).reason;
-            const message = (reason as { message?: string })?.message || `Ticket ID ${item.id}`;
-            return message;
-          })
-          .join(', ');
-        throw new Error(`Failed to assign: ${errorMessages}`);
-      }
-
-      return results;
-    },
-    onSuccess: (data, variables) => {
-      toast.success(`${variables.ticketIds.length} ticket(s) assigned to team successfully.`);
-      console.log(
-        `${variables.ticketIds.length} ticket(s) assigned to team ${variables.teamId || 'none'}.`
-      );
-    },
-    onMutate: async ({ ticketIds, teamId }) => {
-      await queryClient.cancelQueries({ queryKey: ['tickets'] });
-
-      const previousTicketsData = queryClient.getQueryData<InfiniteData<ITicket[], number>>([
-        'tickets',
-      ]);
-
-      queryClient.setQueryData<InfiniteData<ITicket[], number>>(['tickets'], oldData => {
-        if (!oldData) return oldData;
-
-        const newPages = oldData.pages.map(page =>
-          page.map(ticket => {
-            if (ticketIds.includes(ticket.id)) {
-              return {
-                ...ticket,
-                team_id: teamId,
-              };
-            }
-            return ticket;
-          })
-        );
-
-        return {
-          pages: newPages,
-          pageParams: oldData.pageParams,
-        };
-      });
-
-      setSelectedTicketIds(new Set());
-      setIsAssignToTeamDialogOpen(false);
-
-      return { previousTicketsData };
-    },
-    onError: (
-      err: Error,
-      variables,
-      context: { previousTicketsData?: InfiniteData<ITicket[], number> } | undefined
-    ) => {
-      toast.error(`Error assigning tickets to team: ${err.message}`);
-      console.error(`Error assigning tickets to team: ${err.message}`);
-      if (context?.previousTicketsData) {
-        queryClient.setQueryData(['tickets'], context.previousTicketsData);
-      }
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['tickets'] });
-      queryClient.invalidateQueries({ queryKey: ['agentTeams'] });
-    },
-  });
-
-  const bulkAssignToAgentMutation = useMutation({
-    mutationFn: async (payload: { ticketIds: number[]; agentId: number | undefined }) => {
-      const { ticketIds, agentId } = payload;
-      const results = await Promise.allSettled(
-        ticketIds.map(id => updateTicket(id, { assignee_id: agentId }))
-      );
-
-      const failedAssignments = results
-        .map((result, index) => ({ result, id: ticketIds[index] }))
-        .filter(item => item.result.status === 'rejected');
-
-      if (failedAssignments.length > 0) {
-        const errorMessages = failedAssignments
-          .map(item => {
-            const reason = (item.result as PromiseRejectedResult).reason;
-            const message = (reason as { message?: string })?.message || `Ticket ID ${item.id}`;
-            return message;
-          })
-          .join(', ');
-        throw new Error(`Failed to assign: ${errorMessages}`);
-      }
-
-      return results;
-    },
-    onSuccess: (data, variables) => {
-      toast.success(`${variables.ticketIds.length} ticket(s) assigned successfully.`);
-      console.log(
-        `${variables.ticketIds.length} ticket(s) assigned to agent ${variables.agentId || 'none'}.`
-      );
-    },
-    onMutate: async ({ ticketIds, agentId }) => {
-      await queryClient.cancelQueries({ queryKey: ['tickets'] });
-
-      const previousTicketsData = queryClient.getQueryData<InfiniteData<ITicket[], number>>([
-        'tickets',
-      ]);
-
-      queryClient.setQueryData<InfiniteData<ITicket[], number>>(['tickets'], oldData => {
-        if (!oldData) return oldData;
-
-        const newPages = oldData.pages.map(page =>
-          page.map(ticket => {
-            if (ticketIds.includes(ticket.id)) {
-              return {
-                ...ticket,
-                assignee_id: agentId,
-              };
-            }
-            return ticket;
-          })
-        );
-
-        return {
-          pages: newPages,
-          pageParams: oldData.pageParams,
-        };
-      });
-
-      setSelectedTicketIds(new Set());
-      setIsAssignToAgentDialogOpen(false);
-
-      return { previousTicketsData };
-    },
-    onError: (
-      err: Error,
-      variables,
-      context: { previousTicketsData?: InfiniteData<ITicket[], number> } | undefined
-    ) => {
-      toast.error(`Error assigning tickets: ${err.message}`);
-      console.error(`Error assigning tickets: ${err.message}`);
-      if (context?.previousTicketsData) {
-        queryClient.setQueryData(['tickets'], context.previousTicketsData);
-      }
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['tickets'] });
-      queryClient.invalidateQueries({ queryKey: ['ticketsCount', 'my', user?.id] });
-      queryClient.invalidateQueries({ queryKey: ['ticketsCount', 'all'] });
-      queryClient.invalidateQueries({ queryKey: ['agentTeams'] }); // Para actualizar contadores de teams
-    },
-  });
 
   const handleAssignToAgentConfirm = () => {
     if (selectedTicketIds.size > 0) {
       const agentId =
-        selectedAgentId === 'null'
+        selectedAssignments.agentId === 'null'
           ? undefined
-          : selectedAgentId
-            ? parseInt(selectedAgentId, 10)
+          : selectedAssignments.agentId
+            ? parseInt(selectedAssignments.agentId, 10)
             : undefined;
       bulkAssignToAgentMutation.mutate({
         ticketIds: Array.from(selectedTicketIds),
@@ -776,10 +699,10 @@ function TicketsClientContent() {
   const handleAssignToTeamConfirm = () => {
     if (selectedTicketIds.size > 0) {
       const teamId =
-        selectedTeamId === 'null'
+        selectedAssignments.teamId === 'null'
           ? undefined
-          : selectedTeamId
-            ? parseInt(selectedTeamId, 10)
+          : selectedAssignments.teamId
+            ? parseInt(selectedAssignments.teamId, 10)
             : undefined;
       bulkAssignToTeamMutation.mutate({
         ticketIds: Array.from(selectedTicketIds),
@@ -787,6 +710,7 @@ function TicketsClientContent() {
       });
     }
   };
+
   return (
     <div className="flex h-full gap-6">
       <div className="flex-1 flex flex-col h-full">
@@ -794,8 +718,8 @@ function TicketsClientContent() {
           <div className="flex items-center justify-between py-4 px-6 flex-shrink-0 border-b">
             <div className="flex items-center gap-2 ml-auto">
               <AlertDialog
-                open={isAssignToAgentDialogOpen}
-                onOpenChange={setIsAssignToAgentDialogOpen}
+                open={dialogStates.assignToAgent}
+                onOpenChange={open => setDialogStates(prev => ({ ...prev, assignToAgent: open }))}
               >
                 <AlertDialogTrigger asChild>
                   <Button
@@ -817,7 +741,12 @@ function TicketsClientContent() {
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <div className="py-4">
-                    <Select value={selectedAgentId || ''} onValueChange={setSelectedAgentId}>
+                    <Select
+                      value={selectedAssignments.agentId || ''}
+                      onValueChange={value =>
+                        setSelectedAssignments(prev => ({ ...prev, agentId: value }))
+                      }
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Select agent" />
                       </SelectTrigger>
@@ -837,7 +766,7 @@ function TicketsClientContent() {
                     </AlertDialogCancel>
                     <AlertDialogAction
                       onClick={handleAssignToAgentConfirm}
-                      disabled={bulkAssignToAgentMutation.isPending || !selectedAgentId}
+                      disabled={bulkAssignToAgentMutation.isPending || !selectedAssignments.agentId}
                     >
                       {bulkAssignToAgentMutation.isPending ? 'Assigning...' : 'Assign'}
                     </AlertDialogAction>
@@ -846,8 +775,8 @@ function TicketsClientContent() {
               </AlertDialog>
 
               <AlertDialog
-                open={isAssignToTeamDialogOpen}
-                onOpenChange={setIsAssignToTeamDialogOpen}
+                open={dialogStates.assignToTeam}
+                onOpenChange={open => setDialogStates(prev => ({ ...prev, assignToTeam: open }))}
               >
                 <AlertDialogTrigger asChild>
                   <Button
@@ -869,7 +798,12 @@ function TicketsClientContent() {
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <div className="py-4">
-                    <Select value={selectedTeamId || ''} onValueChange={setSelectedTeamId}>
+                    <Select
+                      value={selectedAssignments.teamId || ''}
+                      onValueChange={value =>
+                        setSelectedAssignments(prev => ({ ...prev, teamId: value }))
+                      }
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Select team" />
                       </SelectTrigger>
@@ -889,7 +823,7 @@ function TicketsClientContent() {
                     </AlertDialogCancel>
                     <AlertDialogAction
                       onClick={handleAssignToTeamConfirm}
-                      disabled={bulkAssignToTeamMutation.isPending || !selectedTeamId}
+                      disabled={bulkAssignToTeamMutation.isPending || !selectedAssignments.teamId}
                     >
                       {bulkAssignToTeamMutation.isPending ? 'Assigning...' : 'Assign'}
                     </AlertDialogAction>
@@ -897,7 +831,10 @@ function TicketsClientContent() {
                 </AlertDialogContent>
               </AlertDialog>
 
-              <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+              <AlertDialog
+                open={dialogStates.delete}
+                onOpenChange={open => setDialogStates(prev => ({ ...prev, delete: open }))}
+              >
                 <AlertDialogTrigger asChild>
                   <Button
                     variant="destructive"
@@ -1082,8 +1019,8 @@ function TicketsClientContent() {
       </div>
       <div className="flex-shrink-0 flex items-stretch h-full">
         <Collapsible
-          open={filtersExpanded}
-          onOpenChange={setFiltersExpanded}
+          open={dialogStates.filtersExpanded}
+          onOpenChange={open => setDialogStates(prev => ({ ...prev, filtersExpanded: open }))}
           className="flex h-full"
         >
           <CollapsibleTrigger asChild>
@@ -1092,21 +1029,21 @@ function TicketsClientContent() {
               size="sm"
               className="z-10 -mr-4 mt-6 shadow-md relative cursor-pointer rounded-full px-3"
             >
-              {filtersExpanded ? (
+              {dialogStates.filtersExpanded ? (
                 <ChevronRight className="h-4 w-4" />
               ) : (
                 <>
                   Filters <ChevronLeft className="h-4 w-4 ml-1 inline" />
                 </>
               )}
-              {activeFiltersCount > 0 && !filtersExpanded && (
+              {activeFiltersCount > 0 && !dialogStates.filtersExpanded && (
                 <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-medium text-primary-foreground">
                   {activeFiltersCount}
                 </span>
               )}
             </Button>
           </CollapsibleTrigger>
-          {filtersExpanded && (
+          {dialogStates.filtersExpanded && (
             <aside className="w-80 border-l p-6 space-y-6 bg-card text-card-foreground rounded-lg transition-all duration-300 flex flex-col h-full">
               <div className="flex items-center justify-between flex-shrink-0">
                 <h2 className="text-lg font-semibold">
@@ -1145,9 +1082,9 @@ function TicketsClientContent() {
                     Statuses
                   </label>
                   <MultiSelectFilter
-                    options={statusOptions}
-                    selected={selectedStatuses}
-                    onChange={setSelectedStatuses}
+                    options={STATUS_OPTIONS}
+                    selected={selectedFilters.statuses}
+                    onChange={statuses => setSelectedFilters(prev => ({ ...prev, statuses }))}
                     placeholder="Filter by status..."
                     className="mt-1"
                   />
@@ -1158,8 +1095,8 @@ function TicketsClientContent() {
                   </label>
                   <MultiSelectFilter
                     options={teamOptions}
-                    selected={selectedTeams}
-                    onChange={setSelectedTeams}
+                    selected={selectedFilters.teams}
+                    onChange={teams => setSelectedFilters(prev => ({ ...prev, teams }))}
                     placeholder="Filter by team..."
                     className="mt-1"
                   />
@@ -1170,8 +1107,8 @@ function TicketsClientContent() {
                   </label>
                   <MultiSelectFilter
                     options={agentOptions}
-                    selected={selectedAgents}
-                    onChange={setSelectedAgents}
+                    selected={selectedFilters.agents}
+                    onChange={agents => setSelectedFilters(prev => ({ ...prev, agents }))}
                     placeholder="Filter by agent..."
                     className="mt-1"
                   />
@@ -1181,9 +1118,9 @@ function TicketsClientContent() {
                     Priorities
                   </label>
                   <MultiSelectFilter
-                    options={priorityOptions}
-                    selected={selectedPriorities}
-                    onChange={setSelectedPriorities}
+                    options={PRIORITY_OPTIONS}
+                    selected={selectedFilters.priorities}
+                    onChange={priorities => setSelectedFilters(prev => ({ ...prev, priorities }))}
                     placeholder="Filter by priority..."
                     className="mt-1"
                   />
@@ -1194,8 +1131,8 @@ function TicketsClientContent() {
                   </label>
                   <MultiSelectFilter
                     options={companyOptions}
-                    selected={selectedCompanies}
-                    onChange={setSelectedCompanies}
+                    selected={selectedFilters.companies}
+                    onChange={companies => setSelectedFilters(prev => ({ ...prev, companies }))}
                     placeholder="Filter by company..."
                     className="mt-1"
                   />
@@ -1206,8 +1143,8 @@ function TicketsClientContent() {
                   </label>
                   <MultiSelectFilter
                     options={userOptions}
-                    selected={selectedUsers}
-                    onChange={setSelectedUsers}
+                    selected={selectedFilters.users}
+                    onChange={users => setSelectedFilters(prev => ({ ...prev, users }))}
                     placeholder="Filter by user..."
                     className="mt-1"
                   />
@@ -1218,8 +1155,8 @@ function TicketsClientContent() {
                   </label>
                   <MultiSelectFilter
                     options={categoryOptions}
-                    selected={selectedCategories}
-                    onChange={setSelectedCategories}
+                    selected={selectedFilters.categories}
+                    onChange={categories => setSelectedFilters(prev => ({ ...prev, categories }))}
                     placeholder="Filter by category..."
                     className="mt-1"
                   />
@@ -1237,6 +1174,7 @@ function TicketsClientContent() {
     </div>
   );
 }
+
 export default function TicketsPage() {
   return (
     <Suspense
