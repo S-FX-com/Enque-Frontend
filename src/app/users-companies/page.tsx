@@ -5,7 +5,7 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Building, Users, PlusCircle, Loader2 } from 'lucide-react';
 import NewCompanyModal from '@/components/modals/new-company-modal';
 import NewUserModal from '@/components/modals/new-user-modal';
@@ -71,7 +71,9 @@ export default function UsersCompaniesPage() {
     queryKey: ['unassignedUsers'],
     queryFn: () => getUnassignedUsers({ limit: 1000 }),
     enabled: currentView === 'unassigned_users',
-    staleTime: 5 * 60 * 1000,
+    staleTime: 0,
+    refetchInterval: 5000,
+    refetchIntervalInBackground: false,
   });
 
   const {
@@ -83,7 +85,9 @@ export default function UsersCompaniesPage() {
     queryFn: () =>
       selectedCompanyId ? getCompanyUsers(selectedCompanyId, { limit: 1000 }) : Promise.resolve([]),
     enabled: !!selectedCompanyId && currentView === 'company_users',
-    staleTime: 5 * 60 * 1000,
+    staleTime: 0,
+    refetchInterval: 5000,
+    refetchIntervalInBackground: false,
   });
 
   const {
@@ -135,7 +139,7 @@ export default function UsersCompaniesPage() {
   };
 
   return (
-    <div className="flex flex-col h-full p-4 md:p-6 gap-4">
+    <div className="flex flex-col h-full gap-6">
       {/* Header Section */}
       <div className="flex items-center justify-start flex-wrap gap-2">
         <Button
@@ -188,9 +192,21 @@ export default function UsersCompaniesPage() {
                       }}
                       className={`w-full flex items-center gap-3 p-2 rounded-md text-left hover:bg-muted ${selectedCompanyId === company.id.toString() && currentView === 'company_users' ? 'bg-muted font-semibold' : ''}`}
                     >
-                      <Avatar className="h-8 w-8 text-xs">
+                      <Avatar className="h-8 w-8 text-xs overflow-hidden bg-slate-50 dark:bg-slate-800">
+                        {company.logo_url ? (
+                          <div className="relative w-full h-full p-1">
+                            <AvatarImage
+                              key={`${company.id}-${company.logo_url}`}
+                              src={company.logo_url}
+                              alt={`${company.name} logo`}
+                              className="object-contain"
+                            />
+                          </div>
+                        ) : null}
                         <AvatarFallback>
-                          <Building className="h-4 w-4 text-muted-foreground" />
+                          {company.logo_url ? null : (
+                            <Building className="h-4 w-4 text-muted-foreground" />
+                          )}
                         </AvatarFallback>
                       </Avatar>
                       <span className="text-sm font-medium truncate">{company.name}</span>
@@ -324,6 +340,7 @@ export default function UsersCompaniesPage() {
         onClose={() => setIsNewCompanyModalOpen(false)}
         onSaveSuccess={handleCompanySaveSuccess}
       />
+
       <NewUserModal
         isOpen={isNewUserModalOpen}
         onClose={() => setIsNewUserModalOpen(false)}

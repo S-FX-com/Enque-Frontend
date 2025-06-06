@@ -1,38 +1,192 @@
-/* Basic Tiptap Styling */
-
-/* Ensure the editor content area has focus styles if needed */
 .ProseMirror:focus {
   outline: none;
-  /* Add other focus styles if desired */
 }
 
-/* Style links within the editor */
+/* Estilos para el cuerpo del mensaje en el editor */
+.ProseMirror p:not(.email-signature p) {
+  line-height: 1.4; /* Reducir el interlineado general */
+  margin-top: 0.5em; /* Ajustar margen superior si es necesario */
+  margin-bottom: 0.5em; /* Ajustar margen inferior si es necesario */
+}
+
+.email-signature,
+.ProseMirror .email-signature {
+  color: #6b7280 !important;
+  line-height: 0.6 !important; /* Ajustado a 0.6 */
+}
+
+.email-signature p,
+.ProseMirror .email-signature p {
+  color: #6b7280 !important;
+  margin-top: 0 !important;
+  margin-bottom: 0.1em !important; /* Reducido para ajustarse a line-height: 0.6 */
+  line-height: 0.6 !important; /* Ajustado a 0.6 */
+}
+
+.email-signature p strong {
+  display: inline-block;
+  margin-bottom: 0 !important;
+}
+
+.email-signature p em {
+  display: inline-block;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+.email-signature br {
+  line-height: 1 !important;
+}
+
+.email-signature p + p {
+  margin-top: 0 !important;
+}
+
+.email-signature p strong + br + em,
+.email-signature p em + br + em {
+  margin-top: -5px !important;
+}
+
+.email-signature img {
+  width: 120px !important;
+  height: 75px !important;
+  max-width: 120px !important;
+  max-height: 75px !important;
+  object-fit: scale-down !important;
+  margin-top: 0.25em !important;
+  margin-bottom: 0 !important;
+  display: block !important;
+  float: left !important;
+  clear: left !important;
+}
+
+.prose .email-signature,
+.prose .email-signature p {
+  color: #6b7280 !important;
+  margin-top: 0 !important;
+  margin-bottom: 0.1em !important; /* Reducido para ajustarse a line-height: 0.6 */
+  line-height: 0.6 !important; /* Ajustado a 0.6 */
+}
+
+.prose .email-signature p + p {
+  margin-top: 0 !important;
+}
+
 .ProseMirror a {
-  color: theme('colors.blue.600');
-  text-decoration: underline;
+  color: theme('colors.blue.600') !important;
+  text-decoration: underline !important;
   cursor: pointer;
 }
 .dark .ProseMirror a {
-  color: theme('colors.blue.400');
+  color: theme('colors.blue.400') !important;
 }
 
-/* Override ANY styles for images within the editor to force fixed size */
+.ProseMirror u {
+  text-decoration: underline;
+}
+
+.ProseMirror [data-type='link'],
+.ProseMirror a[href] {
+  color: theme('colors.blue.600') !important;
+  text-decoration: underline !important;
+}
+.dark .ProseMirror [data-type='link'],
+.dark .ProseMirror a[href] {
+  color: theme('colors.blue.400') !important;
+}
+
+/* Estilos generales para imágenes del contenido del mensaje */
+.ProseMirror img {
+  display: block !important;
+  margin: 1em 0 !important;
+  max-width: 300px !important;
+  max-height: 200px !important;
+  object-fit: contain !important;
+  border-radius: 4px !important;
+}
+
+/* Estilos específicos para imágenes con dimensiones fijas (del mensaje) */
 .ProseMirror img[width][height] {
-  /* Target images specifically having width/height attributes */
-  width: var(--img-width, 150px) !important; /* Use CSS variable or fallback */
-  height: var(--img-height, 92px) !important; /* Use CSS variable or fallback */
-  max-width: var(--img-width, 150px) !important; /* Ensure max-width matches */
-  object-fit: contain; /* Optional: control how image fits if aspect ratio differs */
-  margin-top: 0.5em !important; /* Add some margin back */
-  margin-bottom: 0.5em !important;
+  object-fit: contain !important;
+  display: block !important;
+  margin: 1em 0 !important;
+  max-width: 300px !important;
+  max-height: 200px !important;
 }
 
-/* Reset width/height for images *without* explicit dimensions if needed */
+/* Contenedor del mensaje para separar del signature */
+.ProseMirror .message-content {
+  margin-bottom: 20px !important;
+  clear: both !important;
+}
+
+/* Asegurar que la firma esté siempre separada del contenido */
+.ProseMirror .email-signature {
+  clear: both !important;
+  margin-top: 24px !important;
+  padding-top: 16px !important;
+  border-top: 1px solid #e5e7eb !important;
+}
+
+/* Estilos específicos para imágenes de la firma - mantener pequeñas */
+.email-signature img,
+.ProseMirror .email-signature img {
+  width: 120px !important;
+  height: 75px !important;
+  max-width: 120px !important;
+  max-height: 75px !important;
+  object-fit: scale-down !important;
+  margin: 0.25em 0 0 0 !important;
+  display: block !important;
+  border-radius: 4px !important;
+}
+
 .ProseMirror img:not([width]):not([height]) {
-  max-width: 100%;
+  max-width: 300px !important;
+  max-height: 200px !important;
   height: auto;
-  margin-top: 1em; /* Default prose margins */
-  margin-bottom: 1em;
+  margin: 1em 0 !important;
+  object-fit: contain !important;
 }
 
-/* Add any other custom styles for Tiptap elements here */
+.ProseMirror ul {
+  list-style-type: disc;
+  padding-left: 1.5em;
+  margin: 0.5em 0;
+  color: inherit;
+}
+
+.ProseMirror ol {
+  list-style-type: decimal;
+  padding-left: 1.5em;
+  margin: 0.5em 0;
+  color: inherit;
+}
+
+.ProseMirror li {
+  margin-bottom: 0.3em;
+  color: inherit;
+}
+
+.ProseMirror li > ul,
+.ProseMirror li > ol {
+  margin-top: 0.3em;
+  margin-bottom: 0;
+}
+
+/* Dark mode adjustments */
+.dark .ProseMirror ul,
+.dark .ProseMirror ol,
+.dark .ProseMirror li {
+  color: theme('colors.slate.200');
+}
+
+/* Forzar tamaño específico para logos que vengan como 300x200 pero son de firma */
+.ProseMirror .email-signature img[width='300'][height='200'],
+.email-signature img[width='300'][height='200'] {
+  width: 120px !important;
+  height: 75px !important;
+  max-width: 120px !important;
+  max-height: 75px !important;
+  object-fit: scale-down !important;
+}

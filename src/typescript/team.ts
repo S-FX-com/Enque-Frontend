@@ -3,6 +3,7 @@ export interface Team {
   name: string;
   description?: string | null;
   logo_url?: string | null;
+  icon_name?: string | null;
   workspace_id: number;
   created_at: string;
   updated_at: string;
@@ -13,13 +14,17 @@ export interface TeamCreate {
   name: string;
   description?: string | null;
   logo_url?: string | null;
+  icon_name?: string | null;
   workspace_id: number;
+  agent_ids?: string[];
 }
 
 export interface TeamUpdate {
   name?: string | null;
   description?: string | null;
   logo_url?: string | null;
+  icon_name?: string | null;
+  manager_id?: number | null;
 }
 
 export interface TeamMember {

@@ -16,7 +16,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, PlusCircle, Trash2 } from 'lucide-react';
+import { Loader2, PlusCircle, Trash2, Pencil, Check, X as IconX } from 'lucide-react'; // Added Pencil, Check, IconX
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   Table,
@@ -42,6 +42,7 @@ import { deleteCompany, updateCompany } from '@/services/company';
 import { updateUser } from '@/services/user';
 import { toast } from 'sonner';
 import type { BaseResponse } from '@/lib/fetch-api';
+import { CompanyLogo } from '@/components/company/company-logo';
 
 interface CompanyUserViewProps {
   company: ICompany;
@@ -76,38 +77,91 @@ const CompanyUserView: React.FC<CompanyUserViewProps> = ({
   const descriptionMaxLength = 150;
   const [isCompanyDeleteDialogOpen, setIsCompanyDeleteDialogOpen] = useState(false);
   const [selectedUserIds, setSelectedUserIds] = useState<Set<number>>(new Set());
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editableName, setEditableName] = useState(company.name);
   const [isUserUnassignDialogOpen, setIsUserUnassignDialogOpen] = useState(false);
+  const [logoUrl, setLogoUrl] = useState<string | null | undefined>(company.logo_url);
 
-  const updateMutation = useMutation({
+  const updateMutation = useMutation<
+    BaseResponse<ICompany>, // Type of data returned by mutationFn
+    Error, // Type of error
+    CompanyUpdatePayload, // Type of variables passed to mutationFn
+    { previousCompany?: ICompany; previousCompanies?: ICompany[] } // Type of context
+  >({
     mutationFn: (updateData: CompanyUpdatePayload) => updateCompany(company.id, updateData),
-    onSuccess: (response: BaseResponse<ICompany>) => {
-      if (response.success && response.data) {
-        const updatedCompany = response.data;
-        toast.success(`Company "${updatedCompany.name}" updated.`);
-        const companyIdStr = updatedCompany.id.toString();
+    onMutate: async (updateData: CompanyUpdatePayload) => {
+      // Cancel any outgoing refetches (so they don't overwrite our optimistic update)
+      await queryClient.cancelQueries({ queryKey: ['company', company.id.toString()] });
+      await queryClient.cancelQueries({ queryKey: ['companies'] });
 
-        queryClient.invalidateQueries({ queryKey: ['companies'] });
-        queryClient.invalidateQueries({ queryKey: ['company', companyIdStr] });
-        queryClient.invalidateQueries({ queryKey: ['companyUsers', companyIdStr] });
-        queryClient.invalidateQueries({ queryKey: ['unassignedUsers'] });
+      // Snapshot the previous value for the specific company
+      const previousCompany = queryClient.getQueryData<ICompany>([
+        'company',
+        company.id.toString(),
+      ]);
+      // Snapshot the previous value for the list of companies
+      const previousCompanies = queryClient.getQueryData<ICompany[]>(['companies']);
+
+      // Optimistically update to the new value
+      if (updateData.name && previousCompany) {
+        queryClient.setQueryData<ICompany>(['company', company.id.toString()], {
+          ...previousCompany,
+          name: updateData.name,
+        });
+        setEditableName(updateData.name); // Update local state for input field if still visible
+      }
+      if (updateData.name && previousCompanies) {
+        queryClient.setQueryData<ICompany[]>(['companies'], oldCompanies =>
+          oldCompanies?.map(c => (c.id === company.id ? { ...c, name: updateData.name! } : c))
+        );
+      }
+
+      // Also optimistically update other fields if they are part of updateData
+      // For simplicity, this example focuses on 'name'. A more generic approach would update all fields in updateData.
+      // For example, if updating description:
+      // if (updateData.description !== undefined && previousCompany) {
+      //   queryClient.setQueryData<ICompany>(['company', company.id.toString()], {
+      //     ...previousCompany,
+      //     description: updateData.description,
+      //   });
+      // }
+
+      return { previousCompany, previousCompanies };
+    },
+    onSuccess: (response: BaseResponse<ICompany>, variables) => {
+      if (response.success && response.data) {
+        toast.success(`Company "${response.data.name}" updated.`);
+        // If the name was updated, ensure local state for editing is also up-to-date
+        if (variables.name) {
+          setEditableName(response.data.name);
+        }
       } else {
         toast.error(response.message || 'Failed to update company. Please try again.');
       }
     },
-    onError: (error: Error) => {
+    onError: (error: Error, variables, context) => {
       toast.error(`Failed to update company: ${error.message}`);
-      setEditableDescription(company.description || '');
-      setEditableDomain(company.email_domain || '');
-      setSelectedPrimaryContact(company.primary_contact_id?.toString() || undefined);
-      setSelectedAccountManager(company.account_manager_id?.toString() || undefined);
+      // Rollback optimistic update
+      if (context?.previousCompany) {
+        queryClient.setQueryData(['company', company.id.toString()], context.previousCompany);
+        setEditableName(context.previousCompany.name); // Revert local state
+      }
+      if (context?.previousCompanies) {
+        queryClient.setQueryData(['companies'], context.previousCompanies);
+      }
+      // Revert other local states if they were part of the failed update
+      if (variables.description !== undefined) setEditableDescription(company.description || '');
+      if (variables.email_domain !== undefined) setEditableDomain(company.email_domain || '');
+      if (variables.primary_contact_id !== undefined)
+        setSelectedPrimaryContact(company.primary_contact_id?.toString() || undefined);
+      if (variables.account_manager_id !== undefined)
+        setSelectedAccountManager(company.account_manager_id?.toString() || undefined);
     },
     onSettled: (response: BaseResponse<ICompany> | undefined) => {
-      let companyIdForInvalidation: string;
-      if (response && response.success && response.data) {
-        companyIdForInvalidation = response.data.id.toString();
-      } else {
-        companyIdForInvalidation = company.id.toString();
-      }
+      const companyIdForInvalidation =
+        response?.success && response?.data?.id
+          ? response.data.id.toString()
+          : company.id.toString();
 
       queryClient.invalidateQueries({ queryKey: ['companies'] });
       queryClient.invalidateQueries({ queryKey: ['company', companyIdForInvalidation] });
@@ -217,13 +271,16 @@ const CompanyUserView: React.FC<CompanyUserViewProps> = ({
     setSelectedAccountManager(company.account_manager_id?.toString() || undefined);
     setEditableDescription(company.description || '');
     setEditableDomain(company.email_domain || '');
+    setEditableName(company.name); // Update editableName when company prop changes
     setSelectedUserIds(new Set());
+    setLogoUrl(company.logo_url); // Actualizar el estado logoUrl cuando cambia la compañía
   }, [company]);
 
   const handleFieldUpdate = (
     field: keyof CompanyUpdatePayload,
     value: string | number | null | undefined
   ) => {
+    if (field === 'name' && value === company.name) return; // Check for name change
     if (field === 'description' && value === (company.description || '')) return;
     if (field === 'email_domain' && value === (company.email_domain || '')) return;
     if (field === 'primary_contact_id' && value === company.primary_contact_id) return;
@@ -304,11 +361,88 @@ const CompanyUserView: React.FC<CompanyUserViewProps> = ({
 
   const canDeleteCompany = users.length === 0;
 
+  const handleLogoChange = (newLogoUrl: string | null) => {
+    setLogoUrl(newLogoUrl);
+    handleFieldUpdate('logo_url', newLogoUrl);
+  };
+
   return (
     <div className="w-full h-full flex flex-col p-6 space-y-6 overflow-hidden">
       {/* Top Section */}
       <div className="flex justify-between items-center flex-shrink-0">
-        <h2 className="text-xl font-semibold">{company.name}</h2>
+        <div className="flex items-center gap-3">
+          <CompanyLogo
+            logoUrl={logoUrl}
+            companyName={company.name}
+            onLogoChange={handleLogoChange}
+            isUpdating={updateMutation.isPending}
+            key={`company-${company.id}-${logoUrl}`}
+          />
+          <div className="flex items-center">
+            {isEditingName ? (
+              <>
+                <Input
+                  value={editableName}
+                  onChange={e => setEditableName(e.target.value)}
+                  className="text-xl font-semibold h-9" // Adjusted height
+                  autoFocus
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') {
+                      if (editableName.trim() && editableName.trim() !== company.name) {
+                        handleFieldUpdate('name', editableName.trim());
+                      }
+                      setIsEditingName(false);
+                    } else if (e.key === 'Escape') {
+                      setIsEditingName(false);
+                      setEditableName(company.name);
+                    }
+                  }}
+                />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => {
+                    if (editableName.trim() && editableName.trim() !== company.name) {
+                      handleFieldUpdate('name', editableName.trim());
+                    }
+                    setIsEditingName(false);
+                  }}
+                  disabled={updateMutation.isPending || !editableName.trim()}
+                >
+                  <Check className="h-5 w-5 text-green-600" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => {
+                    setIsEditingName(false);
+                    setEditableName(company.name);
+                  }}
+                  disabled={updateMutation.isPending}
+                >
+                  <IconX className="h-5 w-5 text-red-600" />
+                </Button>
+              </>
+            ) : (
+              <>
+                <h2 className="text-xl font-semibold">{company.name}</h2>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                  onClick={() => {
+                    setEditableName(company.name);
+                    setIsEditingName(true);
+                  }}
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+              </>
+            )}
+          </div>
+        </div>
         <AlertDialog open={isCompanyDeleteDialogOpen} onOpenChange={setIsCompanyDeleteDialogOpen}>
           <AlertDialogTrigger asChild>
             <Button
@@ -496,7 +630,7 @@ const CompanyUserView: React.FC<CompanyUserViewProps> = ({
             <PlusCircle className="mr-2 h-4 w-4" /> Add User to Company
           </Button>
         </div>
-        <div className="flex-grow overflow-y-auto border rounded-md">
+        <div className="flex-grow overflow-y-auto border rounded-md max-h-[465px]">
           {isLoadingUsers ? (
             <div className="flex justify-center items-center h-32">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />

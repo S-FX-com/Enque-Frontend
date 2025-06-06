@@ -4,12 +4,14 @@ import AppLayout from '@/components/layouts/app-layout';
 
 export default function UsersCompaniesPage({ children }: { children: React.ReactNode }) {
   const breadcrumbs = [
-    { label: 'Dashboard', href: '/users & companies' },
-    { label: 'users & companies', href: '/users & companies' },
+    { label: 'Dashboard', href: '/dashboard' }, // Corrected href
+    { label: 'Users & Companies', href: '/users-companies' }, // Capitalized and corrected href
   ];
 
   return (
-    <AppLayout title="users & companies" breadcrumbs={breadcrumbs}>
+    <AppLayout title="Users & Companies" breadcrumbs={breadcrumbs}>
+      {' '}
+      {/* Capitalized title */}
       {children}
     </AppLayout>
   );

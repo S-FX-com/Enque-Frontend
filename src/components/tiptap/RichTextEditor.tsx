@@ -1,25 +1,120 @@
 'use client';
 
-import React from 'react';
-// Removed unused Editor type import
-import { useEditor, EditorContent } from '@tiptap/react';
+import React, { useCallback } from 'react';
+import { useEditor, EditorContent, type Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
 import Placeholder from '@tiptap/extension-placeholder';
 import HardBreak from '@tiptap/extension-hard-break';
 import Image from '@tiptap/extension-image'; // Import Image extension
+import Underline from '@tiptap/extension-underline'; // Importar extensión de subrayado
+import { Extension } from '@tiptap/core'; // Importar Extension
 import { RichTextToolbar } from './RichTextToolbar';
 import './tiptap-styles.css';
+import { uploadImage } from '@/services/upload'; // Importar el servicio de carga de imágenes
+import { toast } from 'sonner';
 
 interface Props {
   content: string;
   onChange: (richText: string) => void;
   placeholder?: string;
   disabled?: boolean;
+  onAttachmentsChange?: (files: File[]) => void;
   // Add other props like 'editable' if needed based on context
 }
 
-export function RichTextEditor({ content, onChange, placeholder, disabled = false }: Props) {
+// Extensión personalizada para manejar doble espacio en listas
+const ListKeyboardShortcuts = Extension.create({
+  name: 'listKeyboardShortcuts',
+
+  addKeyboardShortcuts() {
+    // Variable para registrar el último momento en que se presionó espacio
+    let lastSpaceTime = 0;
+
+    return {
+      Space: ({ editor }) => {
+        const { state } = editor;
+        const { selection } = state;
+        const { empty, $head } = selection;
+
+        // Solo funciona si el cursor está vacío (no hay texto seleccionado)
+        if (!empty) return false;
+
+        // Verificar si estamos en un elemento de lista
+        const isInList = $head.parent.type.name === 'listItem';
+        if (!isInList) return false;
+
+        // Obtener el contenido del nodo actual
+        const nodeContent = $head.parent.textContent;
+
+        // Verificar si el nodo está vacío (solo tiene espacios o está totalmente vacío)
+        if (nodeContent.trim() === '') {
+          // Si está vacío, salir de la lista
+          editor.chain().liftListItem('listItem').run();
+          return true;
+        }
+
+        // Implementación del doble espacio (al estilo Word)
+        const now = Date.now();
+        const isDoubleSpace = now - lastSpaceTime < 500; // 500ms para detectar doble espacio
+
+        // Actualizar el tiempo del último espacio
+        lastSpaceTime = now;
+
+        // Si es doble espacio, verificar la posición del cursor
+        if (isDoubleSpace && $head.parentOffset === nodeContent.length) {
+          // Estamos al final del texto y se detectó doble espacio
+          // Primero eliminamos el espacio anterior
+          editor.commands.deleteRange({
+            from: $head.pos - 1,
+            to: $head.pos,
+          });
+
+          // Insertamos un salto de línea y salimos de la lista
+          editor.chain().createParagraphNear().liftListItem('listItem').run();
+
+          return true;
+        }
+
+        // Si no es doble espacio o no estamos al final, continuar normalmente
+        return false;
+      },
+    };
+  },
+});
+
+export function RichTextEditor({
+  content,
+  onChange,
+  placeholder,
+  disabled = false,
+  onAttachmentsChange,
+}: Props) {
+  // Función para manejar el pegado de imágenes
+  const handlePasteImage = useCallback(async (file: File, editor: Editor) => {
+    try {
+      // Eliminar la notificación de carga
+      const result = await uploadImage(file);
+
+      if (result && result.url) {
+        // Insertar la imagen en el editor con dimensiones fijas
+        editor
+          .chain()
+          .focus()
+          .setImage({
+            src: result.url,
+            alt: 'Pasted Image',
+          })
+          .run();
+
+        toast.success('Image uploaded and inserted successfully!');
+      }
+    } catch (error) {
+      console.error('Failed to upload pasted image:', error);
+      toast.error('Failed to upload pasted image. Please try using the image button instead.');
+    }
+  }, []);
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -33,9 +128,19 @@ export function RichTextEditor({ content, onChange, placeholder, disabled = fals
         // Ensure basic formatting is enabled
         bold: {}, // Enables bold command
         italic: {}, // Enables italic command
-        bulletList: {}, // Enables bullet list command
-        orderedList: {}, // Enables ordered list command
-        listItem: {},
+        bulletList: {
+          keepMarks: true,
+          keepAttributes: true,
+        }, // Enables bullet list command with additional configuration
+        orderedList: {
+          keepMarks: true,
+          keepAttributes: true,
+        }, // Enables ordered list command with additional configuration
+        listItem: {
+          HTMLAttributes: {
+            class: 'list-item',
+          },
+        },
         // Disable others if not required
         strike: false,
         code: false,
@@ -59,6 +164,8 @@ export function RichTextEditor({ content, onChange, placeholder, disabled = fals
           rel: 'noopener noreferrer nofollow',
         },
       }),
+      // Añadir la extensión de subrayado
+      Underline.configure(),
       Placeholder.configure({
         placeholder: placeholder || 'Type your message...',
       }),
@@ -66,7 +173,10 @@ export function RichTextEditor({ content, onChange, placeholder, disabled = fals
         inline: false,
         allowBase64: false,
         HTMLAttributes: {
-          // No default classes needed here now
+          width: 300,
+          height: 200,
+          style:
+            'width: auto; height: auto; max-width: 300px; max-height: 200px; object-fit: contain; border-radius: 4px;',
         },
       }).extend({
         // Extend the Image extension to add custom attribute handling
@@ -74,43 +184,37 @@ export function RichTextEditor({ content, onChange, placeholder, disabled = fals
           return {
             ...this.parent?.(), // Keep existing attributes like src, alt, title
             width: {
-              default: null,
+              default: 300,
               // Parse width attribute from HTML
               parseHTML: element => element.getAttribute('width'),
               // Render width attribute back to HTML
               renderHTML: attributes => {
-                if (!attributes.width) {
-                  return {};
-                }
                 return { width: attributes.width };
               },
             },
             height: {
-              default: null,
+              default: 200,
               // Parse height attribute from HTML
               parseHTML: element => element.getAttribute('height'),
               // Render height attribute back to HTML
               renderHTML: attributes => {
-                if (!attributes.height) {
-                  return {};
-                }
                 return { height: attributes.height };
               },
             },
             // Keep style attribute handling if we decide to use it later, otherwise remove
             style: {
-              default: null,
+              default:
+                'width: auto; height: auto; max-width: 300px; max-height: 200px; object-fit: contain; border-radius: 4px;',
               parseHTML: element => element.getAttribute('style'),
               renderHTML: attributes => {
-                if (!attributes.style) {
-                  return {};
-                }
                 return { style: attributes.style };
               },
             },
           };
         },
       }),
+      // Añadir la extensión personalizada para manejar doble espacio en listas
+      ListKeyboardShortcuts,
     ],
     content: content,
     editable: !disabled,
@@ -125,11 +229,39 @@ export function RichTextEditor({ content, onChange, placeholder, disabled = fals
         class:
           'max-w-none focus:outline-none p-2 border rounded-md min-h-[80px] max-h-[300px] overflow-y-auto',
       },
+      // Añadir manejador de eventos para pegar
+      handlePaste: (view, event) => {
+        const currentEditor = editor;
+        // Verificar que no esté deshabilitado y que el editor exista
+        if (disabled || !currentEditor) return false;
+
+        // Revisar si hay imágenes en el clipboard
+        const items = event.clipboardData?.items;
+        if (!items) return false;
+
+        // Buscar imágenes en los datos del portapapeles
+        for (let i = 0; i < items.length; i++) {
+          const item = items[i];
+
+          // Si encontramos una imagen, manejarla
+          if (item.type.indexOf('image') !== -1) {
+            const file = item.getAsFile();
+            if (file) {
+              // Prevenir el comportamiento predeterminado
+              event.preventDefault();
+              // Cargar y insertar la imagen
+              handlePasteImage(file, currentEditor);
+              return true;
+            }
+          }
+        }
+
+        // Si no hay imágenes, dejar que TipTap maneje el pegado normalmente
+        return false;
+      },
     },
   });
 
-  // Set content programmatically if the external content changes
-  // Set content programmatically if the external content changes
   // Set content programmatically if the external content changes
   // (e.g., clearing the editor after sending)
   React.useEffect(() => {
@@ -148,7 +280,7 @@ export function RichTextEditor({ content, onChange, placeholder, disabled = fals
 
   return (
     <div className="flex flex-col">
-      <RichTextToolbar editor={editor} />
+      <RichTextToolbar editor={editor} onAttachmentsChange={onAttachmentsChange} />
       <EditorContent editor={editor} />
     </div>
   );

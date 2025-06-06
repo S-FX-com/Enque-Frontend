@@ -1,29 +1,14 @@
-import { fetchAPI } from '@/lib/fetch-api'; // Corrected import name
-import { Team, TeamMember } from '../typescript/team'; // Using relative path and adding TeamMember import
-
-// Use the production URL directly. Ensure NEXT_PUBLIC_API_BASE_URL is set in the production environment.
+import { fetchAPI } from '@/lib/fetch-api';
+import { Team, TeamMember } from '../typescript/team';
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || 'https://enque-backend-production.up.railway.app';
 
 export const getTeams = async (): Promise<Team[]> => {
   try {
     const url = `${API_BASE_URL}/v1/teams/`;
-    // Use the GET method from the fetchAPI object
-    // Assuming fetchAPI.GET handles response checking and JSON parsing internally
-    // Adjust based on the actual implementation of fetchAPI.GET
-    const response = await fetchAPI.GET<Team[]>(url); // Pass the expected return type
 
-    // Assuming fetchAPI.GET throws an error on failure or returns data directly
-    // If fetchAPI.GET returns the raw response object, uncomment and adapt the checks below
-    /*
-    if (!response.ok) { // Or check a success flag if fetchAPI.GET returns a custom object
-      console.error('Failed to fetch teams:', response.statusText); // Adjust property access if needed
-      throw new Error('Failed to fetch teams');
-    }
-    const data: Team[] = await response.json(); // Adjust if data is already parsed
-    */
+    const response = await fetchAPI.GET<Team[]>(url);
 
-    // If fetchAPI.GET returns the parsed data directly on success:
     if (!response || !response.data) {
       // Adjust based on actual return structure
       console.error('Failed to fetch teams or data is missing');
@@ -68,26 +53,29 @@ export const getTeamMembers = async (teamId: number): Promise<TeamMember[]> => {
 
 /**
  * Creates a new team.
- * @param teamData The data for the new team (name, description, workspace_id).
+ * @param teamData The data for the new team (name, description, workspace_id, icon_name).
  * @returns A promise that resolves to the newly created team object.
  */
 export const createTeam = async (teamData: {
   name: string;
   description?: string | null;
   workspace_id: number;
+  icon_name?: string | null;
 }): Promise<Team> => {
+  console.log('[createTeam service] Received teamData:', JSON.stringify(teamData));
   try {
     const url = `${API_BASE_URL}/v1/teams/`;
-    // Assuming fetchAPI.POST handles sending the body and returns the created object
     const response = await fetchAPI.POST<Team>(url, teamData);
+    console.log('[createTeam service] API Response raw:', JSON.stringify(response));
 
     if (!response || !response.data) {
-      console.error('Failed to create team or data is missing');
-      throw new Error('Failed to create team');
+      console.error('[createTeam service] Failed to create team or data is missing in response');
+      throw new Error('Failed to create team or API response data is missing');
     }
+    console.log('[createTeam service] Parsed team data from API:', JSON.stringify(response.data));
     return response.data;
   } catch (error) {
-    console.error('Error creating team:', error);
+    console.error('[createTeam service] Error during API call:', error);
     throw error;
   }
 };
@@ -153,7 +141,13 @@ export const deleteTeam = async (teamId: number): Promise<void> => {
  */
 export const updateTeam = async (
   teamId: number,
-  teamData: { name?: string | null; description?: string | null; logo_url?: string | null }
+  teamData: {
+    name?: string | null;
+    description?: string | null;
+    logo_url?: string | null;
+    icon_name?: string | null;
+    manager_id?: number | null;
+  }
 ): Promise<Team> => {
   if (!teamId) {
     console.error('updateTeam requires a valid teamId');
@@ -200,7 +194,7 @@ export const removeTeamMember = async (teamId: number, agentId: number): Promise
 /**
  * Fetches teams associated with a specific agent.
  * @param agentId The ID of the agent.
- * @returns A promise that resolves to an array of teams.
+ * @returns A promise that resolves to an array of teams with ticket counts including mailbox tickets.
  */
 export const getAgentTeams = async (agentId: number): Promise<Team[]> => {
   if (!agentId) {
@@ -208,9 +202,8 @@ export const getAgentTeams = async (agentId: number): Promise<Team[]> => {
     return []; // Return empty array if agentId is invalid
   }
   try {
-    // Assuming an endpoint like /v1/agents/{agent_id}/teams exists
-    // Adjust the URL if your backend endpoint is different
-    const url = `${API_BASE_URL}/v1/agents/${agentId}/teams`;
+    // Use the new endpoint that includes mailbox ticket counts
+    const url = `${API_BASE_URL}/v1/teams/agent/${agentId}`;
     const response = await fetchAPI.GET<Team[]>(url);
 
     if (!response || !response.data) {
@@ -223,5 +216,3 @@ export const getAgentTeams = async (agentId: number): Promise<Team[]> => {
     throw error; // Or return [];
   }
 };
-
-// Add other team-related service functions here later

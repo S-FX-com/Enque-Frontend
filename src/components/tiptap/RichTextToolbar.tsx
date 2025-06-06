@@ -1,15 +1,18 @@
 // frontend/src/components/tiptap/RichTextToolbar.tsx
 'use client';
 
-import React, { useState, useCallback, useRef } from 'react'; // Import useRef
+import React, { useState, useCallback, useRef, useEffect } from 'react'; // Importar useEffect
 import { type Editor } from '@tiptap/react';
 import {
   Bold,
   Italic,
+  Underline,
   List,
   ListOrdered,
   Link as LinkIcon,
   Image as ImageIcon,
+  Paperclip,
+  X as XIcon, // <<< NUEVO: Importar icono X
 } from 'lucide-react'; // Removed unused Upload icon
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -29,15 +32,32 @@ import { toast } from 'sonner'; // Import toast
 
 interface Props {
   editor: Editor | null;
+  onAttachmentsChange?: (files: File[]) => void; // <<< NUEVO: Prop para notificar cambios en adjuntos
 }
 
-export function RichTextToolbar({ editor }: Props) {
+export function RichTextToolbar({ editor, onAttachmentsChange }: Props) {
+  // <<< MODIFICADO: Añadir prop
   const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
   const [initialLinkUrl, setInitialLinkUrl] = useState('');
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   const [imageUrl, setImageUrl] = useState('');
-  const [selectedFile, setSelectedFile] = useState<File | null>(null); // State for selected file
-  const fileInputRef = useRef<HTMLInputElement>(null); // Ref for file input
+  const [selectedFile, setSelectedFile] = useState<File | null>(null); // State for selected image file
+  const imageInputRef = useRef<HTMLInputElement>(null); // Ref for image file input
+
+  // --- Estados y Refs para ADJUNTOS ---
+  const [selectedAttachments, setSelectedAttachments] = useState<File[]>([]); // State for multiple attachments
+  const attachmentInputRef = useRef<HTMLInputElement>(null); // Ref for attachment input
+
+  // <<< NUEVO: useEffect para notificar al padre cuando los adjuntos cambian >>>
+  useEffect(() => {
+    if (onAttachmentsChange) {
+      onAttachmentsChange(selectedAttachments);
+    }
+    // Limpiar el valor del input para permitir seleccionar el mismo archivo después de quitarlo
+    if (attachmentInputRef.current) {
+      attachmentInputRef.current.value = '';
+    }
+  }, [selectedAttachments, onAttachmentsChange]);
 
   // --- Upload Mutation ---
   const uploadMutation = useMutation({
@@ -46,6 +66,9 @@ export function RichTextToolbar({ editor }: Props) {
       toast.success('Image uploaded successfully!');
       // Insert the uploaded image URL into the editor
       if (editor && data?.url) {
+        // Usar la URL tal como viene del servicio sin modificarla
+        const src = data.url;
+
         // Apply fixed dimensions using both attributes and inline styles
         const attrs: {
           src: string;
@@ -54,11 +77,12 @@ export function RichTextToolbar({ editor }: Props) {
           alt?: string;
           style?: string;
         } = {
-          src: data.url, // Use the URL returned from the backend
+          src, // Use the URL returned from the backend
           alt: selectedFile?.name || 'Uploaded Image', // Use file name as alt text
-          width: 150,
-          height: 92,
-          style: 'width: 150px; height: 92px; max-width: 150px;', // Add style as well
+          width: 300,
+          height: 200,
+          style:
+            'width: auto; height: auto; max-width: 300px; max-height: 200px; object-fit: contain; border-radius: 4px;',
         };
         editor.chain().focus().setImage(attrs).run();
       }
@@ -106,14 +130,18 @@ export function RichTextToolbar({ editor }: Props) {
   // Callback to handle setting the image from URL input
   const handleSetImageFromUrl = useCallback(() => {
     if (editor && imageUrl) {
+      // No modificar URLs externas que ya comienzan con http o https
+      const src = imageUrl;
+
       // Apply fixed dimensions using both attributes and inline styles
       const attrs: { src: string; width?: number; height?: number; alt?: string; style?: string } =
         {
-          src: imageUrl,
+          src,
           alt: 'Signature Image',
-          width: 150,
-          height: 92,
-          style: 'width: 150px; height: 92px; max-width: 150px;', // Add style as well
+          width: 300,
+          height: 200,
+          style:
+            'width: auto; height: auto; max-width: 300px; max-height: 200px; object-fit: contain; border-radius: 4px;',
         };
       editor.chain().focus().setImage(attrs).run();
     }
@@ -129,6 +157,29 @@ export function RichTextToolbar({ editor }: Props) {
     }
   };
 
+  // Handle attachment file selection
+  const handleAttachmentFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (files) {
+      setSelectedAttachments(prev => {
+        const newFiles = Array.from(files);
+        // Filtrar duplicados basados en el nombre del archivo
+        const updatedAttachments = [...prev];
+        newFiles.forEach(newFile => {
+          if (!prev.find(existingFile => existingFile.name === newFile.name)) {
+            updatedAttachments.push(newFile);
+          }
+        });
+        return updatedAttachments;
+      });
+    }
+  };
+
+  // Callback to open the attachment selector
+  const openAttachmentSelector = useCallback(() => {
+    attachmentInputRef.current?.click();
+  }, []);
+
   // Handle image insertion (either from URL or Upload)
   const handleInsertImage = () => {
     if (selectedFile) {
@@ -139,6 +190,11 @@ export function RichTextToolbar({ editor }: Props) {
       handleSetImageFromUrl();
     }
     // If neither is present, the button should be disabled
+  };
+
+  // <<< NUEVO: Manejar eliminación de un adjunto >>>
+  const handleRemoveAttachment = (fileNameToRemove: string) => {
+    setSelectedAttachments(prev => prev.filter(file => file.name !== fileNameToRemove));
   };
 
   if (!editor) {
@@ -170,6 +226,19 @@ export function RichTextToolbar({ editor }: Props) {
         title="Italic"
       >
         <Italic className="h-4 w-4" />
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        className={cn(
+          'h-8 w-8',
+          editor.isActive('underline') ? 'bg-accent text-accent-foreground' : ''
+        )}
+        onClick={() => editor.chain().focus().toggleUnderline().run()}
+        disabled={!editor.can().chain().focus().toggleUnderline().run()}
+        title="Underline"
+      >
+        <Underline className="h-4 w-4" />
       </Button>
       <Button
         variant="ghost"
@@ -276,7 +345,7 @@ export function RichTextToolbar({ editor }: Props) {
                   id="imageUpload"
                   type="file"
                   accept="image/*"
-                  ref={fileInputRef} // Use ref
+                  ref={imageInputRef}
                   onChange={handleFileChange}
                   className="text-sm file:mr-4 file:py-1 file:px-2 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
                   disabled={uploadMutation.isPending}
@@ -308,6 +377,65 @@ export function RichTextToolbar({ editor }: Props) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* <<< NUEVO: Botón de Adjuntar Archivos >>> */}
+      <Button
+        variant="ghost"
+        size="icon"
+        className={cn('h-8 w-8')}
+        onClick={openAttachmentSelector}
+        // disabled={!editor} // Habilitar según la lógica de la aplicación
+        title="Attach files"
+      >
+        <Paperclip className="h-4 w-4" />
+      </Button>
+
+      {/* <<< NUEVO: Input de archivo oculto para imágenes (renombrado) >>> */}
+      <input
+        type="file"
+        ref={imageInputRef}
+        onChange={handleFileChange}
+        accept="image/*" // Solo imágenes para este input
+        style={{ display: 'none' }}
+      />
+
+      {/* <<< NUEVO: Input de archivo oculto para adjuntos >>> */}
+      <input
+        type="file"
+        ref={attachmentInputRef}
+        onChange={handleAttachmentFileChange}
+        multiple // Permitir múltiples archivos
+        style={{ display: 'none' }}
+      />
+
+      {/* <<< NUEVO: Sección para mostrar adjuntos seleccionados >>> */}
+      {selectedAttachments.length > 0 && (
+        <div className="mt-2 p-2 border rounded-md bg-slate-50 dark:bg-slate-800/50">
+          <p className="text-xs font-medium text-muted-foreground mb-1.5">Selected files:</p>
+          <div className="flex flex-wrap gap-2">
+            {selectedAttachments.map(file => (
+              <div
+                key={file.name}
+                className="flex items-center text-xs px-2 py-1 rounded-md bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 max-w-xs"
+              >
+                <Paperclip className="h-3 w-3 mr-1.5 flex-shrink-0" />
+                <span className="truncate flex-grow" title={file.name}>
+                  {file.name}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-5 w-5 ml-1 p-0 hover:bg-slate-200 dark:hover:bg-slate-600"
+                  onClick={() => handleRemoveAttachment(file.name)}
+                  title={`Remove ${file.name}`}
+                >
+                  <XIcon className="h-3 w-3" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

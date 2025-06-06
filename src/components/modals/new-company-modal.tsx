@@ -15,6 +15,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { createCompany } from '@/services/company'; // Ensure service is imported
+import { CompanyLogo } from '@/components/company/company-logo';
 // No need to import CompanyCreate type here, service function defines it
 
 interface NewCompanyModalProps {
@@ -25,7 +26,8 @@ interface NewCompanyModalProps {
 
 const NewCompanyModal: React.FC<NewCompanyModalProps> = ({ isOpen, onClose, onSaveSuccess }) => {
   const [name, setName] = useState('');
-  const [emailDomain, setEmailDomain] = useState(''); // Changed from domain to emailDomain
+  const [emailDomain, setEmailDomain] = useState('');
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -33,7 +35,8 @@ const NewCompanyModal: React.FC<NewCompanyModalProps> = ({ isOpen, onClose, onSa
   React.useEffect(() => {
     if (isOpen) {
       setName('');
-      setEmailDomain(''); // Changed from setDomain
+      setEmailDomain('');
+      setLogoUrl(null);
       setError(null);
       setIsSaving(false);
     }
@@ -46,7 +49,6 @@ const NewCompanyModal: React.FC<NewCompanyModalProps> = ({ isOpen, onClose, onSa
     }
     // Basic domain validation (optional, can be more robust)
     if (emailDomain.trim() && !emailDomain.includes('.')) {
-      // Changed from domain to emailDomain
       setError('Please enter a valid domain name (e.g., example.com).');
       return;
     }
@@ -57,7 +59,8 @@ const NewCompanyModal: React.FC<NewCompanyModalProps> = ({ isOpen, onClose, onSa
     try {
       const companyData = {
         name: name.trim(),
-        email_domain: emailDomain.trim() || null, // Changed from domain to email_domain and used emailDomain state
+        email_domain: emailDomain.trim() || null,
+        logo_url: logoUrl,
       };
       console.log('Attempting to save Company:', companyData);
 
@@ -80,6 +83,10 @@ const NewCompanyModal: React.FC<NewCompanyModalProps> = ({ isOpen, onClose, onSa
     }
   };
 
+  const handleLogoChange = (newLogoUrl: string | null) => {
+    setLogoUrl(newLogoUrl);
+  };
+
   // Removed Animation variants
 
   return (
@@ -100,6 +107,18 @@ const NewCompanyModal: React.FC<NewCompanyModalProps> = ({ isOpen, onClose, onSa
         {/* Changed grid layout to simple vertical stack */}
         <div className="space-y-4 py-4">
           {error && <p className="text-red-600 text-sm">{error}</p>}
+
+          <div className="flex items-center gap-4 mb-2">
+            <CompanyLogo
+              logoUrl={logoUrl}
+              companyName={name || 'New Company'}
+              onLogoChange={handleLogoChange}
+              isUpdating={isSaving}
+              key={`new-company-${logoUrl}`}
+            />
+            <div className="text-sm text-muted-foreground">Company logo (optional, max. 2MB)</div>
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="company-name">Name*</Label>
             <Input
@@ -113,8 +132,8 @@ const NewCompanyModal: React.FC<NewCompanyModalProps> = ({ isOpen, onClose, onSa
             <Label htmlFor="company-domain">Email domain</Label>
             <Input
               id="company-domain"
-              value={emailDomain} // Changed from domain to emailDomain
-              onChange={e => setEmailDomain(e.target.value.toLowerCase())} // Changed from setDomain
+              value={emailDomain}
+              onChange={e => setEmailDomain(e.target.value.toLowerCase())}
               placeholder="example.com"
               disabled={isSaving}
             />

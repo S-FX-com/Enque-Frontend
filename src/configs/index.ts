@@ -3,7 +3,8 @@ export const AppConfigs = {
   appDescription: 'Help Desk System',
 
   // API URLs
-  api: process.env.NEXT_PUBLIC_API_URL || 'https://enque-backend-production.up.railway.app/v1',
+  api:
+    (process.env.NEXT_PUBLIC_API_URL || 'https://enque-backend-production.up.railway.app') + '/v1',
 
   // App configuration
   defaultTheme: 'system',

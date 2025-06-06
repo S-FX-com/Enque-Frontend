@@ -50,7 +50,7 @@ export function stringToColor(str: string): string {
 export function formatRelativeTime(dateString: string | Date | null | undefined): string {
   try {
     if (!dateString) {
-      return 'Unknown date';
+      return '-';
     }
 
     let dateToParse: Date;
@@ -80,6 +80,9 @@ export const getPriorityVariant = (
   priority: TicketPriority | string | undefined
 ): 'destructive' | 'default' | 'secondary' => {
   switch (priority) {
+    case 'Critical':
+    case 'critical': // Allow lowercase
+      return 'destructive';
     case 'High':
     case 'high': // Allow lowercase
       return 'destructive';

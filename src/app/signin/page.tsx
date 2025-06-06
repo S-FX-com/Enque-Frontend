@@ -144,7 +144,7 @@ export default function SignInPage() {
           <div className="text-center pt-4">
             <p className="text-sm text-slate-500">
               {`Forgot password? `}
-              <Link href="/forgot" className="text-blue-600 hover:underline font-medium">
+              <Link href="/forgot-password" className="text-blue-600 hover:underline font-medium">
                 Recover it
               </Link>
             </p>

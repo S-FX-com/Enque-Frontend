@@ -48,13 +48,27 @@ export async function uploadImage(file: File): Promise<UploadResponse> {
     const result: UploadResponse = await response.json();
     logger.info(`Image uploaded successfully: ${result.url}`);
 
-    // IMPORTANT: Prepend the API base URL if the backend returns a relative URL
-    // Adjust this logic if your backend returns an absolute URL
-    if (result.url && result.url.startsWith('/static')) {
-      return { url: `${API_BASE_URL}${result.url}` };
+    // IMPORTANTE: Verificar si la URL devuelta es relativa o absoluta
+    // Si es relativa, añadir el API base URL
+    // Si es absoluta o una URL externa, dejarla sin cambios
+    if (result.url) {
+      // Una URL que comienza con '/static' es una URL relativa desde el backend
+      if (result.url.startsWith('/static')) {
+        return { url: `${API_BASE_URL}${result.url}` };
+      }
+      // Si la URL ya tiene http o https, es absoluta y la dejamos como está
+      else if (result.url.startsWith('http://') || result.url.startsWith('https://')) {
+        return result;
+      }
+      // Para cualquier otro caso (por ejemplo, URLs relativas que no empiezan con /static)
+      else {
+        // Añadir una barra si es necesario
+        const separator = result.url.startsWith('/') ? '' : '/';
+        return { url: `${API_BASE_URL}${separator}${result.url}` };
+      }
     }
 
-    return result; // Assuming backend returns the full URL or just the path needed
+    return result; // Devolver el resultado sin modificar si no hay URL
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     logger.error('Error during image upload request:', errorMessage);

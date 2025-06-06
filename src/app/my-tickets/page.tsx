@@ -45,7 +45,7 @@ import { getUsers } from '@/services/user';
 import { formatRelativeTime, cn } from '@/lib/utils';
 import { TicketDetail } from '@/app/tickets/ticket-details';
 import { getCurrentUser, type UserSession } from '@/lib/auth';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { Collapsible, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 const LOAD_LIMIT = 20;
@@ -56,6 +56,7 @@ function MyTicketsClientContent() {
   const queryClient = useQueryClient();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const pathname = usePathname();
   const [selectedTicket, setSelectedTicket] = useState<ITicket | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [currentUser, setCurrentUser] = useState<UserSession | null>(null);
@@ -66,7 +67,8 @@ function MyTicketsClientContent() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
   const [selectedPriorities, setSelectedPriorities] = useState<string[]>([]);
-  const [filtersExpanded, setFiltersExpanded] = useState(true);
+  const [filtersExpanded, setFiltersExpanded] = useState(false); // Changed to false
+  const [selectedTeams, setSelectedTeams] = useState<string[]>([]);
 
   const statusOptions: OptionType[] = [
     { value: 'Unread', label: 'Unread' },
@@ -86,7 +88,10 @@ function MyTicketsClientContent() {
   const { data: usersData = [] } = useQuery<IUser[]>({
     queryKey: ['users'],
     queryFn: getUsers,
-    staleTime: 1000 * 60 * 5,
+    staleTime: 1000 * 60 * 10,
+    refetchInterval: false,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
   });
 
   const userOptions: OptionType[] = useMemo(() => {
@@ -114,7 +119,7 @@ function MyTicketsClientContent() {
     TicketPage,
     Error,
     InfiniteData<TicketPage, number>,
-    readonly ['tickets', 'my', number | undefined],
+    readonly [string, ...unknown[]],
     number
   >({
     queryKey: ['tickets', 'my', currentUser?.id],
@@ -131,9 +136,11 @@ function MyTicketsClientContent() {
       return allPages.flat().length;
     },
     initialPageParam: 0,
-    staleTime: 1000 * 60,
-    refetchInterval: 5000,
-    refetchIntervalInBackground: true,
+    staleTime: 1000 * 60 * 5,
+    refetchInterval: false,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
     enabled: !!currentUser?.id,
   });
 
@@ -144,6 +151,27 @@ function MyTicketsClientContent() {
 
   useEffect(() => {
     const ticketIdToOpen = searchParams.get('openTicket');
+
+    // Si estamos en my-tickets, limpiamos los filtros de equipo
+    if (pathname === '/my-tickets') {
+      // Limpiar estado de filtros de equipo en cualquier caso
+      if (selectedTeams && selectedTeams.length > 0) {
+        setSelectedTeams([]);
+      }
+
+      // Si hay un parámetro teamId en la URL, lo limpiamos también
+      if (window.location.href.includes('teamId=')) {
+        const newSearchParams = new URLSearchParams(searchParams.toString());
+        newSearchParams.delete('teamId');
+        newSearchParams.delete('teamName');
+        // Preservar openTicket si existe
+        if (ticketIdToOpen) {
+          newSearchParams.set('openTicket', ticketIdToOpen);
+        }
+        router.replace(`${pathname}?${newSearchParams.toString()}`, { scroll: false });
+      }
+    }
+
     if (ticketIdToOpen && allTicketsData.length > 0) {
       const ticket = allTicketsData.find(t => t.id === Number.parseInt(ticketIdToOpen, 10));
       if (ticket) {
@@ -156,15 +184,28 @@ function MyTicketsClientContent() {
         });
       }
     }
-  }, [searchParams, allTicketsData, router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, allTicketsData, router, pathname]);
 
   const filteredTicketsData = useMemo(() => {
     let tickets = allTicketsData;
+
+    // Filter out closed tickets by default, unless specifically selected in the status filter
+    if (selectedStatuses.length === 0) {
+      tickets = tickets.filter(ticket => ticket.status !== 'Closed');
+    }
 
     if (debouncedSubjectFilter) {
       const lowerCaseSubjectFilter = debouncedSubjectFilter.toLowerCase();
       tickets = tickets.filter(ticket =>
         ticket.title.toLowerCase().includes(lowerCaseSubjectFilter)
+      );
+    }
+
+    if (selectedTeams.length > 0) {
+      const selectedTeamIds = selectedTeams.map(id => Number.parseInt(id, 10));
+      tickets = tickets.filter(
+        ticket => ticket.team_id && selectedTeamIds.includes(ticket.team_id)
       );
     }
 
@@ -184,7 +225,14 @@ function MyTicketsClientContent() {
     }
 
     return tickets;
-  }, [allTicketsData, debouncedSubjectFilter, selectedUsers, selectedStatuses, selectedPriorities]);
+  }, [
+    allTicketsData,
+    debouncedSubjectFilter,
+    selectedUsers,
+    selectedStatuses,
+    selectedPriorities,
+    selectedTeams,
+  ]);
 
   const handleSelectAllChange = (checked: boolean | 'indeterminate') => {
     if (checked === true) {
@@ -257,9 +305,8 @@ function MyTicketsClientContent() {
       }
       return results;
     },
-    onSuccess: (data, variables) => {
-      toast.success(`${variables.length} ticket(s) deletion request sent.`);
-      console.log(`${variables.length} ticket(s) deletion attempted.`);
+    onSuccess: () => {
+      // ✅ NOTIFICACIÓN ELIMINADA: Eliminación silenciosa sin toast molesto
     },
     onMutate: async ticketIdsToDelete => {
       await queryClient.cancelQueries({ queryKey: ['tickets', 'my', currentUser?.id] });
@@ -278,24 +325,73 @@ function MyTicketsClientContent() {
           return { ...oldData, pages: newPages };
         }
       );
+
+      // Optimistically update sidebar counters
+      const currentAllCount = queryClient.getQueryData<number>(['ticketsCount', 'all']) || 0;
+      const currentMyCount =
+        queryClient.getQueryData<number>(['ticketsCount', 'my', currentUser?.id]) || 0;
+
+      // Get tickets being deleted to count how many are active
+      const allTickets = previousTicketsData?.pages.flat() || [];
+      const deletedTickets = allTickets.filter(ticket => ticketIdsToDelete.includes(ticket.id));
+      const activeDeletedCount = deletedTickets.filter(
+        ticket => ticket.status !== 'Closed' && ticket.status !== 'Resolved'
+      ).length;
+      const myActiveDeletedCount = deletedTickets.filter(
+        ticket =>
+          ticket.assignee_id === currentUser?.id &&
+          ticket.status !== 'Closed' &&
+          ticket.status !== 'Resolved'
+      ).length;
+
+      // Update counters optimistically
+      queryClient.setQueryData(
+        ['ticketsCount', 'all'],
+        Math.max(0, currentAllCount - activeDeletedCount)
+      );
+      if (currentUser?.id) {
+        queryClient.setQueryData(
+          ['ticketsCount', 'my', currentUser.id],
+          Math.max(0, currentMyCount - myActiveDeletedCount)
+        );
+      }
+
       setSelectedTicketIds(new Set());
       setIsDeleteDialogOpen(false);
-      return { previousTicketsData };
+      return {
+        previousTicketsData,
+        previousAllCount: currentAllCount,
+        previousMyCount: currentMyCount,
+      };
     },
     onError: (
       err: Error,
-      ticketIdsToDelete,
-      context: { previousTicketsData?: InfiniteData<TicketPage, number> } | undefined
+      ticketIdsToDelete: number[],
+      context:
+        | {
+            previousTicketsData?: InfiniteData<TicketPage, number>;
+            previousAllCount?: number;
+            previousMyCount?: number;
+          }
+        | undefined
     ) => {
       toast.error(`Error deleting tickets: ${err.message}`);
       console.error(`Error deleting tickets mutation: ${err.message}`);
       if (context?.previousTicketsData) {
         queryClient.setQueryData(['tickets', 'my', currentUser?.id], context.previousTicketsData);
       }
+      // Revert counter updates on error
+      if (context?.previousAllCount !== undefined) {
+        queryClient.setQueryData(['ticketsCount', 'all'], context.previousAllCount);
+      }
+      if (context?.previousMyCount !== undefined && currentUser?.id) {
+        queryClient.setQueryData(['ticketsCount', 'my', currentUser.id], context.previousMyCount);
+      }
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['tickets', 'my', currentUser?.id] });
       queryClient.invalidateQueries({ queryKey: ['tickets'] });
+      queryClient.invalidateQueries({ queryKey: ['agentTeams'] });
     },
   });
   const handleDeleteConfirm = () => {
@@ -348,6 +444,78 @@ function MyTicketsClientContent() {
     [selectedTicket, queryClient, currentUser?.id]
   );
 
+  // Mutation para manejar el cambio de estado de Unread a Open
+  const markAsReadMutation = useMutation({
+    mutationFn: async (ticket: ITicket) => {
+      return updateTicket(ticket.id, { status: 'Open' });
+    },
+    onMutate: async ticket => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['tickets', 'my', currentUser?.id] });
+      await queryClient.cancelQueries({ queryKey: ['tickets'] });
+
+      // Snapshot the previous values
+      const previousMyTicketsData = queryClient.getQueryData<InfiniteData<ITicket[], number>>([
+        'tickets',
+        'my',
+        currentUser?.id,
+      ]);
+      const previousTicketsData = queryClient.getQueryData<InfiniteData<ITicket[], number>>([
+        'tickets',
+      ]);
+
+      // Optimistically update My Tickets cache
+      queryClient.setQueryData<InfiniteData<ITicket[], number>>(
+        ['tickets', 'my', currentUser?.id],
+        oldData => {
+          if (!oldData) return oldData;
+          const newPages = oldData.pages.map(page =>
+            page.map(t => (t.id === ticket.id ? { ...t, status: 'Open' as const } : t))
+          );
+          return { ...oldData, pages: newPages };
+        }
+      );
+
+      // Optimistically update Global Tickets cache
+      queryClient.setQueryData<InfiniteData<ITicket[], number>>(['tickets'], oldData => {
+        if (!oldData) return oldData;
+        const newPages = oldData.pages.map(page =>
+          page.map(t => (t.id === ticket.id ? { ...t, status: 'Open' as const } : t))
+        );
+        return { ...oldData, pages: newPages };
+      });
+
+      return { previousMyTicketsData, previousTicketsData };
+    },
+    onError: (
+      err: Error,
+      ticket: ITicket,
+      context:
+        | {
+            previousMyTicketsData?: InfiniteData<ITicket[], number>;
+            previousTicketsData?: InfiniteData<ITicket[], number>;
+          }
+        | undefined
+    ) => {
+      console.error(`Failed to update ticket ${ticket.id} status to Open:`, err);
+      toast.error(`Failed to mark ticket #${ticket.id} as Open.`);
+
+      // Revert changes on error
+      if (context?.previousMyTicketsData) {
+        queryClient.setQueryData(['tickets', 'my', currentUser?.id], context.previousMyTicketsData);
+      }
+      if (context?.previousTicketsData) {
+        queryClient.setQueryData(['tickets'], context.previousTicketsData);
+      }
+    },
+    onSuccess: (updatedTicket, ticket) => {
+      // Update the selected ticket if it's the same one
+      if (selectedTicket?.id === ticket.id) {
+        setSelectedTicket({ ...ticket, status: 'Open' as const });
+      }
+    },
+  });
+
   const handleTicketClick = useCallback(
     async (ticket: ITicket) => {
       setSelectedTicket(ticket);
@@ -356,21 +524,10 @@ function MyTicketsClientContent() {
       router.push(`${window.location.pathname}?${newSearchParams.toString()}`);
 
       if (ticket.status === 'Unread') {
-        console.log(`Ticket ${ticket.id} is Unread, updating to Open.`);
-        const optimisticUpdate = { ...ticket, status: 'Open' as const };
-        handleTicketUpdate(optimisticUpdate);
-        try {
-          await updateTicket(ticket.id, { status: 'Open' });
-          console.log(`Backend updated successfully for ticket ${ticket.id}`);
-          queryClient.invalidateQueries({ queryKey: ['tickets', 'my', currentUser?.id] });
-          queryClient.invalidateQueries({ queryKey: ['tickets'] });
-        } catch (error) {
-          console.error(`Failed to update ticket ${ticket.id} status to Open in backend:`, error);
-          toast.error(`Failed to mark ticket #${ticket.id} as Open.`);
-        }
+        markAsReadMutation.mutate(ticket);
       }
     },
-    [searchParams, router, handleTicketUpdate, queryClient, currentUser?.id]
+    [searchParams, router, markAsReadMutation]
   );
 
   const handleCloseDetail = useCallback(() => {
@@ -387,14 +544,16 @@ function MyTicketsClientContent() {
     count += selectedStatuses.length;
     count += selectedUsers.length;
     count += selectedPriorities.length;
+    count += selectedTeams.length;
     return count;
-  }, [debouncedSubjectFilter, selectedStatuses, selectedUsers, selectedPriorities]);
+  }, [debouncedSubjectFilter, selectedStatuses, selectedUsers, selectedPriorities, selectedTeams]);
 
   const clearAllFilters = useCallback(() => {
     setSubjectInput('');
     setSelectedStatuses([]);
     setSelectedUsers([]);
     setSelectedPriorities([]);
+    setSelectedTeams([]);
   }, []);
 
   return (
@@ -441,11 +600,11 @@ function MyTicketsClientContent() {
         )}
         <Card className="shadow-none border-0 flex-1 flex flex-col overflow-hidden m-0">
           <CardContent className="flex-1 overflow-hidden p-0">
-            <div ref={scrollContainerRef} className="h-full overflow-y-auto px-6">
+            <div ref={scrollContainerRef} className="h-full overflow-y-auto">
               <Table>
                 <TableHeader className="sticky top-0 bg-card z-10">
                   <TableRow className="border-b border-slate-200 dark:border-slate-700 hover:bg-transparent">
-                    <TableHead className="w-[50px] p-2">
+                    <TableHead className="w-[50px] px-4">
                       <Checkbox
                         checked={headerCheckboxState}
                         onCheckedChange={handleSelectAllChange}
@@ -500,7 +659,7 @@ function MyTicketsClientContent() {
                         onClick={() => handleTicketClick(ticket)} // Moved onClick here
                         data-state={selectedTicketIds.has(ticket.id) ? 'selected' : ''}
                       >
-                        <TableCell className="p-2 py-4">
+                        <TableCell className="px-4">
                           <Checkbox
                             checked={selectedTicketIds.has(ticket.id)}
                             onCheckedChange={checked => handleRowSelectChange(ticket.id, checked)}
@@ -585,18 +744,28 @@ function MyTicketsClientContent() {
         </Card>
       </div>
 
-      <div className="flex-shrink-0 flex items-start">
-        <Collapsible open={filtersExpanded} onOpenChange={setFiltersExpanded} className="flex">
+      <div className="flex-shrink-0 flex items-stretch">
+        {' '}
+        {/* Changed items-start to items-stretch */}
+        <Collapsible
+          open={filtersExpanded}
+          onOpenChange={setFiltersExpanded}
+          className="flex h-full"
+        >
+          {' '}
+          {/* Added h-full to Collapsible */}
           <CollapsibleTrigger asChild>
             <Button
               variant="outline"
-              size="icon"
-              className="h-8 w-8 rounded-full z-10 -mr-4 mt-6 shadow-md relative"
+              size="sm"
+              className="z-10 -mr-4 mt-6 shadow-md relative cursor-pointer rounded-full px-3"
             >
               {filtersExpanded ? (
                 <ChevronRight className="h-4 w-4" />
               ) : (
-                <ChevronLeft className="h-4 w-4" />
+                <>
+                  Filters <ChevronLeft className="h-4 w-4 ml-1 inline" />
+                </>
               )}
               {activeFiltersCount > 0 && !filtersExpanded && (
                 <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-medium text-primary-foreground">
@@ -606,8 +775,12 @@ function MyTicketsClientContent() {
             </Button>
           </CollapsibleTrigger>
           {filtersExpanded && (
-            <aside className="w-80 border-l p-6 space-y-6 bg-card text-card-foreground rounded-lg transition-all duration-300">
-              <div className="flex items-center justify-between">
+            <aside className="w-80 border-l p-6 space-y-6 bg-card text-card-foreground rounded-lg transition-all duration-300 flex flex-col h-full">
+              {' '}
+              {/* Added flex flex-col h-full */}
+              <div className="flex items-center justify-between flex-shrink-0">
+                {' '}
+                {/* Added flex-shrink-0 */}
                 <h2 className="text-lg font-semibold">
                   Filters
                   {activeFiltersCount > 0 && (
@@ -627,7 +800,9 @@ function MyTicketsClientContent() {
                   </Button>
                 </div>
               </div>
-              <div className="space-y-4">
+              <div className="space-y-4 overflow-y-auto flex-grow">
+                {' '}
+                {/* Added overflow-y-auto and flex-grow */}
                 <div>
                   <Label htmlFor="subject-filter" className="text-sm font-medium">
                     Subject

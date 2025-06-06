@@ -5,23 +5,20 @@ export interface ICompany {
   id: number;
   name: string;
   description?: string | null;
-  email_domain?: string | null; // Correct field name
+  email_domain?: string | null;
   workspace_id: number;
   created_at: string;
   updated_at: string;
-  // Add fields for relationships if returned by backend
+  // Add fields fr relationships if returned by backend
   primary_contact_id?: number | null;
   account_manager_id?: number | null;
+  logo_url?: string | null; // Add logo_url field
 }
 
-// Based on backend CompanyCreate schema
-// Note: Backend schema uses email_domain, but create endpoint might accept domain for simplicity?
-// Let's keep CompanyCreate with domain for now, assuming create endpoint handles it.
-// If create fails, we'll need to adjust this and the createCompany service/modal.
 export interface CompanyCreate {
   name: string;
-  email_domain?: string | null; // Changed from domain to email_domain
-  // workspace_id is handled by the backend
+  email_domain?: string | null;
+  logo_url?: string | null;
 }
 
 // Payload for updating a company
@@ -29,8 +26,7 @@ export interface CompanyUpdatePayload {
   name?: string;
   description?: string | null;
   email_domain?: string | null; // Correct field name for update
-  // Assuming backend accepts these IDs for update
   primary_contact_id?: number | null;
   account_manager_id?: number | null;
-  // logo_url?: string | null; // Add if logo update is needed
+  logo_url?: string | null;
 }

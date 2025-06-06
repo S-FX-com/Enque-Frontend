@@ -5,7 +5,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Avatar } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -15,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import BoringAvatar from 'boring-avatars';
+import { AgentAvatar } from '@/components/agent/agent-avatar';
 import { useAuth } from '@/hooks/use-auth';
 import { toast } from 'sonner';
 import { getAgentById, updateAgentProfile } from '@/services/agent';
@@ -23,12 +22,14 @@ import { AgentUpdate, Agent } from '@/typescript/agent';
 import { RichTextEditor } from '@/components/tiptap/RichTextEditor';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Terminal } from 'lucide-react';
+import { Terminal, Info } from 'lucide-react';
+import { getGlobalSignature } from '@/services/global-signature';
+import Link from 'next/link';
 
 const DetailRow: React.FC<{ label: string; value: React.ReactNode }> = ({ label, value }) => (
   <div className="grid grid-cols-3 gap-4 py-1">
     <dt className="text-sm font-medium text-muted-foreground">{label}</dt>
-    <dd className="text-sm col-span-2 capitalize">{value || '-'}</dd>
+    <dd className="text-sm col-span-2">{value || '-'}</dd>
   </div>
 );
 
@@ -64,6 +65,7 @@ export default function ProfileSettingsPage() {
   const [editedPhoneNumber, setEditedPhoneNumber] = useState('');
   const [editedRole, setEditedRole] = useState('');
   const [editedSignature, setEditedSignature] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState<string | null | undefined>(undefined);
 
   const currentUserRole = user?.role;
 
@@ -80,6 +82,13 @@ export default function ProfileSettingsPage() {
     staleTime: 5 * 60 * 1000,
   });
 
+  const { data: globalSignatureData, isLoading: isLoadingGlobalSignature } = useQuery({
+    queryKey: ['globalSignature', user?.workspace_id],
+    queryFn: () => getGlobalSignature(user!.workspace_id),
+    enabled: !!user?.workspace_id,
+    staleTime: 5 * 60 * 1000,
+  });
+
   useEffect(() => {
     if (agentProfileData) {
       setEditedName(agentProfileData.name || '');
@@ -88,6 +97,7 @@ export default function ProfileSettingsPage() {
       setEditedPhoneNumber(agentProfileData.phone_number || '');
       setEditedRole(agentProfileData.role || 'agent');
       setEditedSignature(agentProfileData.email_signature || '');
+      setAvatarUrl(agentProfileData.avatar);
     } else {
       setEditedName('');
       setEditedEmail('');
@@ -95,6 +105,7 @@ export default function ProfileSettingsPage() {
       setEditedPhoneNumber('');
       setEditedRole('agent');
       setEditedSignature('');
+      setAvatarUrl(undefined);
     }
   }, [agentProfileData]);
 
@@ -140,8 +151,6 @@ export default function ProfileSettingsPage() {
       : '...',
   };
 
-  const avatarColors = ['#1D73F4', '#D4E4FA'];
-
   const handleEditToggle = () => {
     if (isEditing) {
       if (agentProfileData) {
@@ -151,9 +160,17 @@ export default function ProfileSettingsPage() {
         setEditedPhoneNumber(agentProfileData.phone_number || '');
         setEditedRole(agentProfileData.role || 'agent');
         setEditedSignature(agentProfileData.email_signature || '');
+        setAvatarUrl(agentProfileData.avatar);
       }
     }
     setIsEditing(!isEditing);
+  };
+
+  const handleAvatarChange = (newAvatarUrl: string | null) => {
+    setAvatarUrl(newAvatarUrl);
+    // Immediately update the avatar
+    const payload: AgentUpdate = { avatar: newAvatarUrl };
+    updateProfileMutation.mutate(payload);
   };
 
   const handleSave = () => {
@@ -182,6 +199,10 @@ export default function ProfileSettingsPage() {
       setIsEditing(false);
     }
   };
+
+  const hasPersonalSignature =
+    agentProfileData?.email_signature && agentProfileData.email_signature.trim() !== '';
+  const isAdmin = currentUserRole === 'admin';
 
   return (
     <div className="container mx-auto px-4 py-4 max-w-4xl">
@@ -292,14 +313,15 @@ export default function ProfileSettingsPage() {
           <section className="mb-6">
             <h2 className="text-lg font-semibold mb-3">Avatar</h2>
             <div className="flex items-center gap-4">
-              <Avatar className="h-12 w-12 overflow-hidden border">
-                <BoringAvatar
-                  size={48}
-                  name={agentProfileData?.email || agentProfileData?.name || 'default-avatar'}
-                  variant="beam"
-                  colors={avatarColors}
-                />
-              </Avatar>
+              <AgentAvatar
+                avatarUrl={avatarUrl}
+                agentName={agentProfileData?.name || 'User'}
+                agentEmail={agentProfileData?.email}
+                onAvatarChange={handleAvatarChange}
+                isUpdating={updateProfileMutation.isPending}
+                size={64}
+                showEditButton={currentUserRole === 'admin' || agentProfileData?.id === user?.id}
+              />
             </div>
           </section>
 
@@ -339,14 +361,93 @@ export default function ProfileSettingsPage() {
           <Separator className="my-4 bg-slate-200 dark:bg-slate-700" />
 
           <section className="mb-6">
-            <h2 className="text-lg font-semibold mb-3">Email Signature</h2>
-            {!isEditing ? (
+            <div className="flex justify-between items-center mb-3">
+              <h2 className="text-lg font-semibold">Email Signature</h2>
+              {(isAdmin || agentProfileData?.id === user?.id) &&
+                (!isEditing ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleEditToggle}
+                    disabled={isLoadingProfile || isLoadingAuthUser}
+                  >
+                    Edit
+                  </Button>
+                ) : (
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleEditToggle}
+                      disabled={updateProfileMutation.isPending}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={handleSave}
+                      disabled={updateProfileMutation.isPending}
+                    >
+                      {updateProfileMutation.isPending ? 'Saving...' : 'Save'}
+                    </Button>
+                  </div>
+                ))}
+            </div>
+
+            {!hasPersonalSignature && globalSignatureData && !isEditing && (
+              <Alert className="mb-4">
+                <Info className="h-4 w-4" />
+                <AlertTitle>Using Global Signature</AlertTitle>
+                <AlertDescription>
+                  You are currently using the workspace&apos;s global signature template, which will
+                  be personalized with your information when sending emails.
+                  {isAdmin && (
+                    <>
+                      {' '}
+                      You can{' '}
+                      <Link href="/configuration/signatures" className="underline">
+                        edit the global signature here
+                      </Link>
+                      .
+                    </>
+                  )}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {isLoadingProfile || isLoadingAuthUser || isLoadingGlobalSignature ? (
+              <div className="space-y-3">
+                <Skeleton className="h-5 w-3/5" />
+                <Skeleton className="h-5 w-4/5" />
+                <Skeleton className="h-40 w-full" />
+              </div>
+            ) : isProfileError ? (
+              <Alert variant="destructive">
+                <Terminal className="h-4 w-4" />
+                <AlertTitle>Error Loading Profile</AlertTitle>
+                <AlertDescription>
+                  {profileError instanceof Error
+                    ? profileError.message
+                    : 'An unknown error occurred.'}
+                </AlertDescription>
+              </Alert>
+            ) : !agentProfileData ? (
+              <Alert>
+                <Terminal className="h-4 w-4" />
+                <AlertTitle>Not Found</AlertTitle>
+                <AlertDescription>Profile data could not be loaded.</AlertDescription>
+              </Alert>
+            ) : !isEditing ? (
               <div
                 className="border rounded-md p-4 bg-muted/20 min-h-[100px] text-sm prose dark:prose-invert max-w-none"
                 dangerouslySetInnerHTML={{
                   __html:
                     displayData.email_signature ||
-                    '<p class="text-muted-foreground">No signature set.</p>',
+                    (globalSignatureData?.content
+                      ? globalSignatureData.content
+                          .replace(/\[Agent Name\]/g, displayData.name)
+                          .replace(/\[Agent Role\]/g, displayData.jobTitle || '-')
+                      : '<p class="text-muted-foreground">No signature set.</p>'),
                 }}
               />
             ) : currentUserRole === 'admin' ? (
@@ -362,7 +463,11 @@ export default function ProfileSettingsPage() {
                 dangerouslySetInnerHTML={{
                   __html:
                     displayData.email_signature ||
-                    '<p class="text-muted-foreground">No signature set.</p>',
+                    (globalSignatureData?.content
+                      ? globalSignatureData.content
+                          .replace(/\[Agent Name\]/g, displayData.name)
+                          .replace(/\[Agent Role\]/g, displayData.jobTitle || '-')
+                      : '<p class="text-muted-foreground">No signature set.</p>'),
                 }}
               />
             )}

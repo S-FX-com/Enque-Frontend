@@ -42,7 +42,7 @@ export default function Home() {
     setIsSubmitting(true);
     setSubdomainError(null);
 
-    const workspaceCheckUrl = `${AppConfigs.api}/workspaces/subdomain/${trimmedSubdomain}`;
+    const workspaceCheckUrl = `${AppConfigs.api}/workspaces/by-subdomain/${trimmedSubdomain}`;
 
     try {
       console.log(`Checking workspace existence: ${workspaceCheckUrl}`);

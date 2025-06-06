@@ -183,4 +183,90 @@ export const authService = {
       return { success: false, message };
     }
   },
+
+  // Request Password Reset
+  async requestPasswordReset(email: string): Promise<ServiceResponse<{ message: string }>> {
+    try {
+      // Determinar si estamos en un subdominio y obtener el workspace_id
+      let workspaceId: number | undefined;
+
+      if (typeof window !== 'undefined') {
+        const hostname = window.location.hostname;
+        const isSubdomain = hostname !== AppConfigs.baseUrl && hostname.endsWith(AppConfigs.domain);
+
+        if (isSubdomain) {
+          const subdomain = hostname.replace(AppConfigs.domain, '');
+
+          try {
+            // Intentar obtener el workspace_id a partir del subdominio
+            const workspaceResponse = await workspaceService.getWorkspaceBySubdomain(subdomain);
+            if (workspaceResponse.success && workspaceResponse.data) {
+              workspaceId = workspaceResponse.data.id;
+              logger.info(
+                `Workspace ID obtenido para password reset en ${subdomain}: ${workspaceId}`
+              );
+            }
+          } catch (error) {
+            logger.error(
+              `Error obteniendo workspace_id para password reset en ${subdomain}`,
+              error instanceof Error ? error.message : 'Unknown error'
+            );
+          }
+        }
+      }
+
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+
+      // Si tenemos un workspace_id, lo incluimos en el header
+      if (workspaceId) {
+        headers['X-Workspace-Id'] = workspaceId.toString();
+      }
+
+      // Usar fetch directamente para poder enviar headers personalizados
+      const url = `${SERVICE_ENDPOINT}/request-password-reset`;
+      const fetchResponse = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ email }),
+      });
+
+      if (!fetchResponse.ok) {
+        throw new Error(`Error ${fetchResponse.status}: ${fetchResponse.statusText}`);
+      }
+
+      const responseData = await fetchResponse.json();
+
+      // The backend is designed to always return a generic success message for this endpoint
+      // for security reasons (not to reveal if an email is registered or not).
+      return { success: true, data: responseData };
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : 'Unknown error during password reset request.';
+      return { success: false, message };
+    }
+  },
+
+  // Reset Password
+  async resetPassword(
+    token: string,
+    new_password: string
+  ): Promise<ServiceResponse<TokenResponse>> {
+    try {
+      const response = await fetchAPI.POST<TokenResponse>(`${SERVICE_ENDPOINT}/reset-password`, {
+        token,
+        new_password,
+      } as Record<string, unknown>);
+      if (response.success && response.data) {
+        return { success: true, data: response.data }; // Returns token data
+      } else {
+        return { success: false, message: response.message || 'Failed to reset password.' };
+      }
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : 'Unknown error during password reset.';
+      return { success: false, message };
+    }
+  },
 };

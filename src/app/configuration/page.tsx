@@ -1,6 +1,6 @@
 'use client';
 
-import { Users, UserPlus, Inbox, FolderTree } from 'lucide-react';
+import {} from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import Link from 'next/link';
 
@@ -9,15 +9,194 @@ export default function ClientPage() {
     {
       title: 'Manage',
       items: [
-        { name: 'Agents', icon: Users, href: '/configuration/agents' },
-        { name: 'Teams', icon: UserPlus, href: '/configuration/teams' },
+        {
+          name: 'Agents',
+          icon: ({ fill = '#2B3674' }: { fill: string }) => (
+            <svg
+              width="36"
+              height="36"
+              viewBox="0 0 32 32"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M16 4C18.2 4 20 5.8 20 8C20 10.2 18.2 12 16 12C13.8 12 12 10.2 12 8C12 5.8 13.8 4 16 4ZM16 24C21.4 24 27.6 26.58 28 28H4C4.46 26.56 10.62 24 16 24ZM16 0C11.58 0 8 3.58 8 8C8 12.42 11.58 16 16 16C20.42 16 24 12.42 24 8C24 3.58 20.42 0 16 0ZM16 20C10.66 20 0 22.68 0 28V32H32V28C32 22.68 21.34 20 16 20Z"
+                fill={fill}
+              />
+            </svg>
+          ),
+          href: '/configuration/agents',
+        },
+        {
+          name: 'Teams',
+          icon: ({ fill = '#2B3674' }: { fill: string }) => (
+            <svg
+              width="36"
+              height="36"
+              viewBox="0 0 44 32"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M31.34 18.26C34.08 20.12 36 22.64 36 26V32H44V26C44 21.64 36.86 19.06 31.34 18.26Z"
+                fill={fill}
+              />
+              <path
+                d="M28 16C32.42 16 36 12.42 36 8C36 3.58 32.42 0 28 0C27.06 0 26.18 0.2 25.34 0.48C27 2.54 28 5.16 28 8C28 10.84 27 13.46 25.34 15.52C26.18 15.8 27.06 16 28 16Z"
+                fill={fill}
+              />
+              <path
+                d="M16 16C20.42 16 24 12.42 24 8C24 3.58 20.42 0 16 0C11.58 0 8 3.58 8 8C8 12.42 11.58 16 16 16ZM16 4C18.2 4 20 5.8 20 8C20 10.2 18.2 12 16 12C13.8 12 12 10.2 12 8C12 5.8 13.8 4 16 4Z"
+                fill={fill}
+              />
+              <path
+                d="M16 18C10.66 18 0 20.68 0 26V32H32V26C32 20.68 21.34 18 16 18ZM28 28H4V26.02C4.4 24.58 10.6 22 16 22C21.4 22 27.6 24.58 28 26V28Z"
+                fill={fill}
+              />
+            </svg>
+          ),
+          href: '/configuration/teams',
+        },
+        {
+          name: 'Notifications',
+          icon: ({ fill = '#2B3674' }: { fill: string }) => (
+            <svg
+              width="36"
+              height="36"
+              viewBox="0 0 32 40"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M16 39.5C18.2 39.5 20 37.7 20 35.5H12C12 37.7 13.8 39.5 16 39.5ZM28 27.5V17.5C28 11.36 24.74 6.22 19 4.86V3.5C19 1.84 17.66 0.5 16 0.5C14.34 0.5 13 1.84 13 3.5V4.86C7.28 6.22 4 11.34 4 17.5V27.5L0 31.5V33.5H32V31.5L28 27.5ZM24 29.5H8V17.5C8 12.54 11.02 8.5 16 8.5C20.98 8.5 24 12.54 24 17.5V29.5Z"
+                fill={fill}
+              />
+            </svg>
+          ),
+          href: '/configuration/notifications',
+        },
+        {
+          name: 'Workflows',
+          icon: ({ fill = '#2B3674' }: { fill: string }) => (
+            <svg
+              width="36"
+              height="36"
+              viewBox="0 0 44 40"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M17.1798 22C18.2798 22 19.1798 22.9 19.1798 24C19.1798 25.1 18.2798 26 17.1798 26C16.0798 26 15.1798 25.1 15.1798 24C15.1798 22.9 16.0798 22 17.1798 22ZM17.1798 18C13.8598 18 11.1798 20.68 11.1798 24C11.1798 27.32 13.8598 30 17.1798 30C20.4998 30 23.1798 27.32 23.1798 24C23.1798 20.68 20.4998 18 17.1798 18ZM34.1798 14L36.3598 9.18L41.1798 7L36.3598 4.82L34.1798 0L31.9998 4.82L27.1798 7L31.9998 9.18L34.1798 14ZM39.7398 21.44L38.1798 18L36.6198 21.44L33.1798 23L36.6198 24.56L38.1798 28L39.7398 24.56L43.1798 23L39.7398 21.44ZM29.6798 24C29.6798 23.76 29.6798 23.5 29.6598 23.26L33.5398 20.32L28.5398 11.66L24.0598 13.54C23.6598 13.28 23.2198 13.02 22.7798 12.8L22.1798 8H12.1798L11.5798 12.82C11.1398 13.04 10.7198 13.3 10.2998 13.56L5.81982 11.66L0.819824 20.32L4.69982 23.26C4.67982 23.5 4.67982 23.76 4.67982 24C4.67982 24.24 4.67982 24.5 4.69982 24.74L0.819824 27.68L5.81982 36.34L10.2998 34.46C10.6998 34.72 11.1398 34.98 11.5798 35.2L12.1798 40H22.1798L22.7798 35.18C23.2198 34.96 23.6398 34.72 24.0598 34.44L28.5398 36.32L33.5398 27.66L29.6598 24.72C29.6798 24.5 29.6798 24.24 29.6798 24ZM26.8398 31.28L23.3798 29.82C22.2598 31.02 20.7798 31.9 19.1198 32.28L18.6398 36H15.7198L15.2598 32.28C13.5998 31.9 12.1198 31.02 10.9998 29.82L7.53982 31.28L6.07982 28.74L9.05982 26.48C8.81982 25.7 8.69982 24.88 8.69982 24.02C8.69982 23.16 8.81982 22.34 9.05982 21.56L6.07982 19.3L7.53982 16.76L10.9998 18.22C12.1198 17.02 13.5998 16.14 15.2598 15.76L15.7198 12H18.6598L19.1198 15.72C20.7798 16.1 22.2598 16.98 23.3798 18.18L26.8398 16.72L28.2998 19.26L25.3198 21.52C25.5598 22.3 25.6798 23.12 25.6798 23.98C25.6798 24.84 25.5598 25.66 25.3198 26.44L28.2998 28.7L26.8398 31.28Z"
+                fill={fill}
+              />
+            </svg>
+          ),
+          href: '/configuration/workflows',
+        },
       ],
     },
     {
       title: 'Tickets',
       items: [
-        { name: 'Mailbox', icon: Inbox, href: '/configuration/mailbox' },
-        { name: 'Categories', icon: FolderTree, href: '/configuration/categories' },
+        {
+          name: 'Mailbox',
+          icon: ({ fill = '#2B3674' }: { fill: string }) => (
+            <svg
+              width="36"
+              height="36"
+              viewBox="0 0 48 48"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M32 18H26.9V12H21.1V18H16L24 26L32 18ZM38 6H9.98C7.76 6 6 7.8 6 10V38C6 40.2 7.76 42 9.98 42H38C40.2 42 42 40.2 42 38V10C42 7.8 40.2 6 38 6ZM38 38H10V32H17.12C18.5 34.38 21.06 36 24.02 36C26.98 36 29.52 34.38 30.92 32H38V38ZM38 28H28.02C28.02 30.2 26.22 32 24.02 32C21.82 32 20.02 30.2 20.02 28H10L9.98 10H38V28Z"
+                fill={fill}
+              />
+            </svg>
+          ),
+          href: '/configuration/mailbox',
+        },
+        {
+          name: 'Categories',
+          icon: ({ fill = '#2B3674' }: { fill: string }) => (
+            <svg
+              width="36"
+              height="36"
+              viewBox="0 0 38 40"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M18 0L7 18H29L18 0ZM18 7.68L21.86 14H14.12L18 7.68ZM29 22C24.02 22 20 26.02 20 31C20 35.98 24.02 40 29 40C33.98 40 38 35.98 38 31C38 26.02 33.98 22 29 22ZM29 36C26.24 36 24 33.76 24 31C24 28.24 26.24 26 29 26C31.76 26 34 28.24 34 31C34 33.76 31.76 36 29 36ZM0 39H16V23H0V39ZM4 27H12V35H4V27Z"
+                fill={fill}
+              />
+            </svg>
+          ),
+          href: '/configuration/categories',
+        },
+        {
+          name: 'Email Signatures',
+          icon: ({ fill = '#2B3674' }: { fill: string }) => (
+            <svg
+              width="36"
+              height="36"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M21.5 2H2.5C1.12 2 0 3.12 0 4.5V19.5C0 20.88 1.12 22 2.5 22H21.5C22.88 22 24 20.88 24 19.5V4.5C24 3.12 22.88 2 21.5 2ZM21.5 19.5H2.5V7.75L12 13.62L21.5 7.75V19.5ZM12 11.38L2.5 5.5H21.5L12 11.38Z"
+                fill={fill}
+              />
+            </svg>
+          ),
+          href: '/configuration/signatures',
+        },
+        {
+          name: 'Canned Replies',
+          icon: ({ fill = '#2B3674' }: { fill: string }) => (
+            <svg
+              width="36"
+              height="36"
+              viewBox="0 0 32 36"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M23.1252 0.583252H4.12516C2.3835 0.583252 0.958496 2.00825 0.958496 3.74992V25.9166H4.12516V3.74992H23.1252V0.583252ZM27.8752 6.91659H10.4585C8.71683 6.91659 7.29183 8.34159 7.29183 10.0833V32.2499C7.29183 33.9916 8.71683 35.4166 10.4585 35.4166H27.8752C29.6168 35.4166 31.0418 33.9916 31.0418 32.2499V10.0833C31.0418 8.34159 29.6168 6.91659 27.8752 6.91659ZM27.8752 32.2499H10.4585V10.0833H27.8752V32.2499Z"
+                fill={fill}
+              />
+            </svg>
+          ),
+          href: '/configuration/canned-replies',
+        },
+      ],
+    },
+    {
+      title: 'Settings',
+      items: [
+        {
+          name: 'CNAME',
+          icon: ({ fill = '#2B3674' }: { fill: string }) => (
+            <svg
+              width="36"
+              height="36"
+              viewBox="0 0 40 40"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M20 0C8.96 0 0 8.96 0 20C0 31.04 8.96 40 20 40C31.04 40 40 31.04 40 20C40 8.96 31.04 0 20 0ZM10.7 33C13.32 31.12 16.52 30 20 30C23.48 30 26.68 31.12 29.3 33C26.68 34.88 23.48 36 20 36C16.52 36 13.32 34.88 10.7 33ZM32.28 30.24C28.9 27.6 24.64 26 20 26C15.36 26 11.1 27.6 7.72 30.24C5.4 27.46 4 23.9 4 20C4 11.16 11.16 4 20 4C28.84 4 36 11.16 36 20C36 23.9 34.6 27.46 32.28 30.24Z"
+                fill={fill}
+              />
+              <path
+                d="M20 8C16.14 8 13 11.14 13 15C13 18.86 16.14 22 20 22C23.86 22 27 18.86 27 15C27 11.14 23.86 8 20 8ZM20 18C18.34 18 17 16.66 17 15C17 13.34 18.34 12 20 12C21.66 12 23 13.34 23 15C23 16.66 21.66 18 20 18Z"
+                fill={fill}
+              />
+            </svg>
+          ),
+          href: '/configuration/cname',
+        },
       ],
     },
   ] as {
@@ -40,9 +219,9 @@ export default function ClientPage() {
               const content = (
                 <div
                   className={`flex gap-2 flex-col items-center justify-center p-6 rounded-xl h-full ${item.href ? 'cursor-pointer' : 'cursor-default'}
-									${item.highlight ? 'bg-primary text-primary-foreground' : 'bg-background hover:bg-muted/50'}`}
+                  ${item.highlight ? 'bg-primary text-primary-foreground' : 'bg-background hover:bg-muted/50'}`}
                 >
-                  <item.icon size={32} />
+                  <item.icon />
                   <span className="text-sm font-semibold text-center">{item.name}</span>
                 </div>
               );

@@ -14,17 +14,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { Settings2, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Settings2, Trash2, ChevronLeft, ChevronRight, UserIcon, UsersIcon } from 'lucide-react';
 import { MultiSelectFilter, type OptionType } from '@/components/filters/multi-select-filter';
-import {
-  useInfiniteQuery,
-  useQuery,
-  useQueryClient,
-  type InfiniteData,
-  useMutation,
-} from '@tanstack/react-query';
-import { useSearchParams, useRouter } from 'next/navigation';
-import { getTickets, updateTicket, deleteTicket } from '@/services/ticket';
+import { useQuery, useQueryClient, type InfiniteData, useMutation } from '@tanstack/react-query';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
+import { updateTicket, deleteTicket } from '@/services/ticket';
 import { toast } from 'sonner';
 import {
   AlertDialog,
@@ -50,18 +44,36 @@ import type { IUser } from '@/typescript/user';
 import type { ICompany } from '@/typescript/company';
 import type { ICategory } from '@/typescript/category';
 import { Collapsible, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { useGlobalTicketsContext } from '@/providers/global-tickets-provider';
+import { useAuth } from '@/hooks/use-auth';
 
 import type { Agent } from '@/typescript/agent';
 import { formatRelativeTime, cn } from '@/lib/utils';
 import { TicketDetail } from './ticket-details';
-const LOAD_LIMIT = 20;
-
-type TicketPage = ITicket[];
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 function TicketsClientContent() {
+  const { user } = useAuth();
+  const {
+    allTicketsData,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoadingTickets,
+    isTicketsError,
+    ticketsError,
+  } = useGlobalTicketsContext();
+
   const queryClient = useQueryClient();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const pathname = usePathname();
   const [selectedTicket, setSelectedTicket] = useState<ITicket | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [subjectInput, setSubjectInput] = useState('');
@@ -73,11 +85,14 @@ function TicketsClientContent() {
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [selectedCompanies, setSelectedCompanies] = useState<string[]>([]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-  const [selectedTicketIds, setSelectedTicketIds] = useState<Set<number>>(new Set()); // State for selected ticket IDs
+  const [selectedTicketIds, setSelectedTicketIds] = useState<Set<number>>(new Set());
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [filtersExpanded, setFiltersExpanded] = useState(true);
+  const [filtersExpanded, setFiltersExpanded] = useState(false);
+  const [isAssignToAgentDialogOpen, setIsAssignToAgentDialogOpen] = useState(false);
+  const [isAssignToTeamDialogOpen, setIsAssignToTeamDialogOpen] = useState(false);
+  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
+  const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
 
-  // const [isNewTicketModalOpen, setIsNewTicketModalOpen] = useState(false);
   const statusOptions: OptionType[] = [
     { value: 'Unread', label: 'Unread' },
     { value: 'Open', label: 'Open' },
@@ -90,7 +105,7 @@ function TicketsClientContent() {
     { value: 'Low', label: 'Low' },
     { value: 'Medium', label: 'Medium' },
     { value: 'High', label: 'High' },
-    { value: 'Critical', label: 'Critical' }, // Added Critical
+    { value: 'Critical', label: 'Critical' },
   ];
 
   const { data: agentsData = [] } = useQuery<Agent[]>({
@@ -162,51 +177,12 @@ function TicketsClientContent() {
       }));
   }, [categoriesData]);
 
-  const {
-    data: ticketsQueryData,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-    isLoading: isLoadingTickets,
-    isError: isTicketsError,
-    error: ticketsError,
-  } = useInfiniteQuery<
-    TicketPage,
-    Error,
-    InfiniteData<TicketPage, number>,
-    readonly ['tickets'],
-    number
-  >({
-    // Explicit types
-    queryKey: ['tickets'],
-    queryFn: async ({ pageParam = 0 }) => {
-      console.log(`Fetching tickets with skip: ${pageParam}`);
-
-      const tickets = await getTickets({ skip: pageParam, limit: LOAD_LIMIT });
-      return tickets;
-    },
-    getNextPageParam: (lastPage, allPages) => {
-      if (!lastPage || lastPage.length < LOAD_LIMIT) {
-        console.log('No next page detected.');
-        return undefined;
-      }
-
-      const nextPageParam = allPages.flat().length;
-      console.log(`Next page param (skip): ${nextPageParam}`);
-      return nextPageParam;
-    },
-    initialPageParam: 0,
-    staleTime: 1000 * 60,
-    refetchInterval: 5000,
-    refetchIntervalInBackground: true,
-  });
-  const allTicketsData = React.useMemo(
-    () => ticketsQueryData?.pages?.flat() ?? [],
-    [ticketsQueryData]
-  );
-
   const filteredTicketsData = useMemo(() => {
     let tickets = allTicketsData;
+
+    if (selectedStatuses.length === 0) {
+      tickets = tickets.filter(ticket => ticket.status !== 'Closed');
+    }
 
     if (debouncedSubjectFilter) {
       const lowerCaseFilter = debouncedSubjectFilter.toLowerCase();
@@ -266,7 +242,7 @@ function TicketsClientContent() {
     selectedUsers,
     selectedCompanies,
     selectedCategories,
-  ]); // Add selectedCategories dependency
+  ]);
 
   useEffect(() => {
     const container = scrollContainerRef.current;
@@ -274,7 +250,6 @@ function TicketsClientContent() {
       if (container) {
         const { scrollTop, scrollHeight, clientHeight } = container;
         if (scrollHeight - scrollTop - clientHeight < 200 && hasNextPage && !isFetchingNextPage) {
-          console.log('Fetching next page due to scroll...');
           fetchNextPage();
         }
       }
@@ -288,19 +263,26 @@ function TicketsClientContent() {
   useEffect(() => {
     const ticketIdToOpen = searchParams.get('openTicket');
     const teamIdFromQuery = searchParams.get('teamId');
+    
+    if (pathname === '/tickets') {
+      if (teamIdFromQuery) {
+        if (!selectedTeams.includes(teamIdFromQuery)) {
+          setSelectedTeams([teamIdFromQuery]);
+        }
+      } else {
+        if (selectedTeams.length > 0) {
+          setSelectedTeams([]);
+        }
+      }
+    }
+
     if (ticketIdToOpen && allTicketsData.length > 0) {
       const ticket = allTicketsData.find(t => t.id === Number.parseInt(ticketIdToOpen, 10));
       if (ticket) {
         setSelectedTicket(ticket);
       }
     }
-
-    if (teamIdFromQuery) {
-      if (!selectedTeams.includes(teamIdFromQuery)) {
-        setSelectedTeams([teamIdFromQuery]);
-      }
-    }
-  }, [searchParams, allTicketsData, router, selectedTeams]);
+  }, [searchParams, allTicketsData, router, pathname, selectedTeams]);
 
   const agentIdToNameMap = React.useMemo(() => {
     return agentsData.reduce(
@@ -314,7 +296,7 @@ function TicketsClientContent() {
 
   const handleTicketUpdate = useCallback(
     (updatedTicket: ITicket) => {
-      queryClient.setQueryData<InfiniteData<TicketPage, number>>(['tickets'], oldData => {
+      queryClient.setQueryData<InfiniteData<ITicket[], number>>(['tickets'], oldData => {
         if (!oldData) return oldData;
         const newPages = oldData.pages.map((page: ITicket[]) =>
           page.map(t => (t.id === updatedTicket.id ? updatedTicket : t))
@@ -329,10 +311,8 @@ function TicketsClientContent() {
     [selectedTicket, queryClient]
   );
 
-  // --- Checkbox Handlers ---
   const handleSelectAllChange = (checked: boolean | 'indeterminate') => {
     if (checked === true) {
-      // Select ALL loaded tickets, not just filtered ones
       setSelectedTicketIds(new Set(allTicketsData.map(ticket => ticket.id)));
     } else {
       setSelectedTicketIds(new Set());
@@ -376,7 +356,6 @@ function TicketsClientContent() {
 
       const nonSuccessResponses = results
         .map((result, index) => ({ result, id: ticketIds[index] }))
-
         .filter(item => {
           if (item.result.status === 'fulfilled') {
             const value = (
@@ -390,7 +369,6 @@ function TicketsClientContent() {
       if (nonSuccessResponses.length > 0) {
         const errorMessages = nonSuccessResponses
           .map(item => {
-            // Corrected: Type assertion for the fulfilled value
             const response = (
               item.result as PromiseFulfilledResult<{ success: boolean; message?: string }>
             ).value;
@@ -399,24 +377,19 @@ function TicketsClientContent() {
           .join(', ');
         throw new Error(`Failed to delete: ${errorMessages}`);
       }
-      // Return results to check status if needed, though optimistic update handles UI
       return results;
     },
-    onSuccess: (data, variables) => {
-      toast.success(`${variables.length} ticket(s) deletion request sent.`); // Restore toast
-      console.log(`${variables.length} ticket(s) deletion attempted.`);
+    onSuccess: () => {
+      // ✅ NOTIFICACIÓN ELIMINADA: Eliminación silenciosa sin toast molesto
     },
     onMutate: async ticketIdsToDelete => {
-      // Cancel any outgoing refetches (so they don't overwrite our optimistic update)
-      await queryClient.cancelQueries({ queryKey: ['tickets'] }); // Use the base query key
+      await queryClient.cancelQueries({ queryKey: ['tickets'] });
 
-      // Snapshot the previous value
-      const previousTicketsData = queryClient.getQueryData<InfiniteData<TicketPage, number>>([
+      const previousTicketsData = queryClient.getQueryData<InfiniteData<ITicket[], number>>([
         'tickets',
       ]);
 
-      // Optimistically update to the new value
-      queryClient.setQueryData<InfiniteData<TicketPage, number>>(['tickets'], oldData => {
+      queryClient.setQueryData<InfiniteData<ITicket[], number>>(['tickets'], oldData => {
         if (!oldData) return oldData;
         const newPages = oldData.pages.map(page =>
           page.filter(ticket => !ticketIdsToDelete.includes(ticket.id))
@@ -424,24 +397,72 @@ function TicketsClientContent() {
         return { ...oldData, pages: newPages };
       });
 
+      // Optimistically update sidebar counters
+      const currentAllCount = queryClient.getQueryData<number>(['ticketsCount', 'all']) || 0;
+      const currentMyCount =
+        queryClient.getQueryData<number>(['ticketsCount', 'my', user?.id]) || 0;
+
+      // Get tickets being deleted to count how many are active
+      const allTickets = previousTicketsData?.pages.flat() || [];
+      const deletedTickets = allTickets.filter(ticket => ticketIdsToDelete.includes(ticket.id));
+      const activeDeletedCount = deletedTickets.filter(
+        ticket => ticket.status !== 'Closed' && ticket.status !== 'Resolved'
+      ).length;
+      const myActiveDeletedCount = deletedTickets.filter(
+        ticket =>
+          ticket.assignee_id === user?.id &&
+          ticket.status !== 'Closed' &&
+          ticket.status !== 'Resolved'
+      ).length;
+
+      // Update counters optimistically
+      queryClient.setQueryData(
+        ['ticketsCount', 'all'],
+        Math.max(0, currentAllCount - activeDeletedCount)
+      );
+      if (user?.id) {
+        queryClient.setQueryData(
+          ['ticketsCount', 'my', user.id],
+          Math.max(0, currentMyCount - myActiveDeletedCount)
+        );
+      }
+
       setSelectedTicketIds(new Set());
       setIsDeleteDialogOpen(false);
 
-      return { previousTicketsData };
+      return {
+        previousTicketsData,
+        previousAllCount: currentAllCount,
+        previousMyCount: currentMyCount,
+      };
     },
     onError: (
       err: Error,
-      ticketIdsToDelete,
-      context: { previousTicketsData?: InfiniteData<TicketPage, number> } | undefined
+      ticketIdsToDelete: number[],
+      context:
+        | {
+            previousTicketsData?: InfiniteData<ITicket[], number>;
+            previousAllCount?: number;
+            previousMyCount?: number;
+          }
+        | undefined
     ) => {
-      toast.error(`Error deleting tickets: ${err.message}`); // Restore toast
+      toast.error(`Error deleting tickets: ${err.message}`);
       console.error(`Error deleting tickets: ${err.message}`);
       if (context?.previousTicketsData) {
         queryClient.setQueryData(['tickets'], context.previousTicketsData);
       }
+      // Revert counter updates on error
+      if (context?.previousAllCount !== undefined) {
+        queryClient.setQueryData(['ticketsCount', 'all'], context.previousAllCount);
+      }
+      if (context?.previousMyCount !== undefined && user?.id) {
+        queryClient.setQueryData(['ticketsCount', 'my', user.id], context.previousMyCount);
+      }
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['tickets'] });
+      queryClient.invalidateQueries({ queryKey: ['agentTeams'] });
     },
   });
   const handleDeleteConfirm = () => {
@@ -450,36 +471,66 @@ function TicketsClientContent() {
     }
   };
 
+  // Mutation para manejar el cambio de estado de Unread a Open
+  const markAsReadMutation = useMutation({
+    mutationFn: async (ticket: ITicket) => {
+      return updateTicket(ticket.id, { status: 'Open' });
+    },
+    onMutate: async ticket => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['tickets'] });
+
+      // Snapshot the previous value
+      const previousTicketsData = queryClient.getQueryData<InfiniteData<ITicket[], number>>([
+        'tickets',
+      ]);
+
+      // Optimistically update to Open status
+      queryClient.setQueryData<InfiniteData<ITicket[], number>>(['tickets'], oldData => {
+        if (!oldData) return oldData;
+        const newPages = oldData.pages.map(page =>
+          page.map(t => (t.id === ticket.id ? { ...t, status: 'Open' as const } : t))
+        );
+        return { ...oldData, pages: newPages };
+      });
+
+      return { previousTicketsData };
+    },
+    onError: (
+      err: Error,
+      ticket: ITicket,
+      context: { previousTicketsData?: InfiniteData<ITicket[], number> } | undefined
+    ) => {
+      console.error(`Failed to update ticket ${ticket.id} status to Open:`, err);
+      if (context?.previousTicketsData) {
+        queryClient.setQueryData(['tickets'], context.previousTicketsData);
+      }
+    },
+    onSuccess: (updatedTicket, ticket) => {
+      // Update the selected ticket if it's the same one
+      if (selectedTicket?.id === ticket.id) {
+        setSelectedTicket({ ...ticket, status: 'Open' as const });
+      }
+    },
+  });
+
   const handleTicketClick = useCallback(
     async (ticket: ITicket) => {
       setSelectedTicket(ticket);
       if (ticket.status === 'Unread') {
-        console.log(`Ticket ${ticket.id} is Unread, updating to Open.`);
-        const optimisticUpdate = { ...ticket, status: 'Open' as const };
-        handleTicketUpdate(optimisticUpdate);
-        try {
-          await updateTicket(ticket.id, { status: 'Open' });
-          console.log(`Backend updated successfully for ticket ${ticket.id}`);
-        } catch (error) {
-          console.error(`Failed to update ticket ${ticket.id} status to Open in backend:`, error);
-        }
+        markAsReadMutation.mutate(ticket);
       }
     },
-    [handleTicketUpdate]
+    [markAsReadMutation]
   );
 
   const handleCloseDetail = useCallback(() => {
     setSelectedTicket(null);
-    // Create a new URLSearchParams object from the current search params
     const newSearchParams = new URLSearchParams(searchParams.toString());
-    // Remove the 'openTicket' parameter
     newSearchParams.delete('openTicket');
-    // Push the new URL without the 'openTicket' parameter
-    // Preserving other existing query parameters
     router.push(`${window.location.pathname}?${newSearchParams.toString()}`);
   }, [searchParams, router]);
 
-  // Calculate active filters count for the badge
   const activeFiltersCount = useMemo(() => {
     let count = 0;
     if (debouncedSubjectFilter) count++;
@@ -513,12 +564,339 @@ function TicketsClientContent() {
     setSelectedCategories([]);
   }, []);
 
+  const handleOpenAssignToAgentDialog = () => {
+    if (selectedTicketIds.size > 0) {
+      const ticketsArray = allTicketsData.filter(ticket => selectedTicketIds.has(ticket.id));
+
+      const firstTicket = ticketsArray[0];
+      const allSameAgent = ticketsArray.every(
+        ticket => ticket.assignee_id === firstTicket.assignee_id
+      );
+
+      if (allSameAgent && firstTicket.assignee_id !== undefined) {
+        setSelectedAgentId(String(firstTicket.assignee_id));
+      }
+    }
+
+    setIsAssignToAgentDialogOpen(true);
+  };
+
+  const handleOpenAssignToTeamDialog = () => {
+    if (selectedTicketIds.size > 0) {
+      const ticketsArray = allTicketsData.filter(ticket => selectedTicketIds.has(ticket.id));
+
+      const firstTicket = ticketsArray[0];
+      const allSameTeam = ticketsArray.every(ticket => ticket.team_id === firstTicket.team_id);
+
+      if (allSameTeam && firstTicket.team_id !== undefined) {
+        setSelectedTeamId(String(firstTicket.team_id));
+      }
+    }
+
+    setIsAssignToTeamDialogOpen(true);
+  };
+
+  const bulkAssignToTeamMutation = useMutation({
+    mutationFn: async (payload: { ticketIds: number[]; teamId: number | undefined }) => {
+      const { ticketIds, teamId } = payload;
+      const results = await Promise.allSettled(
+        ticketIds.map(id => updateTicket(id, { team_id: teamId }))
+      );
+
+      const failedAssignments = results
+        .map((result, index) => ({ result, id: ticketIds[index] }))
+        .filter(item => item.result.status === 'rejected');
+
+      if (failedAssignments.length > 0) {
+        const errorMessages = failedAssignments
+          .map(item => {
+            const reason = (item.result as PromiseRejectedResult).reason;
+            const message = (reason as { message?: string })?.message || `Ticket ID ${item.id}`;
+            return message;
+          })
+          .join(', ');
+        throw new Error(`Failed to assign: ${errorMessages}`);
+      }
+
+      return results;
+    },
+    onSuccess: (data, variables) => {
+      toast.success(`${variables.ticketIds.length} ticket(s) assigned to team successfully.`);
+      console.log(
+        `${variables.ticketIds.length} ticket(s) assigned to team ${variables.teamId || 'none'}.`
+      );
+    },
+    onMutate: async ({ ticketIds, teamId }) => {
+      await queryClient.cancelQueries({ queryKey: ['tickets'] });
+
+      const previousTicketsData = queryClient.getQueryData<InfiniteData<ITicket[], number>>([
+        'tickets',
+      ]);
+
+      queryClient.setQueryData<InfiniteData<ITicket[], number>>(['tickets'], oldData => {
+        if (!oldData) return oldData;
+
+        const newPages = oldData.pages.map(page =>
+          page.map(ticket => {
+            if (ticketIds.includes(ticket.id)) {
+              return {
+                ...ticket,
+                team_id: teamId,
+              };
+            }
+            return ticket;
+          })
+        );
+
+        return {
+          pages: newPages,
+          pageParams: oldData.pageParams,
+        };
+      });
+
+      setSelectedTicketIds(new Set());
+      setIsAssignToTeamDialogOpen(false);
+
+      return { previousTicketsData };
+    },
+    onError: (
+      err: Error,
+      variables,
+      context: { previousTicketsData?: InfiniteData<ITicket[], number> } | undefined
+    ) => {
+      toast.error(`Error assigning tickets to team: ${err.message}`);
+      console.error(`Error assigning tickets to team: ${err.message}`);
+      if (context?.previousTicketsData) {
+        queryClient.setQueryData(['tickets'], context.previousTicketsData);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['tickets'] });
+      queryClient.invalidateQueries({ queryKey: ['agentTeams'] });
+    },
+  });
+
+  const bulkAssignToAgentMutation = useMutation({
+    mutationFn: async (payload: { ticketIds: number[]; agentId: number | undefined }) => {
+      const { ticketIds, agentId } = payload;
+      const results = await Promise.allSettled(
+        ticketIds.map(id => updateTicket(id, { assignee_id: agentId }))
+      );
+
+      const failedAssignments = results
+        .map((result, index) => ({ result, id: ticketIds[index] }))
+        .filter(item => item.result.status === 'rejected');
+
+      if (failedAssignments.length > 0) {
+        const errorMessages = failedAssignments
+          .map(item => {
+            const reason = (item.result as PromiseRejectedResult).reason;
+            const message = (reason as { message?: string })?.message || `Ticket ID ${item.id}`;
+            return message;
+          })
+          .join(', ');
+        throw new Error(`Failed to assign: ${errorMessages}`);
+      }
+
+      return results;
+    },
+    onSuccess: (data, variables) => {
+      toast.success(`${variables.ticketIds.length} ticket(s) assigned successfully.`);
+      console.log(
+        `${variables.ticketIds.length} ticket(s) assigned to agent ${variables.agentId || 'none'}.`
+      );
+    },
+    onMutate: async ({ ticketIds, agentId }) => {
+      await queryClient.cancelQueries({ queryKey: ['tickets'] });
+
+      const previousTicketsData = queryClient.getQueryData<InfiniteData<ITicket[], number>>([
+        'tickets',
+      ]);
+
+      queryClient.setQueryData<InfiniteData<ITicket[], number>>(['tickets'], oldData => {
+        if (!oldData) return oldData;
+
+        const newPages = oldData.pages.map(page =>
+          page.map(ticket => {
+            if (ticketIds.includes(ticket.id)) {
+              return {
+                ...ticket,
+                assignee_id: agentId,
+              };
+            }
+            return ticket;
+          })
+        );
+
+        return {
+          pages: newPages,
+          pageParams: oldData.pageParams,
+        };
+      });
+
+      setSelectedTicketIds(new Set());
+      setIsAssignToAgentDialogOpen(false);
+
+      return { previousTicketsData };
+    },
+    onError: (
+      err: Error,
+      variables,
+      context: { previousTicketsData?: InfiniteData<ITicket[], number> } | undefined
+    ) => {
+      toast.error(`Error assigning tickets: ${err.message}`);
+      console.error(`Error assigning tickets: ${err.message}`);
+      if (context?.previousTicketsData) {
+        queryClient.setQueryData(['tickets'], context.previousTicketsData);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['tickets'] });
+      queryClient.invalidateQueries({ queryKey: ['ticketsCount', 'my', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['ticketsCount', 'all'] });
+      queryClient.invalidateQueries({ queryKey: ['agentTeams'] }); // Para actualizar contadores de teams
+    },
+  });
+
+  const handleAssignToAgentConfirm = () => {
+    if (selectedTicketIds.size > 0) {
+      const agentId =
+        selectedAgentId === 'null'
+          ? undefined
+          : selectedAgentId
+            ? parseInt(selectedAgentId, 10)
+            : undefined;
+      bulkAssignToAgentMutation.mutate({
+        ticketIds: Array.from(selectedTicketIds),
+        agentId,
+      });
+    }
+  };
+
+  const handleAssignToTeamConfirm = () => {
+    if (selectedTicketIds.size > 0) {
+      const teamId =
+        selectedTeamId === 'null'
+          ? undefined
+          : selectedTeamId
+            ? parseInt(selectedTeamId, 10)
+            : undefined;
+      bulkAssignToTeamMutation.mutate({
+        ticketIds: Array.from(selectedTicketIds),
+        teamId,
+      });
+    }
+  };
   return (
     <div className="flex h-full gap-6">
       <div className="flex-1 flex flex-col h-full">
         {selectedTicketIds.size > 0 && (
           <div className="flex items-center justify-between py-4 px-6 flex-shrink-0 border-b">
             <div className="flex items-center gap-2 ml-auto">
+              <AlertDialog
+                open={isAssignToAgentDialogOpen}
+                onOpenChange={setIsAssignToAgentDialogOpen}
+              >
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={bulkAssignToAgentMutation.isPending}
+                    className="bg-white hover:bg-white"
+                    onClick={handleOpenAssignToAgentDialog}
+                  >
+                    <UserIcon className="mr-2 h-4 w-4" />
+                    Assign to Agent ({selectedTicketIds.size})
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent className="bg-white">
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Assign Tickets to Agent</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Select the agent to assign the {selectedTicketIds.size} selected ticket(s).
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <div className="py-4">
+                    <Select value={selectedAgentId || ''} onValueChange={setSelectedAgentId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select agent" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="null">Unassigned</SelectItem>
+                        {agentsData.map(agent => (
+                          <SelectItem key={agent.id} value={String(agent.id)}>
+                            {agent.name || agent.email}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel disabled={bulkAssignToAgentMutation.isPending}>
+                      Cancel
+                    </AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleAssignToAgentConfirm}
+                      disabled={bulkAssignToAgentMutation.isPending || !selectedAgentId}
+                    >
+                      {bulkAssignToAgentMutation.isPending ? 'Assigning...' : 'Assign'}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+
+              <AlertDialog
+                open={isAssignToTeamDialogOpen}
+                onOpenChange={setIsAssignToTeamDialogOpen}
+              >
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={bulkAssignToTeamMutation.isPending}
+                    className="bg-white hover:bg-white"
+                    onClick={handleOpenAssignToTeamDialog}
+                  >
+                    <UsersIcon className="mr-2 h-4 w-4" />
+                    Assign to Team ({selectedTicketIds.size})
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent className="bg-white">
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Assign Tickets to Team</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Select the team to assign the {selectedTicketIds.size} selected ticket(s).
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <div className="py-4">
+                    <Select value={selectedTeamId || ''} onValueChange={setSelectedTeamId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select team" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="null">Unassigned</SelectItem>
+                        {teamsData.map(team => (
+                          <SelectItem key={team.id} value={String(team.id)}>
+                            {team.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel disabled={bulkAssignToTeamMutation.isPending}>
+                      Cancel
+                    </AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleAssignToTeamConfirm}
+                      disabled={bulkAssignToTeamMutation.isPending || !selectedTeamId}
+                    >
+                      {bulkAssignToTeamMutation.isPending ? 'Assigning...' : 'Assign'}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+
               <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
                 <AlertDialogTrigger asChild>
                   <Button
@@ -530,7 +908,7 @@ function TicketsClientContent() {
                     Delete ({selectedTicketIds.size})
                   </Button>
                 </AlertDialogTrigger>
-                <AlertDialogContent>
+                <AlertDialogContent className="bg-white">
                   <AlertDialogHeader>
                     <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                     <AlertDialogDescription>
@@ -557,11 +935,11 @@ function TicketsClientContent() {
         )}
         <Card className="shadow-none border-0 flex-1 flex flex-col overflow-hidden m-0">
           <CardContent className="flex-1 overflow-hidden p-0">
-            <div ref={scrollContainerRef} className="h-full overflow-y-auto px-6">
+            <div ref={scrollContainerRef} className="h-full overflow-y-auto">
               <Table>
                 <TableHeader className="sticky top-0 bg-card z-10">
                   <TableRow className="border-b border-slate-200 dark:border-slate-700 hover:bg-transparent">
-                    <TableHead className="w-[50px] p-2">
+                    <TableHead className="w-[50px] px-4">
                       <Checkbox
                         checked={headerCheckboxState}
                         onCheckedChange={handleSelectAllChange}
@@ -580,19 +958,19 @@ function TicketsClientContent() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {isLoadingTickets && allTicketsData.length === 0 ? ( // Check allTicketsData for initial loading
+                  {isLoadingTickets && allTicketsData.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={8} className="h-24 text-center">
                         Loading tickets...
                       </TableCell>
                     </TableRow>
-                  ) : isTicketsError ? ( // Handle error state
+                  ) : isTicketsError ? (
                     <TableRow>
                       <TableCell colSpan={8} className="h-24 text-center text-red-500">
                         Error loading tickets: {ticketsError?.message || 'Unknown error'}
                       </TableCell>
                     </TableRow>
-                  ) : filteredTicketsData.length === 0 ? ( // Check filtered data length
+                  ) : filteredTicketsData.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={8} className="h-24 text-center">
                         {debouncedSubjectFilter
@@ -615,9 +993,9 @@ function TicketsClientContent() {
                             'font-semibold bg-slate-50 dark:bg-slate-800/50'
                         )}
                         data-state={selectedTicketIds.has(ticket.id) ? 'selected' : ''}
-                        onClick={() => handleTicketClick(ticket)} // Moved onClick here
+                        onClick={() => handleTicketClick(ticket)}
                       >
-                        <TableCell className="p-2 py-4">
+                        <TableCell className="px-4">
                           <Checkbox
                             checked={selectedTicketIds.has(ticket.id)}
                             onCheckedChange={checked => handleRowSelectChange(ticket.id, checked)}
@@ -625,12 +1003,10 @@ function TicketsClientContent() {
                             onClick={e => e.stopPropagation()}
                           />
                         </TableCell>
-                        <TableCell className="font-medium p-2 py-4">{ticket.id}</TableCell>{' '}
-                        {/* Removed onClick and cursor-pointer */}
+                        <TableCell className="font-medium p-2 py-4">{ticket.id}</TableCell>
                         <TableCell className="max-w-xs md:max-w-sm truncate p-2 py-4">
                           {ticket.title}
-                        </TableCell>{' '}
-                        {/* Removed onClick and cursor-pointer */}
+                        </TableCell>
                         <TableCell className="p-2 py-4">
                           <div className="flex items-center gap-2">
                             <div className="relative flex h-2 w-2">
@@ -688,10 +1064,10 @@ function TicketsClientContent() {
                         <TableCell className="p-2 py-4">
                           {formatRelativeTime(ticket.created_at)}
                         </TableCell>
-                      </motion.tr> // Close motion.tr
+                      </motion.tr>
                     ))
                   )}
-                  {isFetchingNextPage && ( // Use isFetchingNextPage for loading more indicator
+                  {isFetchingNextPage && (
                     <TableRow>
                       <TableCell colSpan={8} className="py-4 text-center text-muted-foreground">
                         Loading more tickets...
@@ -704,18 +1080,24 @@ function TicketsClientContent() {
           </CardContent>
         </Card>
       </div>
-      <div className="flex-shrink-0 flex items-start">
-        <Collapsible open={filtersExpanded} onOpenChange={setFiltersExpanded} className="flex">
+      <div className="flex-shrink-0 flex items-stretch h-full">
+        <Collapsible
+          open={filtersExpanded}
+          onOpenChange={setFiltersExpanded}
+          className="flex h-full"
+        >
           <CollapsibleTrigger asChild>
             <Button
               variant="outline"
-              size="icon"
-              className="h-8 w-8 rounded-full z-10 -mr-4 mt-6 shadow-md relative"
+              size="sm"
+              className="z-10 -mr-4 mt-6 shadow-md relative cursor-pointer rounded-full px-3"
             >
               {filtersExpanded ? (
                 <ChevronRight className="h-4 w-4" />
               ) : (
-                <ChevronLeft className="h-4 w-4" />
+                <>
+                  Filters <ChevronLeft className="h-4 w-4 ml-1 inline" />
+                </>
               )}
               {activeFiltersCount > 0 && !filtersExpanded && (
                 <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-medium text-primary-foreground">
@@ -725,8 +1107,8 @@ function TicketsClientContent() {
             </Button>
           </CollapsibleTrigger>
           {filtersExpanded && (
-            <aside className="w-80 border-l p-6 space-y-6 bg-card text-card-foreground rounded-lg transition-all duration-300">
-              <div className="flex items-center justify-between">
+            <aside className="w-80 border-l p-6 space-y-6 bg-card text-card-foreground rounded-lg transition-all duration-300 flex flex-col h-full">
+              <div className="flex items-center justify-between flex-shrink-0">
                 <h2 className="text-lg font-semibold">
                   Filters
                   {activeFiltersCount > 0 && (
@@ -746,7 +1128,7 @@ function TicketsClientContent() {
                   </Button>
                 </div>
               </div>
-              <div className="space-y-4">
+              <div className="space-y-4 overflow-y-auto flex-grow">
                 <div>
                   <label htmlFor="subject-filter" className="text-sm font-medium">
                     Subject
