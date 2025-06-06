@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useQueryClient, useQuery, useMutation } from '@tanstack/react-query';
 import { X } from 'lucide-react';
 import BoringAvatar from 'boring-avatars';
@@ -27,6 +27,15 @@ import { toast } from 'sonner';
 import { getCurrentUser } from '@/lib/auth';
 import { cn } from '@/lib/utils';
 
+const PRIORITY_OPTIONS = [
+  { value: 'Low', label: 'Low', color: 'bg-slate-500' },
+  { value: 'Medium', label: 'Medium', color: 'bg-green-500' },
+  { value: 'High', label: 'High', color: 'bg-yellow-500' },
+  { value: 'Critical', label: 'Critical', color: 'bg-red-500' },
+];
+
+const AVATAR_COLORS = ['#a3a948', '#edb92e', '#f85931', '#ce1836', '#009989'];
+
 interface Props {
   ticket: ITicket | null;
   onClose: () => void;
@@ -35,23 +44,24 @@ interface Props {
 
 export function TicketDetail({ ticket: initialTicket, onClose, onTicketUpdate }: Props) {
   const queryClient = useQueryClient();
-  const [agents, setAgents] = useState<Agent[]>([]);
-  const [isLoadingAgents, setIsLoadingAgents] = useState(true);
-  const [isClosingTicket, setIsClosingTicket] = useState(false);
-  const [isResolvingTicket, setIsResolvingTicket] = useState(false);
   const [ticket, setTicket] = useState<ITicket | null>(initialTicket);
 
-  // Get teams data from React Query
-  const { data: teams = [], isLoading: isLoadingTeams } = useQuery<Team[], Error>({
+  // Data fetching
+  const { data: agents = [], isLoading: isLoadingAgents } = useQuery<Agent[]>({
+    queryKey: ['agents'],
+    queryFn: getAgents,
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const { data: teams = [], isLoading: isLoadingTeams } = useQuery<Team[]>({
     queryKey: ['teams'],
     queryFn: getTeams,
     staleTime: 1000 * 60 * 5,
   });
 
-  // Get categories data from React Query
-  const { data: categories = [], isLoading: isLoadingCategories } = useQuery<ICategory[], Error>({
+  const { data: categories = [], isLoading: isLoadingCategories } = useQuery<ICategory[]>({
     queryKey: ['categories'],
-    queryFn: () => getCategories(),
+    queryFn: getCategories,
     staleTime: 1000 * 60 * 5,
   });
 
@@ -59,306 +69,105 @@ export function TicketDetail({ ticket: initialTicket, onClose, onTicketUpdate }:
     setTicket(initialTicket);
   }, [initialTicket]);
 
-  useEffect(() => {
-    const fetchAgents = async () => {
-      setIsLoadingAgents(true);
-      try {
-        const fetchedAgents = await getAgents();
-        setAgents(fetchedAgents);
-      } catch (error) {
-        console.error('Failed to fetch agents:', error);
-      } finally {
-        setIsLoadingAgents(false);
-      }
-    };
-    fetchAgents();
-  }, []);
+  const updateTicketField = useCallback(
+    async (
+      field: 'priority' | 'assignee_id' | 'team_id' | 'category_id',
+      value: string | null,
+      currentFieldValue: string | number | null
+    ) => {
+      if (!ticket) return;
 
-  const updateFieldMutation = useMutation<
-    ITicket,
-    Error,
-    {
-      field: 'priority' | 'assignee_id' | 'team_id' | 'category_id';
-      value: string | null;
-      originalFieldValue: string | number | null;
-    },
-    { previousTicket: ITicket | null }
-  >({
-    mutationFn: async ({ field, value }) => {
-      if (!ticket) throw new Error('No ticket selected');
       let updateValue: TicketStatus | TicketPriority | number | null;
 
       if (field === 'assignee_id' || field === 'team_id' || field === 'category_id') {
         updateValue = value === 'null' || value === null ? null : parseInt(value, 10);
         if (typeof updateValue === 'number' && isNaN(updateValue)) {
-          throw new Error(`Invalid ${field}: ${value}`);
+          console.error(`Invalid ${field} selected: ${value}`);
+          return;
         }
       } else {
         updateValue = value as TicketPriority;
       }
 
-      return updateTicket(ticket.id, { [field]: updateValue });
-    },
-    onMutate: async ({ field, value, originalFieldValue }) => {
-      if (!ticket) return { previousTicket: null };
+      if (ticket[field as keyof ITicket] === updateValue) return;
 
-      // Cancel any outgoing refetches
-      await queryClient.cancelQueries({ queryKey: ['tickets', ticket.id] });
+      try {
+        const updatedTicket = await updateTicket(ticket.id, { [field]: updateValue });
 
-      // Snapshot the previous value
-      const previousTicket = queryClient.getQueryData<ITicket>(['tickets', ticket.id]) || ticket;
+        // Update local state
+        setTicket(updatedTicket);
 
-      let optimisticUpdateValue: TicketStatus | TicketPriority | number | null;
-      if (field === 'assignee_id' || field === 'team_id' || field === 'category_id') {
-        optimisticUpdateValue = value === 'null' || value === null ? null : parseInt(value, 10);
-        if (typeof optimisticUpdateValue === 'number' && isNaN(optimisticUpdateValue)) {
-          optimisticUpdateValue = null;
+        // Notify parent
+        if (onTicketUpdate) {
+          onTicketUpdate(updatedTicket);
         }
-      } else {
-        optimisticUpdateValue = value as TicketPriority;
-      }
 
-      // Optimistically update to the new value
-      const optimisticTicket: ITicket = {
-        ...previousTicket,
-        [field]: optimisticUpdateValue,
-      };
-
-      queryClient.setQueryData(['tickets', ticket.id], optimisticTicket);
-
-      // Update parent immediately
-      if (onTicketUpdate) {
-        onTicketUpdate(optimisticTicket);
-      }
-
-      // Optimistically update team counters when team_id changes
-      if (field === 'team_id') {
+        // Invalidate relevant queries
         const currentUser = await getCurrentUser();
-        if (currentUser?.id) {
-          // Get current agentTeams data
-          const agentTeamsKey = ['agentTeams', currentUser.id, currentUser.role];
-          const currentAgentTeams = queryClient.getQueryData<Team[]>(agentTeamsKey) || [];
+        const currentUserId = currentUser?.id;
 
-          // Only proceed if ticket is active (not closed/resolved)
-          if (ticket.status !== 'Closed' && ticket.status !== 'Resolved') {
-            const previousTeamId = originalFieldValue as number | null;
-            const newTeamId = optimisticUpdateValue as number | null;
+        queryClient.invalidateQueries({ queryKey: ['tickets'] });
 
-            // Update team counters optimistically
-            const updatedAgentTeams = currentAgentTeams.map(team => {
-              if (team.id === previousTeamId && previousTeamId !== null) {
-                // Decrease counter for previous team
-                return {
-                  ...team,
-                  ticket_count: Math.max(0, (team.ticket_count || 0) - 1),
-                };
-              } else if (team.id === newTeamId && newTeamId !== null) {
-                // Increase counter for new team
-                return {
-                  ...team,
-                  ticket_count: (team.ticket_count || 0) + 1,
-                };
-              }
-              return team;
-            });
-
-            queryClient.setQueryData(agentTeamsKey, updatedAgentTeams);
-          }
-        }
-      }
-
-      return { previousTicket };
-    },
-    onError: (error, { field }) => {
-      toast.error(
-        `Error updating ${field}: ${error instanceof Error ? error.message : 'Unknown error'}`
-      );
-      if (ticket) {
-        // Revert team counter changes on error
-        if (field === 'team_id') {
-          queryClient.invalidateQueries({ queryKey: ['agentTeams'] });
-        }
-      }
-    },
-    onSuccess: async (data, variables) => {
-      // No es necesario actualizar el estado aquí ya que se hizo optimisticamente
-      // Solo invalidamos las consultas necesarias para mantener sincronización
-      const currentUser = await getCurrentUser();
-      const currentUserId = currentUser?.id;
-
-      if (currentUserId) {
-        if (variables.field === 'assignee_id') {
-          const previousAssigneeId = variables.originalFieldValue;
-          const newAssigneeId = data.assignee_id;
-          if (previousAssigneeId === currentUserId || newAssigneeId === currentUserId) {
-            queryClient.invalidateQueries({ queryKey: ['tickets', 'my', currentUserId] });
-            queryClient.invalidateQueries({ queryKey: ['tickets'] });
-          }
-        } else {
-          queryClient.invalidateQueries({ queryKey: ['tickets'] });
-          if (variables.field === 'team_id') {
+        if (currentUserId) {
+          if (field === 'assignee_id') {
+            const previousAssigneeId = currentFieldValue;
+            const newAssigneeId = updatedTicket.assignee_id;
+            if (previousAssigneeId === currentUserId || newAssigneeId === currentUserId) {
+              queryClient.invalidateQueries({ queryKey: ['tickets', 'my', currentUserId] });
+            }
+          } else if (field === 'team_id') {
             queryClient.invalidateQueries({ queryKey: ['tickets', 'my', currentUserId] });
             queryClient.invalidateQueries({ queryKey: ['teamsWithCounts'] });
             queryClient.invalidateQueries({ queryKey: ['teamTasks'] });
             queryClient.invalidateQueries({ queryKey: ['agentTeams', currentUserId] });
-            queryClient.invalidateQueries({ queryKey: ['agentTeams'] });
-          } else if (variables.field === 'category_id' || variables.field === 'priority') {
-            queryClient.invalidateQueries({ queryKey: ['tickets', 'my', currentUserId] });
           }
         }
-      } else {
-        queryClient.invalidateQueries({ queryKey: ['tickets'] });
-        if (variables.field === 'team_id') {
-          queryClient.invalidateQueries({ queryKey: ['teamsWithCounts'] });
-          queryClient.invalidateQueries({ queryKey: ['teamTasks'] });
+
+        if (field === 'team_id') {
           queryClient.invalidateQueries({ queryKey: ['agentTeams'] });
         }
+      } catch (error) {
+        toast.error(
+          `Error updating ${field}: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
       }
     },
-  });
-
-  const handleUpdateField = (
-    field: 'priority' | 'assignee_id' | 'team_id' | 'category_id',
-    value: string | null
-  ) => {
-    if (!ticket) return;
-
-    // Validar el valor antes de procesarlo
-    let optimisticUpdateValue: TicketStatus | TicketPriority | number | null;
-    if (field === 'assignee_id' || field === 'team_id' || field === 'category_id') {
-      optimisticUpdateValue = value === 'null' || value === null ? null : parseInt(value, 10);
-      if (typeof optimisticUpdateValue === 'number' && isNaN(optimisticUpdateValue)) {
-        console.error(`Invalid ${field} selected: ${value}`);
-        return;
-      }
-    } else {
-      optimisticUpdateValue = value as TicketPriority;
-    }
-
-    // Si el valor es exactamente el mismo, no hacemos nada
-    if (ticket[field as keyof ITicket] === optimisticUpdateValue) {
-      return;
-    }
-
-    // Obtener el valor original para la mutation
-    const currentFieldValue = ticket[field] ?? null;
-
-    // Iniciar la actualización (la actualización optimista se hace en onMutate)
-    updateFieldMutation.mutate({ field, value, originalFieldValue: currentFieldValue });
-  };
-  const closeTicketMutation = useMutation<ITicket, Error, void, { previousTicket: ITicket | null }>(
-    {
-      mutationFn: async () => {
-        if (!ticket) throw new Error('No ticket selected');
-        setIsClosingTicket(true);
-        return updateTicket(ticket.id, { status: 'Closed' });
-      },
-      onMutate: async () => {
-        if (!ticket) return { previousTicket: null };
-        await queryClient.cancelQueries({ queryKey: ['tickets', ticket.id] }); // Cancelar consultas para este ticket
-        const previousTicket = queryClient.getQueryData<ITicket>(['tickets', ticket.id]) || ticket;
-
-        const optimisticTicket: ITicket = {
-          ...previousTicket,
-          status: 'Closed' as TicketStatus,
-        };
-
-        queryClient.setQueryData(['tickets', ticket.id], optimisticTicket); // Actualización optimista en caché individual
-        if (onTicketUpdate) {
-          onTicketUpdate(optimisticTicket);
-        }
-        return { previousTicket };
-      },
-      onSuccess: updatedTicketData => {
-        // Removido _variables, _context ya que no se usan aquí explícitamente
-        // updatedTicketData ya es el dato correcto del servidor
-        queryClient.invalidateQueries({ queryKey: ['tickets'] });
-        queryClient.invalidateQueries({ queryKey: ['tickets', 'my'] });
-        if (onTicketUpdate) {
-          onTicketUpdate(updatedTicketData); // Asegurar que el padre recibe los datos finales
-        }
-        onClose();
-        toast.success(`Ticket #${updatedTicketData.id} closed successfully.`);
-      },
-      onError: (error, _variables, context) => {
-        toast.error(
-          `Error closing ticket #${ticket?.id}: ${error instanceof Error ? error.message : 'Unknown error'}`
-        );
-        if (context?.previousTicket) {
-          queryClient.setQueryData(['tickets', ticket!.id], context.previousTicket); // Revertir caché individual
-          if (onTicketUpdate) {
-            onTicketUpdate(context.previousTicket);
-          }
-        }
-      },
-      onSettled: () => {
-        setIsClosingTicket(false);
-        // Invalidar para asegurar consistencia después de éxito o error si no se hizo ya o si el panel no se cierra
-        // Sin embargo, con onClose() en onSuccess y la reversión en onError, esto podría ser redundante aquí
-        // a menos que queramos asegurar refetch incluso si onTicketUpdate no actualiza el estado correctamente.
-        // queryClient.invalidateQueries({ queryKey: ['tickets', ticket?.id] });
-      },
-    }
+    [ticket, onTicketUpdate, queryClient]
   );
 
-  const resolveTicketMutation = useMutation<
-    ITicket,
-    Error,
-    void,
-    { previousTicket: ITicket | null }
-  >({
-    mutationFn: async () => {
-      if (!ticket) throw new Error('No ticket selected');
-      setIsResolvingTicket(true);
-      return updateTicket(ticket.id, { status: 'Closed' });
-    },
-    onMutate: async () => {
-      if (!ticket) return { previousTicket: null };
-      await queryClient.cancelQueries({ queryKey: ['tickets', ticket.id] });
-      const previousTicket = queryClient.getQueryData<ITicket>(['tickets', ticket.id]) || ticket;
+  const handleStatusChange = useCallback(
+    async (newStatus: TicketStatus) => {
+      if (!ticket) return;
 
-      const optimisticTicket: ITicket = {
-        ...previousTicket,
-        status: 'Closed' as TicketStatus,
-      };
+      try {
+        const updatedTicket = await updateTicket(ticket.id, { status: newStatus });
 
-      queryClient.setQueryData(['tickets', ticket.id], optimisticTicket);
-      if (onTicketUpdate) {
-        onTicketUpdate(optimisticTicket);
-      }
-      return { previousTicket };
-    },
-    onSuccess: updatedTicketData => {
-      queryClient.invalidateQueries({ queryKey: ['tickets'] });
-      queryClient.invalidateQueries({ queryKey: ['tickets', 'my'] });
-      if (onTicketUpdate) {
-        onTicketUpdate(updatedTicketData);
-      }
-      onClose();
-      toast.success(`Ticket #${updatedTicketData.id} closed successfully.`);
-    },
-    onError: (error, _variables, context) => {
-      toast.error(
-        `Error closing ticket #${ticket?.id}: ${error instanceof Error ? error.message : 'Unknown error'}`
-      );
-      if (context?.previousTicket) {
-        queryClient.setQueryData(['tickets', ticket!.id], context.previousTicket);
+        // Update local state
+        setTicket(updatedTicket);
+
+        // Notify parent
         if (onTicketUpdate) {
-          onTicketUpdate(context.previousTicket);
+          onTicketUpdate(updatedTicket);
         }
+
+        // Invalidate relevant queries
+        queryClient.invalidateQueries({ queryKey: ['tickets'] });
+        queryClient.invalidateQueries({ queryKey: ['tickets', 'my'] });
+
+        toast.success(`Ticket #${updatedTicket.id} ${newStatus.toLowerCase()} successfully.`);
+        onClose();
+      } catch (error) {
+        toast.error(
+          `Error updating ticket status: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
       }
     },
-    onSettled: () => {
-      setIsResolvingTicket(false);
-      // queryClient.invalidateQueries({ queryKey: ['tickets', ticket?.id] });
-    },
-  });
+    [ticket, onTicketUpdate, queryClient, onClose]
+  );
 
   if (!ticket) {
     return null;
   }
-
-  const avatarColors = ['#a3a948', '#edb92e', '#f85931', '#ce1836', '#009989'];
 
   return (
     <AnimatePresence>
@@ -391,14 +200,10 @@ export function TicketDetail({ ticket: initialTicket, onClose, onTicketUpdate }:
         <div className="flex-1 flex gap-4 p-4 pt-10 overflow-y-auto">
           <div className="flex-1 min-w-0">
             <TicketConversation
-              ticket={ticket!}
+              ticket={ticket}
               onTicketUpdate={updatedTicket => {
-                // Update the ticket in state
                 setTicket(updatedTicket);
-                // Call the parent's onTicketUpdate callback if provided
-                if (onTicketUpdate) {
-                  onTicketUpdate(updatedTicket);
-                }
+                onTicketUpdate?.(updatedTicket);
               }}
             />
           </div>
@@ -411,8 +216,7 @@ export function TicketDetail({ ticket: initialTicket, onClose, onTicketUpdate }:
                 <h3 className="text-sm font-medium text-muted-foreground mb-1">Priority</h3>
                 <Select
                   value={ticket.priority}
-                  onValueChange={value => handleUpdateField('priority', value)}
-                  disabled={false}
+                  onValueChange={value => updateTicketField('priority', value, ticket.priority)}
                 >
                   <SelectTrigger className="h-8 text-xs focus:ring-0 focus:ring-offset-0">
                     <SelectValue placeholder="Select priority">
@@ -421,10 +225,7 @@ export function TicketDetail({ ticket: initialTicket, onClose, onTicketUpdate }:
                           <div
                             className={cn(
                               'w-2 h-2 rounded-full',
-                              ticket.priority === 'Low' && 'bg-slate-500',
-                              ticket.priority === 'Medium' && 'bg-green-500',
-                              ticket.priority === 'High' && 'bg-yellow-500',
-                              ticket.priority === 'Critical' && 'bg-red-500'
+                              PRIORITY_OPTIONS.find(p => p.value === ticket.priority)?.color
                             )}
                           />
                           {ticket.priority}
@@ -433,38 +234,25 @@ export function TicketDetail({ ticket: initialTicket, onClose, onTicketUpdate }:
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Low">
-                      <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-slate-500" />
-                        Low
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="Medium">
-                      <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-green-500" />
-                        Medium
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="High">
-                      <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-yellow-500" />
-                        High
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="Critical">
-                      <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-red-500" />
-                        Critical
-                      </div>
-                    </SelectItem>
+                    {PRIORITY_OPTIONS.map(option => (
+                      <SelectItem key={option.value} value={option.value}>
+                        <div className="flex items-center gap-2">
+                          <div className={`w-2 h-2 rounded-full ${option.color}`} />
+                          {option.label}
+                        </div>
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
+
               <div>
                 <h3 className="text-sm font-medium text-muted-foreground mb-1">Assigned to</h3>
                 <Select
                   value={ticket.assignee_id?.toString() ?? 'null'}
-                  onValueChange={value => handleUpdateField('assignee_id', value)}
+                  onValueChange={value =>
+                    updateTicketField('assignee_id', value, ticket.assignee_id)
+                  }
                   disabled={isLoadingAgents}
                 >
                   <SelectTrigger className="h-8 text-xs focus:ring-0 focus:ring-offset-0">
@@ -480,11 +268,12 @@ export function TicketDetail({ ticket: initialTicket, onClose, onTicketUpdate }:
                   </SelectContent>
                 </Select>
               </div>
+
               <div>
                 <h3 className="text-sm font-medium text-muted-foreground mb-1">Team</h3>
                 <Select
                   value={ticket.team_id?.toString() ?? 'null'}
-                  onValueChange={value => handleUpdateField('team_id', value)}
+                  onValueChange={value => updateTicketField('team_id', value, ticket.team_id)}
                   disabled={isLoadingTeams}
                 >
                   <SelectTrigger className="h-8 text-xs focus:ring-0 focus:ring-offset-0">
@@ -492,7 +281,7 @@ export function TicketDetail({ ticket: initialTicket, onClose, onTicketUpdate }:
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="null">Unassigned</SelectItem>
-                    {teams.map((team: Team) => (
+                    {teams.map(team => (
                       <SelectItem key={team.id} value={team.id.toString()}>
                         {team.name}
                       </SelectItem>
@@ -500,11 +289,14 @@ export function TicketDetail({ ticket: initialTicket, onClose, onTicketUpdate }:
                   </SelectContent>
                 </Select>
               </div>
+
               <div>
                 <h3 className="text-sm font-medium text-muted-foreground mb-1">Category</h3>
                 <Select
                   value={ticket.category_id?.toString() ?? 'null'}
-                  onValueChange={value => handleUpdateField('category_id', value)}
+                  onValueChange={value =>
+                    updateTicketField('category_id', value, ticket.category_id)
+                  }
                   disabled={isLoadingCategories}
                 >
                   <SelectTrigger className="h-8 text-xs focus:ring-0 focus:ring-offset-0">
@@ -514,7 +306,7 @@ export function TicketDetail({ ticket: initialTicket, onClose, onTicketUpdate }:
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="null">Unassigned</SelectItem>
-                    {categories.map((category: ICategory) => (
+                    {categories.map(category => (
                       <SelectItem key={category.id} value={category.id.toString()}>
                         {category.name}
                       </SelectItem>
@@ -535,7 +327,7 @@ export function TicketDetail({ ticket: initialTicket, onClose, onTicketUpdate }:
                       'unknown-user'
                     }
                     variant="beam"
-                    colors={avatarColors}
+                    colors={AVATAR_COLORS}
                   />
                   <span className="text-sm">{ticket.user?.name || 'Unknown User'}</span>
                 </div>
@@ -550,25 +342,24 @@ export function TicketDetail({ ticket: initialTicket, onClose, onTicketUpdate }:
                 <h3 className="text-sm font-medium text-muted-foreground mb-1">Created</h3>
                 <p className="text-sm">{formatRelativeTime(ticket.created_at)}</p>
               </div>
+
               <div className="mt-4 pt-4 border-t">
                 <div className="flex flex-col gap-2">
                   <Button
                     size="sm"
                     variant="default"
-                    onClick={() => resolveTicketMutation.mutate()}
-                    disabled={isResolvingTicket}
+                    onClick={() => handleStatusChange('Closed')}
                     className="w-full"
                   >
-                    {isResolvingTicket ? 'Marking Resolved...' : 'Mark Resolved'}
+                    Mark Resolved
                   </Button>
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => closeTicketMutation.mutate()}
-                    disabled={isClosingTicket}
+                    onClick={() => handleStatusChange('Closed')}
                     className="w-full"
                   >
-                    {isClosingTicket ? 'Marking Closed...' : 'Mark Closed'}
+                    Mark Closed
                   </Button>
                 </div>
               </div>
