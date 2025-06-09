@@ -17,8 +17,14 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { MultiSelectFilter, type OptionType } from '@/components/filters/multi-select-filter';
 import { Settings2, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
-import { useInfiniteQuery, useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
-import { getTickets, updateTicket, deleteTicket } from '@/services/ticket';
+import {
+  useQuery,
+  useQueryClient,
+  useMutation,
+  type InfiniteData,
+  useInfiniteQuery,
+} from '@tanstack/react-query';
+import { updateTicket, deleteTicket } from '@/services/ticket';
 import { toast } from 'sonner';
 import {
   AlertDialog,
@@ -42,127 +48,133 @@ import { getCurrentUser, type UserSession } from '@/lib/auth';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { Collapsible, CollapsibleTrigger } from '@/components/ui/collapsible';
 
-const LOAD_LIMIT = 20;
-const STATUS_OPTIONS: OptionType[] = [
-  { value: 'Unread', label: 'Unread' },
-  { value: 'Open', label: 'Open' },
-  { value: 'With User', label: 'With User' },
-  { value: 'In Progress', label: 'In Progress' },
-  { value: 'Closed', label: 'Closed' },
-];
-const PRIORITY_OPTIONS: OptionType[] = [
-  { value: 'Low', label: 'Low' },
-  { value: 'Medium', label: 'Medium' },
-  { value: 'High', label: 'High' },
-  { value: 'Critical', label: 'Critical' },
-];
+import { getTickets } from '@/services/ticket';
 
 function MyTicketsClientContent() {
   const queryClient = useQueryClient();
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-
-  // State
-  const [currentUser, setCurrentUser] = useState<UserSession | null>(null);
   const [selectedTicket, setSelectedTicket] = useState<ITicket | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [currentUser, setCurrentUser] = useState<UserSession | null>(null);
   const [subjectInput, setSubjectInput] = useState('');
+  const debouncedSubjectFilter = useDebounce(subjectInput, 300);
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [selectedTicketIds, setSelectedTicketIds] = useState<Set<number>>(new Set());
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
   const [selectedPriorities, setSelectedPriorities] = useState<string[]>([]);
-  const [filtersExpanded, setFiltersExpanded] = useState(false);
+  const [filtersExpanded, setFiltersExpanded] = useState(false); // Changed to false
   const [selectedTeams, setSelectedTeams] = useState<string[]>([]);
-
-  // Derived state
-  const debouncedSubjectFilter = useDebounce(subjectInput, 300);
-
-  // Data fetching
-  const { data: usersData = [] } = useQuery<IUser[]>({
-    queryKey: ['users'],
-    queryFn: getUsers,
-    staleTime: 600_000, // 10 minutes
-  });
-
-  const userOptions = useMemo(
-    () =>
-      usersData
-        .filter(user => user?.id && user.name)
-        .map(user => ({
-          value: user.id.toString(),
-          label: user.name!,
-        })),
-    [usersData]
-  );
-
+  
+  // ✅ CORREGIDO: Usar query específica para My Tickets en lugar de filtrar cache global
   const {
-    data: ticketsQueryData,
+    data: myTicketsQueryData,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
     isLoading: isLoadingTickets,
     isError: isTicketsError,
     error: ticketsError,
-  } = useInfiniteQuery({
-    queryKey: ['tickets', 'my', currentUser?.id],
+  } = useInfiniteQuery<ITicket[], Error, InfiniteData<ITicket[], number>, readonly [string, string, number], number>({
+    queryKey: ['tickets', 'my', currentUser?.id || 0],
     queryFn: async ({ pageParam = 0 }) => {
       if (!currentUser?.id) return [];
-      return getTickets(
-        { skip: pageParam, limit: LOAD_LIMIT },
-        `/v1/tasks/assignee/${currentUser.id}`
-      );
+      const tickets = await getTickets({ skip: pageParam, limit: 50 }, `/v1/tasks/assignee/${currentUser.id}`);
+      return tickets;
     },
-    getNextPageParam: (lastPage, allPages) =>
-      lastPage?.length < LOAD_LIMIT ? undefined : allPages.flat().length,
+    getNextPageParam: (lastPage, allPages) => {
+      if (!lastPage || lastPage.length < 50) {
+        return undefined;
+      }
+      return allPages.flat().length;
+    },
     initialPageParam: 0,
-    staleTime: 300_000, // 5 minutes
     enabled: !!currentUser?.id,
+    staleTime: 1000 * 60 * 10,
+    refetchInterval: false,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    placeholderData: previousData => previousData,
+    gcTime: 1000 * 60 * 30,
   });
 
-  const allTicketsData = useMemo(() => ticketsQueryData?.pages.flat() ?? [], [ticketsQueryData]);
+  const allTicketsData = useMemo(() => {
+    return myTicketsQueryData?.pages?.flat() ?? [];
+  }, [myTicketsQueryData]);
 
-  // Effects
+  const statusOptions: OptionType[] = [
+    { value: 'Unread', label: 'Unread' },
+    { value: 'Open', label: 'Open' },
+    { value: 'With User', label: 'With User' },
+    { value: 'In Progress', label: 'In Progress' },
+    { value: 'Closed', label: 'Closed' },
+  ];
+
+  const priorityOptions: OptionType[] = [
+    { value: 'Low', label: 'Low' },
+    { value: 'Medium', label: 'Medium' },
+    { value: 'High', label: 'High' },
+    { value: 'Critical', label: 'Critical' },
+  ];
+
+  const { data: usersData = [] } = useQuery<IUser[]>({
+    queryKey: ['users'],
+    queryFn: getUsers,
+    staleTime: 1000 * 60 * 10,
+    refetchInterval: false,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+  });
+
+  const userOptions: OptionType[] = useMemo(() => {
+    return usersData
+      .filter((user: IUser) => user && user.id && user.name)
+      .map((user: IUser) => ({
+        value: user.id.toString(),
+        label: user.name!,
+      }));
+  }, [usersData]);
+
   useEffect(() => {
-    getCurrentUser().then(setCurrentUser);
+    getCurrentUser().then(setUser => setCurrentUser(setUser));
   }, []);
 
   useEffect(() => {
     const ticketIdToOpen = searchParams.get('openTicket');
 
-    if (pathname === '/my-tickets' && selectedTeams.length > 0) {
-      setSelectedTeams([]);
+    if (pathname === '/my-tickets') {
+      if (selectedTeams && selectedTeams.length > 0) {
+        setSelectedTeams([]);
+      }
+
+      if (window.location.href.includes('teamId=')) {
+        const newSearchParams = new URLSearchParams(searchParams.toString());
+        newSearchParams.delete('teamId');
+        newSearchParams.delete('teamName');
+        if (ticketIdToOpen) {
+          newSearchParams.set('openTicket', ticketIdToOpen);
+        }
+        router.replace(`${pathname}?${newSearchParams.toString()}`, { scroll: false });
+      }
     }
 
     if (ticketIdToOpen && allTicketsData.length > 0) {
-      const ticket = allTicketsData.find(t => t.id === Number(ticketIdToOpen));
+      const ticket = allTicketsData.find(t => t.id === Number.parseInt(ticketIdToOpen, 10));
       if (ticket) {
         setSelectedTicket(ticket);
       } else {
-        const newParams = new URLSearchParams(searchParams.toString());
-        newParams.delete('openTicket');
-        router.replace(`${pathname}?${newParams.toString()}`, { scroll: false });
+        const newSearchParams = new URLSearchParams(searchParams.toString());
+        newSearchParams.delete('openTicket');
+        router.replace(`${window.location.pathname}?${newSearchParams.toString()}`, {
+          scroll: false,
+        });
       }
     }
-  }, [searchParams, allTicketsData, router, pathname, selectedTeams]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, allTicketsData, router, pathname]);
 
-  useEffect(() => {
-    const container = scrollContainerRef.current;
-    const handleScroll = () => {
-      if (container) {
-        const { scrollTop, scrollHeight, clientHeight } = container;
-        if (scrollHeight - scrollTop - clientHeight < 200 && hasNextPage && !isFetchingNextPage) {
-          fetchNextPage();
-        }
-      }
-    };
-
-    container?.addEventListener('scroll', handleScroll);
-    return () => container?.removeEventListener('scroll', handleScroll);
-  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
-
-  // Filtering logic
   const filteredTicketsData = useMemo(() => {
     let tickets = allTicketsData;
 
@@ -171,17 +183,17 @@ function MyTicketsClientContent() {
     }
 
     if (debouncedSubjectFilter) {
-      const lowerCaseFilter = debouncedSubjectFilter.toLowerCase();
-      tickets = tickets.filter(ticket => ticket.title.toLowerCase().includes(lowerCaseFilter));
+      const filter = debouncedSubjectFilter.toLowerCase();
+      tickets = tickets.filter(ticket => ticket.title.toLowerCase().includes(filter));
     }
 
     if (selectedTeams.length > 0) {
-      const teamIds = selectedTeams.map(id => Number(id));
+      const teamIds = selectedTeams.map(id => Number.parseInt(id, 10));
       tickets = tickets.filter(ticket => ticket.team_id && teamIds.includes(ticket.team_id));
     }
 
     if (selectedUsers.length > 0) {
-      const userIds = selectedUsers.map(id => Number(id));
+      const userIds = selectedUsers.map(id => Number.parseInt(id, 10));
       tickets = tickets.filter(ticket => ticket.user_id && userIds.includes(ticket.user_id));
     }
 
@@ -194,169 +206,179 @@ function MyTicketsClientContent() {
     }
 
     return tickets;
-  }, [
-    allTicketsData,
-    debouncedSubjectFilter,
-    selectedUsers,
-    selectedStatuses,
-    selectedPriorities,
-    selectedTeams,
-  ]);
-
-  // Selection logic
-  const isAllSelected =
-    allTicketsData.length > 0 && selectedTicketIds.size === allTicketsData.length;
-  const isIndeterminate =
-    selectedTicketIds.size > 0 && selectedTicketIds.size < allTicketsData.length;
-  const headerCheckboxState = isAllSelected ? true : isIndeterminate ? 'indeterminate' : false;
+  }, [allTicketsData, debouncedSubjectFilter, selectedUsers, selectedStatuses, selectedPriorities, selectedTeams]);
 
   const handleSelectAllChange = (checked: boolean | 'indeterminate') => {
-    setSelectedTicketIds(checked === true ? new Set(allTicketsData.map(t => t.id)) : new Set());
+    if (checked === true) {
+      setSelectedTicketIds(new Set(allTicketsData.map(ticket => ticket.id)));
+    } else {
+      setSelectedTicketIds(new Set());
+    }
   };
 
   const handleRowSelectChange = (ticketId: number, checked: boolean | 'indeterminate') => {
     setSelectedTicketIds(prev => {
       const next = new Set(prev);
-      checked === true ? next.add(ticketId) : next.delete(ticketId);
+      if (checked === true) {
+        next.add(ticketId);
+      } else {
+        next.delete(ticketId);
+      }
       return next;
     });
   };
 
-  // Ticket mutations
+  const isAllSelected =
+    allTicketsData.length > 0 && selectedTicketIds.size === allTicketsData.length;
+  const isIndeterminate =
+    selectedTicketIds.size > 0 && selectedTicketIds.size < allTicketsData.length;
+
+  const headerCheckboxState = isAllSelected ? true : isIndeterminate ? 'indeterminate' : false;
   const deleteTicketsMutation = useMutation({
     mutationFn: async (ticketIds: number[]) => {
       const results = await Promise.allSettled(ticketIds.map(id => deleteTicket(id)));
+      const failedDeletions = results
+        .map((result, index) => ({ result, id: ticketIds[index] }))
+        .filter(item => item.result.status === 'rejected');
 
-      const errors = results
-        .filter((r): r is PromiseRejectedResult => r.status === 'rejected')
-        .map((r, i) => ({
-          id: ticketIds[i],
-          error: r.reason?.message || `Ticket ID ${ticketIds[i]}`,
-        }));
-
-      if (errors.length > 0) {
-        throw new Error(`Failed to delete: ${errors.map(e => e.error).join(', ')}`);
+      if (failedDeletions.length > 0) {
+        const errorMessages = failedDeletions
+          .map(item => {
+            const reason = (item.result as PromiseRejectedResult).reason;
+            const message = (reason as { message?: string })?.message || `Ticket ID ${item.id}`;
+            return message;
+          })
+          .join(', ');
+        console.error(`Failed to delete some tickets: ${errorMessages}`);
+        throw new Error(`Failed to delete: ${errorMessages}`);
       }
 
+      const nonSuccessResponses = results
+        .map((result, index) => ({ result, id: ticketIds[index] }))
+        .filter(item => {
+          if (item.result.status === 'fulfilled') {
+            const value = (
+              item.result as PromiseFulfilledResult<{ success: boolean; message?: string }>
+            ).value;
+            return !value.success;
+          }
+          return false;
+        });
+
+      if (nonSuccessResponses.length > 0) {
+        const errorMessages = nonSuccessResponses
+          .map(item => {
+            const response = (
+              item.result as PromiseFulfilledResult<{ success: boolean; message?: string }>
+            ).value;
+            return response.message || `Ticket ID ${item.id}`;
+          })
+          .join(', ');
+        console.error(`API reported failure for some tickets: ${errorMessages}`);
+        throw new Error(`API reported failure for some tickets: ${errorMessages}`);
+      }
       return results;
     },
-    onMutate: async ticketIds => {
-      await queryClient.cancelQueries(['tickets', 'my', currentUser?.id]);
-
-      const previousData = {
-        myTickets: queryClient.getQueryData(['tickets', 'my', currentUser?.id]),
-        allCount: queryClient.getQueryData(['ticketsCount', 'all']) || 0,
-        myCount: queryClient.getQueryData(['ticketsCount', 'my', currentUser?.id]) || 0,
-      };
-
-      queryClient.setQueryData(['tickets', 'my', currentUser?.id], (old: any) => ({
-        ...old,
-        pages:
-          old?.pages.map((page: ITicket[]) => page.filter(t => !ticketIds.includes(t.id))) || [],
-      }));
-
-      const deletedTickets =
-        previousData.myTickets?.pages.flat().filter(t => ticketIds.includes(t.id)) || [];
-
-      const activeDeletedCount = deletedTickets.filter(
-        t => !['Closed', 'Resolved'].includes(t.status)
-      ).length;
-
-      const myActiveDeletedCount = deletedTickets.filter(
-        t => t.assignee_id === currentUser?.id && !['Closed', 'Resolved'].includes(t.status)
-      ).length;
-
-      queryClient.setQueryData(
-        ['ticketsCount', 'all'],
-        Math.max(0, previousData.allCount - activeDeletedCount)
-      );
-
-      if (currentUser?.id) {
-        queryClient.setQueryData(
-          ['ticketsCount', 'my', currentUser.id],
-          Math.max(0, previousData.myCount - myActiveDeletedCount)
+    onSuccess: () => {
+    },
+    onMutate: async ticketIdsToDelete => {
+      await queryClient.cancelQueries({ queryKey: ['tickets', 'my', currentUser?.id] });
+      
+      const previousTicketsData = queryClient.getQueryData<InfiniteData<ITicket[], number>>(['tickets', 'my', currentUser?.id]);
+      
+      queryClient.setQueryData<InfiniteData<ITicket[], number>>(['tickets', 'my', currentUser?.id], (oldData: InfiniteData<ITicket[], number> | undefined) => {
+        if (!oldData) return oldData;
+        const newPages = oldData.pages.map((page: ITicket[]) =>
+          page.filter((ticket: ITicket) => !ticketIdsToDelete.includes(ticket.id))
         );
+        return { ...oldData, pages: newPages };
+      });
+
+      const currentAllCount = queryClient.getQueryData<number>(['ticketsCount', 'all']) || 0;
+      const currentMyCount = queryClient.getQueryData<number>(['ticketsCount', 'my', currentUser?.id]) || 0;
+
+      const allTickets = previousTicketsData?.pages.flat() || [];
+      const deletedTickets = allTickets.filter(ticket => ticketIdsToDelete.includes(ticket.id));
+      const activeDeletedCount = deletedTickets.filter(
+        ticket => ticket.status !== 'Closed' && ticket.status !== 'Resolved'
+      ).length;
+      const myActiveDeletedCount = deletedTickets.filter(
+        ticket => ticket.assignee_id === currentUser?.id && ticket.status !== 'Closed' && ticket.status !== 'Resolved'
+      ).length;
+
+      queryClient.setQueryData(['ticketsCount', 'all'], Math.max(0, currentAllCount - activeDeletedCount));
+      if (currentUser?.id) {
+        queryClient.setQueryData(['ticketsCount', 'my', currentUser.id], Math.max(0, currentMyCount - myActiveDeletedCount));
       }
 
       setSelectedTicketIds(new Set());
       setIsDeleteDialogOpen(false);
-
-      return previousData;
+      return {
+        previousTicketsData,
+        previousAllCount: currentAllCount,
+        previousMyCount: currentMyCount,
+      };
     },
-    onError: (error, _, context) => {
-      toast.error(`Error deleting tickets: ${error.message}`);
-
-      if (context?.myTickets) {
-        queryClient.setQueryData(['tickets', 'my', currentUser?.id], context.myTickets);
+    onError: (
+      err: Error,
+      ticketIdsToDelete: number[],
+              context:
+          | {
+              previousTicketsData?: InfiniteData<ITicket[], number>;
+              previousAllCount?: number;
+              previousMyCount?: number;
+            }
+          | undefined
+    ) => {
+      toast.error(`Error deleting tickets: ${err.message}`);
+      console.error(`Error deleting tickets mutation: ${err.message}`);
+      if (context?.previousTicketsData) {
+        queryClient.setQueryData(['tickets', 'my', currentUser?.id], context.previousTicketsData);
       }
-      if (context?.allCount !== undefined) {
-        queryClient.setQueryData(['ticketsCount', 'all'], context.allCount);
+      // Revert counter updates on error
+      if (context?.previousAllCount !== undefined) {
+        queryClient.setQueryData(['ticketsCount', 'all'], context.previousAllCount);
       }
-      if (context?.myCount !== undefined && currentUser?.id) {
-        queryClient.setQueryData(['ticketsCount', 'my', currentUser.id], context.myCount);
+      if (context?.previousMyCount !== undefined && currentUser?.id) {
+        queryClient.setQueryData(['ticketsCount', 'my', currentUser.id], context.previousMyCount);
       }
     },
     onSettled: () => {
-      queryClient.invalidateQueries(['tickets', 'my', currentUser?.id]);
-      queryClient.invalidateQueries(['tickets']);
-      queryClient.invalidateQueries(['agentTeams']);
+      queryClient.invalidateQueries({ queryKey: ['tickets', 'my', currentUser?.id] });
+      queryClient.invalidateQueries({ queryKey: ['agentTeams'] });
     },
   });
+  const handleDeleteConfirm = () => {
+    if (selectedTicketIds.size > 0) {
+      deleteTicketsMutation.mutate(Array.from(selectedTicketIds));
+    }
+  };
 
-  const markAsReadMutation = useMutation({
-    mutationFn: (ticket: ITicket) => updateTicket(ticket.id, { status: 'Open' }),
-    onMutate: async ticket => {
-      await queryClient.cancelQueries(['tickets', 'my', currentUser?.id]);
-      await queryClient.cancelQueries(['tickets']);
-
-      const previousData = {
-        myTickets: queryClient.getQueryData(['tickets', 'my', currentUser?.id]),
-        allTickets: queryClient.getQueryData(['tickets']),
-      };
-
-      const updateFn = (data: any) => ({
-        ...data,
-        pages:
-          data?.pages.map((page: ITicket[]) =>
-            page.map(t => (t.id === ticket.id ? { ...t, status: 'Open' } : t))
-          ) || [],
-      });
-
-      queryClient.setQueryData(['tickets', 'my', currentUser?.id], updateFn);
-      queryClient.setQueryData(['tickets'], updateFn);
-
-      return previousData;
-    },
-    onError: (error, _, context) => {
-      toast.error(`Failed to mark ticket as Open: ${error.message}`);
-
-      if (context?.myTickets) {
-        queryClient.setQueryData(['tickets', 'my', currentUser?.id], context.myTickets);
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    const handleScroll = () => {
+      if (container) {
+        const { scrollTop, scrollHeight, clientHeight } = container;
+        if (scrollHeight - scrollTop - clientHeight < 200 && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage();
+        }
       }
-      if (context?.allTickets) {
-        queryClient.setQueryData(['tickets'], context.allTickets);
-      }
-    },
-    onSuccess: (_, ticket) => {
-      if (selectedTicket?.id === ticket.id) {
-        setSelectedTicket({ ...ticket, status: 'Open' });
-      }
-    },
-  });
+    };
+    if (container) container.addEventListener('scroll', handleScroll);
+    return () => {
+      if (container) container.removeEventListener('scroll', handleScroll);
+    };
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
-  // Handlers
   const handleTicketUpdate = useCallback(
     (updatedTicket: ITicket) => {
-      const updateFn = (data: any) => ({
-        ...data,
-        pages:
-          data?.pages.map((page: ITicket[]) =>
-            page.map(t => (t.id === updatedTicket.id ? updatedTicket : t))
-          ) || [],
+      queryClient.setQueryData<InfiniteData<ITicket[], number>>(['tickets', 'my', currentUser?.id], (oldData: InfiniteData<ITicket[], number> | undefined) => {
+        if (!oldData) return oldData;
+        const newPages = oldData.pages.map((page: ITicket[]) =>
+          page.map((t: ITicket) => (t.id === updatedTicket.id ? updatedTicket : t))
+        );
+        return { ...oldData, pages: newPages };
       });
-
-      queryClient.setQueryData(['tickets', 'my', currentUser?.id], updateFn);
-      queryClient.setQueryData(['tickets'], updateFn);
 
       if (selectedTicket?.id === updatedTicket.id) {
         setSelectedTicket(updatedTicket);
@@ -365,27 +387,55 @@ function MyTicketsClientContent() {
     [selectedTicket, queryClient, currentUser?.id]
   );
 
+  const markAsReadMutation = useMutation({
+    mutationFn: async (ticket: ITicket) => {
+      return updateTicket(ticket.id, { status: 'Open' });
+    },
+    onMutate: async ticket => {
+      queryClient.setQueryData<InfiniteData<ITicket[], number>>(['tickets', 'my', currentUser?.id], (oldData: InfiniteData<ITicket[], number> | undefined) => {
+        if (!oldData) return oldData;
+        const newPages = oldData.pages.map((page: ITicket[]) =>
+          page.map((t: ITicket) => (t.id === ticket.id ? { ...t, status: 'Open' as const } : t))
+        );
+        return { ...oldData, pages: newPages };
+      });
+
+      return { ticketId: ticket.id };
+    },
+    onError: (err: Error, ticket: ITicket) => {
+      console.error(`Failed to update ticket ${ticket.id} status to Open:`, err);
+      toast.error(`Failed to mark ticket #${ticket.id} as Open.`);
+      queryClient.invalidateQueries({ queryKey: ['tickets', 'my', currentUser?.id] });
+    },
+    onSuccess: (updatedTicket, ticket) => {
+      if (selectedTicket?.id === ticket.id) {
+        setSelectedTicket({ ...ticket, status: 'Open' as const });
+      }
+    },
+  });
+
   const handleTicketClick = useCallback(
-    (ticket: ITicket) => {
+    async (ticket: ITicket) => {
       setSelectedTicket(ticket);
-      const params = new URLSearchParams(searchParams.toString());
-      params.set('openTicket', ticket.id.toString());
-      router.push(`${pathname}?${params.toString()}`);
+      const newSearchParams = new URLSearchParams(searchParams.toString());
+      newSearchParams.set('openTicket', ticket.id.toString());
+      router.push(`${window.location.pathname}?${newSearchParams.toString()}`);
 
       if (ticket.status === 'Unread') {
         markAsReadMutation.mutate(ticket);
       }
     },
-    [searchParams, router, pathname, markAsReadMutation]
+    [searchParams, router, markAsReadMutation]
   );
 
   const handleCloseDetail = useCallback(() => {
     setSelectedTicket(null);
-    const params = new URLSearchParams(searchParams.toString());
-    params.delete('openTicket');
-    router.push(`${pathname}?${params.toString()}`);
-  }, [searchParams, router, pathname]);
+    const newSearchParams = new URLSearchParams(searchParams.toString());
+    newSearchParams.delete('openTicket');
+    router.push(`${window.location.pathname}?${newSearchParams.toString()}`);
+  }, [searchParams, router]);
 
+  // Calculate active filters count for the badge
   const activeFiltersCount = useMemo(() => {
     let count = 0;
     if (debouncedSubjectFilter) count++;
@@ -403,12 +453,6 @@ function MyTicketsClientContent() {
     setSelectedPriorities([]);
     setSelectedTeams([]);
   }, []);
-
-  const handleDeleteConfirm = () => {
-    if (selectedTicketIds.size > 0) {
-      deleteTicketsMutation.mutate(Array.from(selectedTicketIds));
-    }
-  };
 
   return (
     <div className="flex h-full gap-6">
@@ -476,7 +520,7 @@ function MyTicketsClientContent() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {isLoadingTickets && allTicketsData.length === 0 ? (
+                  {isLoadingTickets && allTicketsData.length === 0 ? ( // Check allTicketsData for initial loading
                     <TableRow>
                       <TableCell colSpan={7} className="h-24 text-center">
                         Loading your tickets...
@@ -488,7 +532,7 @@ function MyTicketsClientContent() {
                         Error loading tickets: {ticketsError?.message || 'Unknown error'}
                       </TableCell>
                     </TableRow>
-                  ) : filteredTicketsData.length === 0 ? (
+                  ) : filteredTicketsData.length === 0 ? ( // Check filtered data length
                     <TableRow>
                       <TableCell colSpan={7} className="h-24 text-center">
                         {debouncedSubjectFilter
@@ -510,7 +554,7 @@ function MyTicketsClientContent() {
                           ticket.status === 'Unread' &&
                             'font-semibold bg-slate-50 dark:bg-slate-800/50'
                         )}
-                        onClick={() => handleTicketClick(ticket)}
+                        onClick={() => handleTicketClick(ticket)} // Moved onClick here
                         data-state={selectedTicketIds.has(ticket.id) ? 'selected' : ''}
                       >
                         <TableCell className="px-4">
@@ -521,10 +565,12 @@ function MyTicketsClientContent() {
                             onClick={e => e.stopPropagation()}
                           />
                         </TableCell>
-                        <TableCell className="font-medium p-2 py-4">{ticket.id}</TableCell>
+                        <TableCell className="font-medium p-2 py-4">{ticket.id}</TableCell>{' '}
+                        {/* Removed onClick and cursor-pointer */}
                         <TableCell className="max-w-xs md:max-w-sm truncate p-2 py-4">
                           {ticket.title}
-                        </TableCell>
+                        </TableCell>{' '}
+                        {/* Removed onClick and cursor-pointer */}
                         <TableCell className="p-2 py-4">
                           <div className="flex items-center gap-2">
                             <div className="relative flex h-2 w-2">
@@ -537,9 +583,9 @@ function MyTicketsClientContent() {
                                   ticket.status === 'With User' && 'bg-purple-500',
                                   ticket.status === 'In Progress' && 'bg-orange-500'
                                 )}
-                              />
+                              ></span>
                               {ticket.status === 'Unread' && (
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
                               )}
                             </div>
                             <span
@@ -558,13 +604,13 @@ function MyTicketsClientContent() {
                             className={cn(
                               'whitespace-nowrap capitalize',
                               ticket.priority === 'Low' &&
-                                'bg-slate-100 text-slate-600 border-slate-300 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700',
+                                'bg-slate-100 text-slate-600 border-slate-300 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700', // Gray
                               ticket.priority === 'Medium' &&
-                                'bg-green-100 text-green-800 border-green-300 dark:bg-green-900/50 dark:text-green-300 dark:border-green-700',
+                                'bg-green-100 text-green-800 border-green-300 dark:bg-green-900/50 dark:text-green-300 dark:border-green-700', // Green
                               ticket.priority === 'High' &&
-                                'bg-yellow-100 text-yellow-800 border-yellow-300 dark:bg-yellow-900/50 dark:text-yellow-300 dark:border-yellow-700',
+                                'bg-yellow-100 text-yellow-800 border-yellow-300 dark:bg-yellow-900/50 dark:text-yellow-300 dark:border-yellow-700', // Yellow
                               ticket.priority === 'Critical' &&
-                                'bg-red-100 text-red-800 border-red-300 dark:bg-red-900/50 dark:text-red-300 dark:border-red-700'
+                                'bg-red-100 text-red-800 border-red-300 dark:bg-red-900/50 dark:text-red-300 dark:border-red-700' // Red
                             )}
                           >
                             {ticket.priority}
@@ -579,7 +625,7 @@ function MyTicketsClientContent() {
                         <TableCell className="p-2 py-4">
                           {formatRelativeTime(ticket.created_at)}
                         </TableCell>
-                      </motion.tr>
+                      </motion.tr> // Close motion.tr
                     ))
                   )}
                   {isFetchingNextPage && (
@@ -596,12 +642,16 @@ function MyTicketsClientContent() {
         </Card>
       </div>
 
-      <div className="flex-shrink-0 flex items-stretch h-full">
+      <div className="flex-shrink-0 flex items-stretch">
+        {' '}
+        {/* Changed items-start to items-stretch */}
         <Collapsible
           open={filtersExpanded}
           onOpenChange={setFiltersExpanded}
           className="flex h-full"
         >
+          {' '}
+          {/* Added h-full to Collapsible */}
           <CollapsibleTrigger asChild>
             <Button
               variant="outline"
@@ -624,7 +674,11 @@ function MyTicketsClientContent() {
           </CollapsibleTrigger>
           {filtersExpanded && (
             <aside className="w-80 border-l p-6 space-y-6 bg-card text-card-foreground rounded-lg transition-all duration-300 flex flex-col h-full">
+              {' '}
+              {/* Added flex flex-col h-full */}
               <div className="flex items-center justify-between flex-shrink-0">
+                {' '}
+                {/* Added flex-shrink-0 */}
                 <h2 className="text-lg font-semibold">
                   Filters
                   {activeFiltersCount > 0 && (
@@ -645,6 +699,8 @@ function MyTicketsClientContent() {
                 </div>
               </div>
               <div className="space-y-4 overflow-y-auto flex-grow">
+                {' '}
+                {/* Added overflow-y-auto and flex-grow */}
                 <div>
                   <Label htmlFor="subject-filter" className="text-sm font-medium">
                     Subject
@@ -653,7 +709,7 @@ function MyTicketsClientContent() {
                     id="subject-filter"
                     placeholder="Search subject..."
                     value={subjectInput}
-                    onChange={e => setSubjectInput(e.target.value)}
+                    onChange={e => setSubjectInput(e.target.value)} // Connect input to state
                   />
                 </div>
                 <div>
@@ -661,7 +717,7 @@ function MyTicketsClientContent() {
                     Statuses
                   </Label>
                   <MultiSelectFilter
-                    options={STATUS_OPTIONS}
+                    options={statusOptions}
                     selected={selectedStatuses}
                     onChange={setSelectedStatuses}
                     placeholder="Filter by status..."
@@ -685,7 +741,7 @@ function MyTicketsClientContent() {
                     Priorities
                   </Label>
                   <MultiSelectFilter
-                    options={PRIORITY_OPTIONS}
+                    options={priorityOptions}
                     selected={selectedPriorities}
                     onChange={setSelectedPriorities}
                     placeholder="Filter by priority..."

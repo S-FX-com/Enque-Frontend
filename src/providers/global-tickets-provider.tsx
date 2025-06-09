@@ -24,7 +24,8 @@ export function GlobalTicketsProvider({ children }: { children: ReactNode }) {
   const shouldActivate =
     pathname.startsWith('/tickets') ||
     pathname.startsWith('/dashboard') ||
-    pathname.startsWith('/my-tickets');
+    pathname.startsWith('/my-tickets') ||
+    pathname === '/'; // También en home
 
   const ticketsData = useGlobalTickets(shouldActivate);
 

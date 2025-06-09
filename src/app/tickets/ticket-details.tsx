@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQueryClient, useQuery, useMutation } from '@tanstack/react-query';
 import { X } from 'lucide-react';
 import BoringAvatar from 'boring-avatars';
@@ -26,15 +26,7 @@ import { updateTicket } from '@/services/ticket';
 import { toast } from 'sonner';
 import { getCurrentUser } from '@/lib/auth';
 import { cn } from '@/lib/utils';
-
-const PRIORITY_OPTIONS = [
-  { value: 'Low', label: 'Low', color: 'bg-slate-500' },
-  { value: 'Medium', label: 'Medium', color: 'bg-green-500' },
-  { value: 'High', label: 'High', color: 'bg-yellow-500' },
-  { value: 'Critical', label: 'Critical', color: 'bg-red-500' },
-];
-
-const AVATAR_COLORS = ['#a3a948', '#edb92e', '#f85931', '#ce1836', '#009989'];
+import { useSocketContext } from '@/providers/socket-provider';
 
 interface Props {
   ticket: ITicket | null;
@@ -44,24 +36,26 @@ interface Props {
 
 export function TicketDetail({ ticket: initialTicket, onClose, onTicketUpdate }: Props) {
   const queryClient = useQueryClient();
+  const [agents, setAgents] = useState<Agent[]>([]);
+  const [isLoadingAgents, setIsLoadingAgents] = useState(true);
+  const [isClosingTicket, setIsClosingTicket] = useState(false);
+  const [isResolvingTicket, setIsResolvingTicket] = useState(false);
   const [ticket, setTicket] = useState<ITicket | null>(initialTicket);
+  
+  // ✅ AGREGAR: Hook de sockets para actualizaciones en tiempo real
+  const { socket } = useSocketContext();
 
-  // Data fetching
-  const { data: agents = [], isLoading: isLoadingAgents } = useQuery<Agent[]>({
-    queryKey: ['agents'],
-    queryFn: getAgents,
-    staleTime: 1000 * 60 * 5,
-  });
-
-  const { data: teams = [], isLoading: isLoadingTeams } = useQuery<Team[]>({
+  // Get teams data from React Query
+  const { data: teams = [], isLoading: isLoadingTeams } = useQuery<Team[], Error>({
     queryKey: ['teams'],
     queryFn: getTeams,
     staleTime: 1000 * 60 * 5,
   });
 
-  const { data: categories = [], isLoading: isLoadingCategories } = useQuery<ICategory[]>({
+  // Get categories data from React Query
+  const { data: categories = [], isLoading: isLoadingCategories } = useQuery<ICategory[], Error>({
     queryKey: ['categories'],
-    queryFn: getCategories,
+    queryFn: () => getCategories(),
     staleTime: 1000 * 60 * 5,
   });
 
@@ -69,105 +63,539 @@ export function TicketDetail({ ticket: initialTicket, onClose, onTicketUpdate }:
     setTicket(initialTicket);
   }, [initialTicket]);
 
-  const updateTicketField = useCallback(
-    async (
-      field: 'priority' | 'assignee_id' | 'team_id' | 'category_id',
-      value: string | null,
-      currentFieldValue: string | number | null
-    ) => {
-      if (!ticket) return;
+  // ✅ AGREGAR: Listener para actualizaciones de tickets via sockets
+  useEffect(() => {
+    if (!socket || !ticket) return;
 
+    const handleTicketUpdated = (data: ITicket) => {
+      // Solo actualizar si es el ticket actual
+      if (data.id === ticket.id) {
+        console.log('🚀 Ticket updated via socket:', data);
+        setTicket(prev => prev ? { ...prev, ...data } : data);
+        
+        // También notificar al padre
+        if (onTicketUpdate) {
+          onTicketUpdate(data);
+        }
+      }
+    };
+
+    socket.on('ticket_updated', handleTicketUpdated);
+
+    return () => {
+      socket.off('ticket_updated', handleTicketUpdated);
+    };
+  }, [socket, ticket, onTicketUpdate]);
+
+  useEffect(() => {
+    const fetchAgents = async () => {
+      setIsLoadingAgents(true);
+      try {
+        const fetchedAgents = await getAgents();
+        setAgents(fetchedAgents);
+      } catch (error) {
+        console.error('Failed to fetch agents:', error);
+      } finally {
+        setIsLoadingAgents(false);
+      }
+    };
+    fetchAgents();
+  }, []);
+
+  const updateFieldMutation = useMutation<
+    ITicket,
+    Error,
+    {
+      field: 'priority' | 'assignee_id' | 'team_id' | 'category_id';
+      value: string | null;
+      originalFieldValue: string | number | null;
+    },
+    { previousTicket: ITicket | null }
+  >({
+    mutationFn: async ({ field, value }) => {
+      if (!ticket) throw new Error('No ticket selected');
       let updateValue: TicketStatus | TicketPriority | number | null;
 
       if (field === 'assignee_id' || field === 'team_id' || field === 'category_id') {
         updateValue = value === 'null' || value === null ? null : parseInt(value, 10);
         if (typeof updateValue === 'number' && isNaN(updateValue)) {
-          console.error(`Invalid ${field} selected: ${value}`);
-          return;
+          throw new Error(`Invalid ${field}: ${value}`);
         }
       } else {
         updateValue = value as TicketPriority;
       }
 
-      if (ticket[field as keyof ITicket] === updateValue) return;
+      return updateTicket(ticket.id, { [field]: updateValue });
+    },
+    onMutate: async ({ field, value, originalFieldValue }) => {
+      if (!ticket) return { previousTicket: null };
 
-      try {
-        const updatedTicket = await updateTicket(ticket.id, { [field]: updateValue });
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['tickets', ticket.id] });
 
-        // Update local state
-        setTicket(updatedTicket);
+      // Snapshot the previous value
+      const previousTicket = queryClient.getQueryData<ITicket>(['tickets', ticket.id]) || ticket;
 
-        // Notify parent
-        if (onTicketUpdate) {
-          onTicketUpdate(updatedTicket);
+      let optimisticUpdateValue: TicketStatus | TicketPriority | number | null;
+      if (field === 'assignee_id' || field === 'team_id' || field === 'category_id') {
+        optimisticUpdateValue = value === 'null' || value === null ? null : parseInt(value, 10);
+        if (typeof optimisticUpdateValue === 'number' && isNaN(optimisticUpdateValue)) {
+          optimisticUpdateValue = null;
         }
+      } else {
+        optimisticUpdateValue = value as TicketPriority;
+      }
 
-        // Invalidate relevant queries
+      // Optimistically update to the new value
+      const optimisticTicket: ITicket = {
+        ...previousTicket,
+        [field]: optimisticUpdateValue,
+      };
+
+      queryClient.setQueryData(['tickets', ticket.id], optimisticTicket);
+
+      // Update parent immediately
+      if (onTicketUpdate) {
+        onTicketUpdate(optimisticTicket);
+      }
+
+      // Optimistically update team counters when team_id changes
+      if (field === 'team_id') {
         const currentUser = await getCurrentUser();
-        const currentUserId = currentUser?.id;
+        if (currentUser?.id) {
+          // Get current agentTeams data
+          const agentTeamsKey = ['agentTeams', currentUser.id, currentUser.role];
+          const currentAgentTeams = queryClient.getQueryData<Team[]>(agentTeamsKey) || [];
 
-        queryClient.invalidateQueries({ queryKey: ['tickets'] });
+          // Only proceed if ticket is active (not closed/resolved)
+          if (ticket.status !== 'Closed' && ticket.status !== 'Resolved') {
+            const previousTeamId = originalFieldValue as number | null;
+            const newTeamId = optimisticUpdateValue as number | null;
 
-        if (currentUserId) {
-          if (field === 'assignee_id') {
-            const previousAssigneeId = currentFieldValue;
-            const newAssigneeId = updatedTicket.assignee_id;
-            if (previousAssigneeId === currentUserId || newAssigneeId === currentUserId) {
-              queryClient.invalidateQueries({ queryKey: ['tickets', 'my', currentUserId] });
+            // Update team counters optimistically
+            const updatedAgentTeams = currentAgentTeams.map(team => {
+              if (team.id === previousTeamId && previousTeamId !== null) {
+                // Decrease counter for previous team
+                return {
+                  ...team,
+                  ticket_count: Math.max(0, (team.ticket_count || 0) - 1),
+                };
+              } else if (team.id === newTeamId && newTeamId !== null) {
+                // Increase counter for new team
+                return {
+                  ...team,
+                  ticket_count: (team.ticket_count || 0) + 1,
+                };
+              }
+              return team;
+            });
+
+            queryClient.setQueryData(agentTeamsKey, updatedAgentTeams);
+          }
+        }
+      }
+
+      // Optimistically update "my tickets" counter and list when assignee_id changes
+      if (field === 'assignee_id') {
+        const currentUser = await getCurrentUser();
+        if (currentUser?.id) {
+          // Only proceed if ticket is active (not closed/resolved)
+          if (ticket.status !== 'Closed' && ticket.status !== 'Resolved') {
+            const previousAssigneeId = originalFieldValue as number | null;
+            const newAssigneeId = optimisticUpdateValue as number | null;
+
+            // Get current my tickets count
+            const myTicketsCountKey = ['ticketsCount', 'my', currentUser.id];
+            const currentMyCount = queryClient.getQueryData<number>(myTicketsCountKey) || 0;
+
+            // Update counter optimistically
+            let newCount = currentMyCount;
+            if (previousAssigneeId === currentUser.id && newAssigneeId !== currentUser.id) {
+              // Ticket was assigned to current user, now assigned to someone else - decrease
+              newCount = Math.max(0, currentMyCount - 1);
+            } else if (previousAssigneeId !== currentUser.id && newAssigneeId === currentUser.id) {
+              // Ticket was not assigned to current user, now assigned to current user - increase
+              newCount = currentMyCount + 1;
             }
-          } else if (field === 'team_id') {
+
+            queryClient.setQueryData(myTicketsCountKey, newCount);
+
+            // Optimistically update "my tickets" infinite query list
+            const myTicketsQueryKey = ['tickets', 'my', currentUser.id];
+            queryClient.setQueryData(myTicketsQueryKey, (oldData: unknown) => {
+              if (!oldData) return oldData;
+
+              const typedData = oldData as { pages: ITicket[][]; pageParams: number[] };
+              const newPages = typedData.pages.map((page: ITicket[]) => {
+                if (previousAssigneeId === currentUser.id && newAssigneeId !== currentUser.id) {
+                  // Remove ticket from my tickets list
+                  return page.filter(t => t.id !== ticket.id);
+                } else if (previousAssigneeId !== currentUser.id && newAssigneeId === currentUser.id) {
+                  // Add ticket to my tickets list if not already there
+                  const ticketExists = page.some(t => t.id === ticket.id);
+                  if (!ticketExists) {
+                    return [optimisticTicket, ...page];
+                  }
+                }
+                // Update existing ticket if it's already in the list
+                return page.map(t => (t.id === ticket.id ? optimisticTicket : t));
+              });
+
+              return {
+                ...typedData,
+                pages: newPages,
+              };
+            });
+          }
+        }
+      }
+
+      return { previousTicket };
+    },
+    onError: (error, { field }) => {
+      toast.error(
+        `Error updating ${field}: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+      if (ticket) {
+        // Revert team counter changes on error
+        if (field === 'team_id') {
+          queryClient.invalidateQueries({ queryKey: ['agentTeams'] });
+        }
+        // Revert my tickets counter changes on error
+        if (field === 'assignee_id') {
+          queryClient.invalidateQueries({ queryKey: ['ticketsCount', 'my'] });
+        }
+      }
+    },
+    onSuccess: async (data, variables) => {
+      // No es necesario actualizar el estado aquí ya que se hizo optimisticamente
+      // Solo invalidamos las consultas necesarias para mantener sincronización
+      const currentUser = await getCurrentUser();
+      const currentUserId = currentUser?.id;
+
+      if (currentUserId) {
+        if (variables.field === 'assignee_id') {
+          const previousAssigneeId = variables.originalFieldValue;
+          const newAssigneeId = data.assignee_id;
+          if (previousAssigneeId === currentUserId || newAssigneeId === currentUserId) {
+            queryClient.invalidateQueries({ queryKey: ['tickets', 'my', currentUserId] });
+            queryClient.invalidateQueries({ queryKey: ['tickets'] });
+            queryClient.invalidateQueries({ queryKey: ['ticketsCount', 'my', currentUserId] });
+          }
+        } else {
+          queryClient.invalidateQueries({ queryKey: ['tickets'] });
+          if (variables.field === 'team_id') {
             queryClient.invalidateQueries({ queryKey: ['tickets', 'my', currentUserId] });
             queryClient.invalidateQueries({ queryKey: ['teamsWithCounts'] });
             queryClient.invalidateQueries({ queryKey: ['teamTasks'] });
             queryClient.invalidateQueries({ queryKey: ['agentTeams', currentUserId] });
+            queryClient.invalidateQueries({ queryKey: ['agentTeams'] });
+          } else if (variables.field === 'category_id' || variables.field === 'priority') {
+            queryClient.invalidateQueries({ queryKey: ['tickets', 'my', currentUserId] });
           }
         }
-
-        if (field === 'team_id') {
+      } else {
+        queryClient.invalidateQueries({ queryKey: ['tickets'] });
+        if (variables.field === 'team_id') {
+          queryClient.invalidateQueries({ queryKey: ['teamsWithCounts'] });
+          queryClient.invalidateQueries({ queryKey: ['teamTasks'] });
           queryClient.invalidateQueries({ queryKey: ['agentTeams'] });
         }
-      } catch (error) {
-        toast.error(
-          `Error updating ${field}: ${error instanceof Error ? error.message : 'Unknown error'}`
-        );
       }
     },
-    [ticket, onTicketUpdate, queryClient]
-  );
+  });
 
-  const handleStatusChange = useCallback(
-    async (newStatus: TicketStatus) => {
-      if (!ticket) return;
+  const handleUpdateField = (
+    field: 'priority' | 'assignee_id' | 'team_id' | 'category_id',
+    value: string | null
+  ) => {
+    if (!ticket) return;
 
-      try {
-        const updatedTicket = await updateTicket(ticket.id, { status: newStatus });
+    // Validar el valor antes de procesarlo
+    let optimisticUpdateValue: TicketStatus | TicketPriority | number | null;
+    if (field === 'assignee_id' || field === 'team_id' || field === 'category_id') {
+      optimisticUpdateValue = value === 'null' || value === null ? null : parseInt(value, 10);
+      if (typeof optimisticUpdateValue === 'number' && isNaN(optimisticUpdateValue)) {
+        console.error(`Invalid ${field} selected: ${value}`);
+        return;
+      }
+    } else {
+      optimisticUpdateValue = value as TicketPriority;
+    }
 
-        // Update local state
-        setTicket(updatedTicket);
+    // Si el valor es exactamente el mismo, no hacemos nada
+    if (ticket[field as keyof ITicket] === optimisticUpdateValue) {
+      return;
+    }
 
-        // Notify parent
+    // Obtener el valor original para la mutation
+    const currentFieldValue = ticket[field] ?? null;
+
+    // Iniciar la actualización (la actualización optimista se hace en onMutate)
+    updateFieldMutation.mutate({ field, value, originalFieldValue: currentFieldValue });
+  };
+  const closeTicketMutation = useMutation<ITicket, Error, void, { previousTicket: ITicket | null }>(
+    {
+      mutationFn: async () => {
+        if (!ticket) throw new Error('No ticket selected');
+        return updateTicket(ticket.id, { status: 'Closed' });
+      },
+      onMutate: async () => {
+        if (!ticket) return { previousTicket: null };
+        
+        // ✅ ULTRA RÁPIDO: Actualización optimista inmediata
+        setIsClosingTicket(true);
+        const previousTicket = ticket;
+
+        const optimisticTicket: ITicket = {
+          ...previousTicket,
+          status: 'Closed' as TicketStatus,
+        };
+
+        // Actualizar estado local inmediatamente
+        setTicket(optimisticTicket);
         if (onTicketUpdate) {
-          onTicketUpdate(updatedTicket);
+          onTicketUpdate(optimisticTicket);
         }
-
-        // Invalidate relevant queries
-        queryClient.invalidateQueries({ queryKey: ['tickets'] });
-        queryClient.invalidateQueries({ queryKey: ['tickets', 'my'] });
-
-        toast.success(`Ticket #${updatedTicket.id} ${newStatus.toLowerCase()} successfully.`);
+        
+        // Cancelar queries para evitar race conditions
+        await queryClient.cancelQueries({ queryKey: ['tickets', ticket.id] });
+        queryClient.setQueryData(['tickets', ticket.id], optimisticTicket);
+        
+        // ✅ NUEVO: Actualizar contadores del sidebar INSTANTÁNEAMENTE
+        const currentUser = await getCurrentUser();
+        if (currentUser?.id) {
+          // Solo actualizar contadores si el ticket estaba activo (no cerrado/resuelto)
+          if (ticket.status !== 'Closed' && ticket.status !== 'Resolved') {
+            // Actualizar "All Tickets" counter
+            const currentAllCount = queryClient.getQueryData<number>(['ticketsCount', 'all']) || 0;
+            queryClient.setQueryData(['ticketsCount', 'all'], Math.max(0, currentAllCount - 1));
+            
+            // Actualizar "My Tickets" counter si era asignado al usuario actual
+            if (ticket.assignee_id === currentUser.id) {
+              const currentMyCount = queryClient.getQueryData<number>(['ticketsCount', 'my', currentUser.id]) || 0;
+              queryClient.setQueryData(['ticketsCount', 'my', currentUser.id], Math.max(0, currentMyCount - 1));
+            }
+            
+            // Actualizar contador del team si tiene team asignado
+            if (ticket.team_id) {
+              const agentTeamsKey = ['agentTeams', currentUser.id, currentUser.role];
+              const currentAgentTeams = queryClient.getQueryData<Team[]>(agentTeamsKey) || [];
+              
+              const updatedAgentTeams = currentAgentTeams.map(team => {
+                if (team.id === ticket.team_id) {
+                  return {
+                    ...team,
+                    ticket_count: Math.max(0, (team.ticket_count || 0) - 1),
+                  };
+                }
+                return team;
+              });
+              
+              queryClient.setQueryData(agentTeamsKey, updatedAgentTeams);
+            }
+          }
+        }
+        
+        return { previousTicket };
+      },
+      onSuccess: updatedTicketData => {
+        // ✅ OPTIMIZACIÓN: NO invalidar nada - los sockets manejan la sincronización
+        
+        // ✅ FEEDBACK INMEDIATO: Toast antes de cerrar
+        toast.success(`Ticket #${updatedTicketData.id} closed successfully.`);
+        
+        // ✅ CERRAR RÁPIDO: Sin delay, los sockets mantienen sincronización
         onClose();
-      } catch (error) {
+      },
+      onError: (error, _variables, context) => {
         toast.error(
-          `Error updating ticket status: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Error closing ticket #${ticket?.id}: ${error instanceof Error ? error.message : 'Unknown error'}`
         );
+        if (context?.previousTicket) {
+          setTicket(context.previousTicket);
+          queryClient.setQueryData(['tickets', ticket!.id], context.previousTicket);
+          if (onTicketUpdate) {
+            onTicketUpdate(context.previousTicket);
+          }
+          
+          // ✅ NUEVO: Revertir contadores del sidebar en caso de error
+          const revertCounters = async () => {
+            const currentUser = await getCurrentUser();
+            if (currentUser?.id && context?.previousTicket) {
+              // Revertir "All Tickets" counter
+              const currentAllCount = queryClient.getQueryData<number>(['ticketsCount', 'all']) || 0;
+              queryClient.setQueryData(['ticketsCount', 'all'], currentAllCount + 1);
+              
+              // Revertir "My Tickets" counter si era asignado al usuario actual
+              if (context.previousTicket.assignee_id === currentUser.id) {
+                const currentMyCount = queryClient.getQueryData<number>(['ticketsCount', 'my', currentUser.id]) || 0;
+                queryClient.setQueryData(['ticketsCount', 'my', currentUser.id], currentMyCount + 1);
+              }
+              
+              // Revertir contador del team
+              if (context.previousTicket.team_id) {
+                const agentTeamsKey = ['agentTeams', currentUser.id, currentUser.role];
+                const currentAgentTeams = queryClient.getQueryData<Team[]>(agentTeamsKey) || [];
+                
+                const revertedAgentTeams = currentAgentTeams.map(team => {
+                  if (team.id === context.previousTicket!.team_id) {
+                    return {
+                      ...team,
+                      ticket_count: (team.ticket_count || 0) + 1,
+                    };
+                  }
+                  return team;
+                });
+                
+                queryClient.setQueryData(agentTeamsKey, revertedAgentTeams);
+              }
+            }
+          };
+          revertCounters();
+        }
+      },
+      onSettled: () => {
+        setIsClosingTicket(false);
+      },
+    }
+  );
+
+  const resolveTicketMutation = useMutation<
+    ITicket,
+    Error,
+    void,
+    { previousTicket: ITicket | null }
+  >({
+    mutationFn: async () => {
+      if (!ticket) throw new Error('No ticket selected');
+      return updateTicket(ticket.id, { status: 'Closed' });
+    },
+    onMutate: async () => {
+      if (!ticket) return { previousTicket: null };
+      
+      // ✅ ULTRA RÁPIDO: Actualización optimista inmediata
+      setIsResolvingTicket(true);
+      const previousTicket = ticket;
+
+      const optimisticTicket: ITicket = {
+        ...previousTicket,
+        status: 'Closed' as TicketStatus,
+      };
+
+      // Actualizar estado local inmediatamente
+      setTicket(optimisticTicket);
+      if (onTicketUpdate) {
+        onTicketUpdate(optimisticTicket);
+      }
+      
+      // Cancelar queries para evitar race conditions
+      await queryClient.cancelQueries({ queryKey: ['tickets', ticket.id] });
+      queryClient.setQueryData(['tickets', ticket.id], optimisticTicket);
+      
+      // ✅ NUEVO: Actualizar contadores del sidebar INSTANTÁNEAMENTE
+      const currentUser = await getCurrentUser();
+      if (currentUser?.id) {
+        // Solo actualizar contadores si el ticket estaba activo (no cerrado/resuelto)
+        if (ticket.status !== 'Closed' && ticket.status !== 'Resolved') {
+          // Actualizar "All Tickets" counter
+          const currentAllCount = queryClient.getQueryData<number>(['ticketsCount', 'all']) || 0;
+          queryClient.setQueryData(['ticketsCount', 'all'], Math.max(0, currentAllCount - 1));
+          
+          // Actualizar "My Tickets" counter si era asignado al usuario actual
+          if (ticket.assignee_id === currentUser.id) {
+            const currentMyCount = queryClient.getQueryData<number>(['ticketsCount', 'my', currentUser.id]) || 0;
+            queryClient.setQueryData(['ticketsCount', 'my', currentUser.id], Math.max(0, currentMyCount - 1));
+          }
+          
+          // Actualizar contador del team si tiene team asignado
+          if (ticket.team_id) {
+            const agentTeamsKey = ['agentTeams', currentUser.id, currentUser.role];
+            const currentAgentTeams = queryClient.getQueryData<Team[]>(agentTeamsKey) || [];
+            
+            const updatedAgentTeams = currentAgentTeams.map(team => {
+              if (team.id === ticket.team_id) {
+                return {
+                  ...team,
+                  ticket_count: Math.max(0, (team.ticket_count || 0) - 1),
+                };
+              }
+              return team;
+            });
+            
+            queryClient.setQueryData(agentTeamsKey, updatedAgentTeams);
+          }
+        }
+      }
+      
+      return { previousTicket };
+    },
+    onSuccess: updatedTicketData => {
+      // ✅ OPTIMIZACIÓN: NO invalidar nada - los sockets manejan la sincronización
+      
+      // ✅ FEEDBACK INMEDIATO: Toast antes de cerrar
+      toast.success(`Ticket #${updatedTicketData.id} resolved successfully.`);
+      
+      // ✅ CERRAR RÁPIDO: Sin delay, los sockets mantienen sincronización
+      onClose();
+    },
+    onError: (error, _variables, context) => {
+      toast.error(
+        `Error resolving ticket #${ticket?.id}: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+      if (context?.previousTicket) {
+        setTicket(context.previousTicket);
+        queryClient.setQueryData(['tickets', ticket!.id], context.previousTicket);
+        if (onTicketUpdate) {
+          onTicketUpdate(context.previousTicket);
+        }
+        
+                 // ✅ NUEVO: Revertir contadores del sidebar en caso de error
+         const revertCounters = async () => {
+           const currentUser = await getCurrentUser();
+           if (currentUser?.id && context?.previousTicket) {
+             // Revertir "All Tickets" counter
+             const currentAllCount = queryClient.getQueryData<number>(['ticketsCount', 'all']) || 0;
+             queryClient.setQueryData(['ticketsCount', 'all'], currentAllCount + 1);
+             
+             // Revertir "My Tickets" counter si era asignado al usuario actual
+             if (context.previousTicket.assignee_id === currentUser.id) {
+               const currentMyCount = queryClient.getQueryData<number>(['ticketsCount', 'my', currentUser.id]) || 0;
+               queryClient.setQueryData(['ticketsCount', 'my', currentUser.id], currentMyCount + 1);
+             }
+             
+             // Revertir contador del team
+             if (context.previousTicket.team_id) {
+               const agentTeamsKey = ['agentTeams', currentUser.id, currentUser.role];
+               const currentAgentTeams = queryClient.getQueryData<Team[]>(agentTeamsKey) || [];
+               
+               const revertedAgentTeams = currentAgentTeams.map(team => {
+                 if (team.id === context.previousTicket!.team_id) {
+                   return {
+                     ...team,
+                     ticket_count: (team.ticket_count || 0) + 1,
+                   };
+                 }
+                 return team;
+               });
+               
+               queryClient.setQueryData(agentTeamsKey, revertedAgentTeams);
+             }
+           }
+         };
+         revertCounters();
       }
     },
-    [ticket, onTicketUpdate, queryClient, onClose]
-  );
+    onSettled: () => {
+      setIsResolvingTicket(false);
+    },
+  });
 
   if (!ticket) {
     return null;
   }
+
+  const avatarColors = ['#a3a948', '#edb92e', '#f85931', '#ce1836', '#009989'];
 
   return (
     <AnimatePresence>
@@ -200,10 +628,14 @@ export function TicketDetail({ ticket: initialTicket, onClose, onTicketUpdate }:
         <div className="flex-1 flex gap-4 p-4 pt-10 overflow-y-auto">
           <div className="flex-1 min-w-0">
             <TicketConversation
-              ticket={ticket}
+              ticket={ticket!}
               onTicketUpdate={updatedTicket => {
+                // Update the ticket in state
                 setTicket(updatedTicket);
-                onTicketUpdate?.(updatedTicket);
+                // Call the parent's onTicketUpdate callback if provided
+                if (onTicketUpdate) {
+                  onTicketUpdate(updatedTicket);
+                }
               }}
             />
           </div>
@@ -216,7 +648,8 @@ export function TicketDetail({ ticket: initialTicket, onClose, onTicketUpdate }:
                 <h3 className="text-sm font-medium text-muted-foreground mb-1">Priority</h3>
                 <Select
                   value={ticket.priority}
-                  onValueChange={value => updateTicketField('priority', value, ticket.priority)}
+                  onValueChange={value => handleUpdateField('priority', value)}
+                  disabled={false}
                 >
                   <SelectTrigger className="h-8 text-xs focus:ring-0 focus:ring-offset-0">
                     <SelectValue placeholder="Select priority">
@@ -225,7 +658,10 @@ export function TicketDetail({ ticket: initialTicket, onClose, onTicketUpdate }:
                           <div
                             className={cn(
                               'w-2 h-2 rounded-full',
-                              PRIORITY_OPTIONS.find(p => p.value === ticket.priority)?.color
+                              ticket.priority === 'Low' && 'bg-slate-500',
+                              ticket.priority === 'Medium' && 'bg-green-500',
+                              ticket.priority === 'High' && 'bg-yellow-500',
+                              ticket.priority === 'Critical' && 'bg-red-500'
                             )}
                           />
                           {ticket.priority}
@@ -234,25 +670,38 @@ export function TicketDetail({ ticket: initialTicket, onClose, onTicketUpdate }:
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    {PRIORITY_OPTIONS.map(option => (
-                      <SelectItem key={option.value} value={option.value}>
-                        <div className="flex items-center gap-2">
-                          <div className={`w-2 h-2 rounded-full ${option.color}`} />
-                          {option.label}
-                        </div>
-                      </SelectItem>
-                    ))}
+                    <SelectItem value="Low">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-slate-500" />
+                        Low
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="Medium">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-green-500" />
+                        Medium
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="High">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-yellow-500" />
+                        High
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="Critical">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-red-500" />
+                        Critical
+                      </div>
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-
               <div>
                 <h3 className="text-sm font-medium text-muted-foreground mb-1">Assigned to</h3>
                 <Select
                   value={ticket.assignee_id?.toString() ?? 'null'}
-                  onValueChange={value =>
-                    updateTicketField('assignee_id', value, ticket.assignee_id)
-                  }
+                  onValueChange={value => handleUpdateField('assignee_id', value)}
                   disabled={isLoadingAgents}
                 >
                   <SelectTrigger className="h-8 text-xs focus:ring-0 focus:ring-offset-0">
@@ -268,12 +717,11 @@ export function TicketDetail({ ticket: initialTicket, onClose, onTicketUpdate }:
                   </SelectContent>
                 </Select>
               </div>
-
               <div>
                 <h3 className="text-sm font-medium text-muted-foreground mb-1">Team</h3>
                 <Select
                   value={ticket.team_id?.toString() ?? 'null'}
-                  onValueChange={value => updateTicketField('team_id', value, ticket.team_id)}
+                  onValueChange={value => handleUpdateField('team_id', value)}
                   disabled={isLoadingTeams}
                 >
                   <SelectTrigger className="h-8 text-xs focus:ring-0 focus:ring-offset-0">
@@ -281,7 +729,7 @@ export function TicketDetail({ ticket: initialTicket, onClose, onTicketUpdate }:
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="null">Unassigned</SelectItem>
-                    {teams.map(team => (
+                    {teams.map((team: Team) => (
                       <SelectItem key={team.id} value={team.id.toString()}>
                         {team.name}
                       </SelectItem>
@@ -289,14 +737,11 @@ export function TicketDetail({ ticket: initialTicket, onClose, onTicketUpdate }:
                   </SelectContent>
                 </Select>
               </div>
-
               <div>
                 <h3 className="text-sm font-medium text-muted-foreground mb-1">Category</h3>
                 <Select
                   value={ticket.category_id?.toString() ?? 'null'}
-                  onValueChange={value =>
-                    updateTicketField('category_id', value, ticket.category_id)
-                  }
+                  onValueChange={value => handleUpdateField('category_id', value)}
                   disabled={isLoadingCategories}
                 >
                   <SelectTrigger className="h-8 text-xs focus:ring-0 focus:ring-offset-0">
@@ -306,7 +751,7 @@ export function TicketDetail({ ticket: initialTicket, onClose, onTicketUpdate }:
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="null">Unassigned</SelectItem>
-                    {categories.map(category => (
+                    {categories.map((category: ICategory) => (
                       <SelectItem key={category.id} value={category.id.toString()}>
                         {category.name}
                       </SelectItem>
@@ -327,7 +772,7 @@ export function TicketDetail({ ticket: initialTicket, onClose, onTicketUpdate }:
                       'unknown-user'
                     }
                     variant="beam"
-                    colors={AVATAR_COLORS}
+                    colors={avatarColors}
                   />
                   <span className="text-sm">{ticket.user?.name || 'Unknown User'}</span>
                 </div>
@@ -342,24 +787,25 @@ export function TicketDetail({ ticket: initialTicket, onClose, onTicketUpdate }:
                 <h3 className="text-sm font-medium text-muted-foreground mb-1">Created</h3>
                 <p className="text-sm">{formatRelativeTime(ticket.created_at)}</p>
               </div>
-
               <div className="mt-4 pt-4 border-t">
                 <div className="flex flex-col gap-2">
                   <Button
                     size="sm"
                     variant="default"
-                    onClick={() => handleStatusChange('Closed')}
+                    onClick={() => resolveTicketMutation.mutate()}
+                    disabled={isResolvingTicket}
                     className="w-full"
                   >
-                    Mark Resolved
+                    {isResolvingTicket ? 'Marking Resolved...' : 'Mark Resolved'}
                   </Button>
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => handleStatusChange('Closed')}
+                    onClick={() => closeTicketMutation.mutate()}
+                    disabled={isClosingTicket}
                     className="w-full"
                   >
-                    Mark Closed
+                    {isClosingTicket ? 'Marking Closed...' : 'Mark Closed'}
                   </Button>
                 </div>
               </div>

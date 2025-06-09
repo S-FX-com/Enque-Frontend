@@ -4,6 +4,7 @@ import './globals.css';
 import { ThemeProvider } from '@/components/providers/theme-provider';
 import { QueryProvider } from '@/components/providers/query-provider';
 import { GlobalTicketsProvider } from '@/providers/global-tickets-provider';
+import { TicketPreloaderProvider } from '@/providers/ticket-preloader-provider';
 import { Toaster } from 'sonner';
 import { SocketProvider } from '@/providers/socket-provider';
 
@@ -41,7 +42,9 @@ export default function RootLayout({
         >
           <QueryProvider>
             <SocketProvider>
-              <GlobalTicketsProvider>{children}</GlobalTicketsProvider>
+              <GlobalTicketsProvider>
+                <TicketPreloaderProvider>{children}</TicketPreloaderProvider>
+              </GlobalTicketsProvider>
               {/* Customize sonner Toaster appearance */}
               <Toaster
                 position="bottom-right"
