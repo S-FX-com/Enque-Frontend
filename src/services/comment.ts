@@ -58,6 +58,7 @@ export interface CreateCommentPayload {
   workspace_id: number;
   is_private: boolean;
   attachment_ids?: number[]; // Nuevo: IDs de los archivos adjuntos
+  other_destinaries?: string;
   // Index signature for compatibility with fetchAPI.POST's Record<string, unknown> type
   [key: string]: unknown;
 }

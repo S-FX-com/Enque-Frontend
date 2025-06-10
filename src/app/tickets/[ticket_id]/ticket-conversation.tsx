@@ -7,7 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Send, Mail, Clock, MessageSquare, Search } from 'lucide-react';
+import { Send, Mail, Clock, MessageSquare, Search, Users } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -323,6 +323,10 @@ export function TicketConversation({ ticket, onTicketUpdate }: Props) {
   const [selectedAttachments, setSelectedAttachments] = useState<File[]>([]);
   const [isSending, setIsSending] = useState(false);
 
+  // New state for extra recipients
+  const [extraRecipients, setExtraRecipients] = useState('');
+  const [showExtraRecipients, setShowExtraRecipients] = useState(false);
+
   // Canned replies state
   const [cannedRepliesOpen, setCannedRepliesOpen] = useState(false);
   const [cannedSearchTerm, setCannedSearchTerm] = useState('');
@@ -515,6 +519,8 @@ export function TicketConversation({ ticket, onTicketUpdate }: Props) {
 
     if (currentTicketId !== prevTicketId) {
       setIsPrivateNote(false);
+      setExtraRecipients('');
+      setShowExtraRecipients(false);
     }
     prevTicketIdRef.current = currentTicketId;
   }, [ticket.id, ticket.user?.name, currentAgentData, globalSignatureData]);
@@ -564,10 +570,26 @@ export function TicketConversation({ ticket, onTicketUpdate }: Props) {
     setEditorKey(prev => prev + 1);
   };
 
+  // Function to validate email addresses
+  const validateEmails = (emailString: string): boolean => {
+    if (!emailString.trim()) return true; // Empty is valid
+
+    const emails = emailString.split(',').map(email => email.trim());
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    return emails.every(email => emailRegex.test(email));
+  };
+
   const sendComment = async (content: string, isPrivate: boolean): Promise<CommentResponseData> => {
     if (!currentUser) {
       toast.error('Authentication error. User not found.');
       throw new Error('Authentication error. User not found.');
+    }
+
+    // Validate extra recipients if provided
+    if (extraRecipients.trim() && !validateEmails(extraRecipients)) {
+      toast.error('Please enter valid email addresses separated by commas.');
+      throw new Error('Invalid email addresses in extra recipients.');
     }
 
     let attachmentIds: number[] = [];
@@ -592,6 +614,7 @@ export function TicketConversation({ ticket, onTicketUpdate }: Props) {
       workspace_id: currentUser.workspace_id,
       is_private: isPrivate,
       attachment_ids: attachmentIds.length > 0 ? attachmentIds : undefined,
+      other_destinaries: extraRecipients.trim() || undefined,
     };
 
     return createComment(ticket.id, payload);
@@ -626,6 +649,8 @@ export function TicketConversation({ ticket, onTicketUpdate }: Props) {
       setReplyContent('');
       setSelectedAttachments([]);
       setIsPrivateNote(false);
+      setExtraRecipients('');
+      setShowExtraRecipients(false);
       setEditorKey(prev => prev + 1);
 
       toast.success('Reply sent successfully.');
@@ -656,6 +681,8 @@ export function TicketConversation({ ticket, onTicketUpdate }: Props) {
     setIsPrivateNote(checked);
     if (checked) {
       setReplyContent('');
+      setShowExtraRecipients(false);
+      setExtraRecipients('');
     }
   };
 
@@ -743,6 +770,50 @@ export function TicketConversation({ ticket, onTicketUpdate }: Props) {
             disabled={createCommentMutation.isPending}
             onAttachmentsChange={handleAttachmentsChange}
           />
+
+          {/* Extra Recipients Section */}
+          {!isPrivateNote && (
+            <div className="space-y-2">
+              <div className="flex items-center space-x-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowExtraRecipients(!showExtraRecipients)}
+                  className="text-xs"
+                >
+                  <Users className="mr-1 h-3 w-3" />
+                  {showExtraRecipients ? 'Hide CC' : 'Add CC'}
+                </Button>
+              </div>
+
+              {showExtraRecipients && (
+                <div className="space-y-1">
+                  <Label htmlFor="extra-recipients" className="text-xs text-muted-foreground">
+                    Extra Recipients (CC)
+                  </Label>
+                  <Input
+                    id="extra-recipients"
+                    type="email"
+                    placeholder="email1@example.com, email2@example.com"
+                    value={extraRecipients}
+                    onChange={e => setExtraRecipients(e.target.value)}
+                    disabled={createCommentMutation.isPending}
+                    className="text-sm"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Separate multiple email addresses with commas
+                  </p>
+                  {extraRecipients.trim() && !validateEmails(extraRecipients) && (
+                    <p className="text-xs text-red-500">
+                      Please enter valid email addresses separated by commas
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
           {createCommentMutation.isError && (
             <p className="text-xs text-red-500 pt-1">
               {createCommentMutation.error?.message || 'Failed to send reply.'}
@@ -836,7 +907,11 @@ export function TicketConversation({ ticket, onTicketUpdate }: Props) {
             <Button
               onClick={handleSendReply}
               disabled={
-                !replyContent.trim() || !ticket?.id || isSending || createCommentMutation.isPending
+                !replyContent.trim() ||
+                !ticket?.id ||
+                isSending ||
+                createCommentMutation.isPending ||
+                (extraRecipients.trim() && !validateEmails(extraRecipients))
               }
             >
               <Send className="mr-2 h-4 w-4" />
