@@ -1,40 +1,20 @@
-// frontend/src/app/dashboard/page.tsx
 'use client';
 
 import React from 'react';
-import { useQuery, useQueries } from '@tanstack/react-query';
 import { Badge } from '@/components/ui/badge';
-import { getAgentById } from '@/services/agent';
-import { getAssignedTasks, getTeamTasks } from '@/services/task';
-import { getAgentTeams } from '@/services/agent';
-import { Team } from '@/typescript/team';
-import { Task, TaskStatus } from '@/typescript/task';
+import { TaskStatus } from '@/typescript/task';
 import { useAgentAvatar } from '@/hooks/use-agent-avatar';
 import { useAuth } from '@/hooks/use-auth';
+import { useSocketContext } from '@/providers/socket-provider';
+import { useDashboardData } from '@/hooks/use-dashboard-data';
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 
-interface TeamStats extends Team {
-  ticketsOpen: number;
-  ticketsWithUser: number;
-  ticketsAssigned: number;
-}
-
 export default function DashboardPage() {
   const { user } = useAuth();
+  const { isConnected } = useSocketContext();
+  const { userData, assignedTickets, stats, isLoading, isError } = useDashboardData(user?.id);
 
-  const {
-    data: userData,
-    isLoading: isLoadingUser,
-    isError: isUserError,
-  } = useQuery({
-    queryKey: ['agent', user?.id],
-    queryFn: () => getAgentById(user!.id),
-    enabled: !!user?.id,
-    staleTime: 1000 * 60 * 5,
-  });
-
-  // Get the user avatar component
   const { AvatarComponent: UserAvatarComponent } = useAgentAvatar({
     agent: userData,
     size: 80,
@@ -42,70 +22,13 @@ export default function DashboardPage() {
     className: 'w-full h-full',
   });
 
-  const { data: assignedTickets = [], isLoading: isLoadingAssignedTickets } = useQuery<
-    Task[],
-    Error
-  >({
-    queryKey: ['agentTickets', user?.id],
-    queryFn: () => (user?.id ? getAssignedTasks(user.id) : Promise.resolve([])),
-    enabled: !!user?.id,
-    staleTime: 1000 * 60,
-  });
-
-  const { data: userTeams = [], isLoading: isLoadingUserTeams } = useQuery<Team[], Error>({
-    queryKey: ['userTeams', user?.id],
-    queryFn: () => (user?.id ? getAgentTeams(user.id) : Promise.resolve([])),
-    enabled: !!user?.id,
-    staleTime: 1000 * 60 * 5,
-  });
-
-  const teamTasksQueries = useQueries({
-    queries: userTeams.map(team => ({
-      queryKey: ['teamTasks', team.id],
-      queryFn: () => getTeamTasks(team.id),
-      enabled: !!user?.id,
-      staleTime: 1000 * 60,
-    })),
-  });
-
-  const isLoadingTeamTasks = teamTasksQueries.some(query => query.isLoading);
-
-  const ticketsAssignedCount = assignedTickets.length;
-  const ticketsCompletedCount = assignedTickets.filter(
-    (t: Task) => t.status === TaskStatus.CLOSED
-  ).length;
-  const teamsCount = userTeams.length;
-
-  const teamsStats: TeamStats[] = userTeams.map((team, index) => {
-    const queryResult = teamTasksQueries[index];
-    const teamTasks = queryResult.isSuccess ? queryResult.data : [];
-
-    const ticketsOpen = teamTasks.filter(
-      (t: Task) => t.status === TaskStatus.OPEN || t.status === TaskStatus.UNREAD
-    ).length;
-    const ticketsWithUser = teamTasks.filter((t: Task) => t.user_id === user?.id).length;
-    const ticketsAssigned = teamTasks.length;
-
-    return {
-      ...team,
-      ticketsOpen,
-      ticketsWithUser,
-      ticketsAssigned,
-    };
-  });
-
-  const isLoading =
-    isLoadingUser ||
-    (!!user?.id && (isLoadingAssignedTickets || isLoadingUserTeams || isLoadingTeamTasks));
-
-  if (isUserError || (!isLoadingUser && !user)) {
+  if (isError || (!isLoading && !user)) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-center">
           <h3 className="text-lg font-medium">Could not load dashboard data</h3>
           <p className="text-slate-500 mt-2">
-            {isUserError ? 'Failed to load user information.' : 'User not found.'} Please try
-            logging in again.
+            {isError ? 'Failed to load user information.' : 'User not found.'} Please try logging in again.
           </p>
         </div>
       </div>
@@ -127,7 +50,10 @@ export default function DashboardPage() {
       <div className="bg-white dark:bg-black rounded-lg p-6 flex flex-col items-center">
         <div className="relative mb-4">
           <div className="w-20 h-20 rounded-full">{UserAvatarComponent}</div>
-          <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 rounded-full border-2 border-white dark:border-black"></div>
+          <div className={cn(
+            "absolute bottom-0 right-0 w-4 h-4 rounded-full border-2 border-white dark:border-black",
+            isConnected ? "bg-green-500" : "bg-slate-400"
+          )}></div>
         </div>
 
         <h2 className="text-xl font-semibold text-center">{userData?.name || user.name}</h2>
@@ -137,15 +63,15 @@ export default function DashboardPage() {
 
         <div className="flex justify-between w-full">
           <div className="text-center">
-            <div className="text-2xl font-bold">{ticketsAssignedCount}</div>
+            <div className="text-2xl font-bold">{stats.ticketsAssignedCount}</div>
             <div className="text-xs text-slate-500 dark:text-slate-400">Tickets Assigned</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold">{ticketsCompletedCount}</div>
+            <div className="text-2xl font-bold">{stats.ticketsCompletedCount}</div>
             <div className="text-xs text-slate-500 dark:text-slate-400">Tickets Completed</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold">{teamsCount}</div>
+            <div className="text-2xl font-bold">{stats.teamsCount}</div>
             <div className="text-xs text-slate-500 dark:text-slate-400">Teams</div>
           </div>
         </div>
@@ -170,11 +96,8 @@ export default function DashboardPage() {
                   </td>
                 </tr>
               ) : (
-                assignedTickets.map(ticket => (
-                  <tr
-                    key={ticket.id}
-                    className="border-b border-slate-100 dark:border-slate-800 last:border-0"
-                  >
+                assignedTickets.slice(0, 10).map(ticket => (
+                  <tr key={ticket.id} className="border-b border-slate-100 dark:border-slate-800 last:border-0">
                     <td className="py-3 text-sm">
                       {ticket.created_at ? format(parseISO(ticket.created_at), 'MMM dd') : '-'}
                     </td>
@@ -184,12 +107,9 @@ export default function DashboardPage() {
                         variant="outline"
                         className={cn(
                           'whitespace-nowrap text-xs',
-                          ticket.status === TaskStatus.OPEN &&
-                            'bg-green-100 text-green-800 border-green-300 dark:bg-green-900/50 dark:text-green-300 dark:border-green-700',
-                          ticket.status === TaskStatus.CLOSED &&
-                            'bg-slate-100 text-slate-600 border-slate-300 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700',
-                          ticket.status === TaskStatus.UNREAD &&
-                            'border-blue-300 dark:border-blue-700'
+                          ticket.status === TaskStatus.OPEN && 'bg-green-100 text-green-800 border-green-300 dark:bg-green-900/50 dark:text-green-300 dark:border-green-700',
+                          ticket.status === TaskStatus.CLOSED && 'bg-slate-100 text-slate-600 border-slate-300 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700',
+                          ticket.status === TaskStatus.UNREAD && 'border-blue-300 dark:border-blue-700'
                         )}
                       >
                         {ticket.status}
@@ -206,10 +126,10 @@ export default function DashboardPage() {
       <div className="bg-white dark:bg-black rounded-lg p-6 flex flex-col">
         <h3 className="text-lg font-semibold mb-4 flex-shrink-0">My Teams</h3>
         <div className="space-y-6 overflow-y-auto h-72 flex-grow pr-2">
-          {teamsStats.length === 0 ? (
+          {stats.teamsStats.length === 0 ? (
             <p className="text-sm text-muted-foreground pt-4">You are not assigned to any teams.</p>
           ) : (
-            teamsStats.map(team => (
+            stats.teamsStats.map((team) => (
               <div
                 key={team.id}
                 className="border-b border-slate-100 dark:border-slate-800 pb-4 last:border-0 last:pb-0"

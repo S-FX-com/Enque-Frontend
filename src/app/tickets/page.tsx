@@ -46,9 +46,9 @@ import type { ICategory } from '@/typescript/category';
 import { Collapsible, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useGlobalTicketsContext } from '@/providers/global-tickets-provider';
 import { useAuth } from '@/hooks/use-auth';
+
 import type { Agent } from '@/typescript/agent';
 import { formatRelativeTime, cn } from '@/lib/utils';
-import { TicketDetail } from './ticket-details';
 import {
   Select,
   SelectContent,
@@ -57,24 +57,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
-// Constants for filter options
-const STATUS_OPTIONS: OptionType[] = [
-  { value: 'Unread', label: 'Unread' },
-  { value: 'Open', label: 'Open' },
-  { value: 'With User', label: 'With User' },
-  { value: 'In Progress', label: 'In Progress' },
-  { value: 'Closed', label: 'Closed' },
-];
-
-const PRIORITY_OPTIONS: OptionType[] = [
-  { value: 'Low', label: 'Low' },
-  { value: 'Medium', label: 'Medium' },
-  { value: 'High', label: 'High' },
-  { value: 'Critical', label: 'Critical' },
-];
-
 function TicketsClientContent() {
-  // Context and hooks
   const { user } = useAuth();
   const {
     allTicketsData,
@@ -90,45 +73,63 @@ function TicketsClientContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
-
-  // State management
-  const [selectedTicket, setSelectedTicket] = useState<ITicket | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [subjectInput, setSubjectInput] = useState('');
   const debouncedSubjectFilter = useDebounce(subjectInput, 300);
-  const [selectedFilters, setSelectedFilters] = useState({
-    statuses: [] as string[],
-    teams: [] as string[],
-    agents: [] as string[],
-    priorities: [] as string[],
-    users: [] as string[],
-    companies: [] as string[],
-    categories: [] as string[],
-  });
+  const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
+  const [selectedTeams, setSelectedTeams] = useState<string[]>([]);
+  const [selectedAgents, setSelectedAgents] = useState<string[]>([]);
+  const [selectedPriorities, setSelectedPriorities] = useState<string[]>([]);
+  const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
+  const [selectedCompanies, setSelectedCompanies] = useState<string[]>([]);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedTicketIds, setSelectedTicketIds] = useState<Set<number>>(new Set());
-  const [dialogStates, setDialogStates] = useState({
-    delete: false,
-    assignToAgent: false,
-    assignToTeam: false,
-    filtersExpanded: false,
-  });
-  const [selectedAssignments, setSelectedAssignments] = useState({
-    agentId: null as string | null,
-    teamId: null as string | null,
-  });
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [filtersExpanded, setFiltersExpanded] = useState(false);
+  const [isAssignToAgentDialogOpen, setIsAssignToAgentDialogOpen] = useState(false);
+  const [isAssignToTeamDialogOpen, setIsAssignToTeamDialogOpen] = useState(false);
+  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
+  const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
 
-  // Data fetching
+  const statusOptions: OptionType[] = [
+    { value: 'Unread', label: 'Unread' },
+    { value: 'Open', label: 'Open' },
+    { value: 'With User', label: 'With User' },
+    { value: 'In Progress', label: 'In Progress' },
+    { value: 'Closed', label: 'Closed' },
+  ];
+
+  const priorityOptions: OptionType[] = [
+    { value: 'Low', label: 'Low' },
+    { value: 'Medium', label: 'Medium' },
+    { value: 'High', label: 'High' },
+    { value: 'Critical', label: 'Critical' },
+  ];
+
   const { data: agentsData = [] } = useQuery<Agent[]>({
     queryKey: ['agents'],
     queryFn: getAgents,
     staleTime: 1000 * 60 * 5,
   });
 
+  const agentOptions: OptionType[] = useMemo(() => {
+    return agentsData.map(agent => ({
+      value: agent.id.toString(),
+      label: agent.name,
+    }));
+  }, [agentsData]);
+
   const { data: teamsData = [] } = useQuery<Team[]>({
     queryKey: ['teams'],
     queryFn: getTeams,
     staleTime: 1000 * 60 * 5,
   });
+  const teamOptions: OptionType[] = useMemo(() => {
+    return teamsData.map(team => ({
+      value: team.id.toString(),
+      label: team.name,
+    }));
+  }, [teamsData]);
 
   const { data: usersData = [] } = useQuery<IUser[]>({
     queryKey: ['users'],
@@ -136,156 +137,107 @@ function TicketsClientContent() {
     staleTime: 1000 * 60 * 5,
   });
 
+  const userOptions: OptionType[] = useMemo(() => {
+    return usersData
+      .filter(user => user && user.id && user.name)
+      .map(user => ({
+        value: user.id.toString(),
+        label: user.name!,
+      }));
+  }, [usersData]);
+
   const { data: companiesData = [] } = useQuery<ICompany[]>({
     queryKey: ['companies'],
-    queryFn: getCompanies,
+    queryFn: () => getCompanies(),
     staleTime: 1000 * 60 * 5,
   });
+  const companyOptions: OptionType[] = useMemo(() => {
+    return companiesData
+      .filter(company => company && company.id && company.name)
+      .map(company => ({
+        value: company.id.toString(),
+        label: company.name!,
+      }));
+  }, [companiesData]);
 
   const { data: categoriesData = [] } = useQuery<ICategory[]>({
     queryKey: ['categories'],
-    queryFn: getCategories,
+    queryFn: () => getCategories(),
     staleTime: 1000 * 60 * 5,
   });
 
-  // Memoized derived data
-  const agentOptions = useMemo(
-    () =>
-      agentsData.map(agent => ({
-        value: agent.id.toString(),
-        label: agent.name,
-      })),
-    [agentsData]
-  );
+  const categoryOptions: OptionType[] = useMemo(() => {
+    return categoriesData
+      .filter(category => category && category.id && category.name)
+      .map(category => ({
+        value: category.id.toString(),
+        label: category.name!,
+      }));
+  }, [categoriesData]);
 
-  const teamOptions = useMemo(
-    () =>
-      teamsData.map(team => ({
-        value: team.id.toString(),
-        label: team.name,
-      })),
-    [teamsData]
-  );
-
-  const userOptions = useMemo(
-    () =>
-      usersData
-        .filter(user => user?.id && user.name)
-        .map(user => ({
-          value: user.id.toString(),
-          label: user.name!,
-        })),
-    [usersData]
-  );
-
-  const companyOptions = useMemo(
-    () =>
-      companiesData
-        .filter(company => company?.id && company.name)
-        .map(company => ({
-          value: company.id.toString(),
-          label: company.name!,
-        })),
-    [companiesData]
-  );
-
-  const categoryOptions = useMemo(
-    () =>
-      categoriesData
-        .filter(category => category?.id && category.name)
-        .map(category => ({
-          value: category.id.toString(),
-          label: category.name!,
-        })),
-    [categoriesData]
-  );
-
-  const agentIdToNameMap = useMemo(
-    () =>
-      agentsData.reduce(
-        (map, agent) => {
-          map[agent.id] = agent.name;
-          return map;
-        },
-        {} as Record<number, string>
-      ),
-    [agentsData]
-  );
-
-  // Filtered tickets
   const filteredTicketsData = useMemo(() => {
     let tickets = allTicketsData;
 
-    if (selectedFilters.statuses.length === 0) {
+    if (selectedStatuses.length === 0) {
       tickets = tickets.filter(ticket => ticket.status !== 'Closed');
     }
 
     if (debouncedSubjectFilter) {
-      const lowerCaseFilter = debouncedSubjectFilter.toLowerCase();
-      tickets = tickets.filter(ticket => ticket.title.toLowerCase().includes(lowerCaseFilter));
+      const filter = debouncedSubjectFilter.toLowerCase();
+      tickets = tickets.filter(ticket => ticket.title.toLowerCase().includes(filter));
     }
 
-    if (selectedFilters.statuses.length > 0) {
-      tickets = tickets.filter(ticket => selectedFilters.statuses.includes(ticket.status));
+    if (selectedStatuses.length > 0) {
+      tickets = tickets.filter(ticket => selectedStatuses.includes(ticket.status));
+    }
+    if (selectedTeams.length > 0) {
+      const teamIds = selectedTeams.map(id => Number.parseInt(id, 10));
+      tickets = tickets.filter(ticket => ticket.team_id && teamIds.includes(ticket.team_id));
     }
 
-    if (selectedFilters.teams.length > 0) {
-      const selectedTeamIds = selectedFilters.teams.map(id => parseInt(id, 10));
+    if (selectedAgents.length > 0) {
+      const agentIds = selectedAgents.map(id => Number.parseInt(id, 10));
       tickets = tickets.filter(
-        ticket => ticket.team_id && selectedTeamIds.includes(ticket.team_id)
+        ticket => ticket.assignee_id && agentIds.includes(ticket.assignee_id)
       );
     }
 
-    if (selectedFilters.agents.length > 0) {
-      const selectedAgentIds = selectedFilters.agents.map(id => parseInt(id, 10));
+    if (selectedPriorities.length > 0) {
+      tickets = tickets.filter(ticket => selectedPriorities.includes(ticket.priority));
+    }
+
+    if (selectedUsers.length > 0) {
+      const userIds = selectedUsers.map(id => Number.parseInt(id, 10));
+      tickets = tickets.filter(ticket => ticket.user_id && userIds.includes(ticket.user_id));
+    }
+
+    if (selectedCompanies.length > 0) {
+      const companyIds = selectedCompanies.map(id => Number.parseInt(id, 10));
       tickets = tickets.filter(
-        ticket => ticket.assignee_id && selectedAgentIds.includes(ticket.assignee_id)
+        ticket => ticket.user?.company_id && companyIds.includes(ticket.user.company_id)
       );
     }
 
-    if (selectedFilters.priorities.length > 0) {
-      tickets = tickets.filter(ticket => selectedFilters.priorities.includes(ticket.priority));
-    }
-
-    if (selectedFilters.users.length > 0) {
-      const selectedUserIds = selectedFilters.users.map(id => parseInt(id, 10));
+    if (selectedCategories.length > 0) {
+      const categoryIds = selectedCategories.map(id => Number.parseInt(id, 10));
       tickets = tickets.filter(
-        ticket => ticket.user_id && selectedUserIds.includes(ticket.user_id)
-      );
-    }
-
-    if (selectedFilters.companies.length > 0) {
-      const selectedCompanyIds = selectedFilters.companies.map(id => parseInt(id, 10));
-      tickets = tickets.filter(
-        ticket => ticket.user?.company_id && selectedCompanyIds.includes(ticket.user.company_id)
-      );
-    }
-
-    if (selectedFilters.categories.length > 0) {
-      const selectedCategoryIds = selectedFilters.categories.map(id => parseInt(id, 10));
-      tickets = tickets.filter(
-        ticket => ticket.category_id && selectedCategoryIds.includes(ticket.category_id)
+        ticket => ticket.category_id && categoryIds.includes(ticket.category_id)
       );
     }
 
     return tickets;
-  }, [allTicketsData, debouncedSubjectFilter, selectedFilters]);
+  }, [
+    allTicketsData,
+    debouncedSubjectFilter,
+    selectedStatuses,
+    selectedTeams,
+    selectedAgents,
+    selectedPriorities,
+    selectedUsers,
+    selectedCompanies,
+    selectedCategories,
+  ]);
 
-  // Active filters count
-  const activeFiltersCount = useMemo(() => {
-    let count = 0;
-    if (debouncedSubjectFilter) count++;
-    count += selectedFilters.statuses.length;
-    count += selectedFilters.teams.length;
-    count += selectedFilters.agents.length;
-    count += selectedFilters.priorities.length;
-    count += selectedFilters.users.length;
-    count += selectedFilters.companies.length;
-    count += selectedFilters.categories.length;
-    return count;
-  }, [debouncedSubjectFilter, selectedFilters]);
-
-  // Effects
   useEffect(() => {
     const container = scrollContainerRef.current;
     const handleScroll = () => {
@@ -303,102 +255,115 @@ function TicketsClientContent() {
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   useEffect(() => {
-    const ticketIdToOpen = searchParams.get('openTicket');
     const teamIdFromQuery = searchParams.get('teamId');
 
     if (pathname === '/tickets') {
       if (teamIdFromQuery) {
-        if (!selectedFilters.teams.includes(teamIdFromQuery)) {
-          setSelectedFilters(prev => ({
-            ...prev,
-            teams: [teamIdFromQuery],
-          }));
+        if (!selectedTeams.includes(teamIdFromQuery)) {
+          setSelectedTeams([teamIdFromQuery]);
         }
-      } else if (selectedFilters.teams.length > 0) {
-        setSelectedFilters(prev => ({
-          ...prev,
-          teams: [],
-        }));
+      } else {
+        if (selectedTeams.length > 0) {
+          setSelectedTeams([]);
+        }
       }
     }
+  }, [searchParams, allTicketsData, router, pathname, selectedTeams]);
 
-    if (ticketIdToOpen && allTicketsData.length > 0) {
-      const ticket = allTicketsData.find(t => t.id === parseInt(ticketIdToOpen, 10));
-      if (ticket) {
-        setSelectedTicket(ticket);
-      }
+  const agentIdToNameMap = React.useMemo(() => {
+    return agentsData.reduce(
+      (map, agent) => {
+        map[agent.id] = agent.name;
+        return map;
+      },
+      {} as Record<number, string>
+    );
+  }, [agentsData]);
+
+  const handleSelectAllChange = (checked: boolean | 'indeterminate') => {
+    if (checked === true) {
+      setSelectedTicketIds(new Set(allTicketsData.map(ticket => ticket.id)));
+    } else {
+      setSelectedTicketIds(new Set());
     }
-  }, [searchParams, allTicketsData, router, pathname, selectedFilters.teams]);
+  };
 
-  // Mutations
-  const markAsReadMutation = useMutation({
-    mutationFn: async (ticket: ITicket) => {
-      return updateTicket(ticket.id, { status: 'Open' });
-    },
-    onMutate: async ticket => {
-      await queryClient.cancelQueries({ queryKey: ['tickets'] });
-      const previousTicketsData = queryClient.getQueryData<InfiniteData<ITicket[], number>>([
-        'tickets',
-      ]);
-
-      queryClient.setQueryData<InfiniteData<ITicket[], number>>(['tickets'], oldData => {
-        if (!oldData) return oldData;
-        return {
-          ...oldData,
-          pages: oldData.pages.map(page =>
-            page.map(t => (t.id === ticket.id ? { ...t, status: 'Open' as const } : t))
-          ),
-        };
-      });
-
-      return { previousTicketsData };
-    },
-    onError: (err, ticket, context) => {
-      console.error(`Failed to update ticket ${ticket.id} status to Open:`, err);
-      if (context?.previousTicketsData) {
-        queryClient.setQueryData(['tickets'], context.previousTicketsData);
+  const handleRowSelectChange = (ticketId: number, checked: boolean | 'indeterminate') => {
+    setSelectedTicketIds(prev => {
+      const next = new Set(prev);
+      if (checked === true) {
+        next.add(ticketId);
+      } else {
+        next.delete(ticketId);
       }
-    },
-    onSuccess: (updatedTicket, ticket) => {
-      if (selectedTicket?.id === ticket.id) {
-        setSelectedTicket({ ...ticket, status: 'Open' as const });
-      }
-    },
-  });
+      return next;
+    });
+  };
 
+  const isAllSelected =
+    allTicketsData.length > 0 && selectedTicketIds.size === allTicketsData.length;
+  const isIndeterminate =
+    selectedTicketIds.size > 0 && selectedTicketIds.size < allTicketsData.length;
+  const headerCheckboxState = isAllSelected ? true : isIndeterminate ? 'indeterminate' : false;
   const deleteTicketsMutation = useMutation({
     mutationFn: async (ticketIds: number[]) => {
       const results = await Promise.allSettled(ticketIds.map(id => deleteTicket(id)));
       const failedDeletions = results
-        .filter((result): result is PromiseRejectedResult => result.status === 'rejected')
-        .map((result, index) => ({ reason: result.reason, id: ticketIds[index] }));
+        .map((result, index) => ({ result, id: ticketIds[index] }))
+        .filter(item => item.result.status === 'rejected');
 
       if (failedDeletions.length > 0) {
         const errorMessages = failedDeletions
-          .map(({ reason, id }) => (reason as { message?: string })?.message || `Ticket ID ${id}`)
+          .map(item => {
+            const reason = (item.result as PromiseRejectedResult).reason;
+            const message = (reason as { message?: string })?.message || `Ticket ID ${item.id}`;
+            return message;
+          })
           .join(', ');
         throw new Error(`Failed to delete: ${errorMessages}`);
       }
 
+      const nonSuccessResponses = results
+        .map((result, index) => ({ result, id: ticketIds[index] }))
+        .filter(item => {
+          if (item.result.status === 'fulfilled') {
+            const value = (
+              item.result as PromiseFulfilledResult<{ success: boolean; message?: string }>
+            ).value;
+            return !value.success;
+          }
+          return false;
+        });
+
+      if (nonSuccessResponses.length > 0) {
+        const errorMessages = nonSuccessResponses
+          .map(item => {
+            const response = (
+              item.result as PromiseFulfilledResult<{ success: boolean; message?: string }>
+            ).value;
+            return response.message || `Ticket ID ${item.id}`;
+          })
+          .join(', ');
+        throw new Error(`Failed to delete: ${errorMessages}`);
+      }
       return results;
     },
+    onSuccess: () => {},
     onMutate: async ticketIdsToDelete => {
       await queryClient.cancelQueries({ queryKey: ['tickets'] });
+
       const previousTicketsData = queryClient.getQueryData<InfiniteData<ITicket[], number>>([
         'tickets',
       ]);
 
       queryClient.setQueryData<InfiniteData<ITicket[], number>>(['tickets'], oldData => {
         if (!oldData) return oldData;
-        return {
-          ...oldData,
-          pages: oldData.pages.map(page =>
-            page.filter(ticket => !ticketIdsToDelete.includes(ticket.id))
-          ),
-        };
+        const newPages = oldData.pages.map(page =>
+          page.filter(ticket => !ticketIdsToDelete.includes(ticket.id))
+        );
+        return { ...oldData, pages: newPages };
       });
 
-      // Optimistic updates for counters
       const currentAllCount = queryClient.getQueryData<number>(['ticketsCount', 'all']) || 0;
       const currentMyCount =
         queryClient.getQueryData<number>(['ticketsCount', 'my', user?.id]) || 0;
@@ -427,7 +392,7 @@ function TicketsClientContent() {
       }
 
       setSelectedTicketIds(new Set());
-      setDialogStates(prev => ({ ...prev, delete: false }));
+      setIsDeleteDialogOpen(false);
 
       return {
         previousTicketsData,
@@ -435,8 +400,19 @@ function TicketsClientContent() {
         previousMyCount: currentMyCount,
       };
     },
-    onError: (err, _, context) => {
+    onError: (
+      err: Error,
+      ticketIdsToDelete: number[],
+      context:
+        | {
+            previousTicketsData?: InfiniteData<ITicket[], number>;
+            previousAllCount?: number;
+            previousMyCount?: number;
+          }
+        | undefined
+    ) => {
       toast.error(`Error deleting tickets: ${err.message}`);
+      console.error(`Error deleting tickets: ${err.message}`);
       if (context?.previousTicketsData) {
         queryClient.setQueryData(['tickets'], context.previousTicketsData);
       }
@@ -445,6 +421,156 @@ function TicketsClientContent() {
       }
       if (context?.previousMyCount !== undefined && user?.id) {
         queryClient.setQueryData(['ticketsCount', 'my', user.id], context.previousMyCount);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['tickets'] });
+      queryClient.invalidateQueries({ queryKey: ['agentTeams'] });
+    },
+  });
+  const handleDeleteConfirm = () => {
+    if (selectedTicketIds.size > 0) {
+      deleteTicketsMutation.mutate(Array.from(selectedTicketIds));
+    }
+  };
+
+  const activeFiltersCount = useMemo(() => {
+    let count = 0;
+    if (debouncedSubjectFilter) count++;
+    count += selectedStatuses.length;
+    count += selectedTeams.length;
+    count += selectedAgents.length;
+    count += selectedPriorities.length;
+    count += selectedUsers.length;
+    count += selectedCompanies.length;
+    count += selectedCategories.length;
+    return count;
+  }, [
+    debouncedSubjectFilter,
+    selectedStatuses,
+    selectedTeams,
+    selectedAgents,
+    selectedPriorities,
+    selectedUsers,
+    selectedCompanies,
+    selectedCategories,
+  ]);
+
+  const clearAllFilters = useCallback(() => {
+    setSubjectInput('');
+    setSelectedStatuses([]);
+    setSelectedTeams([]);
+    setSelectedAgents([]);
+    setSelectedPriorities([]);
+    setSelectedUsers([]);
+    setSelectedCompanies([]);
+    setSelectedCategories([]);
+  }, []);
+
+  const handleOpenAssignToAgentDialog = () => {
+    if (selectedTicketIds.size > 0) {
+      const ticketsArray = allTicketsData.filter(ticket => selectedTicketIds.has(ticket.id));
+
+      const firstTicket = ticketsArray[0];
+      const allSameAgent = ticketsArray.every(
+        ticket => ticket.assignee_id === firstTicket.assignee_id
+      );
+
+      if (allSameAgent && firstTicket.assignee_id !== undefined) {
+        setSelectedAgentId(String(firstTicket.assignee_id));
+      }
+    }
+
+    setIsAssignToAgentDialogOpen(true);
+  };
+
+  const handleOpenAssignToTeamDialog = () => {
+    if (selectedTicketIds.size > 0) {
+      const ticketsArray = allTicketsData.filter(ticket => selectedTicketIds.has(ticket.id));
+
+      const firstTicket = ticketsArray[0];
+      const allSameTeam = ticketsArray.every(ticket => ticket.team_id === firstTicket.team_id);
+
+      if (allSameTeam && firstTicket.team_id !== undefined) {
+        setSelectedTeamId(String(firstTicket.team_id));
+      }
+    }
+
+    setIsAssignToTeamDialogOpen(true);
+  };
+
+  const bulkAssignToTeamMutation = useMutation({
+    mutationFn: async (payload: { ticketIds: number[]; teamId: number | undefined }) => {
+      const { ticketIds, teamId } = payload;
+      const results = await Promise.allSettled(
+        ticketIds.map(id => updateTicket(id, { team_id: teamId }))
+      );
+
+      const failedAssignments = results
+        .map((result, index) => ({ result, id: ticketIds[index] }))
+        .filter(item => item.result.status === 'rejected');
+
+      if (failedAssignments.length > 0) {
+        const errorMessages = failedAssignments
+          .map(item => {
+            const reason = (item.result as PromiseRejectedResult).reason;
+            const message = (reason as { message?: string })?.message || `Ticket ID ${item.id}`;
+            return message;
+          })
+          .join(', ');
+        throw new Error(`Failed to assign: ${errorMessages}`);
+      }
+
+      return results;
+    },
+    onSuccess: (data, variables) => {
+      toast.success(`${variables.ticketIds.length} ticket(s) assigned to team successfully.`);
+      console.log(
+        `${variables.ticketIds.length} ticket(s) assigned to team ${variables.teamId || 'none'}.`
+      );
+    },
+    onMutate: async ({ ticketIds, teamId }) => {
+      await queryClient.cancelQueries({ queryKey: ['tickets'] });
+
+      const previousTicketsData = queryClient.getQueryData<InfiniteData<ITicket[], number>>([
+        'tickets',
+      ]);
+
+      queryClient.setQueryData<InfiniteData<ITicket[], number>>(['tickets'], oldData => {
+        if (!oldData) return oldData;
+
+        const newPages = oldData.pages.map(page =>
+          page.map(ticket => {
+            if (ticketIds.includes(ticket.id)) {
+              return {
+                ...ticket,
+                team_id: teamId,
+              };
+            }
+            return ticket;
+          })
+        );
+
+        return {
+          pages: newPages,
+          pageParams: oldData.pageParams,
+        };
+      });
+
+      setSelectedTicketIds(new Set());
+      setIsAssignToTeamDialogOpen(false);
+
+      return { previousTicketsData };
+    },
+    onError: (
+      err: Error,
+      variables,
+      context: { previousTicketsData?: InfiniteData<ITicket[], number> } | undefined
+    ) => {
+      toast.error(`Error assigning tickets to team: ${err.message}`);
+      console.error(`Error assigning tickets to team: ${err.message}`);
+      if (context?.previousTicketsData) {
+        queryClient.setQueryData(['tickets'], context.previousTicketsData);
       }
     },
     onSettled: () => {
@@ -461,233 +587,171 @@ function TicketsClientContent() {
       );
 
       const failedAssignments = results
-        .filter((result): result is PromiseRejectedResult => result.status === 'rejected')
-        .map((result, index) => ({ reason: result.reason, id: ticketIds[index] }));
+        .map((result, index) => ({ result, id: ticketIds[index] }))
+        .filter(item => item.result.status === 'rejected');
 
       if (failedAssignments.length > 0) {
         const errorMessages = failedAssignments
-          .map(({ reason, id }) => (reason as { message?: string })?.message || `Ticket ID ${id}`)
+          .map(item => {
+            const reason = (item.result as PromiseRejectedResult).reason;
+            const message = (reason as { message?: string })?.message || `Ticket ID ${item.id}`;
+            return message;
+          })
           .join(', ');
         throw new Error(`Failed to assign: ${errorMessages}`);
       }
 
       return results;
     },
-    onSuccess: (_, variables) => {
+    onSuccess: (data, variables) => {
       toast.success(`${variables.ticketIds.length} ticket(s) assigned successfully.`);
+      console.log(
+        `${variables.ticketIds.length} ticket(s) assigned to agent ${variables.agentId || 'none'}.`
+      );
     },
     onMutate: async ({ ticketIds, agentId }) => {
       await queryClient.cancelQueries({ queryKey: ['tickets'] });
+
       const previousTicketsData = queryClient.getQueryData<InfiniteData<ITicket[], number>>([
         'tickets',
       ]);
 
+      // Get current tickets to calculate counter changes
+      const allTickets = previousTicketsData?.pages.flat() || [];
+      const affectedTickets = allTickets.filter(ticket => ticketIds.includes(ticket.id));
+
+      // Update optimistically the tickets data
       queryClient.setQueryData<InfiniteData<ITicket[], number>>(['tickets'], oldData => {
         if (!oldData) return oldData;
-        return {
-          ...oldData,
-          pages: oldData.pages.map(page =>
-            page.map(ticket =>
-              ticketIds.includes(ticket.id) ? { ...ticket, assignee_id: agentId } : ticket
-            )
-          ),
-        };
-      });
 
-      setSelectedTicketIds(new Set());
-      setDialogStates(prev => ({ ...prev, assignToAgent: false }));
-
-      return { previousTicketsData };
-    },
-    onError: (err: Error) => {
-      toast.error(`Error assigning tickets: ${err.message}`);
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['tickets'] });
-      queryClient.invalidateQueries({ queryKey: ['ticketsCount', 'my', user?.id] });
-      queryClient.invalidateQueries({ queryKey: ['ticketsCount', 'all'] });
-      queryClient.invalidateQueries({ queryKey: ['agentTeams'] });
-    },
-  });
-
-  const bulkAssignToTeamMutation = useMutation({
-    mutationFn: async (payload: { ticketIds: number[]; teamId: number | undefined }) => {
-      const { ticketIds, teamId } = payload;
-      const results = await Promise.allSettled(
-        ticketIds.map(id => updateTicket(id, { team_id: teamId }))
-      );
-
-      const failedAssignments = results
-        .filter((result): result is PromiseRejectedResult => result.status === 'rejected')
-        .map((result, index) => ({ reason: result.reason, id: ticketIds[index] }));
-
-      if (failedAssignments.length > 0) {
-        const errorMessages = failedAssignments
-          .map(({ reason, id }) => (reason as { message?: string })?.message || `Ticket ID ${id}`)
-          .join(', ');
-        throw new Error(`Failed to assign: ${errorMessages}`);
-      }
-
-      return results;
-    },
-    onSuccess: (_, variables) => {
-      toast.success(`${variables.ticketIds.length} ticket(s) assigned to team successfully.`);
-    },
-    onMutate: async ({ ticketIds, teamId }) => {
-      await queryClient.cancelQueries({ queryKey: ['tickets'] });
-      const previousTicketsData = queryClient.getQueryData<InfiniteData<ITicket[], number>>([
-        'tickets',
-      ]);
-
-      queryClient.setQueryData<InfiniteData<ITicket[], number>>(['tickets'], oldData => {
-        if (!oldData) return oldData;
-        return {
-          ...oldData,
-          pages: oldData.pages.map(page =>
-            page.map(ticket =>
-              ticketIds.includes(ticket.id) ? { ...ticket, team_id: teamId } : ticket
-            )
-          ),
-        };
-      });
-
-      setSelectedTicketIds(new Set());
-      setDialogStates(prev => ({ ...prev, assignToTeam: false }));
-
-      return { previousTicketsData };
-    },
-    onError: (err: Error) => {
-      toast.error(`Error assigning tickets to team: ${err.message}`);
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['tickets'] });
-      queryClient.invalidateQueries({ queryKey: ['agentTeams'] });
-    },
-  });
-
-  // Handlers
-  const handleTicketUpdate = useCallback(
-    (updatedTicket: ITicket) => {
-      queryClient.setQueryData<InfiniteData<ITicket[], number>>(['tickets'], oldData => {
-        if (!oldData) return oldData;
-        const newPages = oldData.pages.map((page: ITicket[]) =>
-          page.map(t => (t.id === updatedTicket.id ? updatedTicket : t))
+        const newPages = oldData.pages.map(page =>
+          page.map(ticket => {
+            if (ticketIds.includes(ticket.id)) {
+              return {
+                ...ticket,
+                assignee_id: agentId,
+              };
+            }
+            return ticket;
+          })
         );
-        return { ...oldData, pages: newPages };
+
+        return {
+          pages: newPages,
+          pageParams: oldData.pageParams,
+        };
       });
 
-      if (selectedTicket?.id === updatedTicket.id) {
-        setSelectedTicket(updatedTicket);
-      }
-    },
-    [selectedTicket, queryClient]
-  );
+      // Optimistically update "my tickets" counter if current user is affected
+      if (user?.id) {
+        const activeTicketsToUser = affectedTickets.filter(
+          ticket => ticket.status !== 'Closed' && ticket.status !== 'Resolved'
+        );
 
-  const handleSelectAllChange = (checked: boolean | 'indeterminate') => {
-    if (checked === true) {
-      setSelectedTicketIds(new Set(allTicketsData.map(ticket => ticket.id)));
-    } else {
+        // Count tickets that were assigned to current user that are now being reassigned
+        const ticketsRemovedFromUser = activeTicketsToUser.filter(
+          ticket => ticket.assignee_id === user.id && agentId !== user.id
+        ).length;
+
+        // Count tickets that were not assigned to current user that are now being assigned to them
+        const ticketsAddedToUser = activeTicketsToUser.filter(
+          ticket => ticket.assignee_id !== user.id && agentId === user.id
+        ).length;
+
+        if (ticketsRemovedFromUser > 0 || ticketsAddedToUser > 0) {
+          const myTicketsCountKey = ['ticketsCount', 'my', user.id];
+          const currentMyCount = queryClient.getQueryData<number>(myTicketsCountKey) || 0;
+          const newCount = Math.max(
+            0,
+            currentMyCount - ticketsRemovedFromUser + ticketsAddedToUser
+          );
+          queryClient.setQueryData(myTicketsCountKey, newCount);
+
+          // Optimistically update "my tickets" infinite query list
+          const myTicketsQueryKey = ['tickets', 'my', user.id];
+          queryClient.setQueryData(myTicketsQueryKey, (oldData: unknown) => {
+            if (!oldData) return oldData;
+
+            const typedData = oldData as { pages: ITicket[][]; pageParams: number[] };
+            const newPages = typedData.pages.map((page: ITicket[]) => {
+              // Remove tickets that were assigned to current user and are now assigned to someone else
+              let updatedPage = page.filter(ticket => {
+                return !(
+                  ticketIds.includes(ticket.id) &&
+                  ticket.assignee_id === user.id &&
+                  agentId !== user.id
+                );
+              });
+
+              // Add tickets that were not assigned to current user and are now assigned to them
+              const ticketsToAdd = affectedTickets.filter(
+                ticket =>
+                  ticketIds.includes(ticket.id) &&
+                  ticket.assignee_id !== user.id &&
+                  agentId === user.id &&
+                  !updatedPage.some(t => t.id === ticket.id)
+              );
+
+              if (ticketsToAdd.length > 0) {
+                const optimisticTickets = ticketsToAdd.map(ticket => ({
+                  ...ticket,
+                  assignee_id: agentId,
+                }));
+                updatedPage = [...optimisticTickets, ...updatedPage];
+              }
+
+              // Update existing tickets in the list
+              updatedPage = updatedPage.map(ticket => {
+                if (ticketIds.includes(ticket.id)) {
+                  return {
+                    ...ticket,
+                    assignee_id: agentId,
+                  };
+                }
+                return ticket;
+              });
+
+              return updatedPage;
+            });
+
+            return {
+              ...typedData,
+              pages: newPages,
+            };
+          });
+        }
+      }
+
       setSelectedTicketIds(new Set());
-    }
-  };
+      setIsAssignToAgentDialogOpen(false);
 
-  const handleRowSelectChange = (ticketId: number, checked: boolean | 'indeterminate') => {
-    setSelectedTicketIds(prev => {
-      const next = new Set(prev);
-      if (checked === true) {
-        next.add(ticketId);
-      } else {
-        next.delete(ticketId);
-      }
-      return next;
-    });
-  };
-
-  const clearAllFilters = useCallback(() => {
-    setSubjectInput('');
-    setSelectedFilters({
-      statuses: [],
-      teams: [],
-      agents: [],
-      priorities: [],
-      users: [],
-      companies: [],
-      categories: [],
-    });
-  }, []);
-
-  const handleTicketClick = useCallback(
-    async (ticket: ITicket) => {
-      setSelectedTicket(ticket);
-      if (ticket.status === 'Unread') {
-        markAsReadMutation.mutate(ticket);
+      return { previousTicketsData };
+    },
+    onError: (
+      err: Error,
+      variables,
+      context: { previousTicketsData?: InfiniteData<ITicket[], number> } | undefined
+    ) => {
+      toast.error(`Error assigning tickets: ${err.message}`);
+      console.error(`Error assigning tickets: ${err.message}`);
+      if (context?.previousTicketsData) {
+        queryClient.setQueryData(['tickets'], context.previousTicketsData);
       }
     },
-    [markAsReadMutation]
-  );
-
-  const handleCloseDetail = useCallback(() => {
-    setSelectedTicket(null);
-    const newSearchParams = new URLSearchParams(searchParams.toString());
-    newSearchParams.delete('openTicket');
-    router.push(`${window.location.pathname}?${newSearchParams.toString()}`);
-  }, [searchParams, router]);
-
-  // Derived state
-  const isAllSelected =
-    allTicketsData.length > 0 && selectedTicketIds.size === allTicketsData.length;
-  const isIndeterminate =
-    selectedTicketIds.size > 0 && selectedTicketIds.size < allTicketsData.length;
-  const headerCheckboxState = isAllSelected ? true : isIndeterminate ? 'indeterminate' : false;
-
-  // Dialog handlers
-  const handleDeleteConfirm = () => {
-    if (selectedTicketIds.size > 0) {
-      deleteTicketsMutation.mutate(Array.from(selectedTicketIds));
-    }
-  };
-
-  const handleOpenAssignToAgentDialog = () => {
-    if (selectedTicketIds.size > 0) {
-      const ticketsArray = allTicketsData.filter(ticket => selectedTicketIds.has(ticket.id));
-      const firstTicket = ticketsArray[0];
-      const allSameAgent = ticketsArray.every(
-        ticket => ticket.assignee_id === firstTicket.assignee_id
-      );
-
-      setSelectedAssignments(prev => ({
-        ...prev,
-        agentId:
-          allSameAgent && firstTicket.assignee_id !== undefined
-            ? String(firstTicket.assignee_id)
-            : null,
-      }));
-    }
-    setDialogStates(prev => ({ ...prev, assignToAgent: true }));
-  };
-
-  const handleOpenAssignToTeamDialog = () => {
-    if (selectedTicketIds.size > 0) {
-      const ticketsArray = allTicketsData.filter(ticket => selectedTicketIds.has(ticket.id));
-      const firstTicket = ticketsArray[0];
-      const allSameTeam = ticketsArray.every(ticket => ticket.team_id === firstTicket.team_id);
-
-      setSelectedAssignments(prev => ({
-        ...prev,
-        teamId:
-          allSameTeam && firstTicket.team_id !== undefined ? String(firstTicket.team_id) : null,
-      }));
-    }
-    setDialogStates(prev => ({ ...prev, assignToTeam: true }));
-  };
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['tickets'] });
+      queryClient.invalidateQueries({ queryKey: ['ticketsCount', 'my'] });
+      queryClient.invalidateQueries({ queryKey: ['ticketsCount'] });
+    },
+  });
 
   const handleAssignToAgentConfirm = () => {
     if (selectedTicketIds.size > 0) {
       const agentId =
-        selectedAssignments.agentId === 'null'
+        selectedAgentId === 'null'
           ? undefined
-          : selectedAssignments.agentId
-            ? parseInt(selectedAssignments.agentId, 10)
+          : selectedAgentId
+            ? parseInt(selectedAgentId, 10)
             : undefined;
       bulkAssignToAgentMutation.mutate({
         ticketIds: Array.from(selectedTicketIds),
@@ -699,10 +763,10 @@ function TicketsClientContent() {
   const handleAssignToTeamConfirm = () => {
     if (selectedTicketIds.size > 0) {
       const teamId =
-        selectedAssignments.teamId === 'null'
+        selectedTeamId === 'null'
           ? undefined
-          : selectedAssignments.teamId
-            ? parseInt(selectedAssignments.teamId, 10)
+          : selectedTeamId
+            ? parseInt(selectedTeamId, 10)
             : undefined;
       bulkAssignToTeamMutation.mutate({
         ticketIds: Array.from(selectedTicketIds),
@@ -718,8 +782,8 @@ function TicketsClientContent() {
           <div className="flex items-center justify-between py-4 px-6 flex-shrink-0 border-b">
             <div className="flex items-center gap-2 ml-auto">
               <AlertDialog
-                open={dialogStates.assignToAgent}
-                onOpenChange={open => setDialogStates(prev => ({ ...prev, assignToAgent: open }))}
+                open={isAssignToAgentDialogOpen}
+                onOpenChange={setIsAssignToAgentDialogOpen}
               >
                 <AlertDialogTrigger asChild>
                   <Button
@@ -741,12 +805,7 @@ function TicketsClientContent() {
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <div className="py-4">
-                    <Select
-                      value={selectedAssignments.agentId || ''}
-                      onValueChange={value =>
-                        setSelectedAssignments(prev => ({ ...prev, agentId: value }))
-                      }
-                    >
+                    <Select value={selectedAgentId || ''} onValueChange={setSelectedAgentId}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select agent" />
                       </SelectTrigger>
@@ -766,7 +825,7 @@ function TicketsClientContent() {
                     </AlertDialogCancel>
                     <AlertDialogAction
                       onClick={handleAssignToAgentConfirm}
-                      disabled={bulkAssignToAgentMutation.isPending || !selectedAssignments.agentId}
+                      disabled={bulkAssignToAgentMutation.isPending || !selectedAgentId}
                     >
                       {bulkAssignToAgentMutation.isPending ? 'Assigning...' : 'Assign'}
                     </AlertDialogAction>
@@ -775,8 +834,8 @@ function TicketsClientContent() {
               </AlertDialog>
 
               <AlertDialog
-                open={dialogStates.assignToTeam}
-                onOpenChange={open => setDialogStates(prev => ({ ...prev, assignToTeam: open }))}
+                open={isAssignToTeamDialogOpen}
+                onOpenChange={setIsAssignToTeamDialogOpen}
               >
                 <AlertDialogTrigger asChild>
                   <Button
@@ -798,12 +857,7 @@ function TicketsClientContent() {
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <div className="py-4">
-                    <Select
-                      value={selectedAssignments.teamId || ''}
-                      onValueChange={value =>
-                        setSelectedAssignments(prev => ({ ...prev, teamId: value }))
-                      }
-                    >
+                    <Select value={selectedTeamId || ''} onValueChange={setSelectedTeamId}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select team" />
                       </SelectTrigger>
@@ -823,7 +877,7 @@ function TicketsClientContent() {
                     </AlertDialogCancel>
                     <AlertDialogAction
                       onClick={handleAssignToTeamConfirm}
-                      disabled={bulkAssignToTeamMutation.isPending || !selectedAssignments.teamId}
+                      disabled={bulkAssignToTeamMutation.isPending || !selectedTeamId}
                     >
                       {bulkAssignToTeamMutation.isPending ? 'Assigning...' : 'Assign'}
                     </AlertDialogAction>
@@ -831,10 +885,7 @@ function TicketsClientContent() {
                 </AlertDialogContent>
               </AlertDialog>
 
-              <AlertDialog
-                open={dialogStates.delete}
-                onOpenChange={open => setDialogStates(prev => ({ ...prev, delete: open }))}
-              >
+              <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
                 <AlertDialogTrigger asChild>
                   <Button
                     variant="destructive"
@@ -916,93 +967,94 @@ function TicketsClientContent() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredTicketsData.map(ticket => (
-                      <motion.tr
-                        key={ticket.id}
-                        layout
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.2 }}
-                        className={cn(
-                          'border-0 h-14 cursor-pointer hover:bg-muted/50',
-                          ticket.status === 'Unread' &&
-                            'font-semibold bg-slate-50 dark:bg-slate-800/50'
-                        )}
-                        data-state={selectedTicketIds.has(ticket.id) ? 'selected' : ''}
-                        onClick={() => handleTicketClick(ticket)}
-                      >
-                        <TableCell className="px-4">
-                          <Checkbox
-                            checked={selectedTicketIds.has(ticket.id)}
-                            onCheckedChange={checked => handleRowSelectChange(ticket.id, checked)}
-                            aria-label={`Select ticket ${ticket.id}`}
-                            onClick={e => e.stopPropagation()}
-                          />
-                        </TableCell>
-                        <TableCell className="font-medium p-2 py-4">{ticket.id}</TableCell>
-                        <TableCell className="max-w-xs md:max-w-sm truncate p-2 py-4">
-                          {ticket.title}
-                        </TableCell>
-                        <TableCell className="p-2 py-4">
-                          <div className="flex items-center gap-2">
-                            <div className="relative flex h-2 w-2">
+                    filteredTicketsData.map(ticket => {
+                      return (
+                        <motion.tr
+                          key={ticket.id}
+                          layout
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          transition={{ duration: 0.2 }}
+                          className={cn(
+                            'border-0 h-14 cursor-pointer hover:bg-muted/50',
+                            ticket.status === 'Unread' &&
+                              'font-semibold bg-slate-50 dark:bg-slate-800/50'
+                          )}
+                          data-state={selectedTicketIds.has(ticket.id) ? 'selected' : ''}
+                        >
+                          <TableCell className="px-4">
+                            <Checkbox
+                              checked={selectedTicketIds.has(ticket.id)}
+                              onCheckedChange={checked => handleRowSelectChange(ticket.id, checked)}
+                              aria-label={`Select ticket ${ticket.id}`}
+                              onClick={e => e.stopPropagation()}
+                            />
+                          </TableCell>
+                          <TableCell className="font-medium p-2 py-4">{ticket.id}</TableCell>
+                          <TableCell className="max-w-xs md:max-w-sm truncate p-2 py-4">
+                            {ticket.title}
+                          </TableCell>
+                          <TableCell className="p-2 py-4">
+                            <div className="flex items-center gap-2">
+                              <div className="relative flex h-2 w-2">
+                                <span
+                                  className={cn(
+                                    'absolute inline-flex h-full w-full rounded-full',
+                                    ticket.status === 'Open' && 'bg-green-500',
+                                    ticket.status === 'Closed' && 'bg-slate-500',
+                                    ticket.status === 'Unread' && 'bg-blue-500',
+                                    ticket.status === 'With User' && 'bg-purple-500',
+                                    ticket.status === 'In Progress' && 'bg-orange-500'
+                                  )}
+                                ></span>
+                                {ticket.status === 'Unread' && (
+                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                                )}
+                              </div>
                               <span
                                 className={cn(
-                                  'absolute inline-flex h-full w-full rounded-full',
-                                  ticket.status === 'Open' && 'bg-green-500',
-                                  ticket.status === 'Closed' && 'bg-slate-500',
-                                  ticket.status === 'Unread' && 'bg-blue-500',
-                                  ticket.status === 'With User' && 'bg-purple-500',
-                                  ticket.status === 'In Progress' && 'bg-orange-500'
+                                  'text-foreground capitalize',
+                                  ticket.status === 'Unread' && 'font-semibold'
                                 )}
-                              ></span>
-                              {ticket.status === 'Unread' && (
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                              )}
+                              >
+                                {ticket.status}
+                              </span>
                             </div>
-                            <span
+                          </TableCell>
+                          <TableCell className="p-2 py-4">
+                            <Badge
+                              variant="outline"
                               className={cn(
-                                'text-foreground capitalize',
-                                ticket.status === 'Unread' && 'font-semibold'
+                                'whitespace-nowrap capitalize',
+                                ticket.priority === 'Low' &&
+                                  'bg-slate-100 text-slate-600 border-slate-300 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700',
+                                ticket.priority === 'Medium' &&
+                                  'bg-green-100 text-green-800 border-green-300 dark:bg-green-900/50 dark:text-green-300 dark:border-green-700',
+                                ticket.priority === 'High' &&
+                                  'bg-yellow-100 text-yellow-800 border-yellow-300 dark:bg-yellow-900/50 dark:text-yellow-300 dark:border-yellow-700',
+                                ticket.priority === 'Critical' &&
+                                  'bg-red-100 text-red-800 border-red-300 dark:bg-red-900/50 dark:text-red-300 dark:border-red-700'
                               )}
                             >
-                              {ticket.status}
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="p-2 py-4">
-                          <Badge
-                            variant="outline"
-                            className={cn(
-                              'whitespace-nowrap capitalize',
-                              ticket.priority === 'Low' &&
-                                'bg-slate-100 text-slate-600 border-slate-300 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700',
-                              ticket.priority === 'Medium' &&
-                                'bg-green-100 text-green-800 border-green-300 dark:bg-green-900/50 dark:text-green-300 dark:border-green-700',
-                              ticket.priority === 'High' &&
-                                'bg-yellow-100 text-yellow-800 border-yellow-300 dark:bg-yellow-900/50 dark:text-yellow-300 dark:border-yellow-700',
-                              ticket.priority === 'Critical' &&
-                                'bg-red-100 text-red-800 border-red-300 dark:bg-red-900/50 dark:text-red-300 dark:border-red-700'
-                            )}
-                          >
-                            {ticket.priority}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="p-2 py-4">
-                          {ticket.user?.name || ticket.email_info?.email_sender || '-'}
-                        </TableCell>
-                        <TableCell className="p-2 py-4">
-                          {agentIdToNameMap[ticket.assignee_id as number] || '-'}
-                        </TableCell>
-                        <TableCell className="p-2 py-4">
-                          {formatRelativeTime(ticket.last_update)}
-                        </TableCell>
-                        <TableCell className="p-2 py-4">
-                          {formatRelativeTime(ticket.created_at)}
-                        </TableCell>
-                      </motion.tr>
-                    ))
+                              {ticket.priority}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="p-2 py-4">
+                            {ticket.user?.name || ticket.email_info?.email_sender || '-'}
+                          </TableCell>
+                          <TableCell className="p-2 py-4">
+                            {agentIdToNameMap[ticket.assignee_id as number] || '-'}
+                          </TableCell>
+                          <TableCell className="p-2 py-4">
+                            {formatRelativeTime(ticket.last_update)}
+                          </TableCell>
+                          <TableCell className="p-2 py-4">
+                            {formatRelativeTime(ticket.created_at)}
+                          </TableCell>
+                        </motion.tr>
+                      );
+                    })
                   )}
                   {isFetchingNextPage && (
                     <TableRow>
@@ -1019,8 +1071,8 @@ function TicketsClientContent() {
       </div>
       <div className="flex-shrink-0 flex items-stretch h-full">
         <Collapsible
-          open={dialogStates.filtersExpanded}
-          onOpenChange={open => setDialogStates(prev => ({ ...prev, filtersExpanded: open }))}
+          open={filtersExpanded}
+          onOpenChange={setFiltersExpanded}
           className="flex h-full"
         >
           <CollapsibleTrigger asChild>
@@ -1029,21 +1081,21 @@ function TicketsClientContent() {
               size="sm"
               className="z-10 -mr-4 mt-6 shadow-md relative cursor-pointer rounded-full px-3"
             >
-              {dialogStates.filtersExpanded ? (
+              {filtersExpanded ? (
                 <ChevronRight className="h-4 w-4" />
               ) : (
                 <>
                   Filters <ChevronLeft className="h-4 w-4 ml-1 inline" />
                 </>
               )}
-              {activeFiltersCount > 0 && !dialogStates.filtersExpanded && (
+              {activeFiltersCount > 0 && !filtersExpanded && (
                 <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-medium text-primary-foreground">
                   {activeFiltersCount}
                 </span>
               )}
             </Button>
           </CollapsibleTrigger>
-          {dialogStates.filtersExpanded && (
+          {filtersExpanded && (
             <aside className="w-80 border-l p-6 space-y-6 bg-card text-card-foreground rounded-lg transition-all duration-300 flex flex-col h-full">
               <div className="flex items-center justify-between flex-shrink-0">
                 <h2 className="text-lg font-semibold">
@@ -1082,9 +1134,9 @@ function TicketsClientContent() {
                     Statuses
                   </label>
                   <MultiSelectFilter
-                    options={STATUS_OPTIONS}
-                    selected={selectedFilters.statuses}
-                    onChange={statuses => setSelectedFilters(prev => ({ ...prev, statuses }))}
+                    options={statusOptions}
+                    selected={selectedStatuses}
+                    onChange={setSelectedStatuses}
                     placeholder="Filter by status..."
                     className="mt-1"
                   />
@@ -1095,8 +1147,8 @@ function TicketsClientContent() {
                   </label>
                   <MultiSelectFilter
                     options={teamOptions}
-                    selected={selectedFilters.teams}
-                    onChange={teams => setSelectedFilters(prev => ({ ...prev, teams }))}
+                    selected={selectedTeams}
+                    onChange={setSelectedTeams}
                     placeholder="Filter by team..."
                     className="mt-1"
                   />
@@ -1107,8 +1159,8 @@ function TicketsClientContent() {
                   </label>
                   <MultiSelectFilter
                     options={agentOptions}
-                    selected={selectedFilters.agents}
-                    onChange={agents => setSelectedFilters(prev => ({ ...prev, agents }))}
+                    selected={selectedAgents}
+                    onChange={setSelectedAgents}
                     placeholder="Filter by agent..."
                     className="mt-1"
                   />
@@ -1118,9 +1170,9 @@ function TicketsClientContent() {
                     Priorities
                   </label>
                   <MultiSelectFilter
-                    options={PRIORITY_OPTIONS}
-                    selected={selectedFilters.priorities}
-                    onChange={priorities => setSelectedFilters(prev => ({ ...prev, priorities }))}
+                    options={priorityOptions}
+                    selected={selectedPriorities}
+                    onChange={setSelectedPriorities}
                     placeholder="Filter by priority..."
                     className="mt-1"
                   />
@@ -1131,8 +1183,8 @@ function TicketsClientContent() {
                   </label>
                   <MultiSelectFilter
                     options={companyOptions}
-                    selected={selectedFilters.companies}
-                    onChange={companies => setSelectedFilters(prev => ({ ...prev, companies }))}
+                    selected={selectedCompanies}
+                    onChange={setSelectedCompanies}
                     placeholder="Filter by company..."
                     className="mt-1"
                   />
@@ -1143,8 +1195,8 @@ function TicketsClientContent() {
                   </label>
                   <MultiSelectFilter
                     options={userOptions}
-                    selected={selectedFilters.users}
-                    onChange={users => setSelectedFilters(prev => ({ ...prev, users }))}
+                    selected={selectedUsers}
+                    onChange={setSelectedUsers}
                     placeholder="Filter by user..."
                     className="mt-1"
                   />
@@ -1155,8 +1207,8 @@ function TicketsClientContent() {
                   </label>
                   <MultiSelectFilter
                     options={categoryOptions}
-                    selected={selectedFilters.categories}
-                    onChange={categories => setSelectedFilters(prev => ({ ...prev, categories }))}
+                    selected={selectedCategories}
+                    onChange={setSelectedCategories}
                     placeholder="Filter by category..."
                     className="mt-1"
                   />
@@ -1166,15 +1218,9 @@ function TicketsClientContent() {
           )}
         </Collapsible>
       </div>
-      <TicketDetail
-        ticket={selectedTicket}
-        onClose={handleCloseDetail}
-        onTicketUpdate={handleTicketUpdate}
-      />
     </div>
   );
 }
-
 export default function TicketsPage() {
   return (
     <Suspense
