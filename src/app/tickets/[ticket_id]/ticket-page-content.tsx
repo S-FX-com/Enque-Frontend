@@ -55,14 +55,16 @@ export function TicketPageContent({ ticketId }: Props) {
     queryKey: ['ticket', ticketId],
     queryFn: async () => {
       if (!ticketId) return [];
-      return getTickets({}, `/v1/tasks/${ticketId}`);
+      const tickets = await getTickets({}, `/v1/tasks/${ticketId}`);
+      console.log(tickets);
+      return tickets;
     },
     enabled: !!ticketId,
     staleTime: 1000 * 60 * 5,
     retry: 1,
   });
 
-  const currentTicket = ticketData?.[0] || null;
+  const currentTicket = ticketData || null;
 
   useEffect(() => {
     if (currentTicket) {
@@ -310,7 +312,7 @@ export function TicketPageContent({ ticketId }: Props) {
     );
   }
 
-  if (ticketError || !ticket) {
+  if (!isLoadingTicket && (ticketError || !ticket)) {
     return (
       <div className="text-center py-12">
         <h2 className="text-2xl font-semibold text-muted-foreground mb-2">Ticket Not Found</h2>

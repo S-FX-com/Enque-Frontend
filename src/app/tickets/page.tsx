@@ -34,7 +34,6 @@ import {
 import { useDebounce } from '@/hooks/use-debounce';
 import { motion } from 'framer-motion';
 import { getAgents } from '@/services/agent';
-import { useTicketPreloaderSafe } from '@/providers/ticket-preloader-provider';
 import { getTeams } from '@/services/team';
 import { getUsers } from '@/services/user';
 import { getCompanies } from '@/services/company';
@@ -50,7 +49,6 @@ import { useAuth } from '@/hooks/use-auth';
 
 import type { Agent } from '@/typescript/agent';
 import { formatRelativeTime, cn } from '@/lib/utils';
-import { TicketDetail } from './ticket-details';
 import {
   Select,
   SelectContent,
@@ -70,9 +68,6 @@ function TicketsClientContent() {
     isTicketsError,
     ticketsError,
   } = useGlobalTicketsContext();
-  
-  // Preloader para optimizar la velocidad de carga
-  const { preloadSpecificTicket, getTicketStatus } = useTicketPreloaderSafe();
 
   const queryClient = useQueryClient();
   const router = useRouter();
@@ -204,7 +199,9 @@ function TicketsClientContent() {
 
     if (selectedAgents.length > 0) {
       const agentIds = selectedAgents.map(id => Number.parseInt(id, 10));
-      tickets = tickets.filter(ticket => ticket.assignee_id && agentIds.includes(ticket.assignee_id));
+      tickets = tickets.filter(
+        ticket => ticket.assignee_id && agentIds.includes(ticket.assignee_id)
+      );
     }
 
     if (selectedPriorities.length > 0) {
@@ -218,12 +215,16 @@ function TicketsClientContent() {
 
     if (selectedCompanies.length > 0) {
       const companyIds = selectedCompanies.map(id => Number.parseInt(id, 10));
-      tickets = tickets.filter(ticket => ticket.user?.company_id && companyIds.includes(ticket.user.company_id));
+      tickets = tickets.filter(
+        ticket => ticket.user?.company_id && companyIds.includes(ticket.user.company_id)
+      );
     }
 
     if (selectedCategories.length > 0) {
       const categoryIds = selectedCategories.map(id => Number.parseInt(id, 10));
-      tickets = tickets.filter(ticket => ticket.category_id && categoryIds.includes(ticket.category_id));
+      tickets = tickets.filter(
+        ticket => ticket.category_id && categoryIds.includes(ticket.category_id)
+      );
     }
 
     return tickets;
@@ -287,7 +288,7 @@ function TicketsClientContent() {
     if (ticketIdToOpen) {
       const ticketId = Number.parseInt(ticketIdToOpen, 10);
       const ticket = allTicketsData.find(t => t.id === ticketId);
-      
+
       if (ticket) {
         setSelectedTicket(ticket);
         setTicketToLoad(null);
@@ -315,23 +316,6 @@ function TicketsClientContent() {
       {} as Record<number, string>
     );
   }, [agentsData]);
-
-  const handleTicketUpdate = useCallback(
-    (updatedTicket: ITicket) => {
-      queryClient.setQueryData<InfiniteData<ITicket[], number>>(['tickets'], oldData => {
-        if (!oldData) return oldData;
-        const newPages = oldData.pages.map((page: ITicket[]) =>
-          page.map(t => (t.id === updatedTicket.id ? updatedTicket : t))
-        );
-        return { ...oldData, pages: newPages };
-      });
-
-      if (selectedTicket?.id === updatedTicket.id) {
-        setSelectedTicket(updatedTicket);
-      }
-    },
-    [selectedTicket, queryClient]
-  );
 
   const handleSelectAllChange = (checked: boolean | 'indeterminate') => {
     if (checked === true) {
@@ -401,8 +385,7 @@ function TicketsClientContent() {
       }
       return results;
     },
-    onSuccess: () => {
-    },
+    onSuccess: () => {},
     onMutate: async ticketIdsToDelete => {
       await queryClient.cancelQueries({ queryKey: ['tickets'] });
 
@@ -419,7 +402,8 @@ function TicketsClientContent() {
       });
 
       const currentAllCount = queryClient.getQueryData<number>(['ticketsCount', 'all']) || 0;
-      const currentMyCount = queryClient.getQueryData<number>(['ticketsCount', 'my', user?.id]) || 0;
+      const currentMyCount =
+        queryClient.getQueryData<number>(['ticketsCount', 'my', user?.id]) || 0;
 
       const allTickets = previousTicketsData?.pages.flat() || [];
       const deletedTickets = allTickets.filter(ticket => ticketIdsToDelete.includes(ticket.id));
@@ -427,12 +411,21 @@ function TicketsClientContent() {
         ticket => ticket.status !== 'Closed' && ticket.status !== 'Resolved'
       ).length;
       const myActiveDeletedCount = deletedTickets.filter(
-        ticket => ticket.assignee_id === user?.id && ticket.status !== 'Closed' && ticket.status !== 'Resolved'
+        ticket =>
+          ticket.assignee_id === user?.id &&
+          ticket.status !== 'Closed' &&
+          ticket.status !== 'Resolved'
       ).length;
 
-      queryClient.setQueryData(['ticketsCount', 'all'], Math.max(0, currentAllCount - activeDeletedCount));
+      queryClient.setQueryData(
+        ['ticketsCount', 'all'],
+        Math.max(0, currentAllCount - activeDeletedCount)
+      );
       if (user?.id) {
-        queryClient.setQueryData(['ticketsCount', 'my', user.id], Math.max(0, currentMyCount - myActiveDeletedCount));
+        queryClient.setQueryData(
+          ['ticketsCount', 'my', user.id],
+          Math.max(0, currentMyCount - myActiveDeletedCount)
+        );
       }
 
       setSelectedTicketIds(new Set());
@@ -477,59 +470,6 @@ function TicketsClientContent() {
       deleteTicketsMutation.mutate(Array.from(selectedTicketIds));
     }
   };
-
-  // 🔧 FIXED: Mutation simplificada para manejar el cambio de estado de Unread a Open
-  const markAsReadMutation = useMutation({
-    mutationFn: async (ticket: ITicket) => {
-      return updateTicket(ticket.id, { status: 'Open' });
-    },
-    onMutate: async ticket => {
-      // ✅ NO cancelar queries - esto causaba que las listas se vacíen
-      
-      // Hacer actualización optimista sin cancelar queries en progreso
-      queryClient.setQueryData<InfiniteData<ITicket[], number>>(['tickets'], oldData => {
-        if (!oldData) return oldData;
-        const newPages = oldData.pages.map(page =>
-          page.map(t => (t.id === ticket.id ? { ...t, status: 'Open' as const } : t))
-        );
-        return { ...oldData, pages: newPages };
-      });
-
-      return { ticketId: ticket.id };
-    },
-    onError: (err: Error, ticket: ITicket) => {
-      console.error(`Failed to update ticket ${ticket.id} status to Open:`, err);
-      // ✅ En caso de error, invalidar suavemente para refetch
-      queryClient.invalidateQueries({ queryKey: ['tickets'] });
-    },
-    onSuccess: (updatedTicket, ticket) => {
-      // Update the selected ticket if it's the same one
-      if (selectedTicket?.id === ticket.id) {
-        setSelectedTicket({ ...ticket, status: 'Open' as const });
-      }
-    },
-  });
-
-  const handleTicketClick = useCallback(
-    async (ticket: ITicket) => {
-      setSelectedTicket(ticket);
-      const newSearchParams = new URLSearchParams(searchParams.toString());
-      newSearchParams.set('openTicket', ticket.id.toString());
-      router.push(`${window.location.pathname}?${newSearchParams.toString()}`);
-
-      if (ticket.status === 'Unread') {
-        markAsReadMutation.mutate(ticket);
-      }
-    },
-    [searchParams, router, markAsReadMutation]
-  );
-
-  const handleCloseDetail = useCallback(() => {
-    setSelectedTicket(null);
-    const newSearchParams = new URLSearchParams(searchParams.toString());
-    newSearchParams.delete('openTicket');
-    router.push(`${window.location.pathname}?${newSearchParams.toString()}`);
-  }, [searchParams, router]);
 
   const activeFiltersCount = useMemo(() => {
     let count = 0;
@@ -781,11 +721,12 @@ function TicketsClientContent() {
               });
 
               // Add tickets that were not assigned to current user and are now assigned to them
-              const ticketsToAdd = affectedTickets.filter(ticket => 
-                ticketIds.includes(ticket.id) &&
-                ticket.assignee_id !== user.id &&
-                agentId === user.id &&
-                !updatedPage.some(t => t.id === ticket.id)
+              const ticketsToAdd = affectedTickets.filter(
+                ticket =>
+                  ticketIds.includes(ticket.id) &&
+                  ticket.assignee_id !== user.id &&
+                  agentId === user.id &&
+                  !updatedPage.some(t => t.id === ticket.id)
               );
 
               if (ticketsToAdd.length > 0) {
@@ -1064,8 +1005,6 @@ function TicketsClientContent() {
                     </TableRow>
                   ) : (
                     filteredTicketsData.map(ticket => {
-                      const ticketStatus = getTicketStatus(ticket.id);
-                      
                       return (
                         <motion.tr
                           key={ticket.id}
@@ -1077,90 +1016,80 @@ function TicketsClientContent() {
                           className={cn(
                             'border-0 h-14 cursor-pointer hover:bg-muted/50',
                             ticket.status === 'Unread' &&
-                              'font-semibold bg-slate-50 dark:bg-slate-800/50',
-                            // Indicador visual sutil de precarga
-                            ticketStatus.cached && 'transition-colors duration-200',
-                            ticketStatus.preloading && 'bg-blue-50/30 dark:bg-blue-900/10'
+                              'font-semibold bg-slate-50 dark:bg-slate-800/50'
                           )}
                           data-state={selectedTicketIds.has(ticket.id) ? 'selected' : ''}
-                          onClick={() => handleTicketClick(ticket)}
-                          onMouseEnter={() => {
-                            // Precargar ticket al hacer hover
-                            if (!ticketStatus.cached && !ticketStatus.preloading) {
-                              preloadSpecificTicket(ticket.id);
-                            }
-                          }}
                         >
-                        <TableCell className="px-4">
-                          <Checkbox
-                            checked={selectedTicketIds.has(ticket.id)}
-                            onCheckedChange={checked => handleRowSelectChange(ticket.id, checked)}
-                            aria-label={`Select ticket ${ticket.id}`}
-                            onClick={e => e.stopPropagation()}
-                          />
-                        </TableCell>
-                        <TableCell className="font-medium p-2 py-4">{ticket.id}</TableCell>
-                        <TableCell className="max-w-xs md:max-w-sm truncate p-2 py-4">
-                          {ticket.title}
-                        </TableCell>
-                        <TableCell className="p-2 py-4">
-                          <div className="flex items-center gap-2">
-                            <div className="relative flex h-2 w-2">
+                          <TableCell className="px-4">
+                            <Checkbox
+                              checked={selectedTicketIds.has(ticket.id)}
+                              onCheckedChange={checked => handleRowSelectChange(ticket.id, checked)}
+                              aria-label={`Select ticket ${ticket.id}`}
+                              onClick={e => e.stopPropagation()}
+                            />
+                          </TableCell>
+                          <TableCell className="font-medium p-2 py-4">{ticket.id}</TableCell>
+                          <TableCell className="max-w-xs md:max-w-sm truncate p-2 py-4">
+                            {ticket.title}
+                          </TableCell>
+                          <TableCell className="p-2 py-4">
+                            <div className="flex items-center gap-2">
+                              <div className="relative flex h-2 w-2">
+                                <span
+                                  className={cn(
+                                    'absolute inline-flex h-full w-full rounded-full',
+                                    ticket.status === 'Open' && 'bg-green-500',
+                                    ticket.status === 'Closed' && 'bg-slate-500',
+                                    ticket.status === 'Unread' && 'bg-blue-500',
+                                    ticket.status === 'With User' && 'bg-purple-500',
+                                    ticket.status === 'In Progress' && 'bg-orange-500'
+                                  )}
+                                ></span>
+                                {ticket.status === 'Unread' && (
+                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                                )}
+                              </div>
                               <span
                                 className={cn(
-                                  'absolute inline-flex h-full w-full rounded-full',
-                                  ticket.status === 'Open' && 'bg-green-500',
-                                  ticket.status === 'Closed' && 'bg-slate-500',
-                                  ticket.status === 'Unread' && 'bg-blue-500',
-                                  ticket.status === 'With User' && 'bg-purple-500',
-                                  ticket.status === 'In Progress' && 'bg-orange-500'
+                                  'text-foreground capitalize',
+                                  ticket.status === 'Unread' && 'font-semibold'
                                 )}
-                              ></span>
-                              {ticket.status === 'Unread' && (
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                              )}
+                              >
+                                {ticket.status}
+                              </span>
                             </div>
-                            <span
+                          </TableCell>
+                          <TableCell className="p-2 py-4">
+                            <Badge
+                              variant="outline"
                               className={cn(
-                                'text-foreground capitalize',
-                                ticket.status === 'Unread' && 'font-semibold'
+                                'whitespace-nowrap capitalize',
+                                ticket.priority === 'Low' &&
+                                  'bg-slate-100 text-slate-600 border-slate-300 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700',
+                                ticket.priority === 'Medium' &&
+                                  'bg-green-100 text-green-800 border-green-300 dark:bg-green-900/50 dark:text-green-300 dark:border-green-700',
+                                ticket.priority === 'High' &&
+                                  'bg-yellow-100 text-yellow-800 border-yellow-300 dark:bg-yellow-900/50 dark:text-yellow-300 dark:border-yellow-700',
+                                ticket.priority === 'Critical' &&
+                                  'bg-red-100 text-red-800 border-red-300 dark:bg-red-900/50 dark:text-red-300 dark:border-red-700'
                               )}
                             >
-                              {ticket.status}
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="p-2 py-4">
-                          <Badge
-                            variant="outline"
-                            className={cn(
-                              'whitespace-nowrap capitalize',
-                              ticket.priority === 'Low' &&
-                                'bg-slate-100 text-slate-600 border-slate-300 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700',
-                              ticket.priority === 'Medium' &&
-                                'bg-green-100 text-green-800 border-green-300 dark:bg-green-900/50 dark:text-green-300 dark:border-green-700',
-                              ticket.priority === 'High' &&
-                                'bg-yellow-100 text-yellow-800 border-yellow-300 dark:bg-yellow-900/50 dark:text-yellow-300 dark:border-yellow-700',
-                              ticket.priority === 'Critical' &&
-                                'bg-red-100 text-red-800 border-red-300 dark:bg-red-900/50 dark:text-red-300 dark:border-red-700'
-                            )}
-                          >
-                            {ticket.priority}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="p-2 py-4">
-                          {ticket.user?.name || ticket.email_info?.email_sender || '-'}
-                        </TableCell>
-                        <TableCell className="p-2 py-4">
-                          {agentIdToNameMap[ticket.assignee_id as number] || '-'}
-                        </TableCell>
-                        <TableCell className="p-2 py-4">
-                          {formatRelativeTime(ticket.last_update)}
-                        </TableCell>
-                        <TableCell className="p-2 py-4">
-                          {formatRelativeTime(ticket.created_at)}
-                        </TableCell>
-                      </motion.tr>
+                              {ticket.priority}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="p-2 py-4">
+                            {ticket.user?.name || ticket.email_info?.email_sender || '-'}
+                          </TableCell>
+                          <TableCell className="p-2 py-4">
+                            {agentIdToNameMap[ticket.assignee_id as number] || '-'}
+                          </TableCell>
+                          <TableCell className="p-2 py-4">
+                            {formatRelativeTime(ticket.last_update)}
+                          </TableCell>
+                          <TableCell className="p-2 py-4">
+                            {formatRelativeTime(ticket.created_at)}
+                          </TableCell>
+                        </motion.tr>
                       );
                     })
                   )}
@@ -1326,11 +1255,6 @@ function TicketsClientContent() {
           )}
         </Collapsible>
       </div>
-      <TicketDetail
-        ticket={selectedTicket}
-        onClose={handleCloseDetail}
-        onTicketUpdate={handleTicketUpdate}
-      />
     </div>
   );
 }

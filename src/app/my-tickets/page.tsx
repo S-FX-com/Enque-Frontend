@@ -43,7 +43,6 @@ import type { ITicket } from '@/typescript/ticket';
 import type { IUser } from '@/typescript/user';
 import { getUsers } from '@/services/user';
 import { formatRelativeTime, cn } from '@/lib/utils';
-import { TicketDetail } from '@/app/tickets/ticket-details';
 import { getCurrentUser, type UserSession } from '@/lib/auth';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { Collapsible, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -67,7 +66,7 @@ function MyTicketsClientContent() {
   const [selectedPriorities, setSelectedPriorities] = useState<string[]>([]);
   const [filtersExpanded, setFiltersExpanded] = useState(false); // Changed to false
   const [selectedTeams, setSelectedTeams] = useState<string[]>([]);
-  
+
   // ✅ CORREGIDO: Usar query específica para My Tickets en lugar de filtrar cache global
   const {
     data: myTicketsQueryData,
@@ -77,11 +76,20 @@ function MyTicketsClientContent() {
     isLoading: isLoadingTickets,
     isError: isTicketsError,
     error: ticketsError,
-  } = useInfiniteQuery<ITicket[], Error, InfiniteData<ITicket[], number>, readonly [string, string, number], number>({
+  } = useInfiniteQuery<
+    ITicket[],
+    Error,
+    InfiniteData<ITicket[], number>,
+    readonly [string, string, number],
+    number
+  >({
     queryKey: ['tickets', 'my', currentUser?.id || 0],
     queryFn: async ({ pageParam = 0 }) => {
       if (!currentUser?.id) return [];
-      const tickets = await getTickets({ skip: pageParam, limit: 50 }, `/v1/tasks/assignee/${currentUser.id}`);
+      const tickets = await getTickets(
+        { skip: pageParam, limit: 50 },
+        `/v1/tasks/assignee/${currentUser.id}`
+      );
       return tickets;
     },
     getNextPageParam: (lastPage, allPages) => {
@@ -206,7 +214,14 @@ function MyTicketsClientContent() {
     }
 
     return tickets;
-  }, [allTicketsData, debouncedSubjectFilter, selectedUsers, selectedStatuses, selectedPriorities, selectedTeams]);
+  }, [
+    allTicketsData,
+    debouncedSubjectFilter,
+    selectedUsers,
+    selectedStatuses,
+    selectedPriorities,
+    selectedTeams,
+  ]);
 
   const handleSelectAllChange = (checked: boolean | 'indeterminate') => {
     if (checked === true) {
@@ -279,23 +294,30 @@ function MyTicketsClientContent() {
       }
       return results;
     },
-    onSuccess: () => {
-    },
+    onSuccess: () => {},
     onMutate: async ticketIdsToDelete => {
       await queryClient.cancelQueries({ queryKey: ['tickets', 'my', currentUser?.id] });
-      
-      const previousTicketsData = queryClient.getQueryData<InfiniteData<ITicket[], number>>(['tickets', 'my', currentUser?.id]);
-      
-      queryClient.setQueryData<InfiniteData<ITicket[], number>>(['tickets', 'my', currentUser?.id], (oldData: InfiniteData<ITicket[], number> | undefined) => {
-        if (!oldData) return oldData;
-        const newPages = oldData.pages.map((page: ITicket[]) =>
-          page.filter((ticket: ITicket) => !ticketIdsToDelete.includes(ticket.id))
-        );
-        return { ...oldData, pages: newPages };
-      });
+
+      const previousTicketsData = queryClient.getQueryData<InfiniteData<ITicket[], number>>([
+        'tickets',
+        'my',
+        currentUser?.id,
+      ]);
+
+      queryClient.setQueryData<InfiniteData<ITicket[], number>>(
+        ['tickets', 'my', currentUser?.id],
+        (oldData: InfiniteData<ITicket[], number> | undefined) => {
+          if (!oldData) return oldData;
+          const newPages = oldData.pages.map((page: ITicket[]) =>
+            page.filter((ticket: ITicket) => !ticketIdsToDelete.includes(ticket.id))
+          );
+          return { ...oldData, pages: newPages };
+        }
+      );
 
       const currentAllCount = queryClient.getQueryData<number>(['ticketsCount', 'all']) || 0;
-      const currentMyCount = queryClient.getQueryData<number>(['ticketsCount', 'my', currentUser?.id]) || 0;
+      const currentMyCount =
+        queryClient.getQueryData<number>(['ticketsCount', 'my', currentUser?.id]) || 0;
 
       const allTickets = previousTicketsData?.pages.flat() || [];
       const deletedTickets = allTickets.filter(ticket => ticketIdsToDelete.includes(ticket.id));
@@ -303,12 +325,21 @@ function MyTicketsClientContent() {
         ticket => ticket.status !== 'Closed' && ticket.status !== 'Resolved'
       ).length;
       const myActiveDeletedCount = deletedTickets.filter(
-        ticket => ticket.assignee_id === currentUser?.id && ticket.status !== 'Closed' && ticket.status !== 'Resolved'
+        ticket =>
+          ticket.assignee_id === currentUser?.id &&
+          ticket.status !== 'Closed' &&
+          ticket.status !== 'Resolved'
       ).length;
 
-      queryClient.setQueryData(['ticketsCount', 'all'], Math.max(0, currentAllCount - activeDeletedCount));
+      queryClient.setQueryData(
+        ['ticketsCount', 'all'],
+        Math.max(0, currentAllCount - activeDeletedCount)
+      );
       if (currentUser?.id) {
-        queryClient.setQueryData(['ticketsCount', 'my', currentUser.id], Math.max(0, currentMyCount - myActiveDeletedCount));
+        queryClient.setQueryData(
+          ['ticketsCount', 'my', currentUser.id],
+          Math.max(0, currentMyCount - myActiveDeletedCount)
+        );
       }
 
       setSelectedTicketIds(new Set());
@@ -322,13 +353,13 @@ function MyTicketsClientContent() {
     onError: (
       err: Error,
       ticketIdsToDelete: number[],
-              context:
-          | {
-              previousTicketsData?: InfiniteData<ITicket[], number>;
-              previousAllCount?: number;
-              previousMyCount?: number;
-            }
-          | undefined
+      context:
+        | {
+            previousTicketsData?: InfiniteData<ITicket[], number>;
+            previousAllCount?: number;
+            previousMyCount?: number;
+          }
+        | undefined
     ) => {
       toast.error(`Error deleting tickets: ${err.message}`);
       console.error(`Error deleting tickets mutation: ${err.message}`);
@@ -369,71 +400,6 @@ function MyTicketsClientContent() {
       if (container) container.removeEventListener('scroll', handleScroll);
     };
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
-
-  const handleTicketUpdate = useCallback(
-    (updatedTicket: ITicket) => {
-      queryClient.setQueryData<InfiniteData<ITicket[], number>>(['tickets', 'my', currentUser?.id], (oldData: InfiniteData<ITicket[], number> | undefined) => {
-        if (!oldData) return oldData;
-        const newPages = oldData.pages.map((page: ITicket[]) =>
-          page.map((t: ITicket) => (t.id === updatedTicket.id ? updatedTicket : t))
-        );
-        return { ...oldData, pages: newPages };
-      });
-
-      if (selectedTicket?.id === updatedTicket.id) {
-        setSelectedTicket(updatedTicket);
-      }
-    },
-    [selectedTicket, queryClient, currentUser?.id]
-  );
-
-  const markAsReadMutation = useMutation({
-    mutationFn: async (ticket: ITicket) => {
-      return updateTicket(ticket.id, { status: 'Open' });
-    },
-    onMutate: async ticket => {
-      queryClient.setQueryData<InfiniteData<ITicket[], number>>(['tickets', 'my', currentUser?.id], (oldData: InfiniteData<ITicket[], number> | undefined) => {
-        if (!oldData) return oldData;
-        const newPages = oldData.pages.map((page: ITicket[]) =>
-          page.map((t: ITicket) => (t.id === ticket.id ? { ...t, status: 'Open' as const } : t))
-        );
-        return { ...oldData, pages: newPages };
-      });
-
-      return { ticketId: ticket.id };
-    },
-    onError: (err: Error, ticket: ITicket) => {
-      console.error(`Failed to update ticket ${ticket.id} status to Open:`, err);
-      toast.error(`Failed to mark ticket #${ticket.id} as Open.`);
-      queryClient.invalidateQueries({ queryKey: ['tickets', 'my', currentUser?.id] });
-    },
-    onSuccess: (updatedTicket, ticket) => {
-      if (selectedTicket?.id === ticket.id) {
-        setSelectedTicket({ ...ticket, status: 'Open' as const });
-      }
-    },
-  });
-
-  const handleTicketClick = useCallback(
-    async (ticket: ITicket) => {
-      setSelectedTicket(ticket);
-      const newSearchParams = new URLSearchParams(searchParams.toString());
-      newSearchParams.set('openTicket', ticket.id.toString());
-      router.push(`${window.location.pathname}?${newSearchParams.toString()}`);
-
-      if (ticket.status === 'Unread') {
-        markAsReadMutation.mutate(ticket);
-      }
-    },
-    [searchParams, router, markAsReadMutation]
-  );
-
-  const handleCloseDetail = useCallback(() => {
-    setSelectedTicket(null);
-    const newSearchParams = new URLSearchParams(searchParams.toString());
-    newSearchParams.delete('openTicket');
-    router.push(`${window.location.pathname}?${newSearchParams.toString()}`);
-  }, [searchParams, router]);
 
   // Calculate active filters count for the badge
   const activeFiltersCount = useMemo(() => {
@@ -554,7 +520,6 @@ function MyTicketsClientContent() {
                           ticket.status === 'Unread' &&
                             'font-semibold bg-slate-50 dark:bg-slate-800/50'
                         )}
-                        onClick={() => handleTicketClick(ticket)} // Moved onClick here
                         data-state={selectedTicketIds.has(ticket.id) ? 'selected' : ''}
                       >
                         <TableCell className="px-4">
@@ -753,14 +718,6 @@ function MyTicketsClientContent() {
           )}
         </Collapsible>
       </div>
-
-      {selectedTicket && (
-        <TicketDetail
-          ticket={selectedTicket}
-          onClose={handleCloseDetail}
-          onTicketUpdate={handleTicketUpdate}
-        />
-      )}
     </div>
   );
 }
