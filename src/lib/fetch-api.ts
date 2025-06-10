@@ -24,6 +24,7 @@ const getBaseOptions = (includeAuth: boolean = true): RequestInit => {
     headers: {
       'Content-Type': 'application/json',
     },
+    cache: 'no-cache',
   };
 
   if (includeAuth) {

@@ -25,8 +25,6 @@ const MyTeamsList: React.FC<MyTeamsListProps> = ({ agentTeams, isLoadingUser, us
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  console.log('Sidebar MyTeamsList - agentTeams:', agentTeams);
-
   if (isLoadingUser || !user || !agentTeams || agentTeams.length === 0) {
     return null;
   }
