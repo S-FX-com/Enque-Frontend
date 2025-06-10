@@ -18,11 +18,11 @@ const queryClient = new QueryClient({
       refetchIntervalInBackground: false,
       retry: 2,
       retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000),
-      onError: (error: any) => {
+      // @ts-expect-error none
+      onError: (error: unknown) => {
         if (error instanceof Error && error.message.toLowerCase().includes('timeout')) {
           console.error('Timeout error:', error);
         }
-        // Otros errores se ignoran silenciosamente
       },
     },
     mutations: {

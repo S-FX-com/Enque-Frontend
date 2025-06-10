@@ -18,7 +18,7 @@ import { Settings2, Trash2, ChevronLeft, ChevronRight, UserIcon, UsersIcon } fro
 import { MultiSelectFilter, type OptionType } from '@/components/filters/multi-select-filter';
 import { useQuery, useQueryClient, type InfiniteData, useMutation } from '@tanstack/react-query';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
-import { updateTicket, deleteTicket, getTickets } from '@/services/ticket';
+import { updateTicket, deleteTicket } from '@/services/ticket';
 import { toast } from 'sonner';
 import {
   AlertDialog,
@@ -73,7 +73,6 @@ function TicketsClientContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
-  const [selectedTicket, setSelectedTicket] = useState<ITicket | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [subjectInput, setSubjectInput] = useState('');
   const debouncedSubjectFilter = useDebounce(subjectInput, 300);
@@ -91,7 +90,6 @@ function TicketsClientContent() {
   const [isAssignToTeamDialogOpen, setIsAssignToTeamDialogOpen] = useState(false);
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
-  const [ticketToLoad, setTicketToLoad] = useState<number | null>(null);
 
   const statusOptions: OptionType[] = [
     { value: 'Unread', label: 'Unread' },
@@ -240,19 +238,6 @@ function TicketsClientContent() {
     selectedCategories,
   ]);
 
-  const { data: specificTicketData, isLoading: isLoadingSpecificTicket } = useQuery<ITicket[]>({
-    queryKey: ['specificTicket', ticketToLoad],
-    queryFn: async () => {
-      if (!ticketToLoad) return [];
-      return getTickets({}, `/v1/tasks/${ticketToLoad}`);
-    },
-    enabled: !!ticketToLoad,
-    staleTime: 1000 * 60 * 5,
-    retry: 1,
-  });
-
-  const specificTicket = specificTicketData?.[0] || null;
-
   useEffect(() => {
     const container = scrollContainerRef.current;
     const handleScroll = () => {
@@ -270,7 +255,6 @@ function TicketsClientContent() {
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   useEffect(() => {
-    const ticketIdToOpen = searchParams.get('openTicket');
     const teamIdFromQuery = searchParams.get('teamId');
 
     if (pathname === '/tickets') {
@@ -284,28 +268,7 @@ function TicketsClientContent() {
         }
       }
     }
-
-    if (ticketIdToOpen) {
-      const ticketId = Number.parseInt(ticketIdToOpen, 10);
-      const ticket = allTicketsData.find(t => t.id === ticketId);
-
-      if (ticket) {
-        setSelectedTicket(ticket);
-        setTicketToLoad(null);
-      } else if (allTicketsData.length > 0 && !isLoadingSpecificTicket) {
-        setTicketToLoad(ticketId);
-      }
-    } else {
-      setTicketToLoad(null);
-    }
-  }, [searchParams, allTicketsData, router, pathname, selectedTeams, isLoadingSpecificTicket]);
-
-  useEffect(() => {
-    if (specificTicket) {
-      setSelectedTicket(specificTicket);
-      setTicketToLoad(null);
-    }
-  }, [specificTicket]);
+  }, [searchParams, allTicketsData, router, pathname, selectedTeams]);
 
   const agentIdToNameMap = React.useMemo(() => {
     return agentsData.reduce(

@@ -907,11 +907,11 @@ export function TicketConversation({ ticket, onTicketUpdate }: Props) {
             <Button
               onClick={handleSendReply}
               disabled={
-                !replyContent.trim() ||
-                !ticket?.id ||
-                isSending ||
-                createCommentMutation.isPending ||
-                (extraRecipients.trim() && !validateEmails(extraRecipients))
+                (!replyContent.trim() ||
+                  !ticket?.id ||
+                  isSending ||
+                  createCommentMutation.isPending ||
+                  (extraRecipients.trim() && !validateEmails(extraRecipients))) as boolean
               }
             >
               <Send className="mr-2 h-4 w-4" />

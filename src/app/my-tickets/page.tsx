@@ -24,7 +24,7 @@ import {
   type InfiniteData,
   useInfiniteQuery,
 } from '@tanstack/react-query';
-import { updateTicket, deleteTicket } from '@/services/ticket';
+import { deleteTicket } from '@/services/ticket';
 import { toast } from 'sonner';
 import {
   AlertDialog,
@@ -54,7 +54,6 @@ function MyTicketsClientContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
-  const [selectedTicket, setSelectedTicket] = useState<ITicket | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [currentUser, setCurrentUser] = useState<UserSession | null>(null);
   const [subjectInput, setSubjectInput] = useState('');
@@ -165,19 +164,6 @@ function MyTicketsClientContent() {
           newSearchParams.set('openTicket', ticketIdToOpen);
         }
         router.replace(`${pathname}?${newSearchParams.toString()}`, { scroll: false });
-      }
-    }
-
-    if (ticketIdToOpen && allTicketsData.length > 0) {
-      const ticket = allTicketsData.find(t => t.id === Number.parseInt(ticketIdToOpen, 10));
-      if (ticket) {
-        setSelectedTicket(ticket);
-      } else {
-        const newSearchParams = new URLSearchParams(searchParams.toString());
-        newSearchParams.delete('openTicket');
-        router.replace(`${window.location.pathname}?${newSearchParams.toString()}`, {
-          scroll: false,
-        });
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

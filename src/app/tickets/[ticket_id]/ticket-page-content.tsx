@@ -68,7 +68,7 @@ export function TicketPageContent({ ticketId }: Props) {
 
   useEffect(() => {
     if (currentTicket) {
-      setTicket(currentTicket);
+      setTicket(currentTicket as unknown as ITicket);
     }
   }, [currentTicket]);
 
@@ -317,7 +317,8 @@ export function TicketPageContent({ ticketId }: Props) {
       <div className="text-center py-12">
         <h2 className="text-2xl font-semibold text-muted-foreground mb-2">Ticket Not Found</h2>
         <p className="text-muted-foreground mb-4">
-          The ticket you're looking for doesn't exist or you don't have permission to view it.
+          The ticket you&apos;re looking for doesn&apos;t exist or you don&apos;t have permission to
+          view it.
         </p>
         <Button onClick={() => router.push('/tickets')} variant="outline">
           <ArrowLeft className="mr-2 h-4 w-4" />
@@ -345,8 +346,8 @@ export function TicketPageContent({ ticketId }: Props) {
           </Button>
           <Separator orientation="vertical" className="h-6" />
           <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">#{ticket.id}</span>
-            <h1 className="text-xl font-semibold">{ticket.title}</h1>
+            <span className="text-sm text-muted-foreground">#{ticket?.id}</span>
+            <h1 className="text-xl font-semibold">{ticket?.title}</h1>
           </div>
         </div>
 
@@ -389,25 +390,25 @@ export function TicketPageContent({ ticketId }: Props) {
           <span
             className={cn(
               'absolute inline-flex h-full w-full rounded-full',
-              ticket.status === 'Open' && 'bg-green-500',
-              ticket.status === 'Closed' && 'bg-slate-500',
-              ticket.status === 'Unread' && 'bg-blue-500',
-              ticket.status === 'With User' && 'bg-purple-500',
-              ticket.status === 'In Progress' && 'bg-orange-500'
+              ticket?.status === 'Open' && 'bg-green-500',
+              ticket?.status === 'Closed' && 'bg-slate-500',
+              ticket?.status === 'Unread' && 'bg-blue-500',
+              ticket?.status === 'With User' && 'bg-purple-500',
+              ticket?.status === 'In Progress' && 'bg-orange-500'
             )}
           />
-          {ticket.status === 'Unread' && (
+          {ticket?.status === 'Unread' && (
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
           )}
         </div>
-        <span className="text-sm font-medium capitalize">{ticket.status}</span>
+        <span className="text-sm font-medium capitalize">{ticket?.status}</span>
       </div>
 
       {/* Main Content */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Conversation */}
         <div className="lg:col-span-2">
-          <TicketConversation ticket={ticket} onTicketUpdate={handleTicketUpdate} />
+          <TicketConversation ticket={ticket as ITicket} onTicketUpdate={handleTicketUpdate} />
         </div>
 
         {/* Sidebar */}
@@ -423,23 +424,23 @@ export function TicketPageContent({ ticketId }: Props) {
                   Priority
                 </label>
                 <Select
-                  value={ticket.priority}
+                  value={ticket?.priority}
                   onValueChange={value => handleUpdateField('priority', value)}
                 >
                   <SelectTrigger className="h-8 text-xs">
                     <SelectValue placeholder="Select priority">
-                      {ticket.priority && (
+                      {ticket?.priority && (
                         <div className="flex items-center gap-2">
                           <div
                             className={cn(
                               'w-2 h-2 rounded-full',
-                              ticket.priority === 'Low' && 'bg-slate-500',
-                              ticket.priority === 'Medium' && 'bg-green-500',
-                              ticket.priority === 'High' && 'bg-yellow-500',
-                              ticket.priority === 'Critical' && 'bg-red-500'
+                              ticket?.priority === 'Low' && 'bg-slate-500',
+                              ticket?.priority === 'Medium' && 'bg-green-500',
+                              ticket?.priority === 'High' && 'bg-yellow-500',
+                              ticket?.priority === 'Critical' && 'bg-red-500'
                             )}
                           />
-                          {ticket.priority}
+                          {ticket?.priority}
                         </div>
                       )}
                     </SelectValue>
@@ -479,7 +480,7 @@ export function TicketPageContent({ ticketId }: Props) {
                   Assigned to
                 </label>
                 <Select
-                  value={ticket.assignee_id?.toString() ?? 'null'}
+                  value={ticket?.assignee_id?.toString() ?? 'null'}
                   onValueChange={value => handleUpdateField('assignee_id', value)}
                   disabled={isLoadingAgents}
                 >
@@ -501,7 +502,7 @@ export function TicketPageContent({ ticketId }: Props) {
               <div>
                 <label className="text-sm font-medium text-muted-foreground mb-1 block">Team</label>
                 <Select
-                  value={ticket.team_id?.toString() ?? 'null'}
+                  value={ticket?.team_id?.toString() ?? 'null'}
                   onValueChange={value => handleUpdateField('team_id', value)}
                   disabled={isLoadingTeams}
                 >
@@ -525,7 +526,7 @@ export function TicketPageContent({ ticketId }: Props) {
                   Category
                 </label>
                 <Select
-                  value={ticket.category_id?.toString() ?? 'null'}
+                  value={ticket?.category_id?.toString() ?? 'null'}
                   onValueChange={value => handleUpdateField('category_id', value)}
                   disabled={isLoadingCategories}
                 >
@@ -554,15 +555,15 @@ export function TicketPageContent({ ticketId }: Props) {
                   <BoringAvatar
                     size={24}
                     name={
-                      ticket.user?.email ||
-                      ticket.user?.name ||
-                      `user-${ticket.user?.id}` ||
+                      ticket?.user?.email ||
+                      ticket?.user?.name ||
+                      `user-${ticket?.user?.id}` ||
                       'unknown-user'
                     }
                     variant="beam"
                     colors={avatarColors}
                   />
-                  <span className="text-sm">{ticket.user?.name || 'Unknown User'}</span>
+                  <span className="text-sm">{ticket?.user?.name || 'Unknown User'}</span>
                 </div>
               </div>
 
@@ -571,14 +572,14 @@ export function TicketPageContent({ ticketId }: Props) {
                 <label className="text-sm font-medium text-muted-foreground mb-1 block">
                   Last Update
                 </label>
-                <p className="text-sm">{formatRelativeTime(ticket.last_update)}</p>
+                <p className="text-sm">{formatRelativeTime(ticket?.last_update)}</p>
               </div>
 
               <div>
                 <label className="text-sm font-medium text-muted-foreground mb-1 block">
                   Created
                 </label>
-                <p className="text-sm">{formatRelativeTime(ticket.created_at)}</p>
+                <p className="text-sm">{formatRelativeTime(ticket?.created_at)}</p>
               </div>
             </CardContent>
           </Card>
