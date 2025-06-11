@@ -56,15 +56,14 @@ export function TicketPageContent({ ticketId }: Props) {
     queryFn: async () => {
       if (!ticketId) return [];
       const tickets = await getTickets({}, `/v1/tasks/${ticketId}`);
-      console.log(tickets);
-      return tickets;
+      return [tickets] as unknown as ITicket[];
     },
     enabled: !!ticketId,
     staleTime: 1000 * 60 * 5,
     retry: 1,
   });
 
-  const currentTicket = ticketData || null;
+  const currentTicket = ticketData?.[0] || null;
 
   useEffect(() => {
     if (currentTicket) {
