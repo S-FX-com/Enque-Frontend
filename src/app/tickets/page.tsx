@@ -982,6 +982,7 @@ function TicketsClientContent() {
                               'font-semibold bg-slate-50 dark:bg-slate-800/50'
                           )}
                           data-state={selectedTicketIds.has(ticket.id) ? 'selected' : ''}
+                          onClick={() => router.push(`/tickets/${ticket.id}`)}
                         >
                           <TableCell className="px-4">
                             <Checkbox
