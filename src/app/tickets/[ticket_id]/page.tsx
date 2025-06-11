@@ -9,7 +9,7 @@ export default async function TicketPage({ params }: Props) {
   const { ticket_id } = await params;
 
   return (
-    <div className="container mx-auto py-6 px-4">
+    <div className="py-6">
       <Suspense
         fallback={<div className="flex items-center justify-center h-96">Loading ticket...</div>}
       >
