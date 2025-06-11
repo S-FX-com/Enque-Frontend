@@ -37,6 +37,8 @@ import BoringAvatar from 'boring-avatars';
 interface Props {
   ticket: ITicket;
   onTicketUpdate?: (updatedTicket: ITicket) => void;
+  replyOnly?: boolean;
+  latestOnly?: boolean;
 }
 
 // Optimized message component for HTML content
@@ -313,7 +315,12 @@ function OptimizedMessageItem({ content, isInitial = false }: OptimizedMessageIt
   );
 }
 
-export function TicketConversation({ ticket, onTicketUpdate }: Props) {
+export function TicketConversation({
+  ticket,
+  onTicketUpdate,
+  replyOnly = false,
+  latestOnly = false,
+}: Props) {
   const queryClient = useQueryClient();
   const { user: currentUser } = useAuth();
   const [replyContent, setReplyContent] = useState('');
@@ -686,240 +693,346 @@ export function TicketConversation({ ticket, onTicketUpdate }: Props) {
     }
   };
 
+  const [showAllMessages, setShowAllMessages] = useState(false);
+
   return (
     <div className="space-y-6">
-      <Card>
-        <CardContent className="pt-4">
-          <div className="flex items-center gap-2 text-sm font-semibold">
-            <Mail className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-            <span className="text-muted-foreground">#{ticket.id}</span>
-            <span>- {ticket.title}</span>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card className="flex-1 flex flex-col min-h-0">
-        <CardHeader className="pb-2 flex-shrink-0">
-          <CardTitle className="text-lg">Conversation</CardTitle>
-        </CardHeader>
-        <CardContent className="flex-1 overflow-y-auto space-y-4 max-h-96">
-          {isHtmlContentError && isCommentsError && !isLoadingHtmlContent && !isLoadingComments && (
-            <div className="text-center text-red-500 py-4">
-              Failed to load conversation:{' '}
-              {htmlContentError?.message || commentsError?.message || 'Unknown error'}
+      {!replyOnly && !latestOnly && (
+        <Card>
+          <CardContent className="pt-4">
+            <div className="flex items-center gap-2 text-sm font-semibold">
+              <Mail className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+              <span className="text-muted-foreground">#{ticket.id}</span>
+              <span>- {ticket.title}</span>
             </div>
-          )}
+          </CardContent>
+        </Card>
+      )}
 
-          {isLoadingHtmlContent && !htmlContent && conversationItems.totalItems === 0 && (
-            <div className="space-y-4 animate-pulse">
-              <div className="bg-slate-100 dark:bg-slate-800 rounded-lg p-4 h-20"></div>
-              <div className="bg-slate-100 dark:bg-slate-800 rounded-lg p-4 h-16"></div>
-            </div>
-          )}
+      {replyOnly ? (
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <RichTextEditor
+              key={editorKey}
+              content={replyContent}
+              onChange={setReplyContent}
+              placeholder={isPrivateNote ? 'Write a private note...' : 'Type your reply here...'}
+              disabled={createCommentMutation.isPending}
+              onAttachmentsChange={handleAttachmentsChange}
+            />
 
-          {conversationItems.totalItems === 0 &&
-          !isLoadingHtmlContent &&
-          !isLoadingComments &&
-          !(isHtmlContentError && isCommentsError) ? (
-            <div className="text-center text-muted-foreground py-10">
-              No conversation history found.
-            </div>
-          ) : (
-            <>
-              {conversationItems.isOptimized ? (
-                (conversationItems.items as TicketHtmlContent[]).map((item: TicketHtmlContent) => (
-                  <OptimizedMessageItem
-                    key={item.id}
-                    content={item}
-                    isInitial={item.id === 'initial'}
-                  />
-                ))
-              ) : (
-                <>
-                  {conversationItems.hasInitialMessage &&
-                    conversationItems.initialMessageContent?.startsWith('[MIGRATED_TO_S3]') && (
-                      <InitialTicketMessage
-                        key="initial-message-s3"
-                        ticketId={ticket.id}
-                        initialContent={conversationItems.initialMessageContent}
-                        user={conversationItems.initialMessageSender}
-                        createdAt={ticket.created_at}
-                      />
-                    )}
+            {/* Extra Recipients Section */}
+            {!isPrivateNote && (
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowExtraRecipients(!showExtraRecipients)}
+                    className="text-xs"
+                  >
+                    <Users className="mr-1 h-3 w-3" />
+                    {showExtraRecipients ? 'Hide CC' : 'Add CC'}
+                  </Button>
+                </div>
 
-                  {(conversationItems.items as IComment[]).map((item: IComment) => (
-                    <ConversationMessageItem
-                      key={item.id === -1 ? 'initial-message' : item.id}
-                      comment={item}
+                {showExtraRecipients && (
+                  <div className="space-y-1">
+                    <Label htmlFor="extra-recipients" className="text-xs text-muted-foreground">
+                      Extra Recipients (CC)
+                    </Label>
+                    <Input
+                      id="extra-recipients"
+                      type="email"
+                      placeholder="email1@example.com, email2@example.com"
+                      value={extraRecipients}
+                      onChange={e => setExtraRecipients(e.target.value)}
+                      disabled={createCommentMutation.isPending}
+                      className="text-sm"
                     />
-                  ))}
-                </>
-              )}
-            </>
-          )}
-        </CardContent>
-      </Card>
+                    <p className="text-xs text-muted-foreground">
+                      Separate multiple email addresses with commas
+                    </p>
+                    {extraRecipients.trim() && !validateEmails(extraRecipients) && (
+                      <p className="text-xs text-red-500">
+                        Please enter valid email addresses separated by commas
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
-      <Card>
-        <CardContent className="p-4 space-y-3">
-          <RichTextEditor
-            key={editorKey}
-            content={replyContent}
-            onChange={setReplyContent}
-            placeholder={isPrivateNote ? 'Write a private note...' : 'Type your reply here...'}
-            disabled={createCommentMutation.isPending}
-            onAttachmentsChange={handleAttachmentsChange}
-          />
+            {createCommentMutation.isError && (
+              <p className="text-xs text-red-500 pt-1">
+                {createCommentMutation.error?.message || 'Failed to send reply.'}
+              </p>
+            )}
 
-          {/* Extra Recipients Section */}
-          {!isPrivateNote && (
-            <div className="space-y-2">
-              <div className="flex items-center space-x-2">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowExtraRecipients(!showExtraRecipients)}
-                  className="text-xs"
-                >
-                  <Users className="mr-1 h-3 w-3" />
-                  {showExtraRecipients ? 'Hide CC' : 'Add CC'}
-                </Button>
+            <div className="flex justify-between items-center pt-2">
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="private-note"
+                    checked={isPrivateNote}
+                    onCheckedChange={handlePrivateNoteChange}
+                    disabled={createCommentMutation.isPending}
+                  />
+                  <Label htmlFor="private-note">Private Note</Label>
+                </div>
+
+                <Popover open={cannedRepliesOpen} onOpenChange={setCannedRepliesOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={createCommentMutation.isPending || isLoadingCannedReplies}
+                    >
+                      <MessageSquare className="mr-2 h-4 w-4" />
+                      Templates
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-96 p-0" align="start">
+                    <div className="p-4 border-b">
+                      <h3 className="font-semibold text-sm mb-3">Canned Replies</h3>
+
+                      <div className="relative mb-3">
+                        <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Search templates..."
+                          value={cannedSearchTerm}
+                          onChange={e => setCannedSearchTerm(e.target.value)}
+                          className="pl-8"
+                        />
+                      </div>
+                    </div>
+
+                    <ScrollArea className="h-64">
+                      <div className="p-2">
+                        {isLoadingCannedReplies ? (
+                          <div className="space-y-2">
+                            <Skeleton className="h-12 w-full" />
+                            <Skeleton className="h-12 w-full" />
+                            <Skeleton className="h-12 w-full" />
+                          </div>
+                        ) : filteredCannedReplies.length === 0 ? (
+                          <div className="text-center text-muted-foreground py-4 text-sm">
+                            {cannedSearchTerm
+                              ? 'No templates match your search'
+                              : 'No templates available'}
+                          </div>
+                        ) : (
+                          filteredCannedReplies.map(reply => (
+                            <div
+                              key={reply.id}
+                              className="p-3 hover:bg-accent rounded-lg cursor-pointer border mb-2"
+                              onClick={() => handleCannedReplySelect(reply)}
+                            >
+                              <div className="flex items-start justify-between mb-1">
+                                <h4 className="font-medium text-sm truncate flex-1">
+                                  {reply.name}
+                                </h4>
+                                <div className="flex items-center gap-1 ml-2">
+                                  {reply.usage_count > 0 && (
+                                    <Badge variant="secondary" className="text-xs">
+                                      <Clock className="w-3 h-3 mr-1" />
+                                      {reply.usage_count}
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
+
+                              <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
+                                {reply.description ||
+                                  reply.content.replace(/<[^>]*>/g, '').substring(0, 100) + '...'}
+                              </p>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </ScrollArea>
+                  </PopoverContent>
+                </Popover>
               </div>
 
-              {showExtraRecipients && (
-                <div className="space-y-1">
-                  <Label htmlFor="extra-recipients" className="text-xs text-muted-foreground">
-                    Extra Recipients (CC)
-                  </Label>
-                  <Input
-                    id="extra-recipients"
-                    type="email"
-                    placeholder="email1@example.com, email2@example.com"
-                    value={extraRecipients}
-                    onChange={e => setExtraRecipients(e.target.value)}
-                    disabled={createCommentMutation.isPending}
-                    className="text-sm"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Separate multiple email addresses with commas
-                  </p>
-                  {extraRecipients.trim() && !validateEmails(extraRecipients) && (
-                    <p className="text-xs text-red-500">
-                      Please enter valid email addresses separated by commas
-                    </p>
-                  )}
+              <Button
+                onClick={handleSendReply}
+                disabled={
+                  (!replyContent.trim() ||
+                    !ticket?.id ||
+                    isSending ||
+                    createCommentMutation.isPending ||
+                    (extraRecipients.trim() && !validateEmails(extraRecipients))) as boolean
+                }
+              >
+                <Send className="mr-2 h-4 w-4" />
+                Send
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      ) : latestOnly ? (
+        <div className="space-y-4">
+          <div className="space-y-4">
+            {isHtmlContentError &&
+              isCommentsError &&
+              !isLoadingHtmlContent &&
+              !isLoadingComments && (
+                <div className="text-center text-red-500 py-4">
+                  Failed to load conversation:{' '}
+                  {htmlContentError?.message || commentsError?.message || 'Unknown error'}
                 </div>
               )}
-            </div>
-          )}
 
-          {createCommentMutation.isError && (
-            <p className="text-xs text-red-500 pt-1">
-              {createCommentMutation.error?.message || 'Failed to send reply.'}
-            </p>
-          )}
-
-          <div className="flex justify-between items-center pt-2">
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="private-note"
-                  checked={isPrivateNote}
-                  onCheckedChange={handlePrivateNoteChange}
-                  disabled={createCommentMutation.isPending}
-                />
-                <Label htmlFor="private-note">Private Note</Label>
+            {isLoadingHtmlContent && !htmlContent && conversationItems.totalItems === 0 && (
+              <div className="space-y-4 animate-pulse">
+                <div className="bg-slate-100 dark:bg-slate-800 rounded-lg p-4 h-20"></div>
               </div>
+            )}
 
-              <Popover open={cannedRepliesOpen} onOpenChange={setCannedRepliesOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={createCommentMutation.isPending || isLoadingCannedReplies}
-                  >
-                    <MessageSquare className="mr-2 h-4 w-4" />
-                    Templates
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-96 p-0" align="start">
-                  <div className="p-4 border-b">
-                    <h3 className="font-semibold text-sm mb-3">Canned Replies</h3>
-
-                    <div className="relative mb-3">
-                      <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        placeholder="Search templates..."
-                        value={cannedSearchTerm}
-                        onChange={e => setCannedSearchTerm(e.target.value)}
-                        className="pl-8"
+            {conversationItems.totalItems === 0 &&
+            !isLoadingHtmlContent &&
+            !isLoadingComments &&
+            !(isHtmlContentError && isCommentsError) ? (
+              <div className="text-center text-muted-foreground py-10">
+                No conversation history found.
+              </div>
+            ) : (
+              <>
+                {/* Show only the latest message */}
+                {conversationItems.isOptimized
+                  ? conversationItems.items.length > 0 && (
+                      <OptimizedMessageItem
+                        key={(conversationItems.items[0] as TicketHtmlContent).id}
+                        content={conversationItems.items[0] as TicketHtmlContent}
+                        isInitial={
+                          (conversationItems.items[0] as TicketHtmlContent).id === 'initial'
+                        }
                       />
-                    </div>
-                  </div>
-
-                  <ScrollArea className="h-64">
-                    <div className="p-2">
-                      {isLoadingCannedReplies ? (
-                        <div className="space-y-2">
-                          <Skeleton className="h-12 w-full" />
-                          <Skeleton className="h-12 w-full" />
-                          <Skeleton className="h-12 w-full" />
-                        </div>
-                      ) : filteredCannedReplies.length === 0 ? (
-                        <div className="text-center text-muted-foreground py-4 text-sm">
-                          {cannedSearchTerm
-                            ? 'No templates match your search'
-                            : 'No templates available'}
-                        </div>
-                      ) : (
-                        filteredCannedReplies.map(reply => (
-                          <div
-                            key={reply.id}
-                            className="p-3 hover:bg-accent rounded-lg cursor-pointer border mb-2"
-                            onClick={() => handleCannedReplySelect(reply)}
-                          >
-                            <div className="flex items-start justify-between mb-1">
-                              <h4 className="font-medium text-sm truncate flex-1">{reply.name}</h4>
-                              <div className="flex items-center gap-1 ml-2">
-                                {reply.usage_count > 0 && (
-                                  <Badge variant="secondary" className="text-xs">
-                                    <Clock className="w-3 h-3 mr-1" />
-                                    {reply.usage_count}
-                                  </Badge>
-                                )}
-                              </div>
-                            </div>
-
-                            <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
-                              {reply.description ||
-                                reply.content.replace(/<[^>]*>/g, '').substring(0, 100) + '...'}
-                            </p>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </ScrollArea>
-                </PopoverContent>
-              </Popover>
-            </div>
-
-            <Button
-              onClick={handleSendReply}
-              disabled={
-                (!replyContent.trim() ||
-                  !ticket?.id ||
-                  isSending ||
-                  createCommentMutation.isPending ||
-                  (extraRecipients.trim() && !validateEmails(extraRecipients))) as boolean
-              }
-            >
-              <Send className="mr-2 h-4 w-4" />
-              Send
-            </Button>
+                    )
+                  : conversationItems.items.length > 0 && (
+                      <ConversationMessageItem
+                        key={
+                          (conversationItems.items[0] as IComment).id === -1
+                            ? 'initial-message'
+                            : (conversationItems.items[0] as IComment).id
+                        }
+                        comment={conversationItems.items[0] as IComment}
+                      />
+                    )}
+              </>
+            )}
           </div>
-        </CardContent>
-      </Card>
+
+          {/* View Previous Correspondence Button */}
+          {conversationItems.totalItems > 1 && (
+            <div className="flex justify-center pt-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowAllMessages(!showAllMessages)}
+              >
+                {showAllMessages
+                  ? 'Hide Previous Messages'
+                  : `View Previous Correspondence (${conversationItems.totalItems - 1} messages)`}
+              </Button>
+            </div>
+          )}
+
+          {/* Show all messages when expanded */}
+          {showAllMessages && (
+            <div className="space-y-4 border-t pt-4">
+              {conversationItems.isOptimized
+                ? (conversationItems.items as TicketHtmlContent[])
+                    .slice(1)
+                    .map((item: TicketHtmlContent) => (
+                      <OptimizedMessageItem
+                        key={item.id}
+                        content={item}
+                        isInitial={item.id === 'initial'}
+                      />
+                    ))
+                : (conversationItems.items as IComment[])
+                    .slice(1)
+                    .map((item: IComment) => (
+                      <ConversationMessageItem
+                        key={item.id === -1 ? 'initial-message-prev' : item.id}
+                        comment={item}
+                      />
+                    ))}
+            </div>
+          )}
+        </div>
+      ) : (
+        <Card className="flex-1 flex flex-col min-h-0">
+          <CardHeader className="pb-2 flex-shrink-0">
+            <CardTitle className="text-lg">Conversation</CardTitle>
+          </CardHeader>
+          <CardContent className="flex-1 overflow-y-auto space-y-4 max-h-96">
+            {/* Original conversation content */}
+            {isHtmlContentError &&
+              isCommentsError &&
+              !isLoadingHtmlContent &&
+              !isLoadingComments && (
+                <div className="text-center text-red-500 py-4">
+                  Failed to load conversation:{' '}
+                  {htmlContentError?.message || commentsError?.message || 'Unknown error'}
+                </div>
+              )}
+
+            {isLoadingHtmlContent && !htmlContent && conversationItems.totalItems === 0 && (
+              <div className="space-y-4 animate-pulse">
+                <div className="bg-slate-100 dark:bg-slate-800 rounded-lg p-4 h-20"></div>
+                <div className="bg-slate-100 dark:bg-slate-800 rounded-lg p-4 h-16"></div>
+              </div>
+            )}
+
+            {conversationItems.totalItems === 0 &&
+            !isLoadingHtmlContent &&
+            !isLoadingComments &&
+            !(isHtmlContentError && isCommentsError) ? (
+              <div className="text-center text-muted-foreground py-10">
+                No conversation history found.
+              </div>
+            ) : (
+              <>
+                {conversationItems.isOptimized ? (
+                  (conversationItems.items as TicketHtmlContent[]).map(
+                    (item: TicketHtmlContent) => (
+                      <OptimizedMessageItem
+                        key={item.id}
+                        content={item}
+                        isInitial={item.id === 'initial'}
+                      />
+                    )
+                  )
+                ) : (
+                  <>
+                    {conversationItems.hasInitialMessage &&
+                      conversationItems.initialMessageContent?.startsWith('[MIGRATED_TO_S3]') && (
+                        <InitialTicketMessage
+                          key="initial-message-s3"
+                          ticketId={ticket.id}
+                          initialContent={conversationItems.initialMessageContent}
+                          user={conversationItems.initialMessageSender}
+                          createdAt={ticket.created_at}
+                        />
+                      )}
+
+                    {(conversationItems.items as IComment[]).map((item: IComment) => (
+                      <ConversationMessageItem
+                        key={item.id === -1 ? 'initial-message' : item.id}
+                        comment={item}
+                      />
+                    ))}
+                  </>
+                )}
+              </>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

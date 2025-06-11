@@ -333,20 +333,33 @@ export function TicketPageContent({ ticketId }: Props) {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => router.push('/tickets')}
-            className="gap-2"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Tickets
-          </Button>
-          <Separator orientation="vertical" className="h-6" />
+        <div className="flex flex-col gap-2">
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">#{ticket?.id}</span>
             <h1 className="text-xl font-semibold">{ticket?.title}</h1>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">User:</span>
+              <BoringAvatar
+                size={20}
+                name={
+                  ticket?.user?.email ||
+                  ticket?.user?.name ||
+                  `user-${ticket?.user?.id}` ||
+                  'unknown-user'
+                }
+                variant="beam"
+                colors={avatarColors}
+              />
+              <span className="text-sm font-medium">{ticket?.user?.name || 'Unknown User'}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">CC:</span>
+              <Button variant="ghost" size="sm" className="h-6 px-2 text-xs">
+                Add CC
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -405,12 +418,37 @@ export function TicketPageContent({ ticketId }: Props) {
 
       {/* Main Content */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Conversation */}
+        {/* Reply Section - Moved to top */}
         <div className="lg:col-span-2">
-          <TicketConversation ticket={ticket as ITicket} onTicketUpdate={handleTicketUpdate} />
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="text-lg">Reply</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <TicketConversation
+                ticket={ticket as ITicket}
+                onTicketUpdate={handleTicketUpdate}
+                replyOnly={true}
+              />
+            </CardContent>
+          </Card>
+
+          {/* Conversation - Modified to show latest message without scroll */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Latest Message</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <TicketConversation
+                ticket={ticket as ITicket}
+                onTicketUpdate={handleTicketUpdate}
+                latestOnly={true}
+              />
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Sidebar */}
+        {/* Sidebar - Remove User section since it's moved to header */}
         <div className="space-y-6">
           <Card>
             <CardHeader>
@@ -546,25 +584,6 @@ export function TicketPageContent({ ticketId }: Props) {
               </div>
 
               <Separator />
-
-              {/* User */}
-              <div>
-                <label className="text-sm font-medium text-muted-foreground mb-1 block">User</label>
-                <div className="flex items-center gap-2">
-                  <BoringAvatar
-                    size={24}
-                    name={
-                      ticket?.user?.email ||
-                      ticket?.user?.name ||
-                      `user-${ticket?.user?.id}` ||
-                      'unknown-user'
-                    }
-                    variant="beam"
-                    colors={avatarColors}
-                  />
-                  <span className="text-sm">{ticket?.user?.name || 'Unknown User'}</span>
-                </div>
-              </div>
 
               {/* Timestamps */}
               <div>
