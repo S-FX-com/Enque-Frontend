@@ -227,7 +227,7 @@ export function RichTextEditor({
       attributes: {
         // Remove prose classes, keep basic styling and dimensions/scroll
         class:
-          'max-w-none focus:outline-none p-2 border rounded-md min-h-[80px] max-h-[300px] overflow-y-auto',
+          'max-w-none focus:outline-none p-2 border rounded-md min-h-[120px] max-h-[1200px] overflow-hidden resize-none',
       },
       // Añadir manejador de eventos para pegar
       handlePaste: (view, event) => {

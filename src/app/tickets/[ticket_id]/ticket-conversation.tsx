@@ -7,7 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Send, Mail, Clock, MessageSquare, Search, Users } from 'lucide-react';
+import { Send, Mail, Clock, MessageSquare, Search } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -34,11 +34,27 @@ import { getCannedReplies, type CannedReply } from '@/services/canned-replies';
 import { formatRelativeTime } from '@/lib/utils';
 import BoringAvatar from 'boring-avatars';
 
+const editorStyles = `
+  .auto-expand-editor .ProseMirror {
+    min-height: 120px;
+    max-height: 1200px;
+    overflow-y: auto;
+    resize: none;
+  }
+  
+  .auto-expand-editor .tiptap {
+    min-height: 120px;
+    overflow-y: visible;
+  }
+`;
+
 interface Props {
   ticket: ITicket;
   onTicketUpdate?: (updatedTicket: ITicket) => void;
   replyOnly?: boolean;
   latestOnly?: boolean;
+  extraRecipients?: string;
+  onExtraRecipientsChange?: (recipients: string) => void;
 }
 
 // Optimized message component for HTML content
@@ -320,6 +336,8 @@ export function TicketConversation({
   onTicketUpdate,
   replyOnly = false,
   latestOnly = false,
+  extraRecipients = '',
+  onExtraRecipientsChange,
 }: Props) {
   const queryClient = useQueryClient();
   const { user: currentUser } = useAuth();
@@ -329,10 +347,6 @@ export function TicketConversation({
   const prevTicketIdRef = useRef<number | null>(null);
   const [selectedAttachments, setSelectedAttachments] = useState<File[]>([]);
   const [isSending, setIsSending] = useState(false);
-
-  // New state for extra recipients
-  const [extraRecipients, setExtraRecipients] = useState('');
-  const [showExtraRecipients, setShowExtraRecipients] = useState(false);
 
   // Canned replies state
   const [cannedRepliesOpen, setCannedRepliesOpen] = useState(false);
@@ -526,11 +540,18 @@ export function TicketConversation({
 
     if (currentTicketId !== prevTicketId) {
       setIsPrivateNote(false);
-      setExtraRecipients('');
-      setShowExtraRecipients(false);
+      if (onExtraRecipientsChange) {
+        onExtraRecipientsChange('');
+      }
     }
     prevTicketIdRef.current = currentTicketId;
-  }, [ticket.id, ticket.user?.name, currentAgentData, globalSignatureData]);
+  }, [
+    ticket.id,
+    ticket.user?.name,
+    currentAgentData,
+    globalSignatureData,
+    onExtraRecipientsChange,
+  ]);
 
   const handleAttachmentsChange = (files: File[]) => {
     setSelectedAttachments(files);
@@ -656,8 +677,9 @@ export function TicketConversation({
       setReplyContent('');
       setSelectedAttachments([]);
       setIsPrivateNote(false);
-      setExtraRecipients('');
-      setShowExtraRecipients(false);
+      if (onExtraRecipientsChange) {
+        onExtraRecipientsChange('');
+      }
       setEditorKey(prev => prev + 1);
 
       toast.success('Reply sent successfully.');
@@ -688,12 +710,20 @@ export function TicketConversation({
     setIsPrivateNote(checked);
     if (checked) {
       setReplyContent('');
-      setShowExtraRecipients(false);
-      setExtraRecipients('');
     }
   };
 
   const [showAllMessages, setShowAllMessages] = useState(false);
+
+  useEffect(() => {
+    const styleElement = document.createElement('style');
+    styleElement.textContent = editorStyles;
+    document.head.appendChild(styleElement);
+
+    return () => {
+      document.head.removeChild(styleElement);
+    };
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -712,57 +742,16 @@ export function TicketConversation({
       {replyOnly ? (
         <Card>
           <CardContent className="p-4 space-y-3">
-            <RichTextEditor
-              key={editorKey}
-              content={replyContent}
-              onChange={setReplyContent}
-              placeholder={isPrivateNote ? 'Write a private note...' : 'Type your reply here...'}
-              disabled={createCommentMutation.isPending}
-              onAttachmentsChange={handleAttachmentsChange}
-            />
-
-            {/* Extra Recipients Section */}
-            {!isPrivateNote && (
-              <div className="space-y-2">
-                <div className="flex items-center space-x-2">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowExtraRecipients(!showExtraRecipients)}
-                    className="text-xs"
-                  >
-                    <Users className="mr-1 h-3 w-3" />
-                    {showExtraRecipients ? 'Hide CC' : 'Add CC'}
-                  </Button>
-                </div>
-
-                {showExtraRecipients && (
-                  <div className="space-y-1">
-                    <Label htmlFor="extra-recipients" className="text-xs text-muted-foreground">
-                      Extra Recipients (CC)
-                    </Label>
-                    <Input
-                      id="extra-recipients"
-                      type="email"
-                      placeholder="email1@example.com, email2@example.com"
-                      value={extraRecipients}
-                      onChange={e => setExtraRecipients(e.target.value)}
-                      disabled={createCommentMutation.isPending}
-                      className="text-sm"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Separate multiple email addresses with commas
-                    </p>
-                    {extraRecipients.trim() && !validateEmails(extraRecipients) && (
-                      <p className="text-xs text-red-500">
-                        Please enter valid email addresses separated by commas
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
+            <div className="auto-expand-editor">
+              <RichTextEditor
+                key={editorKey}
+                content={replyContent}
+                onChange={setReplyContent}
+                placeholder={isPrivateNote ? 'Write a private note...' : 'Type your reply here...'}
+                disabled={createCommentMutation.isPending}
+                onAttachmentsChange={handleAttachmentsChange}
+              />
+            </div>
 
             {createCommentMutation.isError && (
               <p className="text-xs text-red-500 pt-1">
