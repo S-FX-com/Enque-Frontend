@@ -33,6 +33,8 @@ import { toast } from 'sonner';
 import { useSocketContext } from '@/providers/socket-provider';
 import { TicketConversation } from './ticket-conversation';
 import BoringAvatar from 'boring-avatars';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 
 interface Props {
   ticketId: number;
@@ -45,6 +47,8 @@ export function TicketPageContent({ ticketId }: Props) {
   const [ticket, setTicket] = useState<ITicket | null>(null);
   const [isClosingTicket, setIsClosingTicket] = useState(false);
   const [isResolvingTicket, setIsResolvingTicket] = useState(false);
+  const [extraRecipients, setExtraRecipients] = useState('');
+  const [showExtraRecipients, setShowExtraRecipients] = useState(false);
 
   // Fetch ticket data
   const {
@@ -292,6 +296,16 @@ export function TicketPageContent({ ticketId }: Props) {
     queryClient.setQueryData(['ticket', ticketId], [updatedTicket]);
   };
 
+  // Function to validate email addresses
+  const validateEmails = (emailString: string): boolean => {
+    if (!emailString.trim()) return true; // Empty is valid
+
+    const emails = emailString.split(',').map(email => email.trim());
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    return emails.every(email => emailRegex.test(email));
+  };
+
   if (isLoadingTicket) {
     return (
       <div className="space-y-6">
@@ -340,7 +354,7 @@ export function TicketPageContent({ ticketId }: Props) {
           </div>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">User:</span>
+              <span className="text-sm text-muted-foreground">Contact:</span>
               <BoringAvatar
                 size={20}
                 name={
@@ -356,8 +370,13 @@ export function TicketPageContent({ ticketId }: Props) {
             </div>
             <div className="flex items-center gap-2">
               <span className="text-sm text-muted-foreground">CC:</span>
-              <Button variant="ghost" size="sm" className="h-6 px-2 text-xs">
-                Add CC
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 px-2 text-xs"
+                onClick={() => setShowExtraRecipients(!showExtraRecipients)}
+              >
+                {showExtraRecipients ? 'Hide CC' : 'Add CC'}
               </Button>
             </div>
           </div>
@@ -396,6 +415,35 @@ export function TicketPageContent({ ticketId }: Props) {
         </div>
       </div>
 
+      {/* CC Input Section */}
+      {showExtraRecipients && (
+        <Card className="mb-4">
+          <CardContent className="pt-4">
+            <div className="space-y-2">
+              <Label htmlFor="header-extra-recipients" className="text-sm font-medium">
+                Extra Recipients (CC)
+              </Label>
+              <Input
+                id="header-extra-recipients"
+                type="email"
+                placeholder="email1@example.com, email2@example.com"
+                value={extraRecipients}
+                onChange={e => setExtraRecipients(e.target.value)}
+                className="text-sm"
+              />
+              <p className="text-xs text-muted-foreground">
+                Separate multiple email addresses with commas
+              </p>
+              {extraRecipients.trim() && !validateEmails(extraRecipients) && (
+                <p className="text-xs text-red-500">
+                  Please enter valid email addresses separated by commas
+                </p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Status Badge */}
       <div className="flex items-center gap-2">
         <div className="relative flex h-2 w-2">
@@ -420,19 +468,6 @@ export function TicketPageContent({ ticketId }: Props) {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Reply Section - Moved to top */}
         <div className="lg:col-span-2">
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle className="text-lg">Reply</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <TicketConversation
-                ticket={ticket as ITicket}
-                onTicketUpdate={handleTicketUpdate}
-                replyOnly={true}
-              />
-            </CardContent>
-          </Card>
-
           {/* Conversation - Modified to show latest message without scroll */}
           <Card>
             <CardHeader>
@@ -443,6 +478,22 @@ export function TicketPageContent({ ticketId }: Props) {
                 ticket={ticket as ITicket}
                 onTicketUpdate={handleTicketUpdate}
                 latestOnly={true}
+                extraRecipients={extraRecipients}
+                onExtraRecipientsChange={setExtraRecipients}
+              />
+            </CardContent>
+          </Card>
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle className="text-lg">Reply</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <TicketConversation
+                ticket={ticket as ITicket}
+                onTicketUpdate={handleTicketUpdate}
+                replyOnly={true}
+                extraRecipients={extraRecipients}
+                onExtraRecipientsChange={setExtraRecipients}
               />
             </CardContent>
           </Card>
