@@ -92,7 +92,7 @@ export const showNotificationToast = (notification: Activity): void => {
       action: {
         label: 'View',
         onClick: () => {
-          window.location.href = `/tickets?openTicket=${notification.source_id}`;
+          window.location.href = `/tickets/${notification.source_id}`;
         },
       },
     });
