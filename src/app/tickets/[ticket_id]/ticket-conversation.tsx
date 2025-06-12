@@ -34,6 +34,20 @@ import { getCannedReplies, type CannedReply } from '@/services/canned-replies';
 import { formatRelativeTime } from '@/lib/utils';
 import BoringAvatar from 'boring-avatars';
 
+const editorStyles = `
+  .auto-expand-editor .ProseMirror {
+    min-height: 120px;
+    max-height: 1200px;
+    overflow-y: auto;
+    resize: none;
+  }
+  
+  .auto-expand-editor .tiptap {
+    min-height: 120px;
+    overflow-y: visible;
+  }
+`;
+
 interface Props {
   ticket: ITicket;
   onTicketUpdate?: (updatedTicket: ITicket) => void;
@@ -701,6 +715,16 @@ export function TicketConversation({
 
   const [showAllMessages, setShowAllMessages] = useState(false);
 
+  useEffect(() => {
+    const styleElement = document.createElement('style');
+    styleElement.textContent = editorStyles;
+    document.head.appendChild(styleElement);
+
+    return () => {
+      document.head.removeChild(styleElement);
+    };
+  }, []);
+
   return (
     <div className="space-y-6">
       {!replyOnly && !latestOnly && (
@@ -718,14 +742,16 @@ export function TicketConversation({
       {replyOnly ? (
         <Card>
           <CardContent className="p-4 space-y-3">
-            <RichTextEditor
-              key={editorKey}
-              content={replyContent}
-              onChange={setReplyContent}
-              placeholder={isPrivateNote ? 'Write a private note...' : 'Type your reply here...'}
-              disabled={createCommentMutation.isPending}
-              onAttachmentsChange={handleAttachmentsChange}
-            />
+            <div className="auto-expand-editor">
+              <RichTextEditor
+                key={editorKey}
+                content={replyContent}
+                onChange={setReplyContent}
+                placeholder={isPrivateNote ? 'Write a private note...' : 'Type your reply here...'}
+                disabled={createCommentMutation.isPending}
+                onAttachmentsChange={handleAttachmentsChange}
+              />
+            </div>
 
             {createCommentMutation.isError && (
               <p className="text-xs text-red-500 pt-1">
