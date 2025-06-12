@@ -322,7 +322,7 @@ export function Topbar({
                           // Wrap with Link for both tickets and comments
                           return (isTicketCreation || isComment) && notification.source_id ? (
                             <Link
-                              href={`/tickets?openTicket=${notification.source_id}`}
+                              href={`/tickets/${notification.source_id}`}
                               key={notification.id}
                               className="block hover:bg-muted/50 rounded-md -m-1 p-1"
                               onClick={() => setIsNotificationsOpen(false)} // Close popover on click
