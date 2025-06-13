@@ -775,6 +775,21 @@ function TicketsClientContent() {
     }
   };
 
+  const getUserName = (user_id: number) => {
+    const users = usersData.filter(user => user.id === user_id)
+
+    const user = users[0]
+    if (!user) return "-"
+
+    const companies = companiesData.filter(company => company.id === user.company_id)
+
+    const company = companies[0]
+    if (!company) return user.name
+
+    return `${user.name} (${company.name})`
+    
+  }
+
   return (
     <div className="flex h-full gap-6">
       <div className="flex-1 flex flex-col h-full">
@@ -1048,7 +1063,7 @@ function TicketsClientContent() {
                             </Badge>
                           </TableCell>
                           <TableCell className="p-2 py-4">
-                            {ticket.user?.name || ticket.email_info?.email_sender || '-'}
+                            {getUserName(ticket.user_id as number)}
                           </TableCell>
                           <TableCell className="p-2 py-4">
                             {agentIdToNameMap[ticket.assignee_id as number] || '-'}
