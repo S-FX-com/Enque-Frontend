@@ -1,7 +1,7 @@
-// frontend/src/components/forms/agent-profile-form.tsx
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import type React from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -16,17 +16,16 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import BoringAvatar from 'boring-avatars';
-import { useAuth } from '@/hooks/use-auth'; // To check current user's role
+import { useAuth } from '@/hooks/use-auth';
 import { toast } from 'sonner';
-import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query'; // Added useQueryClient and useQuery
-import { updateAgentProfile } from '@/services/agent'; // Use the correct service
-import { AgentUpdate, Agent } from '@/typescript/agent';
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
+import { updateAgentProfile } from '@/services/agent';
+import type { AgentUpdate, Agent } from '@/typescript/agent';
 import { RichTextEditor } from '@/components/tiptap/RichTextEditor';
 import { getEnabledGlobalSignature } from '@/services/global-signature';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Info } from 'lucide-react';
 
-// Helper component for Detail rows (copied from profile page)
 const DetailRow: React.FC<{ label: string; value: React.ReactNode }> = ({ label, value }) => (
   <div className="grid grid-cols-3 gap-4 py-1">
     <dt className="text-sm font-medium text-muted-foreground">{label}</dt>
@@ -34,7 +33,6 @@ const DetailRow: React.FC<{ label: string; value: React.ReactNode }> = ({ label,
   </div>
 );
 
-// Helper component for Edit rows (copied from profile page)
 const EditRow: React.FC<{
   label: string;
   id: string;
@@ -57,15 +55,14 @@ const EditRow: React.FC<{
 );
 
 interface AgentProfileFormProps {
-  agent: Agent; // Receive the agent data as a prop
+  agent: Agent;
 }
 
 export function AgentProfileForm({ agent }: AgentProfileFormProps) {
   const queryClient = useQueryClient();
-  const { user: currentUser } = useAuth(); // Get the currently logged-in user
+  const { user: currentUser } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
 
-  // State for editable fields, initialized with the passed agent data
   const [editedName, setEditedName] = useState(agent.name || '');
   const [editedEmail, setEditedEmail] = useState(agent.email || '');
   const [editedJobTitle, setEditedJobTitle] = useState(agent.job_title || '');
@@ -73,7 +70,6 @@ export function AgentProfileForm({ agent }: AgentProfileFormProps) {
   const [editedRole, setEditedRole] = useState(agent.role || 'agent');
   const [editedSignature, setEditedSignature] = useState(agent.email_signature || '');
 
-  // Fetch global signature (only if enabled)
   const workspaceId = agent.workspace_id;
   const { data: globalSignatureData } = useQuery({
     queryKey: ['globalSignature', workspaceId, 'enabled'],
@@ -82,7 +78,6 @@ export function AgentProfileForm({ agent }: AgentProfileFormProps) {
     staleTime: 5 * 60 * 1000,
   });
 
-  // Update local state if the agent prop changes (e.g., after successful fetch)
   useEffect(() => {
     setEditedName(agent.name || '');
     setEditedEmail(agent.email || '');
@@ -92,26 +87,53 @@ export function AgentProfileForm({ agent }: AgentProfileFormProps) {
     setEditedSignature(agent.email_signature || '');
   }, [agent]);
 
-  // Determine if the current user is an admin
   const isAdmin = currentUser?.role === 'admin';
 
-  // --- Update Mutation ---
   const updateProfileMutation = useMutation({
     mutationFn: (payload: AgentUpdate) => {
-      // Use the agent ID from the prop
       if (!agent?.id) throw new Error('Agent ID is missing');
       return updateAgentProfile(agent.id, payload);
+    },
+    onMutate: async payload => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['agents'] });
+      await queryClient.cancelQueries({ queryKey: ['agent', agent.id] });
+
+      // Snapshot the previous values
+      const previousAgents = queryClient.getQueryData<Agent[]>(['agents']);
+      const previousAgent = queryClient.getQueryData<Agent>(['agent', agent.id]);
+
+      // Optimistically update the agents list
+      if (previousAgents) {
+        const updatedAgents = previousAgents.map(a =>
+          a.id === agent.id ? { ...a, ...payload } : a
+        );
+        queryClient.setQueryData(['agents'], updatedAgents);
+      }
+
+      // Optimistically update the individual agent
+      if (previousAgent) {
+        queryClient.setQueryData(['agent', agent.id], { ...previousAgent, ...payload });
+      }
+
+      return { previousAgents, previousAgent };
     },
     onSuccess: updatedAgentData => {
       toast.success('Agent profile updated successfully!');
       setIsEditing(false);
-      // Invalidate the specific agent query to refetch fresh data
-      queryClient.invalidateQueries({ queryKey: ['agent', agent.id] });
-      // Also invalidate the list of agents query
-      queryClient.invalidateQueries({ queryKey: ['agents'] });
 
-      // Update the local state with the new data from the API response
+      // Update both caches with the actual server response
       if (updatedAgentData) {
+        // Update the agents list cache
+        queryClient.setQueryData<Agent[]>(['agents'], oldAgents => {
+          if (!oldAgents) return oldAgents;
+          return oldAgents.map(a => (a.id === updatedAgentData.id ? updatedAgentData : a));
+        });
+
+        // Update the individual agent cache
+        queryClient.setQueryData(['agent', agent.id], updatedAgentData);
+
+        // Update local state with the new data
         setEditedName(updatedAgentData.name || '');
         setEditedEmail(updatedAgentData.email || '');
         setEditedJobTitle(updatedAgentData.job_title || '');
@@ -120,9 +142,22 @@ export function AgentProfileForm({ agent }: AgentProfileFormProps) {
         setEditedSignature(updatedAgentData.email_signature || '');
       }
     },
-    onError: error => {
+    onError: (error, payload, context) => {
       console.error('Failed to save agent profile:', error);
       toast.error(`Failed to update agent profile: ${error.message}`);
+
+      // Rollback optimistic updates
+      if (context?.previousAgents) {
+        queryClient.setQueryData(['agents'], context.previousAgents);
+      }
+      if (context?.previousAgent) {
+        queryClient.setQueryData(['agent', agent.id], context.previousAgent);
+      }
+    },
+    onSettled: () => {
+      // Always refetch to ensure we have the latest data
+      queryClient.invalidateQueries({ queryKey: ['agents'] });
+      queryClient.invalidateQueries({ queryKey: ['agent', agent.id] });
     },
   });
 
@@ -130,7 +165,6 @@ export function AgentProfileForm({ agent }: AgentProfileFormProps) {
 
   const handleEditToggle = () => {
     if (isEditing) {
-      // Revert changes on cancel
       setEditedName(agent.name || '');
       setEditedEmail(agent.email || '');
       setEditedJobTitle(agent.job_title || '');
@@ -161,7 +195,6 @@ export function AgentProfileForm({ agent }: AgentProfileFormProps) {
     }
   };
 
-  // Display data based on current state (edited or original)
   const displayData = isEditing
     ? {
         name: editedName,
@@ -182,14 +215,10 @@ export function AgentProfileForm({ agent }: AgentProfileFormProps) {
 
   return (
     <Card className="bg-white dark:bg-black">
-      {' '}
-      {/* Added background class */}
       <CardContent className="pt-4">
-        {/* Details Section */}
         <section className="mb-6">
           <div className="flex justify-between items-center mb-3">
             <h2 className="text-lg font-semibold">Details</h2>
-            {/* Only Admins can edit agent profiles */}
             {isAdmin &&
               (!isEditing ? (
                 <Button
@@ -262,13 +291,10 @@ export function AgentProfileForm({ agent }: AgentProfileFormProps) {
 
         <Separator className="my-4 bg-slate-200 dark:bg-slate-700" />
 
-        {/* Avatar Section */}
         <section className="mb-6">
           <h2 className="text-lg font-semibold mb-3">Avatar</h2>
           <div className="flex items-center gap-4">
             <Avatar className="h-12 w-12 overflow-hidden border">
-              {' '}
-              {/* Added border */}
               <BoringAvatar
                 size={48}
                 name={agent.email || agent.name || 'default-avatar'}
@@ -281,7 +307,6 @@ export function AgentProfileForm({ agent }: AgentProfileFormProps) {
 
         <Separator className="my-4 bg-slate-200 dark:bg-slate-700" />
 
-        {/* Permissions Section */}
         <section className="mb-6">
           <h2 className="text-lg font-semibold mb-3">Permissions</h2>
           {!isEditing ? (
@@ -291,10 +316,8 @@ export function AgentProfileForm({ agent }: AgentProfileFormProps) {
               <Label htmlFor="role" className="text-sm font-medium text-muted-foreground">
                 Role
               </Label>
-              {/* Role editing is allowed only by admins */}
               <Select
                 value={editedRole}
-                // Ensure the value passed to setEditedRole is of the correct type
                 onValueChange={(value: string) =>
                   setEditedRole(value as 'admin' | 'agent' | 'manager')
                 }
@@ -315,7 +338,6 @@ export function AgentProfileForm({ agent }: AgentProfileFormProps) {
 
         <Separator className="my-4 bg-slate-200 dark:bg-slate-700" />
 
-        {/* Email Signature Section */}
         <section className="mb-6">
           <h2 className="text-lg font-semibold mb-3">Email Signature</h2>
           {!isEditing ? (
@@ -356,7 +378,6 @@ export function AgentProfileForm({ agent }: AgentProfileFormProps) {
               )}
             </>
           ) : (
-            // Signature editing allowed only by admins
             <RichTextEditor
               content={editedSignature}
               onChange={setEditedSignature}
@@ -365,9 +386,6 @@ export function AgentProfileForm({ agent }: AgentProfileFormProps) {
             />
           )}
         </section>
-
-        {/* Footer Info - Removed as it's less relevant for admin view */}
-        {/* ... */}
       </CardContent>
     </Card>
   );
