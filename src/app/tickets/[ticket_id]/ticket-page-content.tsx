@@ -35,6 +35,7 @@ import { TicketConversation } from './ticket-conversation';
 import BoringAvatar from 'boring-avatars';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { useAuth } from '@/hooks/use-auth';
 
 interface Props {
   ticketId: number;
@@ -44,6 +45,7 @@ export function TicketPageContent({ ticketId }: Props) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { socket } = useSocketContext();
+  const { user } = useAuth();
   const [ticket, setTicket] = useState<ITicket | null>(null);
   const [isClosingTicket, setIsClosingTicket] = useState(false);
   const [isResolvingTicket, setIsResolvingTicket] = useState(false);
@@ -75,7 +77,6 @@ export function TicketPageContent({ ticketId }: Props) {
       console.log(currentTicket);
       setTicket(currentTicket as unknown as ITicket);
 
-      // Update existing CC recipients when ticket changes
       if (currentTicket?.cc_recipients) {
         setExistingCcRecipients(currentTicket.cc_recipients);
       } else {
@@ -120,6 +121,20 @@ export function TicketPageContent({ ticketId }: Props) {
     queryFn: () => getCategories(),
     staleTime: 1000 * 60 * 5,
   });
+
+  // Helper function to invalidate all counter queries
+  const invalidateCounterQueries = () => {
+    // Invalidate all tickets queries
+    queryClient.invalidateQueries({ queryKey: ['tickets'] });
+
+    // Invalidate counter queries
+    queryClient.invalidateQueries({ queryKey: ['ticketsCount', 'all'] });
+    queryClient.invalidateQueries({ queryKey: ['ticketsCount', 'my', user?.id] });
+
+    // Invalidate team queries (they contain ticket counts)
+    queryClient.invalidateQueries({ queryKey: ['agentTeams', user?.id, user?.role] });
+    queryClient.invalidateQueries({ queryKey: ['teams'] });
+  };
 
   // Update field mutation
   const updateFieldMutation = useMutation<
@@ -183,7 +198,7 @@ export function TicketPageContent({ ticketId }: Props) {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tickets'] });
+      invalidateCounterQueries();
     },
   });
 
@@ -226,6 +241,10 @@ export function TicketPageContent({ ticketId }: Props) {
         setIsClosingTicket(true);
         const previousTicket = ticket;
 
+        // Cancel any outgoing refetches for counter queries
+        await queryClient.cancelQueries({ queryKey: ['ticketsCount'] });
+        await queryClient.cancelQueries({ queryKey: ['agentTeams'] });
+
         const optimisticTicket: ITicket = {
           ...previousTicket,
           status: 'Closed' as TicketStatus,
@@ -234,11 +253,22 @@ export function TicketPageContent({ ticketId }: Props) {
         setTicket(optimisticTicket);
         queryClient.setQueryData(['ticket', ticket.id], [optimisticTicket]);
 
+        // Optimistically update counter queries
+        queryClient.setQueryData<number>(['ticketsCount', 'all'], old =>
+          Math.max(0, (old || 1) - 1)
+        );
+
+        if (ticket.assignee_id === user?.id) {
+          queryClient.setQueryData<number>(['ticketsCount', 'my', user?.id], old =>
+            Math.max(0, (old || 1) - 1)
+          );
+        }
+
         return { previousTicket };
       },
       onSuccess: updatedTicketData => {
         toast.success(`Ticket #${updatedTicketData.id} closed successfully.`);
-        queryClient.invalidateQueries({ queryKey: ['tickets'] });
+        invalidateCounterQueries();
       },
       onError: (error, _variables, context) => {
         toast.error(
@@ -248,6 +278,8 @@ export function TicketPageContent({ ticketId }: Props) {
           setTicket(context.previousTicket);
           queryClient.setQueryData(['ticket', ticketId], [context.previousTicket]);
         }
+        // Revert optimistic updates on error
+        invalidateCounterQueries();
       },
       onSettled: () => {
         setIsClosingTicket(false);
@@ -272,6 +304,10 @@ export function TicketPageContent({ ticketId }: Props) {
       setIsResolvingTicket(true);
       const previousTicket = ticket;
 
+      // Cancel any outgoing refetches for counter queries
+      await queryClient.cancelQueries({ queryKey: ['ticketsCount'] });
+      await queryClient.cancelQueries({ queryKey: ['agentTeams'] });
+
       const optimisticTicket: ITicket = {
         ...previousTicket,
         status: 'Closed' as TicketStatus,
@@ -280,11 +316,20 @@ export function TicketPageContent({ ticketId }: Props) {
       setTicket(optimisticTicket);
       queryClient.setQueryData(['ticket', ticket.id], [optimisticTicket]);
 
+      // Optimistically update counter queries
+      queryClient.setQueryData<number>(['ticketsCount', 'all'], old => Math.max(0, (old || 1) - 1));
+
+      if (ticket.assignee_id === user?.id) {
+        queryClient.setQueryData<number>(['ticketsCount', 'my', user?.id], old =>
+          Math.max(0, (old || 1) - 1)
+        );
+      }
+
       return { previousTicket };
     },
     onSuccess: updatedTicketData => {
       toast.success(`Ticket #${updatedTicketData.id} resolved successfully.`);
-      queryClient.invalidateQueries({ queryKey: ['tickets'] });
+      invalidateCounterQueries();
     },
     onError: (error, _variables, context) => {
       toast.error(
@@ -294,6 +339,8 @@ export function TicketPageContent({ ticketId }: Props) {
         setTicket(context.previousTicket);
         queryClient.setQueryData(['ticket', ticketId], [context.previousTicket]);
       }
+      // Revert optimistic updates on error
+      invalidateCounterQueries();
     },
     onSettled: () => {
       setIsResolvingTicket(false);
@@ -468,7 +515,7 @@ export function TicketPageContent({ ticketId }: Props) {
               {/* Existing CC Recipients */}
               {existingCcRecipients && (
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium">Current CC Recipients</Label>
+                  <Label className="text-sm font-medium">CC</Label>
                   <div className="p-3 bg-gray-50 rounded-md border">
                     <p className="text-sm text-gray-700">{existingCcRecipients}</p>
                   </div>
@@ -478,7 +525,7 @@ export function TicketPageContent({ ticketId }: Props) {
               {/* Add Extra Recipients */}
               <div className="space-y-2">
                 <Label htmlFor="header-extra-recipients" className="text-sm font-medium">
-                  {existingCcRecipients ? 'Additional Recipients' : 'CC Recipients'}
+                  {existingCcRecipients ? 'Additional Recipients' : 'CC'}
                 </Label>
                 <Input
                   id="header-extra-recipients"
