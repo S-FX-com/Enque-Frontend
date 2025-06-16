@@ -20,6 +20,7 @@ export interface ITicket {
   status: TicketStatus;
   priority: TicketPriority;
   type: TicketType;
+  cc_recipients: string;
   user_id: number | null;
   user?: IUser | null;
   assignee_id?: number;

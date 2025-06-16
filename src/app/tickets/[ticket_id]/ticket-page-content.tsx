@@ -49,6 +49,7 @@ export function TicketPageContent({ ticketId }: Props) {
   const [isResolvingTicket, setIsResolvingTicket] = useState(false);
   const [extraRecipients, setExtraRecipients] = useState('');
   const [showExtraRecipients, setShowExtraRecipients] = useState(false);
+  const [existingCcRecipients, setExistingCcRecipients] = useState('');
 
   // Fetch ticket data
   const {
@@ -71,7 +72,15 @@ export function TicketPageContent({ ticketId }: Props) {
 
   useEffect(() => {
     if (currentTicket) {
+      console.log(currentTicket);
       setTicket(currentTicket as unknown as ITicket);
+
+      // Update existing CC recipients when ticket changes
+      if (currentTicket?.cc_recipients) {
+        setExistingCcRecipients(currentTicket.cc_recipients);
+      } else {
+        setExistingCcRecipients('');
+      }
     }
   }, [currentTicket]);
 
@@ -300,10 +309,39 @@ export function TicketPageContent({ ticketId }: Props) {
   const validateEmails = (emailString: string): boolean => {
     if (!emailString.trim()) return true; // Empty is valid
 
-    const emails = emailString.split(',').map(email => email.trim());
+    const emails = emailString
+      .split(',')
+      .map(email => email.trim())
+      .filter(email => email.length > 0);
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
     return emails.every(email => emailRegex.test(email));
+  };
+
+  // Function to combine existing and extra CC recipients
+  const getCombinedCcRecipients = (): string => {
+    const existing = existingCcRecipients.trim();
+    const extra = extraRecipients.trim();
+
+    if (!existing && !extra) return '';
+    if (!existing) return extra;
+    if (!extra) return existing;
+
+    return `${existing}, ${extra}`;
+  };
+
+  // Function to get unique CC recipients
+  const getUniqueCcRecipients = (): string => {
+    const combined = getCombinedCcRecipients();
+    if (!combined) return '';
+
+    const emails = combined
+      .split(',')
+      .map(email => email.trim())
+      .filter(email => email.length > 0);
+    const uniqueEmails = [...new Set(emails)];
+
+    return uniqueEmails.join(', ');
   };
 
   if (isLoadingTicket) {
@@ -370,6 +408,13 @@ export function TicketPageContent({ ticketId }: Props) {
             </div>
             <div className="flex items-center gap-2">
               <span className="text-sm text-muted-foreground">CC:</span>
+              {existingCcRecipients && (
+                <div className="flex items-center gap-1">
+                  <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                    {existingCcRecipients.split(',').length} existing
+                  </span>
+                </div>
+              )}
               <Button
                 variant="ghost"
                 size="sm"
@@ -419,26 +464,39 @@ export function TicketPageContent({ ticketId }: Props) {
       {showExtraRecipients && (
         <Card className="mb-4">
           <CardContent className="pt-4">
-            <div className="space-y-2">
-              <Label htmlFor="header-extra-recipients" className="text-sm font-medium">
-                Extra Recipients (CC)
-              </Label>
-              <Input
-                id="header-extra-recipients"
-                type="email"
-                placeholder="email1@example.com, email2@example.com"
-                value={extraRecipients}
-                onChange={e => setExtraRecipients(e.target.value)}
-                className="text-sm"
-              />
-              <p className="text-xs text-muted-foreground">
-                Separate multiple email addresses with commas
-              </p>
-              {extraRecipients.trim() && !validateEmails(extraRecipients) && (
-                <p className="text-xs text-red-500">
-                  Please enter valid email addresses separated by commas
-                </p>
+            <div className="space-y-4">
+              {/* Existing CC Recipients */}
+              {existingCcRecipients && (
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Current CC Recipients</Label>
+                  <div className="p-3 bg-gray-50 rounded-md border">
+                    <p className="text-sm text-gray-700">{existingCcRecipients}</p>
+                  </div>
+                </div>
               )}
+
+              {/* Add Extra Recipients */}
+              <div className="space-y-2">
+                <Label htmlFor="header-extra-recipients" className="text-sm font-medium">
+                  {existingCcRecipients ? 'Additional Recipients' : 'CC Recipients'}
+                </Label>
+                <Input
+                  id="header-extra-recipients"
+                  type="email"
+                  placeholder="email1@example.com, email2@example.com"
+                  value={extraRecipients}
+                  onChange={e => setExtraRecipients(e.target.value)}
+                  className="text-sm"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Separate multiple email addresses with commas
+                </p>
+                {extraRecipients.trim() && !validateEmails(extraRecipients) && (
+                  <p className="text-xs text-red-500">
+                    Please enter valid email addresses separated by commas
+                  </p>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -478,7 +536,7 @@ export function TicketPageContent({ ticketId }: Props) {
                 ticket={ticket as ITicket}
                 onTicketUpdate={handleTicketUpdate}
                 latestOnly={true}
-                extraRecipients={extraRecipients}
+                extraRecipients={getUniqueCcRecipients()}
                 onExtraRecipientsChange={setExtraRecipients}
               />
             </CardContent>
@@ -492,7 +550,7 @@ export function TicketPageContent({ ticketId }: Props) {
                 ticket={ticket as ITicket}
                 onTicketUpdate={handleTicketUpdate}
                 replyOnly={true}
-                extraRecipients={extraRecipients}
+                extraRecipients={getUniqueCcRecipients()}
                 onExtraRecipientsChange={setExtraRecipients}
               />
             </CardContent>
