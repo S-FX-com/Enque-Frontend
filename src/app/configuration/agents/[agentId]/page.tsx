@@ -28,53 +28,39 @@ export default function AgentProfilePage() {
 
   if (!agentId || isNaN(agentId)) {
     return (
-      <div className="container mx-auto py-8 px-4 md:px-6">
-        <Alert variant="destructive">
-          <Terminal className="h-4 w-4" />
-          <AlertTitle>Error</AlertTitle>
-          <AlertDescription>Invalid Agent ID provided.</AlertDescription>
-        </Alert>
-      </div>
+      <Alert variant="destructive">
+        <Terminal className="h-4 w-4" />
+        <AlertTitle>Error</AlertTitle>
+        <AlertDescription>Invalid Agent ID provided.</AlertDescription>
+      </Alert>
     );
   }
 
   if (isLoading) {
-    return (
-      <div className="container mx-auto py-8 px-4 md:px-6">
-        <Skeleton className="h-[600px] w-full" />
-      </div>
-    );
+    return <Skeleton className="h-[600px] w-full" />;
   }
 
   if (isError) {
     return (
-      <div className="container mx-auto py-8 px-4 md:px-6">
-        <Alert variant="destructive">
-          <Terminal className="h-4 w-4" />
-          <AlertTitle>Error Loading Agent</AlertTitle>
-          <AlertDescription>
-            {error instanceof Error ? error.message : 'An unknown error occurred.'}
-          </AlertDescription>
-        </Alert>
-      </div>
+      <Alert variant="destructive">
+        <Terminal className="h-4 w-4" />
+        <AlertTitle>Error Loading Agent</AlertTitle>
+        <AlertDescription>
+          {error instanceof Error ? error.message : 'An unknown error occurred.'}
+        </AlertDescription>
+      </Alert>
     );
   }
 
   if (!agent) {
     return (
-      <div className="container mx-auto py-8 px-4 md:px-6">
-        <Alert>
-          <Terminal className="h-4 w-4" />
-          <AlertTitle>Not Found</AlertTitle>
-          <AlertDescription>Agent not found.</AlertDescription>
-        </Alert>
-      </div>
+      <Alert>
+        <Terminal className="h-4 w-4" />
+        <AlertTitle>Not Found</AlertTitle>
+        <AlertDescription>Agent not found.</AlertDescription>
+      </Alert>
     );
   }
 
-  return (
-    <div className="container mx-auto py-8 px-4 md:px-6">
-      <AgentProfileForm agent={agent} />
-    </div>
-  );
+  return <AgentProfileForm agent={agent} />;
 }
