@@ -240,6 +240,7 @@ function TicketsClientContent() {
 
   useEffect(() => {
     const container = scrollContainerRef.current;
+
     const handleScroll = () => {
       if (container) {
         const { scrollTop, scrollHeight, clientHeight } = container;
@@ -248,11 +249,36 @@ function TicketsClientContent() {
         }
       }
     };
-    if (container) container.addEventListener('scroll', handleScroll);
-    return () => {
-      if (container) container.removeEventListener('scroll', handleScroll);
+
+    const checkIfNeedsMoreContent = () => {
+      if (container && hasNextPage && !isFetchingNextPage && !isLoadingTickets) {
+        const { scrollHeight, clientHeight } = container;
+        // If content doesn't fill the container, load more
+        if (scrollHeight <= clientHeight) {
+          fetchNextPage();
+        }
+      }
     };
-  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+    // Check immediately when data changes
+    checkIfNeedsMoreContent();
+
+    if (container) {
+      container.addEventListener('scroll', handleScroll);
+    }
+
+    return () => {
+      if (container) {
+        container.removeEventListener('scroll', handleScroll);
+      }
+    };
+  }, [
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
+    isLoadingTickets,
+    filteredTicketsData.length,
+  ]);
 
   useEffect(() => {
     const teamIdFromQuery = searchParams.get('teamId');
@@ -751,7 +777,7 @@ function TicketsClientContent() {
         selectedAgentId === 'null'
           ? undefined
           : selectedAgentId
-            ? parseInt(selectedAgentId, 10)
+            ? Number.parseInt(selectedAgentId, 10)
             : undefined;
       bulkAssignToAgentMutation.mutate({
         ticketIds: Array.from(selectedTicketIds),
@@ -766,7 +792,7 @@ function TicketsClientContent() {
         selectedTeamId === 'null'
           ? undefined
           : selectedTeamId
-            ? parseInt(selectedTeamId, 10)
+            ? Number.parseInt(selectedTeamId, 10)
             : undefined;
       bulkAssignToTeamMutation.mutate({
         ticketIds: Array.from(selectedTicketIds),
@@ -776,19 +802,18 @@ function TicketsClientContent() {
   };
 
   const getUserName = (user_id: number) => {
-    const users = usersData.filter(user => user.id === user_id)
+    const users = usersData.filter(user => user.id === user_id);
 
-    const user = users[0]
-    if (!user) return "-"
+    const user = users[0];
+    if (!user) return '-';
 
-    const companies = companiesData.filter(company => company.id === user.company_id)
+    const companies = companiesData.filter(company => company.id === user.company_id);
 
-    const company = companies[0]
-    if (!company) return user.name
+    const company = companies[0];
+    if (!company) return user.name;
 
-    return `${user.name} (${company.name})`
-    
-  }
+    return `${user.name} (${company.name})`;
+  };
 
   return (
     <div className="flex h-full gap-6">
