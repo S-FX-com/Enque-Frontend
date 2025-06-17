@@ -386,7 +386,7 @@ function MyTicketsClientContent() {
         `Tickets ${variables.ticketIdsToMerge.join(', ')} merged into ticket ${variables.targetTicketId}.`
       );
     },
-    onMutate: async ({ targetTicketId, ticketIdsToMerge }) => {
+    onMutate: async ({ ticketIdsToMerge }) => {
       await queryClient.cancelQueries({ queryKey: ['tickets', 'my', currentUser?.id] });
 
       const previousTicketsData = queryClient.getQueryData<InfiniteData<ITicket[], number>>([
