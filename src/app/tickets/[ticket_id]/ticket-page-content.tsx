@@ -269,6 +269,7 @@ export function TicketPageContent({ ticketId }: Props) {
       onSuccess: updatedTicketData => {
         toast.success(`Ticket #${updatedTicketData.id} closed successfully.`);
         invalidateCounterQueries();
+        router.push('/tickets');
       },
       onError: (error, _variables, context) => {
         toast.error(
@@ -330,6 +331,7 @@ export function TicketPageContent({ ticketId }: Props) {
     onSuccess: updatedTicketData => {
       toast.success(`Ticket #${updatedTicketData.id} resolved successfully.`);
       invalidateCounterQueries();
+      router.push('/tickets');
     },
     onError: (error, _variables, context) => {
       toast.error(
@@ -390,6 +392,34 @@ export function TicketPageContent({ ticketId }: Props) {
 
     return uniqueEmails.join(', ');
   };
+
+  // Mark ticket as read when viewed
+  useEffect(() => {
+    if (ticket && ticket.status === 'Unread') {
+      // Update ticket status to 'Open' when viewed
+      updateTicket(ticket.id, { status: 'Open' })
+        .then(updatedTicket => {
+          setTicket(updatedTicket);
+          queryClient.setQueryData(['ticket', ticketId], [updatedTicket]);
+          invalidateCounterQueries();
+        })
+        .catch(error => {
+          console.error('Error marking ticket as read:', error);
+        });
+    }
+  }, [ticket, ticketId, queryClient]);
+
+  // Update page title with ticket subject
+  useEffect(() => {
+    if (ticket?.title) {
+      document.title = `Ticket #${ticket.id}: ${ticket.title}`;
+
+      // Cleanup: restore original title when component unmounts
+      return () => {
+        document.title = 'Support Tickets';
+      };
+    }
+  }, [ticket?.id, ticket?.title]);
 
   if (isLoadingTicket) {
     return (
