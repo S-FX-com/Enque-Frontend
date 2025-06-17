@@ -18,7 +18,7 @@ import { Settings2, Trash2, ChevronLeft, ChevronRight, UserIcon, UsersIcon } fro
 import { MultiSelectFilter, type OptionType } from '@/components/filters/multi-select-filter';
 import { useQuery, useQueryClient, type InfiniteData, useMutation } from '@tanstack/react-query';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
-import { updateTicket, deleteTicket } from '@/services/ticket';
+import { updateTicket, deleteTicket, mergeTickets } from '@/services/ticket';
 import { toast } from 'sonner';
 import {
   AlertDialog,
@@ -90,6 +90,8 @@ function TicketsClientContent() {
   const [isAssignToTeamDialogOpen, setIsAssignToTeamDialogOpen] = useState(false);
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
+  const [isMergeDialogOpen, setIsMergeDialogOpen] = useState(false);
+  const [selectedTargetTicketId, setSelectedTargetTicketId] = useState<string | null>(null);
 
   const statusOptions: OptionType[] = [
     { value: 'Unread', label: 'Unread' },
@@ -815,6 +817,105 @@ function TicketsClientContent() {
     return `${user.name} (${company.name})`;
   };
 
+  const mergeTicketsMutation = useMutation({
+    mutationFn: async (payload: { targetTicketId: number; ticketIdsToMerge: number[] }) => {
+      const { targetTicketId, ticketIdsToMerge } = payload;
+      return mergeTickets(targetTicketId, ticketIdsToMerge);
+    },
+    onSuccess: (data, variables) => {
+      toast.success(`${variables.ticketIdsToMerge.length} ticket(s) merged successfully.`);
+      console.log(
+        `Tickets ${variables.ticketIdsToMerge.join(', ')} merged into ticket ${variables.targetTicketId}.`
+      );
+    },
+    onMutate: async ({ targetTicketId, ticketIdsToMerge }) => {
+      await queryClient.cancelQueries({ queryKey: ['tickets'] });
+
+      const previousTicketsData = queryClient.getQueryData<InfiniteData<ITicket[], number>>([
+        'tickets',
+      ]);
+
+      // Remove merged tickets from the list (they get deleted after merge)
+      queryClient.setQueryData<InfiniteData<ITicket[], number>>(['tickets'], oldData => {
+        if (!oldData) return oldData;
+        const newPages = oldData.pages.map(page =>
+          page.filter(ticket => !ticketIdsToMerge.includes(ticket.id))
+        );
+        return { ...oldData, pages: newPages };
+      });
+
+      // Update counters
+      const allTickets = previousTicketsData?.pages.flat() || [];
+      const mergedTickets = allTickets.filter(ticket => ticketIdsToMerge.includes(ticket.id));
+      const activeMergedCount = mergedTickets.filter(
+        ticket => ticket.status !== 'Closed' && ticket.status !== 'Resolved'
+      ).length;
+      const myActiveMergedCount = mergedTickets.filter(
+        ticket =>
+          ticket.assignee_id === user?.id &&
+          ticket.status !== 'Closed' &&
+          ticket.status !== 'Resolved'
+      ).length;
+
+      const currentAllCount = queryClient.getQueryData<number>(['ticketsCount', 'all']) || 0;
+      const currentMyCount =
+        queryClient.getQueryData<number>(['ticketsCount', 'my', user?.id]) || 0;
+
+      queryClient.setQueryData(
+        ['ticketsCount', 'all'],
+        Math.max(0, currentAllCount - activeMergedCount)
+      );
+      if (user?.id) {
+        queryClient.setQueryData(
+          ['ticketsCount', 'my', user.id],
+          Math.max(0, currentMyCount - myActiveMergedCount)
+        );
+      }
+
+      setSelectedTicketIds(new Set());
+      setIsMergeDialogOpen(false);
+
+      return { previousTicketsData };
+    },
+    onError: (
+      err: Error,
+      variables,
+      context: { previousTicketsData?: InfiniteData<ITicket[], number> } | undefined
+    ) => {
+      toast.error(`Error merging tickets: ${err.message}`);
+      console.error(`Error merging tickets: ${err.message}`);
+      if (context?.previousTicketsData) {
+        queryClient.setQueryData(['tickets'], context.previousTicketsData);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['tickets'] });
+      queryClient.invalidateQueries({ queryKey: ['agentTeams'] });
+    },
+  });
+
+  const handleMergeConfirm = () => {
+    if (selectedTicketIds.size > 1 && selectedTargetTicketId) {
+      const targetId = Number.parseInt(selectedTargetTicketId, 10);
+      const ticketIdsArray = Array.from(selectedTicketIds);
+      const ticketIdsToMerge = ticketIdsArray.filter(id => id !== targetId);
+
+      mergeTicketsMutation.mutate({
+        targetTicketId: targetId,
+        ticketIdsToMerge: ticketIdsToMerge,
+      });
+    }
+  };
+
+  const handleOpenMergeDialog = () => {
+    if (selectedTicketIds.size > 1) {
+      // Set the first selected ticket as default target
+      const firstTicketId = Array.from(selectedTicketIds)[0];
+      setSelectedTargetTicketId(firstTicketId.toString());
+    }
+    setIsMergeDialogOpen(true);
+  };
+
   return (
     <div className="flex h-full gap-6">
       <div className="flex-1 flex flex-col h-full">
@@ -924,6 +1025,62 @@ function TicketsClientContent() {
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
+              {selectedTicketIds.size > 1 && (
+                <AlertDialog open={isMergeDialogOpen} onOpenChange={setIsMergeDialogOpen}>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={mergeTicketsMutation.isPending}
+                      className="bg-white hover:bg-white"
+                      onClick={handleOpenMergeDialog}
+                    >
+                      <Settings2 className="mr-2 h-4 w-4" />
+                      Merge ({selectedTicketIds.size})
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent className="bg-white">
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Merge Tickets</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Select the main ticket to merge the other {selectedTicketIds.size - 1}{' '}
+                        selected ticket(s) into. The other tickets will be deleted after merging.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <div className="py-4">
+                      <Select
+                        value={selectedTargetTicketId || ''}
+                        onValueChange={setSelectedTargetTicketId}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select main ticket" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Array.from(selectedTicketIds).map(ticketId => {
+                            const ticket = allTicketsData.find(t => t.id === ticketId);
+                            return (
+                              <SelectItem key={ticketId} value={ticketId.toString()}>
+                                #{ticketId} - {ticket?.title || 'Unknown'}
+                              </SelectItem>
+                            );
+                          })}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel disabled={mergeTicketsMutation.isPending}>
+                        Cancel
+                      </AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleMergeConfirm}
+                        disabled={mergeTicketsMutation.isPending || !selectedTargetTicketId}
+                      >
+                        {mergeTicketsMutation.isPending ? 'Merging...' : 'Merge Tickets'}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
 
               <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
                 <AlertDialogTrigger asChild>
@@ -1022,7 +1179,7 @@ function TicketsClientContent() {
                               'font-semibold bg-slate-50 dark:bg-slate-800/50'
                           )}
                           data-state={selectedTicketIds.has(ticket.id) ? 'selected' : ''}
-                          onClick={e => window.open(`/tickets/${ticket.id}`, '_blank')}
+                          onClick={() => window.open(`/tickets/${ticket.id}`, '_blank')}
                         >
                           <TableCell className="px-4">
                             <Checkbox

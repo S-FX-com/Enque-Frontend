@@ -1,6 +1,6 @@
-import { fetchAPI, BaseResponse } from '@/lib/fetch-api';
-import { ITicket, IGetTicket } from '@/typescript/ticket';
-import { IComment } from '@/typescript/comment';
+import { fetchAPI, type BaseResponse } from '@/lib/fetch-api';
+import type { ITicket, IGetTicket } from '@/typescript/ticket';
+import type { IComment } from '@/typescript/comment';
 
 /**
  * Fetches a list of tickets (tasks) from the backend.
@@ -13,7 +13,7 @@ const API_BASE_URL =
 
 export async function getTickets(
   filters: IGetTicket = {},
-  endpointPath: string = '/v1/tasks/'
+  endpointPath = '/v1/tasks/'
 ): Promise<ITicket[]> {
   const { skip = 0, limit = 100, status, priority, type, user_id, team_id } = filters;
 
@@ -99,7 +99,7 @@ export async function updateTicket(
       payload.assignee_id =
         assigneeValue === null || assigneeValue === undefined ? null : Number(assigneeValue);
       if (typeof payload.assignee_id === 'string') {
-        const parsed = parseInt(payload.assignee_id, 10);
+        const parsed = Number.parseInt(payload.assignee_id, 10);
         payload.assignee_id = isNaN(parsed) ? null : parsed;
       }
     }
@@ -107,7 +107,7 @@ export async function updateTicket(
       const teamValue = updates.team_id;
       payload.team_id = teamValue === null || teamValue === undefined ? null : Number(teamValue);
       if (typeof payload.team_id === 'string') {
-        const parsed = parseInt(payload.team_id, 10);
+        const parsed = Number.parseInt(payload.team_id, 10);
         payload.team_id = isNaN(parsed) ? null : parsed;
       }
     }
@@ -116,7 +116,7 @@ export async function updateTicket(
       payload.category_id =
         categoryValue === null || categoryValue === undefined ? null : Number(categoryValue);
       if (typeof payload.category_id === 'string') {
-        const parsed = parseInt(payload.category_id, 10);
+        const parsed = Number.parseInt(payload.category_id, 10);
         payload.category_id = isNaN(parsed) ? null : parsed;
       }
     }
@@ -265,5 +265,40 @@ export async function getTicketHtmlContent(ticketId: number): Promise<TicketHtml
   } catch (error) {
     console.error(` Exception in getTicketHtmlContent for ticket ${ticketId}:`, error);
     throw error;
+  }
+}
+
+/**
+ * Merges multiple tickets into a target ticket.
+ * @param targetTicketId The ID of the ticket to merge others into.
+ * @param ticketIdsToMerge Array of ticket IDs to merge into the target.
+ * @returns A promise that resolves to the BaseResponse from the API.
+ */
+export async function mergeTickets(
+  targetTicketId: number,
+  ticketIdsToMerge: number[]
+): Promise<BaseResponse<unknown>> {
+  try {
+    const url = `${API_BASE_URL}/v1/tasks/merge`;
+    const payload = {
+      target_ticket_id: targetTicketId,
+      ticket_ids_to_merge: ticketIdsToMerge,
+    };
+
+    console.log('Sending merge payload:', payload);
+    const response = await fetchAPI.POST<unknown>(url, payload);
+
+    if (response && response.success) {
+      return response;
+    } else {
+      console.error('Error merging tickets:', response?.message || 'Unknown API error');
+      throw new Error(response?.message || 'Failed to merge tickets');
+    }
+  } catch (error) {
+    console.error('Error merging tickets (catch block):', error);
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error('An unexpected error occurred while merging tickets');
   }
 }
