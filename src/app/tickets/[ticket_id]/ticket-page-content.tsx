@@ -94,7 +94,7 @@ function DynamicCCInput({
     emails.forEach(email => {
       const trimmedEmail = email.trim();
       if (validateEmail(trimmedEmail) && !existingEmails.includes(trimmedEmail)) {
-        // @ts-expect-error
+        // @ts-expect-error none
         onEmailsChange(prev => [...prev, trimmedEmail]);
       }
     });
