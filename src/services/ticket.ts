@@ -85,7 +85,9 @@ type TicketUpdatePayload = {
 
 export async function updateTicket(
   ticketId: number,
-  updates: Partial<Pick<ITicket, 'status' | 'priority' | 'assignee_id' | 'team_id' | 'category_id'>>
+  updates: Partial<
+    Pick<ITicket, 'status' | 'priority' | 'user_id' | 'assignee_id' | 'team_id' | 'category_id'>
+  >
 ): Promise<ITicket> {
   try {
     const url = `${API_BASE_URL}/v1/tasks/${ticketId}`;

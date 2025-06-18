@@ -38,6 +38,8 @@ import { TicketConversation } from './ticket-conversation';
 import BoringAvatar from 'boring-avatars';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/use-auth';
+import { getUsers } from '@/services/user';
+import type { IUser } from '@/typescript/user';
 
 interface Props {
   ticketId: number;
@@ -235,6 +237,12 @@ export function TicketPageContent({ ticketId }: Props) {
     staleTime: 1000 * 60 * 5,
   });
 
+  const { data: users = [], isLoading: isLoadingUsers } = useQuery<IUser[]>({
+    queryKey: ['users'],
+    queryFn: getUsers,
+    staleTime: 1000 * 60 * 5,
+  });
+
   // Helper function to invalidate all counter queries
   const invalidateCounterQueries = () => {
     // Invalidate all tickets queries
@@ -254,7 +262,7 @@ export function TicketPageContent({ ticketId }: Props) {
     ITicket,
     Error,
     {
-      field: 'priority' | 'assignee_id' | 'team_id' | 'category_id';
+      field: 'priority' | 'assignee_id' | 'team_id' | 'category_id' | 'user_id';
       value: string | null;
       originalFieldValue: string | number | null;
     },
@@ -264,7 +272,12 @@ export function TicketPageContent({ ticketId }: Props) {
       if (!ticket) throw new Error('No ticket selected');
       let updateValue: TicketStatus | TicketPriority | number | null;
 
-      if (field === 'assignee_id' || field === 'team_id' || field === 'category_id') {
+      if (
+        field === 'assignee_id' ||
+        field === 'team_id' ||
+        field === 'category_id' ||
+        field === 'user_id'
+      ) {
         updateValue = value === 'null' || value === null ? null : Number.parseInt(value, 10);
         if (typeof updateValue === 'number' && isNaN(updateValue)) {
           throw new Error(`Invalid ${field}: ${value}`);
@@ -281,7 +294,12 @@ export function TicketPageContent({ ticketId }: Props) {
       const previousTicket = ticket;
       let optimisticUpdateValue: TicketStatus | TicketPriority | number | null;
 
-      if (field === 'assignee_id' || field === 'team_id' || field === 'category_id') {
+      if (
+        field === 'assignee_id' ||
+        field === 'team_id' ||
+        field === 'category_id' ||
+        field === 'user_id'
+      ) {
         optimisticUpdateValue =
           value === 'null' || value === null ? null : Number.parseInt(value, 10);
         if (typeof optimisticUpdateValue === 'number' && isNaN(optimisticUpdateValue)) {
@@ -316,13 +334,18 @@ export function TicketPageContent({ ticketId }: Props) {
   });
 
   const handleUpdateField = (
-    field: 'priority' | 'assignee_id' | 'team_id' | 'category_id',
+    field: 'priority' | 'assignee_id' | 'team_id' | 'category_id' | 'user_id',
     value: string | null
   ) => {
     if (!ticket) return;
 
     let optimisticUpdateValue: TicketStatus | TicketPriority | number | null;
-    if (field === 'assignee_id' || field === 'team_id' || field === 'category_id') {
+    if (
+      field === 'assignee_id' ||
+      field === 'team_id' ||
+      field === 'category_id' ||
+      field === 'user_id'
+    ) {
       optimisticUpdateValue =
         value === 'null' || value === null ? null : Number.parseInt(value, 10);
       if (typeof optimisticUpdateValue === 'number' && isNaN(optimisticUpdateValue)) {
@@ -880,6 +903,30 @@ export function TicketPageContent({ ticketId }: Props) {
                     {categories.map(category => (
                       <SelectItem key={category.id} value={category.id.toString()}>
                         {category.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Primary Contact */}
+              <div>
+                <label className="text-sm font-medium text-muted-foreground mb-1 block">
+                  Primary Contact
+                </label>
+                <Select
+                  value={ticket?.user_id?.toString() ?? 'null'}
+                  onValueChange={value => handleUpdateField('user_id', value)}
+                  disabled={isLoadingUsers}
+                >
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue placeholder={isLoadingUsers ? 'Loading...' : 'Select user'} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="null">No Contact</SelectItem>
+                    {users.map(user => (
+                      <SelectItem key={user.id} value={user.id.toString()}>
+                        {user.name} ({user.email})
                       </SelectItem>
                     ))}
                   </SelectContent>

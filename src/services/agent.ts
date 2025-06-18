@@ -175,6 +175,30 @@ export async function inviteAgent(inviteData: AgentInviteCreatePayload): Promise
   }
 }
 
+/**
+ * Resends an invitation to a pending agent.
+ * @param agentId The ID of the agent to resend the invitation to.
+ * @returns A promise that resolves to a success response.
+ * @throws An error if the resend fails.
+ */
+export async function resendAgentInvite(agentId: number): Promise<Agent> {
+  try {
+    const url = `${API_BASE_URL}/v1/agents/${agentId}/resend-invite`;
+    // POST request to resend the invitation
+    const response = await fetchAPI.POST<Agent>(url, {});
+
+    if (response && response.success && response.data) {
+      return response.data; // Return the success response
+    } else {
+      console.error('Error resending agent invite:', response?.message || 'Unknown API error');
+      throw new Error(response?.message || 'Failed to resend agent invitation');
+    }
+  } catch (error) {
+    console.error('Error resending agent invite (catch block):', error);
+    throw error; // Re-throw the error
+  }
+}
+
 interface TokenResponse {
   access_token: string;
   token_type: string;
