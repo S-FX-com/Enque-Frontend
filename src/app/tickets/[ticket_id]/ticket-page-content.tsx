@@ -1,9 +1,11 @@
 'use client';
 
+import type React from 'react';
+
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
-import { ArrowLeft, Settings, MoreHorizontal } from 'lucide-react';
+import { ArrowLeft, Settings, MoreHorizontal, X, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -20,6 +22,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Badge } from '@/components/ui/badge';
 import type { ITicket, TicketStatus, TicketPriority } from '@/typescript/ticket';
 import type { Agent } from '@/typescript/agent';
 import type { ICategory } from '@/typescript/category';
@@ -34,11 +37,117 @@ import { useSocketContext } from '@/providers/socket-provider';
 import { TicketConversation } from './ticket-conversation';
 import BoringAvatar from 'boring-avatars';
 import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
 import { useAuth } from '@/hooks/use-auth';
 
 interface Props {
   ticketId: number;
+}
+
+// Dynamic CC Input Component
+function DynamicCCInput({
+  existingEmails,
+  onEmailsChange,
+  placeholder = 'Enter email address',
+}: {
+  existingEmails: string[];
+  onEmailsChange: (emails: string[]) => void;
+  placeholder?: string;
+}) {
+  const [inputValue, setInputValue] = useState('');
+  const [isInputFocused, setIsInputFocused] = useState(false);
+
+  const validateEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email.trim());
+  };
+
+  const addEmail = (email: string) => {
+    const trimmedEmail = email.trim();
+    if (trimmedEmail && validateEmail(trimmedEmail) && !existingEmails.includes(trimmedEmail)) {
+      onEmailsChange([...existingEmails, trimmedEmail]);
+      setInputValue('');
+    }
+  };
+
+  const removeEmail = (emailToRemove: string) => {
+    onEmailsChange(existingEmails.filter(email => email !== emailToRemove));
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      if (inputValue.trim()) {
+        addEmail(inputValue);
+      }
+    } else if (e.key === 'Backspace' && !inputValue && existingEmails.length > 0) {
+      removeEmail(existingEmails[existingEmails.length - 1]);
+    }
+  };
+
+  const handlePaste = (e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const pastedText = e.clipboardData.getData('text');
+    const emails = pastedText.split(/[,;\s]+/).filter(email => email.trim());
+
+    emails.forEach(email => {
+      const trimmedEmail = email.trim();
+      if (validateEmail(trimmedEmail) && !existingEmails.includes(trimmedEmail)) {
+        onEmailsChange(prev => [...prev, trimmedEmail]);
+      }
+    });
+    setInputValue('');
+  };
+
+  return (
+    <div
+      className={cn(
+        'flex flex-wrap gap-1 p-2 border rounded-md min-h-[40px] cursor-text',
+        isInputFocused && 'ring-2 ring-ring ring-offset-2'
+      )}
+      onClick={() => document.getElementById('cc-input')?.focus()}
+    >
+      {existingEmails.map((email, index) => (
+        <Badge key={index} variant="secondary" className="flex items-center gap-1 px-2 py-1">
+          <span className="text-xs">{email}</span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-4 w-4 p-0 hover:bg-destructive hover:text-destructive-foreground"
+            onClick={e => {
+              e.stopPropagation();
+              removeEmail(email);
+            }}
+          >
+            <X className="h-3 w-3" />
+          </Button>
+        </Badge>
+      ))}
+      <input
+        id="cc-input"
+        type="email"
+        value={inputValue}
+        onChange={e => setInputValue(e.target.value)}
+        onKeyDown={handleKeyDown}
+        onPaste={handlePaste}
+        onFocus={() => setIsInputFocused(true)}
+        onBlur={() => setIsInputFocused(false)}
+        placeholder={existingEmails.length === 0 ? placeholder : ''}
+        className="flex-1 min-w-[120px] outline-none bg-transparent text-sm"
+      />
+      {inputValue && validateEmail(inputValue) && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-6 w-6 p-0"
+          onClick={() => addEmail(inputValue)}
+        >
+          <Plus className="h-3 w-3" />
+        </Button>
+      )}
+    </div>
+  );
 }
 
 export function TicketPageContent({ ticketId }: Props) {
@@ -49,9 +158,9 @@ export function TicketPageContent({ ticketId }: Props) {
   const [ticket, setTicket] = useState<ITicket | null>(null);
   const [isClosingTicket, setIsClosingTicket] = useState(false);
   const [isResolvingTicket, setIsResolvingTicket] = useState(false);
-  const [extraRecipients, setExtraRecipients] = useState('');
   const [showExtraRecipients, setShowExtraRecipients] = useState(false);
-  const [existingCcRecipients, setExistingCcRecipients] = useState('');
+  const [existingCcEmails, setExistingCcEmails] = useState<string[]>([]);
+  const [extraCcEmails, setExtraCcEmails] = useState<string[]>([]);
 
   // Fetch ticket data
   const {
@@ -78,9 +187,13 @@ export function TicketPageContent({ ticketId }: Props) {
       setTicket(currentTicket as unknown as ITicket);
 
       if (currentTicket?.cc_recipients) {
-        setExistingCcRecipients(currentTicket.cc_recipients);
+        const emails = currentTicket.cc_recipients
+          .split(',')
+          .map(email => email.trim())
+          .filter(email => email.length > 0);
+        setExistingCcEmails(emails);
       } else {
-        setExistingCcRecipients('');
+        setExistingCcEmails([]);
       }
     }
   }, [currentTicket]);
@@ -354,42 +467,10 @@ export function TicketPageContent({ ticketId }: Props) {
     queryClient.setQueryData(['ticket', ticketId], [updatedTicket]);
   };
 
-  // Function to validate email addresses
-  const validateEmails = (emailString: string): boolean => {
-    if (!emailString.trim()) return true; // Empty is valid
-
-    const emails = emailString
-      .split(',')
-      .map(email => email.trim())
-      .filter(email => email.length > 0);
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-    return emails.every(email => emailRegex.test(email));
-  };
-
-  // Function to combine existing and extra CC recipients
+  // Function to get combined CC recipients in comma-separated format
   const getCombinedCcRecipients = (): string => {
-    const existing = existingCcRecipients.trim();
-    const extra = extraRecipients.trim();
-
-    if (!existing && !extra) return '';
-    if (!existing) return extra;
-    if (!extra) return existing;
-
-    return `${existing}, ${extra}`;
-  };
-
-  // Function to get unique CC recipients
-  const getUniqueCcRecipients = (): string => {
-    const combined = getCombinedCcRecipients();
-    if (!combined) return '';
-
-    const emails = combined
-      .split(',')
-      .map(email => email.trim())
-      .filter(email => email.length > 0);
-    const uniqueEmails = [...new Set(emails)];
-
+    const allEmails = [...existingCcEmails, ...extraCcEmails];
+    const uniqueEmails = [...new Set(allEmails)];
     return uniqueEmails.join(', ');
   };
 
@@ -485,11 +566,18 @@ export function TicketPageContent({ ticketId }: Props) {
             </div>
             <div className="flex items-center gap-2">
               <span className="text-sm text-muted-foreground">CC:</span>
-              {existingCcRecipients && (
+              {existingCcEmails.length > 0 && (
                 <div className="flex items-center gap-1">
-                  <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                    {existingCcRecipients.split(',').length} existing
-                  </span>
+                  <Badge variant="secondary" className="text-xs">
+                    {existingCcEmails.length} existing
+                  </Badge>
+                </div>
+              )}
+              {extraCcEmails.length > 0 && (
+                <div className="flex items-center gap-1">
+                  <Badge variant="secondary" className="text-xs">
+                    {extraCcEmails.length} additional
+                  </Badge>
                 </div>
               )}
               <Button
@@ -498,7 +586,7 @@ export function TicketPageContent({ ticketId }: Props) {
                 className="h-6 px-2 text-xs"
                 onClick={() => setShowExtraRecipients(!showExtraRecipients)}
               >
-                {showExtraRecipients ? 'Hide CC' : 'Add CC'}
+                {showExtraRecipients ? 'Hide CC' : 'Manage CC'}
               </Button>
             </div>
           </div>
@@ -537,44 +625,73 @@ export function TicketPageContent({ ticketId }: Props) {
         </div>
       </div>
 
-      {/* CC Input Section */}
+      {/* Enhanced CC Management Section */}
       {showExtraRecipients && (
         <Card className="mb-4">
-          <CardContent className="pt-4">
-            <div className="space-y-4">
-              {/* Existing CC Recipients */}
-              {existingCcRecipients && (
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">CC</Label>
-                  <div className="p-3 bg-gray-50 rounded-md border">
-                    <p className="text-sm text-gray-700">{existingCcRecipients}</p>
-                  </div>
-                </div>
-              )}
-
-              {/* Add Extra Recipients */}
+          <CardHeader>
+            <CardTitle className="text-lg">CC Recipients</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Existing CC Recipients */}
+            {existingCcEmails.length > 0 && (
               <div className="space-y-2">
-                <Label htmlFor="header-extra-recipients" className="text-sm font-medium">
-                  {existingCcRecipients ? 'Additional Recipients' : 'CC'}
+                <Label className="text-sm font-medium">Current CC Recipients</Label>
+                <div className="flex flex-wrap gap-1 p-2 bg-gray-50 rounded-md border">
+                  {existingCcEmails.map((email, index) => (
+                    <Badge
+                      key={index}
+                      variant="outline"
+                      className="flex items-center gap-1 px-2 py-1 text-xs"
+                    >
+                      <span>{email}</span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-4 w-4 p-0 hover:bg-destructive hover:text-destructive-foreground"
+                        onClick={e => {
+                          e.stopPropagation();
+                          const updatedEmails = existingCcEmails.filter((_, i) => i !== index);
+                          setExistingCcEmails(updatedEmails);
+                        }}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Add Additional Recipients */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">
+                {existingCcEmails.length > 0 ? 'Additional Recipients' : 'CC Recipients'}
+              </Label>
+              <DynamicCCInput
+                existingEmails={extraCcEmails}
+                onEmailsChange={setExtraCcEmails}
+                placeholder="Type email and press Enter or comma to add"
+              />
+              <p className="text-xs text-muted-foreground">
+                Type email addresses and press Enter, comma, or click the + button to add them. You
+                can also paste multiple emails separated by commas.
+              </p>
+            </div>
+
+            {/* Summary */}
+            {(existingCcEmails.length > 0 || extraCcEmails.length > 0) && (
+              <div className="pt-2 border-t">
+                <Label className="text-sm font-medium text-muted-foreground">
+                  Total Recipients: {existingCcEmails.length + extraCcEmails.length}
                 </Label>
-                <Input
-                  id="header-extra-recipients"
-                  type="email"
-                  placeholder="email1@example.com, email2@example.com"
-                  value={extraRecipients}
-                  onChange={e => setExtraRecipients(e.target.value)}
-                  className="text-sm"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Separate multiple email addresses with commas
-                </p>
-                {extraRecipients.trim() && !validateEmails(extraRecipients) && (
-                  <p className="text-xs text-red-500">
-                    Please enter valid email addresses separated by commas
+                {extraCcEmails.length > 0 && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Additional emails will be included when sending replies
                   </p>
                 )}
               </div>
-            </div>
+            )}
           </CardContent>
         </Card>
       )}
@@ -613,8 +730,8 @@ export function TicketPageContent({ ticketId }: Props) {
                 ticket={ticket as ITicket}
                 onTicketUpdate={handleTicketUpdate}
                 latestOnly={true}
-                extraRecipients={getUniqueCcRecipients()}
-                onExtraRecipientsChange={setExtraRecipients}
+                extraRecipients={getCombinedCcRecipients()}
+                onExtraRecipientsChange={() => {}} // Not needed for display only
               />
             </CardContent>
           </Card>
@@ -627,14 +744,14 @@ export function TicketPageContent({ ticketId }: Props) {
                 ticket={ticket as ITicket}
                 onTicketUpdate={handleTicketUpdate}
                 replyOnly={true}
-                extraRecipients={getUniqueCcRecipients()}
-                onExtraRecipientsChange={setExtraRecipients}
+                extraRecipients={getCombinedCcRecipients()}
+                onExtraRecipientsChange={() => {}} // CC is managed above
               />
             </CardContent>
           </Card>
         </div>
 
-        {/* Sidebar - Remove User section since it's moved to header */}
+        {/* Sidebar */}
         <div className="space-y-6">
           <Card>
             <CardHeader>
