@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getAgents, deleteAgent } from '@/services/agent';
-import { Agent } from '@/typescript/agent';
+import { getAgents, deleteAgent, resendAgentInvite } from '@/services/agent';
+import type { Agent } from '@/typescript/agent';
 import {
   Table,
   TableBody,
@@ -18,7 +18,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Trash2, UserCheck, Clock } from 'lucide-react';
+import { UserCheck, Clock, Mail, Send } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { NewAgentModal } from '@/components/modals/new-agent-modal'; // Import the new modal
@@ -32,7 +32,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 
 const columns = [
@@ -179,6 +178,31 @@ export default function AgentsPage() {
     },
   });
 
+  const resendInvitesMutation = useMutation({
+    mutationFn: async (agentIds: number[]) => {
+      const results = await Promise.allSettled(agentIds.map(id => resendAgentInvite(id)));
+      const failedResends = results.filter(result => result.status === 'rejected');
+      if (failedResends.length > 0) {
+        console.error('Some invite resends failed:', failedResends);
+        throw new Error(`Failed to resend ${failedResends.length} invite(s).`);
+      }
+      return results;
+    },
+    onSuccess: (_, agentIds) => {
+      toast.success(
+        `Successfully resent ${agentIds.length} invite${agentIds.length > 1 ? 's' : ''}`
+      );
+      setSelectedAgentIds(new Set());
+    },
+    onError: err => {
+      toast.error(`Error resending invites: ${err.message}`);
+    },
+  });
+
+  const handleResendSingleInvite = (agentId: number, agentName: string) => {
+    resendInvitesMutation.mutate([agentId]);
+  };
+
   const handleDeleteConfirm = () => {
     if (selectedAgentIds.size > 0) {
       deleteAgentsMutation.mutate(Array.from(selectedAgentIds));
@@ -201,35 +225,42 @@ export default function AgentsPage() {
     <>
       <div className="flex items-center justify-end py-4 flex-shrink-0">
         {selectedAgentIds.size > 0 && (
-          <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-            <AlertDialogTrigger asChild>
-              <Button variant="destructive" size="sm" disabled={deleteAgentsMutation.isPending}>
-                <Trash2 className="mr-2 h-4 w-4" />
-                Delete ({selectedAgentIds.size})
+          <div className="flex gap-2">
+            {activeTab === 'pending' && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => resendInvitesMutation.mutate(Array.from(selectedAgentIds))}
+                disabled={resendInvitesMutation.isPending}
+              >
+                <Mail className="mr-2 h-4 w-4" />
+                Resend Invites ({selectedAgentIds.size})
               </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This action cannot be undone. This will permanently delete the selected
-                  {selectedAgentIds.size === 1 ? ' agent' : ' agents'} and any related data.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel disabled={deleteAgentsMutation.isPending}>
-                  Cancel
-                </AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={handleDeleteConfirm}
-                  disabled={deleteAgentsMutation.isPending}
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                >
-                  {deleteAgentsMutation.isPending ? 'Deleting...' : 'Delete'}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+            )}
+            <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This action cannot be undone. This will permanently delete the selected
+                    {selectedAgentIds.size === 1 ? ' agent' : ' agents'} and any related data.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={deleteAgentsMutation.isPending}>
+                    Cancel
+                  </AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleDeleteConfirm}
+                    disabled={deleteAgentsMutation.isPending}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    {deleteAgentsMutation.isPending ? 'Deleting...' : 'Delete'}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
         )}
       </div>
 
@@ -447,7 +478,20 @@ export default function AgentsPage() {
                           <TableCell className="px-6 py-4">
                             {formatRelativeTime(agent.created_at)}
                           </TableCell>
-                          <TableCell className="text-right px-6 py-4"> </TableCell>
+                          <TableCell className="text-right px-6 py-4">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={e => {
+                                e.stopPropagation();
+                                handleResendSingleInvite(agent.id, agent.name);
+                              }}
+                              disabled={resendInvitesMutation.isPending}
+                              className="h-8 w-8 p-0"
+                            >
+                              <Send className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
                         </TableRow>
                       ))
                     )}
