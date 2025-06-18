@@ -81,6 +81,7 @@ type TicketUpdatePayload = {
   assignee_id?: number | null;
   team_id?: number | null;
   category_id?: number | null;
+  user_id?: number | null;
 };
 
 export async function updateTicket(
@@ -120,6 +121,14 @@ export async function updateTicket(
       if (typeof payload.category_id === 'string') {
         const parsed = Number.parseInt(payload.category_id, 10);
         payload.category_id = isNaN(parsed) ? null : parsed;
+      }
+    }
+    if ('user_id' in updates) {
+      const userValue = updates.user_id;
+      payload.user_id = userValue === null || userValue === undefined ? null : Number(userValue);
+      if (typeof payload.user_id === 'string') {
+        const parsed = Number.parseInt(payload.user_id, 10);
+        payload.user_id = isNaN(parsed) ? null : parsed;
       }
     }
 
