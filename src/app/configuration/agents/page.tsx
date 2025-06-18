@@ -199,7 +199,7 @@ export default function AgentsPage() {
     },
   });
 
-  const handleResendSingleInvite = (agentId: number, agentName: string) => {
+  const handleResendSingleInvite = (agentId: number) => {
     resendInvitesMutation.mutate([agentId]);
   };
 
