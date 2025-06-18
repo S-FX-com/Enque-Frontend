@@ -484,7 +484,7 @@ export default function AgentsPage() {
                               size="sm"
                               onClick={e => {
                                 e.stopPropagation();
-                                handleResendSingleInvite(agent.id, agent.name);
+                                handleResendSingleInvite(agent.id);
                               }}
                               disabled={resendInvitesMutation.isPending}
                               className="h-8 w-8 p-0"
