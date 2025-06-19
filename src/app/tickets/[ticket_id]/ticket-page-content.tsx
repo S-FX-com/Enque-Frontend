@@ -2,7 +2,7 @@
 
 import type React from 'react';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { ArrowLeft, Settings, MoreHorizontal, X, Plus } from 'lucide-react';
@@ -245,7 +245,7 @@ export function TicketPageContent({ ticketId }: Props) {
   });
 
   // Helper function to invalidate all counter queries
-  const invalidateCounterQueries = () => {
+  const invalidateCounterQueries = useCallback(() => {
     // Invalidate all tickets queries
     queryClient.invalidateQueries({ queryKey: ['tickets'] });
 
@@ -256,7 +256,7 @@ export function TicketPageContent({ ticketId }: Props) {
     // Invalidate team queries (they contain ticket counts)
     queryClient.invalidateQueries({ queryKey: ['agentTeams', user?.id, user?.role] });
     queryClient.invalidateQueries({ queryKey: ['teams'] });
-  };
+  }, [queryClient, user?.id, user?.role]);
 
   // Update field mutation
   const updateFieldMutation = useMutation<
