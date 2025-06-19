@@ -512,7 +512,7 @@ export function TicketPageContent({ ticketId }: Props) {
           console.error('Error marking ticket as read:', error);
         });
     }
-  }, [ticket, ticketId, queryClient]);
+  }, [ticket, ticketId, queryClient, invalidateCounterQueries]);
 
   // Update page title with ticket subject
   useEffect(() => {
