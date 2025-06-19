@@ -24,7 +24,7 @@ import {
   type InfiniteData,
   useInfiniteQuery,
 } from '@tanstack/react-query';
-import { deleteTicket, mergeTickets } from '@/services/ticket';
+import { deleteTicket, mergeTickets, updateTicket } from '@/services/ticket';
 import { toast } from 'sonner';
 import {
   AlertDialog,
@@ -39,7 +39,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useDebounce } from '@/hooks/use-debounce';
 import { motion } from 'framer-motion';
-import type { ITicket } from '@/typescript/ticket';
+import type { ITicket, TicketStatus } from '@/typescript/ticket';
 import type { IUser } from '@/typescript/user';
 import { getUsers } from '@/services/user';
 import { formatRelativeTime, cn } from '@/lib/utils';
@@ -375,6 +375,204 @@ function MyTicketsClientContent() {
     },
   });
 
+  const bulkCloseTicketsMutation = useMutation({
+    mutationFn: async (ticketIds: number[]) => {
+      const results = await Promise.allSettled(
+        ticketIds.map(id => updateTicket(id, { status: 'Closed' }))
+      );
+
+      const failedUpdates = results
+        .map((result, index) => ({ result, id: ticketIds[index] }))
+        .filter(item => item.result.status === 'rejected');
+
+      if (failedUpdates.length > 0) {
+        const errorMessages = failedUpdates
+          .map(item => {
+            const reason = (item.result as PromiseRejectedResult).reason;
+            const message = (reason as { message?: string })?.message || `Ticket ID ${item.id}`;
+            return message;
+          })
+          .join(', ');
+        throw new Error(`Failed to close: ${errorMessages}`);
+      }
+
+      return results;
+    },
+    onSuccess: (data, variables) => {
+      toast.success(`${variables.length} ticket(s) closed successfully.`);
+    },
+    onMutate: async ticketIds => {
+      await queryClient.cancelQueries({ queryKey: ['tickets', 'my', currentUser?.id] });
+
+      const previousTicketsData = queryClient.getQueryData<InfiniteData<ITicket[], number>>([
+        'tickets',
+        'my',
+        currentUser?.id,
+      ]);
+
+      // Get current tickets to calculate counter changes
+      const allTickets = previousTicketsData?.pages.flat() || [];
+      const affectedTickets = allTickets.filter(ticket => ticketIds.includes(ticket.id));
+
+      queryClient.setQueryData<InfiniteData<ITicket[], number>>(
+        ['tickets', 'my', currentUser?.id],
+        (oldData: InfiniteData<ITicket[], number> | undefined) => {
+          if (!oldData) return oldData;
+          const newPages = oldData.pages.map((page: ITicket[]) =>
+            page.map((ticket: ITicket) => {
+              if (ticketIds.includes(ticket.id)) {
+                return {
+                  ...ticket,
+                  status: 'Closed' as TicketStatus,
+                };
+              }
+              return ticket;
+            })
+          );
+          return { ...oldData, pages: newPages };
+        }
+      );
+
+      // Update counters - closed tickets reduce active count
+      const activeTicketsToClose = affectedTickets.filter(
+        ticket => ticket.status !== 'Closed' && ticket.status !== 'Resolved'
+      );
+
+      const currentAllCount = queryClient.getQueryData<number>(['ticketsCount', 'all']) || 0;
+      const currentMyCount =
+        queryClient.getQueryData<number>(['ticketsCount', 'my', currentUser?.id]) || 0;
+
+      queryClient.setQueryData(
+        ['ticketsCount', 'all'],
+        Math.max(0, currentAllCount - activeTicketsToClose.length)
+      );
+
+      if (currentUser?.id) {
+        queryClient.setQueryData(
+          ['ticketsCount', 'my', currentUser.id],
+          Math.max(0, currentMyCount - activeTicketsToClose.length)
+        );
+      }
+
+      setSelectedTicketIds(new Set());
+
+      return { previousTicketsData };
+    },
+    onError: (
+      err: Error,
+      variables,
+      context: { previousTicketsData?: InfiniteData<ITicket[], number> } | undefined
+    ) => {
+      toast.error(`Error closing tickets: ${err.message}`);
+      if (context?.previousTicketsData) {
+        queryClient.setQueryData(['tickets', 'my', currentUser?.id], context.previousTicketsData);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['tickets', 'my', currentUser?.id] });
+      queryClient.invalidateQueries({ queryKey: ['ticketsCount'] });
+    },
+  });
+
+  const bulkResolveTicketsMutation = useMutation({
+    mutationFn: async (ticketIds: number[]) => {
+      const results = await Promise.allSettled(
+        ticketIds.map(id => updateTicket(id, { status: 'Closed' }))
+      );
+
+      const failedUpdates = results
+        .map((result, index) => ({ result, id: ticketIds[index] }))
+        .filter(item => item.result.status === 'rejected');
+
+      if (failedUpdates.length > 0) {
+        const errorMessages = failedUpdates
+          .map(item => {
+            const reason = (item.result as PromiseRejectedResult).reason;
+            const message = (reason as { message?: string })?.message || `Ticket ID ${item.id}`;
+            return message;
+          })
+          .join(', ');
+        throw new Error(`Failed to resolve: ${errorMessages}`);
+      }
+
+      return results;
+    },
+    onSuccess: (data, variables) => {
+      toast.success(`${variables.length} ticket(s) resolved successfully.`);
+    },
+    onMutate: async ticketIds => {
+      await queryClient.cancelQueries({ queryKey: ['tickets', 'my', currentUser?.id] });
+
+      const previousTicketsData = queryClient.getQueryData<InfiniteData<ITicket[], number>>([
+        'tickets',
+        'my',
+        currentUser?.id,
+      ]);
+
+      // Get current tickets to calculate counter changes
+      const allTickets = previousTicketsData?.pages.flat() || [];
+      const affectedTickets = allTickets.filter(ticket => ticketIds.includes(ticket.id));
+
+      queryClient.setQueryData<InfiniteData<ITicket[], number>>(
+        ['tickets', 'my', currentUser?.id],
+        (oldData: InfiniteData<ITicket[], number> | undefined) => {
+          if (!oldData) return oldData;
+          const newPages = oldData.pages.map((page: ITicket[]) =>
+            page.map((ticket: ITicket) => {
+              if (ticketIds.includes(ticket.id)) {
+                return {
+                  ...ticket,
+                  status: 'Closed' as TicketStatus,
+                };
+              }
+              return ticket;
+            })
+          );
+          return { ...oldData, pages: newPages };
+        }
+      );
+
+      // Update counters - resolved tickets reduce active count
+      const activeTicketsToResolve = affectedTickets.filter(
+        ticket => ticket.status !== 'Closed' && ticket.status !== 'Resolved'
+      );
+
+      const currentAllCount = queryClient.getQueryData<number>(['ticketsCount', 'all']) || 0;
+      const currentMyCount =
+        queryClient.getQueryData<number>(['ticketsCount', 'my', currentUser?.id]) || 0;
+
+      queryClient.setQueryData(
+        ['ticketsCount', 'all'],
+        Math.max(0, currentAllCount - activeTicketsToResolve.length)
+      );
+
+      if (currentUser?.id) {
+        queryClient.setQueryData(
+          ['ticketsCount', 'my', currentUser.id],
+          Math.max(0, currentMyCount - activeTicketsToResolve.length)
+        );
+      }
+
+      setSelectedTicketIds(new Set());
+
+      return { previousTicketsData };
+    },
+    onError: (
+      err: Error,
+      variables,
+      context: { previousTicketsData?: InfiniteData<ITicket[], number> } | undefined
+    ) => {
+      toast.error(`Error resolving tickets: ${err.message}`);
+      if (context?.previousTicketsData) {
+        queryClient.setQueryData(['tickets', 'my', currentUser?.id], context.previousTicketsData);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['tickets', 'my', currentUser?.id] });
+      queryClient.invalidateQueries({ queryKey: ['ticketsCount'] });
+    },
+  });
+
   const mergeTicketsMutation = useMutation({
     mutationFn: async (payload: { targetTicketId: number; ticketIdsToMerge: number[] }) => {
       const { targetTicketId, ticketIdsToMerge } = payload;
@@ -457,6 +655,18 @@ function MyTicketsClientContent() {
     },
   });
 
+  const handleCloseTicketsConfirm = () => {
+    if (selectedTicketIds.size > 0) {
+      bulkCloseTicketsMutation.mutate(Array.from(selectedTicketIds));
+    }
+  };
+
+  const handleResolveTicketsConfirm = () => {
+    if (selectedTicketIds.size > 0) {
+      bulkResolveTicketsMutation.mutate(Array.from(selectedTicketIds));
+    }
+  };
+
   const handleMergeConfirm = () => {
     if (selectedTicketIds.size > 1 && selectedTargetTicketId) {
       const targetId = Number.parseInt(selectedTargetTicketId, 10);
@@ -525,6 +735,27 @@ function MyTicketsClientContent() {
         {selectedTicketIds.size > 0 && (
           <div className="flex items-center justify-between py-4 px-6 flex-shrink-0 border-b">
             <div className="flex items-center gap-2 ml-auto">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={bulkCloseTicketsMutation.isPending}
+                className="bg-white hover:bg-white"
+                onClick={handleCloseTicketsConfirm}
+              >
+                <Settings2 className="mr-2 h-4 w-4" />
+                Close ({selectedTicketIds.size})
+              </Button>
+
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={bulkResolveTicketsMutation.isPending}
+                className="bg-white hover:bg-white"
+                onClick={handleResolveTicketsConfirm}
+              >
+                <Settings2 className="mr-2 h-4 w-4" />
+                Resolve ({selectedTicketIds.size})
+              </Button>
               {selectedTicketIds.size > 1 && (
                 <AlertDialog open={isMergeDialogOpen} onOpenChange={setIsMergeDialogOpen}>
                   <AlertDialogTrigger asChild>
