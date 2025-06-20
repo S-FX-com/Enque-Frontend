@@ -37,7 +37,7 @@ import {
   AutomationActionCreate,
 } from '@/typescript/automation';
 import { useAuth } from '@/hooks/use-auth';
-
+import { useTheme } from 'next-themes';
 interface NewAutomationModalMuiProps {
   open: boolean;
   onClose: () => void;
@@ -65,6 +65,8 @@ export default function NewAutomationModalMui({
   ]);
   const [formError, setFormError] = useState<string | null>(null);
 
+  //Theme setting for modal
+  const { theme } = useTheme();
   // Fetch agents, teams, users, companies and categories for dropdowns
   const { data: agents = [] } = useQuery({
     queryKey: ['agents'],
@@ -504,7 +506,14 @@ export default function NewAutomationModalMui({
   };
 
   return (
-    <Dialog open={open} onClose={handleCloseAndReset} maxWidth="md" fullWidth>
+    <Dialog
+      //Attempting to keep the color of the modal consistent with the theme
+      style={theme === 'dark' ? { color: 'black' } : { color: '' }}
+      open={open}
+      onClose={handleCloseAndReset}
+      maxWidth="md"
+      fullWidth
+    >
       <DialogTitle>Create New Workflow</DialogTitle>
       <DialogContent>
         <DialogContentText sx={{ mb: 2 }}>
