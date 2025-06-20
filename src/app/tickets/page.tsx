@@ -16,7 +16,15 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { Settings2, Trash2, ChevronLeft, ChevronRight, UserIcon, UsersIcon } from 'lucide-react';
+import {
+  Settings2,
+  Trash2,
+  ChevronLeft,
+  ChevronRight,
+  UserIcon,
+  UsersIcon,
+  RefreshCw,
+} from 'lucide-react';
 import { MultiSelectFilter, type OptionType } from '@/components/filters/multi-select-filter';
 import { useQuery, useQueryClient, type InfiniteData, useMutation } from '@tanstack/react-query';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
@@ -69,6 +77,7 @@ function TicketsClientContent() {
     isLoadingTickets,
     isTicketsError,
     ticketsError,
+    refetch: refetchTickets, // Add this line to get the refetch function
   } = useGlobalTicketsContext();
 
   const queryClient = useQueryClient();
@@ -94,6 +103,7 @@ function TicketsClientContent() {
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const [isMergeDialogOpen, setIsMergeDialogOpen] = useState(false);
   const [selectedTargetTicketId, setSelectedTargetTicketId] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const statusOptions: OptionType[] = [
     { value: 'Unread', label: 'Unread' },
@@ -1125,6 +1135,22 @@ function TicketsClientContent() {
     }
   };
 
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await refetchTickets();
+      // Also invalidate related queries to ensure fresh data
+      queryClient.invalidateQueries({ queryKey: ['tickets'] });
+      queryClient.invalidateQueries({ queryKey: ['ticketsCount'] });
+      toast.success('Tickets refreshed successfully');
+    } catch (error) {
+      toast.error('Failed to refresh tickets');
+      console.error('Error refreshing tickets:', error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   const handleOpenMergeDialog = () => {
     if (selectedTicketIds.size > 1) {
       // Set the first selected ticket as default target
@@ -1359,6 +1385,23 @@ function TicketsClientContent() {
             </div>
           </div>
         )}
+        <div className="flex items-center justify-between py-2 px-4 border-b bg-card">
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefresh}
+              disabled={isRefreshing || isLoadingTickets}
+              className="bg-white hover:bg-white"
+            >
+              <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              {isRefreshing ? 'Refreshing...' : 'Refresh'}
+            </Button>
+            <span className="text-sm text-muted-foreground">
+              {filteredTicketsData.length} ticket{filteredTicketsData.length !== 1 ? 's' : ''}
+            </span>
+          </div>
+        </div>
         <Card className="shadow-none border-0 flex-1 flex flex-col overflow-hidden m-0">
           <CardContent className="flex-1 overflow-hidden p-0">
             <div ref={scrollContainerRef} className="h-full overflow-y-auto">

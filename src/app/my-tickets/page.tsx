@@ -16,7 +16,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { MultiSelectFilter, type OptionType } from '@/components/filters/multi-select-filter';
-import { Settings2, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Settings2, Trash2, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
 import {
   useQuery,
   useQueryClient,
@@ -74,6 +74,7 @@ function MyTicketsClientContent() {
   const [selectedTeams, setSelectedTeams] = useState<string[]>([]);
   const [isMergeDialogOpen, setIsMergeDialogOpen] = useState(false);
   const [selectedTargetTicketId, setSelectedTargetTicketId] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // ✅ CORREGIDO: Usar query específica para My Tickets en lugar de filtrar cache global
   const {
@@ -729,6 +730,24 @@ function MyTicketsClientContent() {
     setSelectedTeams([]);
   }, []);
 
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      // Refetch the my tickets query
+      await queryClient.refetchQueries({
+        queryKey: ['tickets', 'my', currentUser?.id],
+      });
+      // Also invalidate related queries to ensure fresh data
+      queryClient.invalidateQueries({ queryKey: ['ticketsCount'] });
+      toast.success('Your tickets refreshed successfully');
+    } catch (error) {
+      toast.error('Failed to refresh tickets');
+      console.error('Error refreshing tickets:', error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   return (
     <div className="flex h-full gap-6">
       <div className="flex-1 flex flex-col h-full">
@@ -848,6 +867,23 @@ function MyTicketsClientContent() {
             </div>
           </div>
         )}
+        <div className="flex items-center justify-between py-2 px-4 border-b bg-card">
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefresh}
+              disabled={isRefreshing || isLoadingTickets}
+              className="bg-white hover:bg-white"
+            >
+              <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              {isRefreshing ? 'Refreshing...' : 'Refresh'}
+            </Button>
+            <span className="text-sm text-muted-foreground">
+              {filteredTicketsData.length} ticket{filteredTicketsData.length !== 1 ? 's' : ''}
+            </span>
+          </div>
+        </div>
         <Card className="shadow-none border-0 flex-1 flex flex-col overflow-hidden m-0">
           <CardContent className="flex-1 overflow-hidden p-0">
             <div ref={scrollContainerRef} className="h-full overflow-y-auto">

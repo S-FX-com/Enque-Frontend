@@ -16,6 +16,7 @@ export function useGlobalTickets(enabled: boolean = true) {
     isLoading: isLoadingTickets,
     isError: isTicketsError,
     error: ticketsError,
+    refetch,
   } = useInfiniteQuery<
     TicketPage,
     Error,
@@ -35,7 +36,7 @@ export function useGlobalTickets(enabled: boolean = true) {
       return allPages.flat().length;
     },
     initialPageParam: 0,
-    staleTime: 1000 * 60 * 10, // ✅ AUMENTADO: 10 minutos - datos frescos por más tiempo 
+    staleTime: 1000 * 60 * 10, // ✅ AUMENTADO: 10 minutos - datos frescos por más tiempo
     refetchInterval: false, // ❌ REMOVIDO: Ya no hacemos polling - usamos Socket.IO
     refetchIntervalInBackground: false, // ❌ REMOVIDO: Sin refetch en background
     refetchOnWindowFocus: false, // ❌ REMOVIDO: Sin refetch automático al hacer foco
@@ -58,5 +59,6 @@ export function useGlobalTickets(enabled: boolean = true) {
     isTicketsError,
     ticketsError,
     queryClient,
+    refetch,
   };
 }
