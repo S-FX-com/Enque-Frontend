@@ -64,6 +64,8 @@ export default function NewAutomationModalMui({
     { action_type: ActionType.SET_AGENT, action_value: '' },
   ]);
   const [formError, setFormError] = useState<string | null>(null);
+
+  //Theme setting for modal
   const { theme } = useTheme();
   // Fetch agents, teams, users, companies and categories for dropdowns
   const { data: agents = [] } = useQuery({
@@ -505,6 +507,7 @@ export default function NewAutomationModalMui({
 
   return (
     <Dialog
+      //Attempting to keep the color of the modal consistent with the theme
       style={theme === 'dark' ? { color: 'black' } : { color: '' }}
       open={open}
       onClose={handleCloseAndReset}
