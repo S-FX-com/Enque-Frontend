@@ -504,7 +504,13 @@ export default function NewAutomationModalMui({
   };
 
   return (
-    <Dialog open={open} onClose={handleCloseAndReset} maxWidth="md" fullWidth>
+    <Dialog
+      style={theme === 'dark' ? { color: 'black' } : { color: '' }}
+      open={open}
+      onClose={handleCloseAndReset}
+      maxWidth="md"
+      fullWidth
+    >
       <DialogTitle>Create New Workflow</DialogTitle>
       <DialogContent>
         <DialogContentText sx={{ mb: 2 }}>
