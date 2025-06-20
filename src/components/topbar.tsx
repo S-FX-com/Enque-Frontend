@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import {
   BellIcon,
@@ -25,7 +25,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useRouter, usePathname } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { handleLogout, UserSession } from '@/lib/auth';
+import { handleLogout, type UserSession } from '@/lib/auth';
 import BoringAvatar from 'boring-avatars';
 import { ModeToggle } from './mode-toggle';
 import {
@@ -33,11 +33,15 @@ import {
   clearAllNotifications,
   showNotificationToast,
 } from '@/services/activity';
-import { Activity } from '@/typescript/activity';
-import { formatRelativeTime } from '@/lib/utils';
+import type { Activity } from '@/typescript/activity';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAgentAvatar } from '@/hooks/use-agent-avatar';
 import { getAgentById } from '@/services/agent';
+import { useDebounce } from '@/hooks/use-debounce';
+import { getTickets } from '@/services/ticket';
+import type { ITicket } from '@/typescript/ticket';
+import { formatRelativeTime, cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
 
 // Define avatar color palettes (copied from conversation-message-item)
 const agentAvatarColors = ['#1D73F4', '#D4E4FA'];
@@ -67,6 +71,37 @@ export function Topbar({
   const [isClearingNotifications, setIsClearingNotifications] = useState(false);
   const [lastNotificationId, setLastNotificationId] = useState<number | null>(null);
   const pathname = usePathname();
+
+  const [searchInput, setSearchInput] = useState('');
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const debouncedSearchFilter = useDebounce(searchInput, 300);
+
+  useEffect(() => {
+    if (searchInput.length >= 2) {
+      setIsSearchOpen(true);
+    } else {
+      setIsSearchOpen(false);
+    }
+  }, [searchInput]);
+
+  // Fetch tickets for search
+  const { data: searchTicketsData = [] } = useQuery<ITicket[]>({
+    queryKey: ['tickets', 'search', debouncedSearchFilter],
+    queryFn: async () => {
+      if (!debouncedSearchFilter || debouncedSearchFilter.length < 2) return [];
+      const tickets = await getTickets({ skip: 0, limit: 10 });
+      return tickets.filter(ticket =>
+        ticket.title.toLowerCase().includes(debouncedSearchFilter.toLowerCase())
+      );
+    },
+    enabled: !!debouncedSearchFilter && debouncedSearchFilter.length >= 2,
+    staleTime: 1000 * 30, // Cache for 30 seconds
+  });
+
+  // Filter and limit search results
+  const filteredSearchResults = useMemo(() => {
+    return searchTicketsData.slice(0, 8); // Limit to 8 results
+  }, [searchTicketsData]);
 
   // Get updated user data from backend (for fresh avatar and other data)
   const { data: updatedUserData } = useQuery({
@@ -204,14 +239,116 @@ export function Topbar({
 
       {/* Right side controls (Search, Icons, User Menu) */}
       <div className="flex items-center gap-0.5 px-1 py-1 bg-white rounded-full border border-slate-100">
-        <div className="relative">
-          <SearchIcon className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
-          <Input
-            type="search"
-            placeholder="Search"
-            className="w-56 pl-8 h-9 bg-[#F4F7FE] border-0 rounded-full"
-          />
-        </div>
+        <Popover
+          open={isSearchOpen}
+          onOpenChange={open => {
+            if (!open) {
+              setIsSearchOpen(false);
+            }
+          }}
+        >
+          <PopoverTrigger asChild>
+            <div className="relative">
+              <SearchIcon className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400 pointer-events-none" />
+              <Input
+                type="search"
+                placeholder="Search tickets..."
+                value={searchInput}
+                onChange={e => {
+                  setSearchInput(e.target.value);
+                }}
+                onFocus={() => {}}
+                onKeyDown={e => {
+                  if (e.key === 'Escape') {
+                    setIsSearchOpen(false);
+                    setSearchInput('');
+                  }
+                }}
+                className="w-56 pl-8 h-9 bg-[#F4F7FE] border-0 rounded-full focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+          </PopoverTrigger>
+          <PopoverContent
+            className="w-96 p-0 max-h-96"
+            align="start"
+            onOpenAutoFocus={e => e.preventDefault()}
+          >
+            <div className="p-2">
+              <div className="text-sm font-medium text-muted-foreground mb-2 px-2">
+                Search Results{' '}
+                {filteredSearchResults.length > 0 && `(${filteredSearchResults.length})`}
+              </div>
+              <div className="max-h-80 overflow-y-auto">
+                {filteredSearchResults.length === 0 ? (
+                  <div className="p-4 text-center text-sm text-muted-foreground">
+                    {debouncedSearchFilter.length < 2
+                      ? 'Type at least 2 characters to search...'
+                      : 'No tickets found matching your search.'}
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    {filteredSearchResults.map(ticket => (
+                      <div
+                        key={ticket.id}
+                        className="flex items-center gap-3 p-3 hover:bg-muted/50 rounded-lg cursor-pointer transition-colors"
+                        onClick={() => {
+                          router.push(`/tickets/${ticket.id}`);
+                          setIsSearchOpen(false);
+                          setSearchInput('');
+                        }}
+                      >
+                        <div className="flex-shrink-0">
+                          <div className="relative flex h-2 w-2">
+                            <span
+                              className={cn(
+                                'absolute inline-flex h-full w-full rounded-full',
+                                ticket.status === 'Open' && 'bg-green-500',
+                                ticket.status === 'Closed' && 'bg-slate-500',
+                                ticket.status === 'Unread' && 'bg-blue-500',
+                                ticket.status === 'With User' && 'bg-purple-500',
+                                ticket.status === 'In Progress' && 'bg-orange-500'
+                              )}
+                            />
+                            {ticket.status === 'Unread' && (
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-sm font-medium">#{ticket.id}</span>
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                'text-xs',
+                                ticket.priority === 'Low' &&
+                                  'bg-slate-100 text-slate-600 border-slate-300',
+                                ticket.priority === 'Medium' &&
+                                  'bg-green-100 text-green-800 border-green-300',
+                                ticket.priority === 'High' &&
+                                  'bg-yellow-100 text-yellow-800 border-yellow-300',
+                                ticket.priority === 'Critical' &&
+                                  'bg-red-100 text-red-800 border-red-300'
+                              )}
+                            >
+                              {ticket.priority}
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-foreground truncate mb-1">{ticket.title}</p>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <span className="capitalize">{ticket.status}</span>
+                            <span>•</span>
+                            <span>{formatRelativeTime(ticket.created_at)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </PopoverContent>
+        </Popover>
         {/* Notifications Popover */}
         <Popover open={isNotificationsOpen} onOpenChange={setIsNotificationsOpen}>
           <PopoverTrigger asChild>
@@ -287,7 +424,7 @@ export function Topbar({
                           const avatarColors = isUserCreator ? userAvatarColors : agentAvatarColors; // Choose palette
 
                           const notificationContent = (
-                            <div className="flex items-start gap-3">
+                            <div key={notification.id} className="flex items-start gap-3">
                               <BoringAvatar
                                 size={32}
                                 name={avatarName}

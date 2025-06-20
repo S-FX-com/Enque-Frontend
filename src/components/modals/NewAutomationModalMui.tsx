@@ -38,7 +38,10 @@ import {
 } from '@/typescript/automation';
 import { useAuth } from '@/hooks/use-auth';
 import { useTheme } from 'next-themes';
+<<<<<<< HEAD
 
+=======
+>>>>>>> 123339346ce3413100c5249807d2b8a8ac46d575
 interface NewAutomationModalMuiProps {
   open: boolean;
   onClose: () => void;
@@ -67,6 +70,8 @@ export default function NewAutomationModalMui({
   const [formError, setFormError] = useState<string | null>(null);
   const { theme } = useTheme();
 
+  //Theme setting for modal
+  const { theme } = useTheme();
   // Fetch agents, teams, users, companies and categories for dropdowns
   const { data: agents = [] } = useQuery({
     queryKey: ['agents'],
