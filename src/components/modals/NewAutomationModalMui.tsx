@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogActions,
@@ -38,10 +38,6 @@ import {
 } from '@/typescript/automation';
 import { useAuth } from '@/hooks/use-auth';
 import { useTheme } from 'next-themes';
-<<<<<<< HEAD
-
-=======
->>>>>>> 123339346ce3413100c5249807d2b8a8ac46d575
 interface NewAutomationModalMuiProps {
   open: boolean;
   onClose: () => void;
@@ -68,11 +64,20 @@ export default function NewAutomationModalMui({
     { action_type: ActionType.SET_AGENT, action_value: '' },
   ]);
   const [formError, setFormError] = useState<string | null>(null);
-  const { theme } = useTheme();
-
   //Theme setting for modal
   const { theme } = useTheme();
+  //const [color, setColor] = useState<string>('');
   // Fetch agents, teams, users, companies and categories for dropdowns
+  /*
+  useEffect(() => {
+    console.log(color);
+    if (theme === 'dark') {
+      setColor('#000000');
+    } else {
+      setColor('');
+    }
+  }, [theme, color]);
+*/
   const { data: agents = [] } = useQuery({
     queryKey: ['agents'],
     queryFn: getAgents,
@@ -509,10 +514,9 @@ export default function NewAutomationModalMui({
     [ActionType.SET_STATUS]: 'Set Status',
     [ActionType.SET_TEAM]: 'Set Team',
   };
-
   return (
     <Dialog
-      style={theme === 'dark' ? { color: 'black' } : { color: '' }}
+      //style={{ color: color }}
       open={open}
       onClose={handleCloseAndReset}
       maxWidth="md"

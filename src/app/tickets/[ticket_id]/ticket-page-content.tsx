@@ -5,7 +5,7 @@ import type React from 'react';
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
-import { ArrowLeft, Settings, MoreHorizontal, X, Plus } from 'lucide-react';
+import { ArrowLeft, Settings, MoreHorizontal, X, Plus, Search, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -23,6 +23,14 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import type { ITicket, TicketStatus, TicketPriority } from '@/typescript/ticket';
 import type { Agent } from '@/typescript/agent';
 import type { ICategory } from '@/typescript/category';
@@ -161,9 +169,16 @@ export function TicketPageContent({ ticketId }: Props) {
   const [ticket, setTicket] = useState<ITicket | null>(null);
   const [isClosingTicket, setIsClosingTicket] = useState(false);
   const [isResolvingTicket, setIsResolvingTicket] = useState(false);
-  const [showExtraRecipients, setShowExtraRecipients] = useState(false);
   const [existingCcEmails, setExistingCcEmails] = useState<string[]>([]);
   const [extraCcEmails, setExtraCcEmails] = useState<string[]>([]);
+  const [existingBccEmails, setExistingBccEmails] = useState<string[]>([]);
+  const [extraBccEmails, setExtraBccEmails] = useState<string[]>([]);
+  const [contactSearchQuery, setContactSearchQuery] = useState('');
+  const [isContactModalOpen, setIsContactModalOpen] = useState(false);
+
+  // New state variables for modals
+  const [isCcModalOpen, setIsCcModalOpen] = useState(false);
+  const [isBccModalOpen, setIsBccModalOpen] = useState(false);
 
   // Fetch ticket data
   const {
@@ -243,6 +258,13 @@ export function TicketPageContent({ ticketId }: Props) {
     queryFn: getUsers,
     staleTime: 1000 * 60 * 5,
   });
+
+  // Filter users based on search query
+  const filteredUsers = users.filter(
+    user =>
+      user.name.toLowerCase().includes(contactSearchQuery.toLowerCase()) ||
+      user.email.toLowerCase().includes(contactSearchQuery.toLowerCase())
+  );
 
   // Helper function to invalidate all counter queries
   const invalidateCounterQueries = useCallback(() => {
@@ -498,6 +520,33 @@ export function TicketPageContent({ ticketId }: Props) {
     return uniqueEmails.join(', ');
   };
 
+  // Function to get combined BCC recipients in comma-separated format
+  const getCombinedBccRecipients = (): string => {
+    const allEmails = [...existingBccEmails, ...extraBccEmails];
+    const uniqueEmails = [...new Set(allEmails)];
+    return uniqueEmails.join(', ');
+  };
+
+  // Function to handle primary contact change
+  const handlePrimaryContactChange = (userId: string) => {
+    handleUpdateField('user_id', userId);
+
+    // Update local ticket state immediately for UI feedback
+    if (ticket) {
+      const selectedUser = users.find(u => u.id.toString() === userId) || null;
+      const updatedTicket = {
+        ...ticket,
+        user_id: userId === 'null' ? null : Number.parseInt(userId, 10),
+        user: selectedUser,
+      };
+      setTicket(updatedTicket);
+      queryClient.setQueryData(['ticket', ticketId], [updatedTicket]);
+    }
+
+    setIsContactModalOpen(false);
+    setContactSearchQuery('');
+  };
+
   // Mark ticket as read when viewed
   useEffect(() => {
     if (ticket && ticket.status === 'Unread') {
@@ -572,48 +621,6 @@ export function TicketPageContent({ ticketId }: Props) {
             <span className="text-sm text-muted-foreground">#{ticket?.id}</span>
             <h1 className="text-xl font-semibold">{ticket?.title}</h1>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Contact:</span>
-              <BoringAvatar
-                size={20}
-                name={
-                  ticket?.user?.email ||
-                  ticket?.user?.name ||
-                  `user-${ticket?.user?.id}` ||
-                  'unknown-user'
-                }
-                variant="beam"
-                colors={avatarColors}
-              />
-              <span className="text-sm font-medium">{ticket?.user?.name || 'Unknown User'}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">CC:</span>
-              {existingCcEmails.length > 0 && (
-                <div className="flex items-center gap-1">
-                  <Badge variant="secondary" className="text-xs">
-                    {existingCcEmails.length} existing
-                  </Badge>
-                </div>
-              )}
-              {extraCcEmails.length > 0 && (
-                <div className="flex items-center gap-1">
-                  <Badge variant="secondary" className="text-xs">
-                    {extraCcEmails.length} additional
-                  </Badge>
-                </div>
-              )}
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 px-2 text-xs"
-                onClick={() => setShowExtraRecipients(!showExtraRecipients)}
-              >
-                {showExtraRecipients ? 'Hide CC' : 'Manage CC'}
-              </Button>
-            </div>
-          </div>
         </div>
 
         <div className="flex items-center gap-2">
@@ -648,77 +655,6 @@ export function TicketPageContent({ ticketId }: Props) {
           </DropdownMenu>
         </div>
       </div>
-
-      {/* Enhanced CC Management Section */}
-      {showExtraRecipients && (
-        <Card className="mb-4">
-          <CardHeader>
-            <CardTitle className="text-lg">CC Recipients</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Existing CC Recipients */}
-            {existingCcEmails.length > 0 && (
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">Current CC Recipients</Label>
-                <div className="flex flex-wrap gap-1 p-2 bg-gray-50 rounded-md border">
-                  {existingCcEmails.map((email, index) => (
-                    <Badge
-                      key={index}
-                      variant="outline"
-                      className="flex items-center gap-1 px-2 py-1 text-xs"
-                    >
-                      <span>{email}</span>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-4 w-4 p-0 hover:bg-destructive hover:text-destructive-foreground"
-                        onClick={e => {
-                          e.stopPropagation();
-                          const updatedEmails = existingCcEmails.filter((_, i) => i !== index);
-                          setExistingCcEmails(updatedEmails);
-                        }}
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Add Additional Recipients */}
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">
-                {existingCcEmails.length > 0 ? 'Additional Recipients' : 'CC Recipients'}
-              </Label>
-              <DynamicCCInput
-                existingEmails={extraCcEmails}
-                onEmailsChange={setExtraCcEmails}
-                placeholder="Type email and press Enter or comma to add"
-              />
-              <p className="text-xs text-muted-foreground">
-                Type email addresses and press Enter, comma, or click the + button to add them. You
-                can also paste multiple emails separated by commas.
-              </p>
-            </div>
-
-            {/* Summary */}
-            {(existingCcEmails.length > 0 || extraCcEmails.length > 0) && (
-              <div className="pt-2 border-t">
-                <Label className="text-sm font-medium text-muted-foreground">
-                  Total Recipients: {existingCcEmails.length + extraCcEmails.length}
-                </Label>
-                {extraCcEmails.length > 0 && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Additional emails will be included when sending replies
-                  </p>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
 
       {/* Status Badge */}
       <div className="flex items-center gap-2">
@@ -777,9 +713,312 @@ export function TicketPageContent({ ticketId }: Props) {
 
         {/* Sidebar */}
         <div className="space-y-6">
+          {/* Contact Information */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Details</CardTitle>
+              <CardTitle className="text-lg">Contact Information</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Primary Contact */}
+              <div>
+                <label className="text-sm font-medium text-muted-foreground mb-2 block">
+                  PRIMARY CONTACT
+                </label>
+                <div className="flex items-center justify-between p-2 border rounded-md bg-gray-50">
+                  <div className="flex items-center gap-2">
+                    <BoringAvatar
+                      size={24}
+                      name={
+                        ticket?.user?.email ||
+                        ticket?.user?.name ||
+                        `user-${ticket?.user?.id}` ||
+                        'unknown-user'
+                      }
+                      variant="beam"
+                      colors={avatarColors}
+                    />
+                    <div className="flex flex-col">
+                      <span className="text-sm font-medium">
+                        {ticket?.user?.name || 'Unknown User'}
+                      </span>
+                      <span className="text-xs text-muted-foreground">{ticket?.user?.email}</span>
+                    </div>
+                  </div>
+                  <Dialog open={isContactModalOpen} onOpenChange={setIsContactModalOpen}>
+                    <DialogTrigger asChild>
+                      <Button variant="ghost" size="sm" className="h-6 px-2 text-xs">
+                        <User className="h-3 w-3 mr-1" />
+                        Change
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-md">
+                      <DialogHeader>
+                        <DialogTitle>Change Primary Contact</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <div className="relative">
+                          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            placeholder="Search contacts..."
+                            value={contactSearchQuery}
+                            onChange={e => setContactSearchQuery(e.target.value)}
+                            className="pl-8"
+                          />
+                        </div>
+                        <div className="max-h-60 overflow-y-auto space-y-1">
+                          <Button
+                            variant="ghost"
+                            className="w-full justify-start h-auto p-2"
+                            onClick={() => handlePrimaryContactChange('null')}
+                          >
+                            <div className="flex items-center gap-2">
+                              <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center">
+                                <User className="h-3 w-3 text-gray-500" />
+                              </div>
+                              <div className="text-left">
+                                <div className="text-sm font-medium">No Contact</div>
+                                <div className="text-xs text-muted-foreground">
+                                  Remove primary contact
+                                </div>
+                              </div>
+                            </div>
+                          </Button>
+                          {filteredUsers.map(user => (
+                            <Button
+                              key={user.id}
+                              variant="ghost"
+                              className="w-full justify-start h-auto p-2"
+                              onClick={() => handlePrimaryContactChange(user.id.toString())}
+                            >
+                              <div className="flex items-center gap-2">
+                                <BoringAvatar
+                                  size={24}
+                                  name={user.email || user.name || `user-${user.id}`}
+                                  variant="beam"
+                                  colors={avatarColors}
+                                />
+                                <div className="text-left">
+                                  <div className="text-sm font-medium">{user.name}</div>
+                                  <div className="text-xs text-muted-foreground">{user.email}</div>
+                                </div>
+                              </div>
+                            </Button>
+                          ))}
+                          {filteredUsers.length === 0 && contactSearchQuery && (
+                            <div className="p-2 text-center text-sm text-muted-foreground">
+                              No contacts found matching "{contactSearchQuery}"
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+              </div>
+
+              {/* CC Recipients */}
+              <div>
+                <label className="text-sm font-medium text-muted-foreground mb-2 block">CC:</label>
+                <div className="space-y-2">
+                  {existingCcEmails.length > 0 || extraCcEmails.length > 0 ? (
+                    <div className="flex flex-wrap gap-1 p-2 bg-gray-50 rounded-md border">
+                      {[...existingCcEmails, ...extraCcEmails].map((email, index) => (
+                        <Badge key={index} variant="secondary" className="text-xs">
+                          {email}
+                        </Badge>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="p-2 text-xs text-muted-foreground border rounded-md bg-gray-50">
+                      No CC recipients
+                    </div>
+                  )}
+                  <Dialog open={isCcModalOpen} onOpenChange={setIsCcModalOpen}>
+                    <DialogTrigger asChild>
+                      <Button variant="ghost" size="sm" className="h-6 px-2 text-xs">
+                        Manage CC
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-lg">
+                      <DialogHeader>
+                        <DialogTitle>Manage CC Recipients</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        {/* Existing CC Recipients */}
+                        {existingCcEmails.length > 0 && (
+                          <div className="space-y-2">
+                            <Label className="text-sm font-medium">Current CC Recipients</Label>
+                            <div className="flex flex-wrap gap-1 p-2 bg-gray-50 rounded-md border">
+                              {existingCcEmails.map((email, index) => (
+                                <Badge
+                                  key={index}
+                                  variant="outline"
+                                  className="flex items-center gap-1 px-2 py-1 text-xs"
+                                >
+                                  <span>{email}</span>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-4 w-4 p-0 hover:bg-destructive hover:text-destructive-foreground"
+                                    onClick={e => {
+                                      e.stopPropagation();
+                                      const updatedEmails = existingCcEmails.filter(
+                                        (_, i) => i !== index
+                                      );
+                                      setExistingCcEmails(updatedEmails);
+                                    }}
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </Button>
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Add Additional Recipients */}
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium">
+                            {existingCcEmails.length > 0
+                              ? 'Additional Recipients'
+                              : 'CC Recipients'}
+                          </Label>
+                          <DynamicCCInput
+                            existingEmails={extraCcEmails}
+                            onEmailsChange={setExtraCcEmails}
+                            placeholder="Type email and press Enter or comma to add"
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            Type email addresses and press Enter, comma, or click the + button to
+                            add them. You can also paste multiple emails separated by commas.
+                          </p>
+                        </div>
+
+                        {/* Summary */}
+                        {(existingCcEmails.length > 0 || extraCcEmails.length > 0) && (
+                          <div className="pt-2 border-t">
+                            <Label className="text-sm font-medium text-muted-foreground">
+                              Total CC Recipients: {existingCcEmails.length + extraCcEmails.length}
+                            </Label>
+                            {extraCcEmails.length > 0 && (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Additional emails will be included when sending replies
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+              </div>
+
+              {/* BCC Recipients */}
+              <div>
+                <label className="text-sm font-medium text-muted-foreground mb-2 block">BCC:</label>
+                <div className="space-y-2">
+                  {existingBccEmails.length > 0 || extraBccEmails.length > 0 ? (
+                    <div className="flex flex-wrap gap-1 p-2 bg-gray-50 rounded-md border">
+                      {[...existingBccEmails, ...extraBccEmails].map((email, index) => (
+                        <Badge key={index} variant="secondary" className="text-xs">
+                          {email}
+                        </Badge>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="p-2 text-xs text-muted-foreground border rounded-md bg-gray-50">
+                      No BCC recipients
+                    </div>
+                  )}
+                  <Dialog open={isBccModalOpen} onOpenChange={setIsBccModalOpen}>
+                    <DialogTrigger asChild>
+                      <Button variant="ghost" size="sm" className="h-6 px-2 text-xs">
+                        Manage BCC
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-lg">
+                      <DialogHeader>
+                        <DialogTitle>Manage BCC Recipients</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        {/* Existing BCC Recipients */}
+                        {existingBccEmails.length > 0 && (
+                          <div className="space-y-2">
+                            <Label className="text-sm font-medium">Current BCC Recipients</Label>
+                            <div className="flex flex-wrap gap-1 p-2 bg-gray-50 rounded-md border">
+                              {existingBccEmails.map((email, index) => (
+                                <Badge
+                                  key={index}
+                                  variant="outline"
+                                  className="flex items-center gap-1 px-2 py-1 text-xs"
+                                >
+                                  <span>{email}</span>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-4 w-4 p-0 hover:bg-destructive hover:text-destructive-foreground"
+                                    onClick={e => {
+                                      e.stopPropagation();
+                                      const updatedEmails = existingBccEmails.filter(
+                                        (_, i) => i !== index
+                                      );
+                                      setExistingBccEmails(updatedEmails);
+                                    }}
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </Button>
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Add Additional BCC Recipients */}
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium">
+                            {existingBccEmails.length > 0
+                              ? 'Additional BCC Recipients'
+                              : 'BCC Recipients'}
+                          </Label>
+                          <DynamicCCInput
+                            existingEmails={extraBccEmails}
+                            onEmailsChange={setExtraBccEmails}
+                            placeholder="Type BCC email and press Enter or comma to add"
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            BCC recipients will receive copies but won't be visible to other
+                            recipients.
+                          </p>
+                        </div>
+
+                        {/* Summary */}
+                        {(existingBccEmails.length > 0 || extraBccEmails.length > 0) && (
+                          <div className="pt-2 border-t">
+                            <Label className="text-sm font-medium text-muted-foreground">
+                              Total BCC Recipients:{' '}
+                              {existingBccEmails.length + extraBccEmails.length}
+                            </Label>
+                            {extraBccEmails.length > 0 && (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Additional emails will be included when sending replies
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Ticket Actions */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Ticket Actions</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               {/* Priority */}
@@ -904,30 +1143,6 @@ export function TicketPageContent({ ticketId }: Props) {
                     {categories.map(category => (
                       <SelectItem key={category.id} value={category.id.toString()}>
                         {category.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Primary Contact */}
-              <div>
-                <label className="text-sm font-medium text-muted-foreground mb-1 block">
-                  Primary Contact
-                </label>
-                <Select
-                  value={ticket?.user_id?.toString() ?? 'null'}
-                  onValueChange={value => handleUpdateField('user_id', value)}
-                  disabled={isLoadingUsers}
-                >
-                  <SelectTrigger className="h-8 text-xs">
-                    <SelectValue placeholder={isLoadingUsers ? 'Loading...' : 'Select user'} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="null">No Contact</SelectItem>
-                    {users.map(user => (
-                      <SelectItem key={user.id} value={user.id.toString()}>
-                        {user.name} ({user.email})
                       </SelectItem>
                     ))}
                   </SelectContent>

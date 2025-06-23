@@ -160,14 +160,16 @@ html {
 .dark .hover\:bg-slate-100:hover {
   background-color: #2d2d2d !important;
 }
+
 .dark [data-radix-menu-content] [role='menuitem'],
 .dark [data-radix-dropdown-menu-content] [role='menuitem'],
 .dark [data-state='open'] [role='menuitem'] {
   color: #ffffff !important;
 }
-.dark h2,
+
+/*.dark h2,
 .dark h3,
-.dark p:not(.text-slate-500),
+.dark p:not(.text-slate-500),*/
 .dark .text-slate-900 {
   color: #ffffff !important;
 }
