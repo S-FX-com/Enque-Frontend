@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Dialog,
   DialogActions,
@@ -37,7 +37,6 @@ import {
   AutomationActionCreate,
 } from '@/typescript/automation';
 import { useAuth } from '@/hooks/use-auth';
-import { useTheme } from 'next-themes';
 interface NewAutomationModalMuiProps {
   open: boolean;
   onClose: () => void;
@@ -65,7 +64,6 @@ export default function NewAutomationModalMui({
   ]);
   const [formError, setFormError] = useState<string | null>(null);
   //Theme setting for modal
-  const { theme } = useTheme();
   //const [color, setColor] = useState<string>('');
   // Fetch agents, teams, users, companies and categories for dropdowns
   /*
