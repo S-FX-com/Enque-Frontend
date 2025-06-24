@@ -253,7 +253,7 @@ export function TicketPageContent({ ticketId }: Props) {
     staleTime: 1000 * 60 * 5,
   });
 
-  const { data: users = [], isLoading: isLoadingUsers } = useQuery<IUser[]>({
+  const { data: users = [] } = useQuery<IUser[]>({
     queryKey: ['users'],
     queryFn: getUsers,
     staleTime: 1000 * 60 * 5,
@@ -521,11 +521,11 @@ export function TicketPageContent({ ticketId }: Props) {
   };
 
   // Function to get combined BCC recipients in comma-separated format
-  const getCombinedBccRecipients = (): string => {
-    const allEmails = [...existingBccEmails, ...extraBccEmails];
-    const uniqueEmails = [...new Set(allEmails)];
-    return uniqueEmails.join(', ');
-  };
+  // const getCombinedBccRecipients = (): string => {
+  //   const allEmails = [...existingBccEmails, ...extraBccEmails];
+  //   const uniqueEmails = [...new Set(allEmails)];
+  //   return uniqueEmails.join(', ');
+  // };
 
   // Function to handle primary contact change
   const handlePrimaryContactChange = (userId: string) => {
@@ -806,7 +806,7 @@ export function TicketPageContent({ ticketId }: Props) {
                           ))}
                           {filteredUsers.length === 0 && contactSearchQuery && (
                             <div className="p-2 text-center text-sm text-muted-foreground">
-                              No contacts found matching "{contactSearchQuery}"
+                              No contacts found matching &quot;{contactSearchQuery}&quot;
                             </div>
                           )}
                         </div>
@@ -988,7 +988,7 @@ export function TicketPageContent({ ticketId }: Props) {
                             placeholder="Type BCC email and press Enter or comma to add"
                           />
                           <p className="text-xs text-muted-foreground">
-                            BCC recipients will receive copies but won't be visible to other
+                            BCC recipients will receive copies but won&apos;t be visible to other
                             recipients.
                           </p>
                         </div>

@@ -13,7 +13,7 @@ interface GlobalTicketsContextType {
   isLoadingTickets: boolean;
   isTicketsError: boolean;
   ticketsError: Error | null;
-  refetch: () => Promise<any>;
+  refetch: () => Promise<unknown>;
 }
 
 const GlobalTicketsContext = createContext<GlobalTicketsContextType | undefined>(undefined);
