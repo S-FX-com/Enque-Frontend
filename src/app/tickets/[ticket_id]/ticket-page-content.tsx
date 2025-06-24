@@ -44,7 +44,6 @@ import { toast } from 'sonner';
 import { useSocketContext } from '@/providers/socket-provider';
 import { TicketConversation } from './ticket-conversation';
 import BoringAvatar from 'boring-avatars';
-import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/use-auth';
 import { getUsers } from '@/services/user';
 import type { IUser } from '@/typescript/user';
@@ -55,10 +54,12 @@ interface Props {
 
 // Dynamic CC Input Component
 function DynamicCCInput({
+  id,
   existingEmails,
   onEmailsChange,
   placeholder = 'Enter email address',
 }: {
+  id: string;
   existingEmails: string[];
   onEmailsChange: (emails: string[]) => void;
   placeholder?: string;
@@ -115,7 +116,7 @@ function DynamicCCInput({
         'flex flex-wrap gap-1 p-2 border rounded-md min-h-[40px] cursor-text',
         isInputFocused && 'ring-2 ring-ring ring-offset-2'
       )}
-      onClick={() => document.getElementById('cc-input')?.focus()}
+      onClick={() => document.getElementById(id)?.focus()}
     >
       {existingEmails.map((email, index) => (
         <Badge key={index} variant="secondary" className="flex items-center gap-1 px-2 py-1">
@@ -135,7 +136,7 @@ function DynamicCCInput({
         </Badge>
       ))}
       <input
-        id="cc-input"
+        id={id}
         type="email"
         value={inputValue}
         onChange={e => setInputValue(e.target.value)}
@@ -177,8 +178,8 @@ export function TicketPageContent({ ticketId }: Props) {
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
 
   // New state variables for modals
-  const [isCcModalOpen, setIsCcModalOpen] = useState(false);
-  const [isBccModalOpen, setIsBccModalOpen] = useState(false);
+  // const [isCcModalOpen, setIsCcModalOpen] = useState(false);
+  // const [isBccModalOpen, setIsBccModalOpen] = useState(false);
 
   // Fetch ticket data
   const {
@@ -212,6 +213,17 @@ export function TicketPageContent({ ticketId }: Props) {
         setExistingCcEmails(emails);
       } else {
         setExistingCcEmails([]);
+      }
+
+      // Initialize BCC emails if they exist in the ticket data
+      if (currentTicket?.bcc_recipients) {
+        const bccEmails = currentTicket.bcc_recipients
+          .split(',')
+          .map(email => email.trim())
+          .filter(email => email.length > 0);
+        setExistingBccEmails(bccEmails);
+      } else {
+        setExistingBccEmails([]);
       }
     }
   }, [currentTicket]);
@@ -521,11 +533,11 @@ export function TicketPageContent({ ticketId }: Props) {
   };
 
   // Function to get combined BCC recipients in comma-separated format
-  // const getCombinedBccRecipients = (): string => {
-  //   const allEmails = [...existingBccEmails, ...extraBccEmails];
-  //   const uniqueEmails = [...new Set(allEmails)];
-  //   return uniqueEmails.join(', ');
-  // };
+  const getCombinedBccRecipients = (): string => {
+    const allEmails = [...existingBccEmails, ...extraBccEmails];
+    const uniqueEmails = [...new Set(allEmails)];
+    return uniqueEmails.join(', ');
+  };
 
   // Function to handle primary contact change
   const handlePrimaryContactChange = (userId: string) => {
@@ -692,6 +704,8 @@ export function TicketPageContent({ ticketId }: Props) {
                 latestOnly={true}
                 extraRecipients={getCombinedCcRecipients()}
                 onExtraRecipientsChange={() => {}} // Not needed for display only
+                extraBccRecipients={getCombinedBccRecipients()}
+                onExtraBccRecipientsChange={() => {}} // Not needed for display only
               />
             </CardContent>
           </Card>
@@ -706,6 +720,8 @@ export function TicketPageContent({ ticketId }: Props) {
                 replyOnly={true}
                 extraRecipients={getCombinedCcRecipients()}
                 onExtraRecipientsChange={() => {}} // CC is managed above
+                extraBccRecipients={getCombinedBccRecipients()}
+                onExtraBccRecipientsChange={() => {}} // BCC is managed above
               />
             </CardContent>
           </Card>
@@ -820,97 +836,25 @@ export function TicketPageContent({ ticketId }: Props) {
               <div>
                 <label className="text-sm font-medium text-muted-foreground mb-2 block">CC:</label>
                 <div className="space-y-2">
-                  {existingCcEmails.length > 0 || extraCcEmails.length > 0 ? (
-                    <div className="flex flex-wrap gap-1 p-2 bg-gray-50 rounded-md border">
-                      {[...existingCcEmails, ...extraCcEmails].map((email, index) => (
-                        <Badge key={index} variant="secondary" className="text-xs">
-                          {email}
-                        </Badge>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="p-2 text-xs text-muted-foreground border rounded-md bg-gray-50">
-                      No CC recipients
-                    </div>
-                  )}
-                  <Dialog open={isCcModalOpen} onOpenChange={setIsCcModalOpen}>
-                    <DialogTrigger asChild>
-                      <Button variant="ghost" size="sm" className="h-6 px-2 text-xs">
-                        Manage CC
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="sm:max-w-lg">
-                      <DialogHeader>
-                        <DialogTitle>Manage CC Recipients</DialogTitle>
-                      </DialogHeader>
-                      <div className="space-y-4">
-                        {/* Existing CC Recipients */}
-                        {existingCcEmails.length > 0 && (
-                          <div className="space-y-2">
-                            <Label className="text-sm font-medium">Current CC Recipients</Label>
-                            <div className="flex flex-wrap gap-1 p-2 bg-gray-50 rounded-md border">
-                              {existingCcEmails.map((email, index) => (
-                                <Badge
-                                  key={index}
-                                  variant="outline"
-                                  className="flex items-center gap-1 px-2 py-1 text-xs"
-                                >
-                                  <span>{email}</span>
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-4 w-4 p-0 hover:bg-destructive hover:text-destructive-foreground"
-                                    onClick={e => {
-                                      e.stopPropagation();
-                                      const updatedEmails = existingCcEmails.filter(
-                                        (_, i) => i !== index
-                                      );
-                                      setExistingCcEmails(updatedEmails);
-                                    }}
-                                  >
-                                    <X className="h-3 w-3" />
-                                  </Button>
-                                </Badge>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Add Additional Recipients */}
-                        <div className="space-y-2">
-                          <Label className="text-sm font-medium">
-                            {existingCcEmails.length > 0
-                              ? 'Additional Recipients'
-                              : 'CC Recipients'}
-                          </Label>
-                          <DynamicCCInput
-                            existingEmails={extraCcEmails}
-                            onEmailsChange={setExtraCcEmails}
-                            placeholder="Type email and press Enter or comma to add"
-                          />
-                          <p className="text-xs text-muted-foreground">
-                            Type email addresses and press Enter, comma, or click the + button to
-                            add them. You can also paste multiple emails separated by commas.
-                          </p>
-                        </div>
-
-                        {/* Summary */}
-                        {(existingCcEmails.length > 0 || extraCcEmails.length > 0) && (
-                          <div className="pt-2 border-t">
-                            <Label className="text-sm font-medium text-muted-foreground">
-                              Total CC Recipients: {existingCcEmails.length + extraCcEmails.length}
-                            </Label>
-                            {extraCcEmails.length > 0 && (
-                              <p className="text-xs text-muted-foreground mt-1">
-                                Additional emails will be included when sending replies
-                              </p>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </DialogContent>
-                  </Dialog>
+                  <DynamicCCInput
+                    id="cc"
+                    existingEmails={[...existingCcEmails, ...extraCcEmails]}
+                    onEmailsChange={emails => {
+                      // Split between existing and new emails
+                      const newExtraEmails = emails.filter(
+                        email => !existingCcEmails.includes(email)
+                      );
+                      const updatedExistingEmails = emails.filter(email =>
+                        existingCcEmails.includes(email)
+                      );
+                      setExistingCcEmails(updatedExistingEmails);
+                      setExtraCcEmails(newExtraEmails);
+                    }}
+                    placeholder="Add CC recipients..."
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Type email addresses and press Enter or comma to add them.
+                  </p>
                 </div>
               </div>
 
@@ -918,98 +862,25 @@ export function TicketPageContent({ ticketId }: Props) {
               <div>
                 <label className="text-sm font-medium text-muted-foreground mb-2 block">BCC:</label>
                 <div className="space-y-2">
-                  {existingBccEmails.length > 0 || extraBccEmails.length > 0 ? (
-                    <div className="flex flex-wrap gap-1 p-2 bg-gray-50 rounded-md border">
-                      {[...existingBccEmails, ...extraBccEmails].map((email, index) => (
-                        <Badge key={index} variant="secondary" className="text-xs">
-                          {email}
-                        </Badge>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="p-2 text-xs text-muted-foreground border rounded-md bg-gray-50">
-                      No BCC recipients
-                    </div>
-                  )}
-                  <Dialog open={isBccModalOpen} onOpenChange={setIsBccModalOpen}>
-                    <DialogTrigger asChild>
-                      <Button variant="ghost" size="sm" className="h-6 px-2 text-xs">
-                        Manage BCC
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="sm:max-w-lg">
-                      <DialogHeader>
-                        <DialogTitle>Manage BCC Recipients</DialogTitle>
-                      </DialogHeader>
-                      <div className="space-y-4">
-                        {/* Existing BCC Recipients */}
-                        {existingBccEmails.length > 0 && (
-                          <div className="space-y-2">
-                            <Label className="text-sm font-medium">Current BCC Recipients</Label>
-                            <div className="flex flex-wrap gap-1 p-2 bg-gray-50 rounded-md border">
-                              {existingBccEmails.map((email, index) => (
-                                <Badge
-                                  key={index}
-                                  variant="outline"
-                                  className="flex items-center gap-1 px-2 py-1 text-xs"
-                                >
-                                  <span>{email}</span>
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-4 w-4 p-0 hover:bg-destructive hover:text-destructive-foreground"
-                                    onClick={e => {
-                                      e.stopPropagation();
-                                      const updatedEmails = existingBccEmails.filter(
-                                        (_, i) => i !== index
-                                      );
-                                      setExistingBccEmails(updatedEmails);
-                                    }}
-                                  >
-                                    <X className="h-3 w-3" />
-                                  </Button>
-                                </Badge>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Add Additional BCC Recipients */}
-                        <div className="space-y-2">
-                          <Label className="text-sm font-medium">
-                            {existingBccEmails.length > 0
-                              ? 'Additional BCC Recipients'
-                              : 'BCC Recipients'}
-                          </Label>
-                          <DynamicCCInput
-                            existingEmails={extraBccEmails}
-                            onEmailsChange={setExtraBccEmails}
-                            placeholder="Type BCC email and press Enter or comma to add"
-                          />
-                          <p className="text-xs text-muted-foreground">
-                            BCC recipients will receive copies but won&apos;t be visible to other
-                            recipients.
-                          </p>
-                        </div>
-
-                        {/* Summary */}
-                        {(existingBccEmails.length > 0 || extraBccEmails.length > 0) && (
-                          <div className="pt-2 border-t">
-                            <Label className="text-sm font-medium text-muted-foreground">
-                              Total BCC Recipients:{' '}
-                              {existingBccEmails.length + extraBccEmails.length}
-                            </Label>
-                            {extraBccEmails.length > 0 && (
-                              <p className="text-xs text-muted-foreground mt-1">
-                                Additional emails will be included when sending replies
-                              </p>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </DialogContent>
-                  </Dialog>
+                  <DynamicCCInput
+                    id="bcc"
+                    existingEmails={[...existingBccEmails, ...extraBccEmails]}
+                    onEmailsChange={emails => {
+                      // Split between existing and new emails
+                      const newExtraBccEmails = emails.filter(
+                        email => !existingBccEmails.includes(email)
+                      );
+                      const updatedExistingBccEmails = emails.filter(email =>
+                        existingBccEmails.includes(email)
+                      );
+                      setExistingBccEmails(updatedExistingBccEmails);
+                      setExtraBccEmails(newExtraBccEmails);
+                    }}
+                    placeholder="Add BCC recipients..."
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    BCC recipients will receive copies but won't be visible to other recipients.
+                  </p>
                 </div>
               </div>
             </CardContent>
