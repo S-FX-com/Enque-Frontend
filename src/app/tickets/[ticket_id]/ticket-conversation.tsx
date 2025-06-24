@@ -341,7 +341,6 @@ export function TicketConversation({
   extraRecipients = '',
   onExtraRecipientsChange,
   extraBccRecipients = '',
-  onExtraBccRecipientsChange,
 }: Props) {
   const queryClient = useQueryClient();
   const { user: currentUser } = useAuth();
