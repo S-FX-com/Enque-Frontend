@@ -879,7 +879,8 @@ export function TicketPageContent({ ticketId }: Props) {
                     placeholder="Add BCC recipients..."
                   />
                   <p className="text-xs text-muted-foreground">
-                    BCC recipients will receive copies but won't be visible to other recipients.
+                    BCC recipients will receive copies but won&apos;t be visible to other
+                    recipients.
                   </p>
                 </div>
               </div>
