@@ -37,7 +37,6 @@ export interface AutomationCondition {
   condition_type: ConditionType;
   condition_operator: ConditionOperator;
   condition_value?: string;
-  logical_operator?: LogicalOperator;
   created_at: string;
 }
 
@@ -45,7 +44,6 @@ export interface AutomationConditionCreate {
   condition_type: ConditionType;
   condition_operator?: ConditionOperator;
   condition_value?: string;
-  logical_operator?: LogicalOperator;
 }
 
 export interface AutomationAction {
