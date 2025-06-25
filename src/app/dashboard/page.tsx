@@ -28,7 +28,8 @@ export default function DashboardPage() {
         <div className="text-center">
           <h3 className="text-lg font-medium">Could not load dashboard data</h3>
           <p className="text-slate-500 mt-2">
-            {isError ? 'Failed to load user information.' : 'User not found.'} Please try logging in again.
+            {isError ? 'Failed to load user information.' : 'User not found.'} Please try logging in
+            again.
           </p>
         </div>
       </div>
@@ -50,10 +51,12 @@ export default function DashboardPage() {
       <div className="bg-white dark:bg-black rounded-lg p-6 flex flex-col items-center">
         <div className="relative mb-4">
           <div className="w-20 h-20 rounded-full">{UserAvatarComponent}</div>
-          <div className={cn(
-            "absolute bottom-0 right-0 w-4 h-4 rounded-full border-2 border-white dark:border-black",
-            isConnected ? "bg-green-500" : "bg-slate-400"
-          )}></div>
+          <div
+            className={cn(
+              'absolute bottom-0 right-0 w-4 h-4 rounded-full border-2 border-white dark:border-black',
+              isConnected ? 'bg-green-500' : 'bg-slate-400'
+            )}
+          ></div>
         </div>
 
         <h2 className="text-xl font-semibold text-center">{userData?.name || user.name}</h2>
@@ -97,7 +100,10 @@ export default function DashboardPage() {
                 </tr>
               ) : (
                 assignedTickets.slice(0, 10).map(ticket => (
-                  <tr key={ticket.id} className="border-b border-slate-100 dark:border-slate-800 last:border-0">
+                  <tr
+                    key={ticket.id}
+                    className="border-b border-slate-100 dark:border-slate-800 last:border-0"
+                  >
                     <td className="py-3 text-sm">
                       {ticket.created_at ? format(parseISO(ticket.created_at), 'MMM dd') : '-'}
                     </td>
@@ -107,9 +113,12 @@ export default function DashboardPage() {
                         variant="outline"
                         className={cn(
                           'whitespace-nowrap text-xs',
-                          ticket.status === TaskStatus.OPEN && 'bg-green-100 text-green-800 border-green-300 dark:bg-green-900/50 dark:text-green-300 dark:border-green-700',
-                          ticket.status === TaskStatus.CLOSED && 'bg-slate-100 text-slate-600 border-slate-300 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700',
-                          ticket.status === TaskStatus.UNREAD && 'border-blue-300 dark:border-blue-700'
+                          ticket.status === TaskStatus.OPEN &&
+                            'bg-green-100 text-green-800 border-green-300 dark:bg-green-900/50 dark:text-green-300 dark:border-green-700',
+                          ticket.status === TaskStatus.CLOSED &&
+                            'bg-slate-100 text-slate-600 border-slate-300 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700',
+                          ticket.status === TaskStatus.UNREAD &&
+                            'border-blue-300 dark:border-blue-700'
                         )}
                       >
                         {ticket.status}
@@ -129,7 +138,7 @@ export default function DashboardPage() {
           {stats.teamsStats.length === 0 ? (
             <p className="text-sm text-muted-foreground pt-4">You are not assigned to any teams.</p>
           ) : (
-            stats.teamsStats.map((team) => (
+            stats.teamsStats.map(team => (
               <div
                 key={team.id}
                 className="border-b border-slate-100 dark:border-slate-800 pb-4 last:border-0 last:pb-0"

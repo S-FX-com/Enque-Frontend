@@ -48,18 +48,29 @@ export function useDashboardData(userId?: number) {
     })),
   });
 
-  const isLoading = userData.isLoading || assignedTickets.isLoading || userTeams.isLoading || teamTasksQueries.some(q => q.isLoading);
-  const isError = userData.isError || assignedTickets.isError || userTeams.isError || teamTasksQueries.some(q => q.isError);
+  const isLoading =
+    userData.isLoading ||
+    assignedTickets.isLoading ||
+    userTeams.isLoading ||
+    teamTasksQueries.some(q => q.isLoading);
+  const isError =
+    userData.isError ||
+    assignedTickets.isError ||
+    userTeams.isError ||
+    teamTasksQueries.some(q => q.isError);
 
   const stats = {
     ticketsAssignedCount: assignedTickets.data?.length || 0,
-    ticketsCompletedCount: assignedTickets.data?.filter(t => t.status === TaskStatus.CLOSED).length || 0,
+    ticketsCompletedCount:
+      assignedTickets.data?.filter(t => t.status === TaskStatus.CLOSED).length || 0,
     teamsCount: userTeams.data?.length || 0,
     teamsStats: (userTeams.data || []).map((team, index): TeamStats => {
       const queryResult = teamTasksQueries[index];
       const teamTasks = queryResult?.isSuccess ? queryResult.data : [];
 
-      const ticketsOpen = teamTasks.filter(t => t.status === TaskStatus.OPEN || t.status === TaskStatus.UNREAD).length;
+      const ticketsOpen = teamTasks.filter(
+        t => t.status === TaskStatus.OPEN || t.status === TaskStatus.UNREAD
+      ).length;
       const ticketsWithUser = teamTasks.filter(t => t.user_id === userId).length;
       const ticketsAssigned = teamTasks.length;
 
@@ -80,4 +91,4 @@ export function useDashboardData(userId?: number) {
     isLoading,
     isError,
   };
-} 
+}

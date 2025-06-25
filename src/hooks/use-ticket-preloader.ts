@@ -32,7 +32,7 @@ export function useTicketPreloader(options: PreloadOptions = {}) {
   const { allTicketsData } = useGlobalTicketsContext();
   const { user } = useAuth();
   const config = { ...DEFAULT_OPTIONS, ...options };
-  
+
   const [stats, setStats] = useState<PreloadStats>({
     preloaded: 0,
     failed: 0,
@@ -45,110 +45,121 @@ export function useTicketPreloader(options: PreloadOptions = {}) {
   const lastPreloadRef = useRef<Date | null>(null);
 
   // Helper: Check if ticket data is already in cache - usando useCallback para estabilidad
-  const isTicketCached = useCallback((ticketId: number): boolean => {
-    const cached = queryClient.getQueryData(['ticketHtml', ticketId]);
-    return !!cached;
-  }, [queryClient]);
+  const isTicketCached = useCallback(
+    (ticketId: number): boolean => {
+      const cached = queryClient.getQueryData(['ticketHtml', ticketId]);
+      return !!cached;
+    },
+    [queryClient]
+  );
 
   // Helper: Preload a single ticket - usando useCallback para estabilidad
-  const preloadTicket = useCallback(async (ticketId: number): Promise<boolean> => {
-    if (preloadingRef.current.has(ticketId)) {
-      return false; // Ya está siendo precargado
-    }
+  const preloadTicket = useCallback(
+    async (ticketId: number): Promise<boolean> => {
+      if (preloadingRef.current.has(ticketId)) {
+        return false; // Ya está siendo precargado
+      }
 
-    if (isTicketCached(ticketId)) {
-      return true; // Ya está en cache
-    }
+      if (isTicketCached(ticketId)) {
+        return true; // Ya está en cache
+      }
 
-    try {
-      preloadingRef.current.add(ticketId);
-      setStats(prev => ({ ...prev, inProgress: prev.inProgress + 1 }));
+      try {
+        preloadingRef.current.add(ticketId);
+        setStats(prev => ({ ...prev, inProgress: prev.inProgress + 1 }));
 
-      // Usar prefetchQuery para cargar en segundo plano sin mostrar loading
-      await queryClient.prefetchQuery({
-        queryKey: ['ticketHtml', ticketId],
-        queryFn: () => getTicketHtmlContent(ticketId),
-        staleTime: 5 * 60 * 1000, // 5 minutos de frescura
-        gcTime: 15 * 60 * 1000, // 15 minutos en cache
-      });
+        // Usar prefetchQuery para cargar en segundo plano sin mostrar loading
+        await queryClient.prefetchQuery({
+          queryKey: ['ticketHtml', ticketId],
+          queryFn: () => getTicketHtmlContent(ticketId),
+          staleTime: 5 * 60 * 1000, // 5 minutos de frescura
+          gcTime: 15 * 60 * 1000, // 15 minutos en cache
+        });
 
-      setStats(prev => ({ 
-        ...prev, 
-        preloaded: prev.preloaded + 1,
-        inProgress: prev.inProgress - 1,
-        lastPreloadTime: new Date()
-      }));
+        setStats(prev => ({
+          ...prev,
+          preloaded: prev.preloaded + 1,
+          inProgress: prev.inProgress - 1,
+          lastPreloadTime: new Date(),
+        }));
 
-      return true;
-    } catch (error) {
-      console.warn(`Failed to preload ticket ${ticketId}:`, error);
-      setStats(prev => ({ 
-        ...prev, 
-        failed: prev.failed + 1,
-        inProgress: prev.inProgress - 1
-      }));
-      return false;
-    } finally {
-      preloadingRef.current.delete(ticketId);
-      lastPreloadRef.current = new Date();
-    }
-  }, [queryClient, isTicketCached]);
+        return true;
+      } catch (error) {
+        console.warn(`Failed to preload ticket ${ticketId}:`, error);
+        setStats(prev => ({
+          ...prev,
+          failed: prev.failed + 1,
+          inProgress: prev.inProgress - 1,
+        }));
+        return false;
+      } finally {
+        preloadingRef.current.delete(ticketId);
+        lastPreloadRef.current = new Date();
+      }
+    },
+    [queryClient, isTicketCached]
+  );
 
   // Helper: Process preload queue - usando useCallback para estabilidad
-  const processQueue = useCallback(async function processQueue() {
-    if (preloadQueueRef.current.size === 0) return;
-    if (preloadingRef.current.size >= config.maxConcurrent) return;
+  const processQueue = useCallback(
+    async function processQueue() {
+      if (preloadQueueRef.current.size === 0) return;
+      if (preloadingRef.current.size >= config.maxConcurrent) return;
 
-    const now = Date.now();
-    const lastPreload = lastPreloadRef.current?.getTime() || 0;
-    
-    if (now - lastPreload < config.delayBetweenPreloads) {
-      // Esperar el delay configurado
-      setTimeout(processQueue, config.delayBetweenPreloads - (now - lastPreload));
-      return;
-    }
+      const now = Date.now();
+      const lastPreload = lastPreloadRef.current?.getTime() || 0;
 
-    // Tomar el siguiente ticket de la cola
-    const nextTicketId = Array.from(preloadQueueRef.current)[0];
-    preloadQueueRef.current.delete(nextTicketId);
+      if (now - lastPreload < config.delayBetweenPreloads) {
+        // Esperar el delay configurado
+        setTimeout(processQueue, config.delayBetweenPreloads - (now - lastPreload));
+        return;
+      }
 
-    await preloadTicket(nextTicketId);
+      // Tomar el siguiente ticket de la cola
+      const nextTicketId = Array.from(preloadQueueRef.current)[0];
+      preloadQueueRef.current.delete(nextTicketId);
 
-    // Continuar procesando la cola
-    if (preloadQueueRef.current.size > 0) {
-      setTimeout(processQueue, config.delayBetweenPreloads);
-    }
-  }, [config.maxConcurrent, config.delayBetweenPreloads, preloadTicket]);
+      await preloadTicket(nextTicketId);
+
+      // Continuar procesando la cola
+      if (preloadQueueRef.current.size > 0) {
+        setTimeout(processQueue, config.delayBetweenPreloads);
+      }
+    },
+    [config.maxConcurrent, config.delayBetweenPreloads, preloadTicket]
+  );
 
   // Main preload function - usando useCallback para evitar recreación
-  const preloadTickets = useCallback((ticketIds: number[], priority = false) => {
-    if (!config.enableBackgroundPreload) return;
-    if (!user?.workspace_id) return;
+  const preloadTickets = useCallback(
+    (ticketIds: number[], priority = false) => {
+      if (!config.enableBackgroundPreload) return;
+      if (!user?.workspace_id) return;
 
-    const newTickets = ticketIds.filter(id => 
-      !isTicketCached(id) && 
-      !preloadingRef.current.has(id) && 
-      !preloadQueueRef.current.has(id)
-    );
+      const newTickets = ticketIds.filter(
+        id =>
+          !isTicketCached(id) && !preloadingRef.current.has(id) && !preloadQueueRef.current.has(id)
+      );
 
-    if (newTickets.length === 0) return;
+      if (newTickets.length === 0) return;
 
-    if (priority) {
-      // Prioridad alta: añadir al inicio de la cola
-      const currentQueue = Array.from(preloadQueueRef.current);
-      preloadQueueRef.current.clear();
-      newTickets.forEach(id => preloadQueueRef.current.add(id));
-      currentQueue.forEach(id => preloadQueueRef.current.add(id));
-    } else {
-      // Prioridad normal: añadir al final
-      newTickets.forEach(id => preloadQueueRef.current.add(id));
-    }
+      if (priority) {
+        // Prioridad alta: añadir al inicio de la cola
+        const currentQueue = Array.from(preloadQueueRef.current);
+        preloadQueueRef.current.clear();
+        newTickets.forEach(id => preloadQueueRef.current.add(id));
+        currentQueue.forEach(id => preloadQueueRef.current.add(id));
+      } else {
+        // Prioridad normal: añadir al final
+        newTickets.forEach(id => preloadQueueRef.current.add(id));
+      }
 
-    // Iniciar procesamiento si no está en progreso
-    if (preloadingRef.current.size === 0) {
-      setTimeout(processQueue, 100); // Pequeño delay para evitar spam
-    }
-  }, [config.enableBackgroundPreload, user?.workspace_id, isTicketCached, processQueue]);
+      // Iniciar procesamiento si no está en progreso
+      if (preloadingRef.current.size === 0) {
+        setTimeout(processQueue, 100); // Pequeño delay para evitar spam
+      }
+    },
+    [config.enableBackgroundPreload, user?.workspace_id, isTicketCached, processQueue]
+  );
 
   // Preload visible tickets when tickets list changes
   useEffect(() => {
@@ -166,13 +177,15 @@ export function useTicketPreloader(options: PreloadOptions = {}) {
     // Precargar el resto con prioridad normal
     const remainingTickets = ticketIds.slice(config.priorityThreshold);
     preloadTickets(remainingTickets, false);
-
   }, [allTicketsData, config.priorityThreshold, preloadTickets]);
 
   // Preload specific ticket (called when user hovers or navigates)
-  const preloadSpecificTicket = useCallback((ticketId: number) => {
-    preloadTickets([ticketId], true); // Alta prioridad
-  }, [preloadTickets]);
+  const preloadSpecificTicket = useCallback(
+    (ticketId: number) => {
+      preloadTickets([ticketId], true); // Alta prioridad
+    },
+    [preloadTickets]
+  );
 
   // Get preload status for a specific ticket
   const getTicketStatus = (ticketId: number) => {
@@ -184,16 +197,19 @@ export function useTicketPreloader(options: PreloadOptions = {}) {
   };
 
   // Clear cache for specific ticket (when updated via Socket.IO)
-  const invalidateTicket = useCallback((ticketId: number) => {
-    // Solo invalidar si realmente necesitamos datos frescos
-    const existingData = queryClient.getQueryData(['ticketHtml', ticketId]);
-    if (existingData) {
-      // Marcar como stale en lugar de eliminar completamente
-      queryClient.invalidateQueries({ queryKey: ['ticketHtml', ticketId] });
-      // Re-preload en background con prioridad normal para no interferir
-      setTimeout(() => preloadSpecificTicket(ticketId), 500);
-    }
-  }, [queryClient, preloadSpecificTicket]);
+  const invalidateTicket = useCallback(
+    (ticketId: number) => {
+      // Solo invalidar si realmente necesitamos datos frescos
+      const existingData = queryClient.getQueryData(['ticketHtml', ticketId]);
+      if (existingData) {
+        // Marcar como stale en lugar de eliminar completamente
+        queryClient.invalidateQueries({ queryKey: ['ticketHtml', ticketId] });
+        // Re-preload en background con prioridad normal para no interferir
+        setTimeout(() => preloadSpecificTicket(ticketId), 500);
+      }
+    },
+    [queryClient, preloadSpecificTicket]
+  );
 
   return {
     preloadSpecificTicket,
@@ -202,4 +218,4 @@ export function useTicketPreloader(options: PreloadOptions = {}) {
     stats,
     queueSize: preloadQueueRef.current.size,
   };
-} 
+}

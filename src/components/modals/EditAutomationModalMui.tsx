@@ -38,7 +38,6 @@ import {
   AutomationActionCreate,
 } from '@/typescript/automation';
 
-
 interface EditAutomationModalMuiProps {
   open: boolean;
   onClose: () => void;
@@ -56,7 +55,9 @@ export default function EditAutomationModalMui({
 
   const [name, setName] = useState('');
   const [isActive, setIsActive] = useState(true);
-  const [conditionsOperator, setConditionsOperator] = useState<LogicalOperator>(LogicalOperator.AND);
+  const [conditionsOperator, setConditionsOperator] = useState<LogicalOperator>(
+    LogicalOperator.AND
+  );
   const [actionsOperator, setActionsOperator] = useState<LogicalOperator>(LogicalOperator.AND);
   const [conditions, setConditions] = useState<AutomationConditionCreate[]>([]);
   const [actions, setActions] = useState<AutomationActionCreate[]>([]);
@@ -82,8 +83,6 @@ export default function EditAutomationModalMui({
     enabled: open, // Only fetch when modal is open
   });
 
-
-
   // Initialize form with automation data
   useEffect(() => {
     if (automation) {
@@ -92,14 +91,14 @@ export default function EditAutomationModalMui({
       setConditionsOperator(automation.conditions_operator || LogicalOperator.AND);
       setActionsOperator(automation.actions_operator || LogicalOperator.AND);
       setConditions(
-        automation.conditions.map((condition) => ({
+        automation.conditions.map(condition => ({
           condition_type: condition.condition_type,
           condition_operator: condition.condition_operator,
           condition_value: condition.condition_value,
         }))
       );
       setActions(
-        automation.actions.map((action) => ({
+        automation.actions.map(action => ({
           action_type: action.action_type,
           action_value: action.action_value,
         }))
@@ -371,8 +370,6 @@ export default function EditAutomationModalMui({
     }
   };
 
-
-
   const conditionTypeLabels = {
     [ConditionType.DESCRIPTION]: 'Subject',
     [ConditionType.TICKET_BODY]: 'Ticket Body',
@@ -493,9 +490,7 @@ export default function EditAutomationModalMui({
                     size="small"
                     label="Value"
                     value={condition.condition_value || ''}
-                    onChange={(e) =>
-                      updateCondition(index, 'condition_value', e.target.value)
-                    }
+                    onChange={e => updateCondition(index, 'condition_value', e.target.value)}
                     sx={{ minWidth: 150, flexGrow: 1 }}
                   />
 
@@ -517,7 +512,11 @@ export default function EditAutomationModalMui({
                       <Select
                         value={condition.logical_operator || LogicalOperator.AND}
                         onChange={(e: SelectChangeEvent) =>
-                          updateCondition(index, 'logical_operator', e.target.value as LogicalOperator)
+                          updateCondition(
+                            index,
+                            'logical_operator',
+                            e.target.value as LogicalOperator
+                          )
                         }
                         label="Logic"
                       >
@@ -593,9 +592,7 @@ export default function EditAutomationModalMui({
                   }
                   label="Actions Logic"
                 >
-                  <MenuItem value={LogicalOperator.AND}>
-                    AND (Execute all actions)
-                  </MenuItem>
+                  <MenuItem value={LogicalOperator.AND}>AND (Execute all actions)</MenuItem>
                   <MenuItem value={LogicalOperator.OR}>
                     OR (Execute first successful action only)
                   </MenuItem>

@@ -52,7 +52,9 @@ export default function NewAutomationModalMui({
   const { user: currentUser } = useAuth();
 
   const [name, setName] = useState('');
-  const [conditionsOperator, setConditionsOperator] = useState<LogicalOperator>(LogicalOperator.AND);
+  const [conditionsOperator, setConditionsOperator] = useState<LogicalOperator>(
+    LogicalOperator.AND
+  );
   const [actionsOperator, setActionsOperator] = useState<LogicalOperator>(LogicalOperator.AND);
   const [conditions, setConditions] = useState<AutomationConditionCreate[]>([
     {
@@ -89,8 +91,6 @@ export default function NewAutomationModalMui({
     queryFn: getTeams,
     enabled: open, // Only fetch when modal is open
   });
-
-
 
   const mutation = useMutation({
     mutationFn: async (data: {
@@ -361,8 +361,6 @@ export default function NewAutomationModalMui({
     }
   };
 
-
-
   const conditionTypeLabels = {
     [ConditionType.DESCRIPTION]: 'Subject',
     [ConditionType.TICKET_BODY]: 'Ticket Body',
@@ -479,9 +477,7 @@ export default function NewAutomationModalMui({
                     size="small"
                     label="Value"
                     value={condition.condition_value || ''}
-                    onChange={(e) =>
-                      updateCondition(index, 'condition_value', e.target.value)
-                    }
+                    onChange={e => updateCondition(index, 'condition_value', e.target.value)}
                     sx={{ minWidth: 150, flexGrow: 1 }}
                   />
 
@@ -503,7 +499,11 @@ export default function NewAutomationModalMui({
                       <Select
                         value={condition.logical_operator || LogicalOperator.AND}
                         onChange={(e: SelectChangeEvent) =>
-                          updateCondition(index, 'logical_operator', e.target.value as LogicalOperator)
+                          updateCondition(
+                            index,
+                            'logical_operator',
+                            e.target.value as LogicalOperator
+                          )
                         }
                         label="Logic"
                       >
@@ -581,9 +581,7 @@ export default function NewAutomationModalMui({
                   }
                   label="Actions Logic"
                 >
-                  <MenuItem value={LogicalOperator.AND}>
-                    AND (Execute all actions)
-                  </MenuItem>
+                  <MenuItem value={LogicalOperator.AND}>AND (Execute all actions)</MenuItem>
                   <MenuItem value={LogicalOperator.OR}>
                     OR (Execute first successful action only)
                   </MenuItem>
