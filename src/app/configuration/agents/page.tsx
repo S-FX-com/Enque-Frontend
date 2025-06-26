@@ -253,7 +253,7 @@ export default function AgentsPage() {
                   <AlertDialogAction
                     onClick={handleDeleteConfirm}
                     disabled={deleteAgentsMutation.isPending}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    className="bg-destructive text-white text-destructive-foreground hover:bg-destructive/90"
                   >
                     {deleteAgentsMutation.isPending ? 'Deleting...' : 'Delete'}
                   </AlertDialogAction>

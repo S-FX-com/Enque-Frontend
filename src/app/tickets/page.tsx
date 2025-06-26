@@ -1375,7 +1375,7 @@ function TicketsClientContent() {
                     <AlertDialogAction
                       onClick={handleDeleteConfirm}
                       disabled={deleteTicketsMutation.isPending}
-                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      className="bg-destructive text-white text-destructive-foreground hover:bg-destructive/90"
                     >
                       {deleteTicketsMutation.isPending ? 'Deleting...' : 'Delete'}
                     </AlertDialogAction>
