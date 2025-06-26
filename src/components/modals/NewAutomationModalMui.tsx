@@ -32,11 +32,13 @@ import {
   Automation,
   ConditionType,
   ConditionOperator,
+  LogicalOperator,
   ActionType,
   AutomationConditionCreate,
   AutomationActionCreate,
 } from '@/typescript/automation';
 import { useAuth } from '@/hooks/use-auth';
+
 interface NewAutomationModalMuiProps {
   open: boolean;
   onClose: () => void;
@@ -52,6 +54,8 @@ export default function NewAutomationModalMui({
   const { user: currentUser } = useAuth();
 
   const [name, setName] = useState('');
+  const [conditionsOperator, setConditionsOperator] = useState<LogicalOperator>(LogicalOperator.AND);
+  const [actionsOperator, setActionsOperator] = useState<LogicalOperator>(LogicalOperator.AND);
   const [conditions, setConditions] = useState<AutomationConditionCreate[]>([
     {
       condition_type: ConditionType.DESCRIPTION,
@@ -109,6 +113,8 @@ export default function NewAutomationModalMui({
   const mutation = useMutation({
     mutationFn: async (data: {
       name: string;
+      conditionsOperator: LogicalOperator;
+      actionsOperator: LogicalOperator;
       conditions: AutomationConditionCreate[];
       actions: AutomationActionCreate[];
     }) => {
@@ -119,6 +125,8 @@ export default function NewAutomationModalMui({
         name: data.name,
         workspace_id: currentUser.workspace_id,
         is_active: true,
+        conditions_operator: data.conditionsOperator,
+        actions_operator: data.actionsOperator,
         conditions: data.conditions,
         actions: data.actions,
       };
@@ -173,11 +181,13 @@ export default function NewAutomationModalMui({
       }
     }
 
-    mutation.mutate({ name, conditions, actions });
+    mutation.mutate({ name, conditionsOperator, actionsOperator, conditions, actions });
   };
 
   const handleCloseAndReset = () => {
     setName('');
+    setConditionsOperator(LogicalOperator.AND);
+    setActionsOperator(LogicalOperator.AND);
     setConditions([
       {
         condition_type: ConditionType.DESCRIPTION,
@@ -491,8 +501,10 @@ export default function NewAutomationModalMui({
 
   const conditionTypeLabels = {
     [ConditionType.DESCRIPTION]: 'Subject',
-    [ConditionType.NOTE]: 'Note',
+    [ConditionType.TICKET_BODY]: 'Ticket Body',
     [ConditionType.USER]: 'User',
+    [ConditionType.USER_DOMAIN]: 'User Domain',
+    [ConditionType.INBOX]: 'Inbox',
     [ConditionType.AGENT]: 'Agent',
     [ConditionType.COMPANY]: 'Company',
     [ConditionType.PRIORITY]: 'Priority',
@@ -511,6 +523,11 @@ export default function NewAutomationModalMui({
     [ActionType.SET_PRIORITY]: 'Set Priority',
     [ActionType.SET_STATUS]: 'Set Status',
     [ActionType.SET_TEAM]: 'Set Team',
+  };
+
+  const logicalOperatorLabels = {
+    [LogicalOperator.AND]: 'AND (All conditions must be true)',
+    [LogicalOperator.OR]: 'OR (At least one condition must be true)',
   };
   return (
     <Dialog
@@ -613,6 +630,28 @@ export default function NewAutomationModalMui({
               </IconButton>
             </Box>
           ))}
+
+          {/* Conditions Logical Operator - Only show if multiple conditions */}
+          {conditions.length > 1 && (
+            <Box sx={{ mt: 2 }}>
+              <FormControl size="small" sx={{ minWidth: 300 }}>
+                <InputLabel>Conditions Logic</InputLabel>
+                <Select
+                  value={conditionsOperator}
+                  onChange={(e: SelectChangeEvent) =>
+                    setConditionsOperator(e.target.value as LogicalOperator)
+                  }
+                  label="Conditions Logic"
+                >
+                  {Object.entries(logicalOperatorLabels).map(([value, label]) => (
+                    <MenuItem key={value} value={value}>
+                      {label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Box>
+          )}
         </Box>
 
         <Divider sx={{ my: 2 }} />
@@ -665,6 +704,29 @@ export default function NewAutomationModalMui({
               </IconButton>
             </Box>
           ))}
+
+          {/* Actions Logical Operator - Only show if multiple actions */}
+          {actions.length > 1 && (
+            <Box sx={{ mt: 2 }}>
+              <FormControl size="small" sx={{ minWidth: 300 }}>
+                <InputLabel>Actions Logic</InputLabel>
+                <Select
+                  value={actionsOperator}
+                  onChange={(e: SelectChangeEvent) =>
+                    setActionsOperator(e.target.value as LogicalOperator)
+                  }
+                  label="Actions Logic"
+                >
+                  <MenuItem value={LogicalOperator.AND}>
+                    AND (Execute all actions)
+                  </MenuItem>
+                  <MenuItem value={LogicalOperator.OR}>
+                    OR (Execute first successful action only)
+                  </MenuItem>
+                </Select>
+              </FormControl>
+            </Box>
+          )}
         </Box>
 
         {formError && (

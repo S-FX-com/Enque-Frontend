@@ -55,6 +55,8 @@ interface Props {
   latestOnly?: boolean;
   extraRecipients?: string;
   onExtraRecipientsChange?: (recipients: string) => void;
+  extraBccRecipients?: string;
+  onExtraBccRecipientsChange?: (recipients: string) => void;
 }
 
 // Optimized message component for HTML content
@@ -338,6 +340,7 @@ export function TicketConversation({
   latestOnly = false,
   extraRecipients = '',
   onExtraRecipientsChange,
+  extraBccRecipients = '',
 }: Props) {
   const queryClient = useQueryClient();
   const { user: currentUser } = useAuth();
@@ -620,6 +623,12 @@ export function TicketConversation({
       throw new Error('Invalid email addresses in extra recipients.');
     }
 
+    // Validate BCC recipients if provided
+    if (extraBccRecipients.trim() && !validateEmails(extraBccRecipients)) {
+      toast.error('Please enter valid BCC email addresses separated by commas.');
+      throw new Error('Invalid email addresses in BCC recipients.');
+    }
+
     let attachmentIds: number[] = [];
 
     if (selectedAttachments && selectedAttachments.length > 0) {
@@ -643,6 +652,7 @@ export function TicketConversation({
       is_private: isPrivate,
       attachment_ids: attachmentIds.length > 0 ? attachmentIds : undefined,
       other_destinaries: extraRecipients.trim() || undefined,
+      other_unknown_destinaries: extraBccRecipients.trim() || undefined,
     };
 
     return createComment(ticket.id, payload, ticket.status);

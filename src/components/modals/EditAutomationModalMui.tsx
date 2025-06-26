@@ -34,10 +34,12 @@ import {
   Automation,
   ConditionType,
   ConditionOperator,
+  LogicalOperator,
   ActionType,
   AutomationConditionCreate,
   AutomationActionCreate,
 } from '@/typescript/automation';
+
 
 interface EditAutomationModalMuiProps {
   open: boolean;
@@ -56,19 +58,13 @@ export default function EditAutomationModalMui({
 
   const [name, setName] = useState('');
   const [isActive, setIsActive] = useState(true);
-  const [conditions, setConditions] = useState<AutomationConditionCreate[]>([
-    {
-      condition_type: ConditionType.DESCRIPTION,
-      condition_operator: ConditionOperator.EQL,
-      condition_value: '',
-    },
-  ]);
-  const [actions, setActions] = useState<AutomationActionCreate[]>([
-    { action_type: ActionType.SET_AGENT, action_value: '' },
-  ]);
+  const [conditionsOperator, setConditionsOperator] = useState<LogicalOperator>(LogicalOperator.AND);
+  const [actionsOperator, setActionsOperator] = useState<LogicalOperator>(LogicalOperator.AND);
+  const [conditions, setConditions] = useState<AutomationConditionCreate[]>([]);
+  const [actions, setActions] = useState<AutomationActionCreate[]>([]);
   const [formError, setFormError] = useState<string | null>(null);
 
-  // Fetch the automation data when automationId changes
+  // Fetch automation data
   const { data: automation } = useQuery({
     queryKey: ['automation', automationId],
     queryFn: () => (automationId ? getAutomationById(automationId) : null),
@@ -106,26 +102,25 @@ export default function EditAutomationModalMui({
     enabled: open, // Only fetch when modal is open
   });
 
-  // Load automation data into form when automation is fetched
+  // Initialize form with automation data
   useEffect(() => {
     if (automation) {
       setName(automation.name);
       setIsActive(automation.is_active);
+      setConditionsOperator(automation.conditions_operator || LogicalOperator.AND);
+      setActionsOperator(automation.actions_operator || LogicalOperator.AND);
       setConditions(
-        automation.conditions.length > 0
-          ? automation.conditions
-          : [
-              {
-                condition_type: ConditionType.DESCRIPTION,
-                condition_operator: ConditionOperator.EQL,
-                condition_value: '',
-              },
-            ]
+        automation.conditions.map((condition) => ({
+          condition_type: condition.condition_type,
+          condition_operator: condition.condition_operator,
+          condition_value: condition.condition_value,
+        }))
       );
       setActions(
-        automation.actions.length > 0
-          ? automation.actions
-          : [{ action_type: ActionType.SET_AGENT, action_value: '' }]
+        automation.actions.map((action) => ({
+          action_type: action.action_type,
+          action_value: action.action_value,
+        }))
       );
     }
   }, [automation]);
@@ -133,7 +128,9 @@ export default function EditAutomationModalMui({
   const mutation = useMutation({
     mutationFn: async (data: {
       name: string;
-      is_active: boolean;
+      isActive: boolean;
+      conditionsOperator: LogicalOperator;
+      actionsOperator: LogicalOperator;
       conditions: AutomationConditionCreate[];
       actions: AutomationActionCreate[];
     }) => {
@@ -142,14 +139,16 @@ export default function EditAutomationModalMui({
       }
       const payload = {
         name: data.name,
-        is_active: data.is_active,
+        is_active: data.isActive,
+        conditions_operator: data.conditionsOperator,
+        actions_operator: data.actionsOperator,
         conditions: data.conditions,
         actions: data.actions,
       };
       return updateAutomation(automationId, payload);
     },
     onSuccess: (updatedAutomation: Automation) => {
-      toast.success(`Automation "${updatedAutomation.name}" updated successfully`);
+      toast.success(`Workflow "${updatedAutomation.name}" updated successfully`);
       queryClient.invalidateQueries({ queryKey: ['automations'] });
       queryClient.invalidateQueries({ queryKey: ['automation', automationId] });
       if (onUpdateSuccess) {
@@ -158,7 +157,7 @@ export default function EditAutomationModalMui({
       handleCloseAndReset();
     },
     onError: (error: Error) => {
-      toast.error(`Failed to update automation: ${error.message}`);
+      toast.error(`Failed to update workflow: ${error.message}`);
       setFormError(error.message);
     },
   });
@@ -198,20 +197,16 @@ export default function EditAutomationModalMui({
       }
     }
 
-    mutation.mutate({ name, is_active: isActive, conditions, actions });
+    mutation.mutate({ name, isActive, conditionsOperator, actionsOperator, conditions, actions });
   };
 
   const handleCloseAndReset = () => {
     setName('');
     setIsActive(true);
-    setConditions([
-      {
-        condition_type: ConditionType.DESCRIPTION,
-        condition_operator: ConditionOperator.EQL,
-        condition_value: '',
-      },
-    ]);
-    setActions([{ action_type: ActionType.SET_AGENT, action_value: '' }]);
+    setConditionsOperator(LogicalOperator.AND);
+    setActionsOperator(LogicalOperator.AND);
+    setConditions([]);
+    setActions([]);
     setFormError(null);
     onClose();
   };
@@ -517,8 +512,10 @@ export default function EditAutomationModalMui({
 
   const conditionTypeLabels = {
     [ConditionType.DESCRIPTION]: 'Subject',
-    [ConditionType.NOTE]: 'Note',
+    [ConditionType.TICKET_BODY]: 'Ticket Body',
     [ConditionType.USER]: 'User',
+    [ConditionType.USER_DOMAIN]: 'User Domain',
+    [ConditionType.INBOX]: 'Inbox',
     [ConditionType.AGENT]: 'Agent',
     [ConditionType.COMPANY]: 'Company',
     [ConditionType.PRIORITY]: 'Priority',
@@ -532,11 +529,20 @@ export default function EditAutomationModalMui({
     [ConditionOperator.NCON]: 'Does not contain',
   };
 
+
+
   const actionTypeLabels = {
     [ActionType.SET_AGENT]: 'Set Agent',
     [ActionType.SET_PRIORITY]: 'Set Priority',
     [ActionType.SET_STATUS]: 'Set Status',
     [ActionType.SET_TEAM]: 'Set Team',
+    [ActionType.SET_CATEGORY]: 'Set Category',
+    [ActionType.ALSO_NOTIFY]: 'Also Notify',
+  };
+
+  const logicalOperatorLabels = {
+    [LogicalOperator.AND]: 'AND (All conditions must be true)',
+    [LogicalOperator.OR]: 'OR (At least one condition must be true)',
   };
 
   return (
@@ -641,6 +647,28 @@ export default function EditAutomationModalMui({
               </IconButton>
             </Box>
           ))}
+
+          {/* Conditions Logical Operator - Only show if multiple conditions */}
+          {conditions.length > 1 && (
+            <Box sx={{ mt: 2 }}>
+              <FormControl size="small" sx={{ minWidth: 300 }}>
+                <InputLabel>Conditions Logic</InputLabel>
+                <Select
+                  value={conditionsOperator}
+                  onChange={(e: SelectChangeEvent) =>
+                    setConditionsOperator(e.target.value as LogicalOperator)
+                  }
+                  label="Conditions Logic"
+                >
+                  {Object.entries(logicalOperatorLabels).map(([value, label]) => (
+                    <MenuItem key={value} value={value}>
+                      {label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Box>
+          )}
         </Box>
 
         <Divider sx={{ my: 2 }} />
@@ -693,6 +721,29 @@ export default function EditAutomationModalMui({
               </IconButton>
             </Box>
           ))}
+
+          {/* Actions Logical Operator - Only show if multiple actions */}
+          {actions.length > 1 && (
+            <Box sx={{ mt: 2 }}>
+              <FormControl size="small" sx={{ minWidth: 300 }}>
+                <InputLabel>Actions Logic</InputLabel>
+                <Select
+                  value={actionsOperator}
+                  onChange={(e: SelectChangeEvent) =>
+                    setActionsOperator(e.target.value as LogicalOperator)
+                  }
+                  label="Actions Logic"
+                >
+                  <MenuItem value={LogicalOperator.AND}>
+                    AND (Execute all actions)
+                  </MenuItem>
+                  <MenuItem value={LogicalOperator.OR}>
+                    OR (Execute first successful action only)
+                  </MenuItem>
+                </Select>
+              </FormControl>
+            </Box>
+          )}
         </Box>
 
         {formError && (
