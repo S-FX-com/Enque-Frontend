@@ -41,7 +41,7 @@ const editorStyles = `
     overflow-y: auto;
     resize: none;
   }
-  
+
   .auto-expand-editor .tiptap {
     min-height: 120px;
     overflow-y: visible;
@@ -645,7 +645,7 @@ export function TicketConversation({
       other_destinaries: extraRecipients.trim() || undefined,
     };
 
-    return createComment(ticket.id, payload);
+    return createComment(ticket.id, payload, ticket.status);
   };
 
   useEffect(() => {

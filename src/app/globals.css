@@ -168,8 +168,8 @@ html {
 }
 
 /*.dark h2,
-.dark h3,
-.dark p:not(.text-slate-500),*/
+.dark h3,*/
+.dark p:not(.text-slate-500),
 .dark .text-slate-900 {
   color: #ffffff !important;
 }
