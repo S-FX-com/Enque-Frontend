@@ -103,7 +103,7 @@ export const createComment = async (
     }
 
     if (ticketStatus === 'Closed') {
-      const url = `${AppConfigs.api}/${taskId}`;
+      const url = `${AppConfigs.api}/tasks/${taskId}`;
       //const taskUpdate: TaskUpdate = { task_id: taskId, task_in: { status: 'Open' } };
       const response = await fetchAPI.PUT<TaskUpdate>(url, {
         task_id: taskId,
