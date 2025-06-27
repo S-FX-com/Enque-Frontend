@@ -133,7 +133,9 @@ function OptimizedMessageItem({ content, isInitial = false }: OptimizedMessageIt
     htmlContent = htmlContent.replace(/^\s*<head[^>]*>[\s\S]*?<\/head>/gi, '');
     htmlContent = htmlContent.replace(/^\s*<body[^>]*>/gi, '');
     htmlContent = htmlContent.replace(/<\/body>\s*$/gi, '');
-    htmlContent = htmlContent.replace(/<p>\s*<\/p>/gi, '<p><br></p>');
+    //Lines commented due to unecessary html format
+    //htmlContent = htmlContent.replace(/<p>\s*<\/p>/gi, '<p><br></p>');
+    //htmlContent = htmlContent.replace(/<p>\s*<\/p>/gi, '<br>');
     htmlContent = htmlContent.replace(/^\s*(?:<br\s*\/?>\s*)+/i, '');
     htmlContent = htmlContent.replace(/(?:<br\s*\/?>\s*)+$/i, '');
 
@@ -655,7 +657,7 @@ export function TicketConversation({
       other_unknown_destinaries: extraBccRecipients.trim() || undefined,
     };
 
-    return createComment(ticket.id, payload, ticket.status);
+    return createComment(ticket.id, payload /*ticket.status*/);
   };
 
   useEffect(() => {

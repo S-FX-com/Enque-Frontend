@@ -84,8 +84,8 @@ export interface TaskUpdate {
 
 export const createComment = async (
   taskId: number,
-  payload: CreateCommentPayload,
-  ticketStatus: string
+  payload: CreateCommentPayload
+  //ticketStatus: string
 ): Promise<CommentResponseData> => {
   // Return the created IComment and task data on success
   try {
@@ -100,21 +100,6 @@ export const createComment = async (
       const errorMessage = response.message || 'Failed to create comment';
       console.error('Failed to create comment:', errorMessage);
       throw new Error(errorMessage);
-    }
-
-    if (ticketStatus === 'Closed') {
-      const url = `${AppConfigs.api}/tasks/${taskId}`;
-      //const taskUpdate: TaskUpdate = { task_id: taskId, task_in: { status: 'Open' } };
-      const response = await fetchAPI.PUT<TaskUpdate>(url, {
-        task_id: taskId,
-        task_in: { status: 'Open' },
-      });
-      if (!response.success || !response.data) {
-        // Handle API error response
-        const errorMessage = response.message || 'Not possible to update task status to opens';
-        console.error('Failed to update task:', errorMessage);
-        throw new Error(errorMessage);
-      }
     }
     // Return the response data containing both comment and updated task
     return response.data;
