@@ -41,15 +41,32 @@ function processLinksForNewTab(htmlContent: string): string {
     (match, beforeHref, url, afterHref) => {
       let attributes = beforeHref + afterHref;
       
-      // Remove text-decoration:none from style attribute
-      attributes = attributes.replace(/style\s*=\s*["']([^"']*?)text-decoration\s*:\s*none\s*;?\s*([^"']*?)["']/gi, (styleMatch: string, before: string, after: string) => {
-        const cleanStyle = (before + after).trim();
-        return cleanStyle ? `style="${cleanStyle}"` : '';
-      });
-      
       // Check if target attribute already exists
       const hasTarget = /target\s*=/i.test(attributes);
       const targetAttr = hasTarget ? '' : ' target="_blank" rel="noopener noreferrer"';
+      
+      // Check if style attribute exists
+      const hasStyle = /style\s*=/i.test(attributes);
+      
+      if (hasStyle) {
+        // Update existing style attribute to include link styling
+        attributes = attributes.replace(/style\s*=\s*["']([^"']*?)["']/gi, (styleMatch: string, styleContent: string) => {
+          let newStyle = styleContent;
+          
+          // Remove text-decoration:none if present
+          newStyle = newStyle.replace(/text-decoration\s*:\s*none\s*;?\s*/gi, '');
+          
+          // Add link styling
+          newStyle = newStyle.trim();
+          if (newStyle && !newStyle.endsWith(';')) newStyle += ';';
+          newStyle += 'color:#2563eb !important;text-decoration:underline !important;';
+          
+          return `style="${newStyle}"`;
+        });
+      } else {
+        // Add style attribute with link styling
+        attributes += ' style="color:#2563eb !important;text-decoration:underline !important;"';
+      }
       
       return `<a ${attributes}href="${url}"${targetAttr}>`;
     }
