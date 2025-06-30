@@ -98,7 +98,7 @@ export default function AutomationsPage() {
                 Automation Settings
               </CardTitle>
               <CardDescription>
-                Configure automated actions and notifications for your workspace
+                Manage automated actions and notifications for your workspace
               </CardDescription>
             </div>
           </div>
@@ -109,8 +109,7 @@ export default function AutomationsPage() {
             <AlertTitle>About Automations</AlertTitle>
             <AlertDescription>
               <p>
-                Configure automated workflows and notifications that help streamline your support process.
-                Enable or disable different automation features based on your team&apos;s needs.
+                Manage automated workflows and notifications for your workspace.
               </p>
             </AlertDescription>
           </Alert>
@@ -181,18 +180,7 @@ export default function AutomationsPage() {
                 </CardContent>
               </Card>
 
-              {/* Placeholder for future automations */}
-              <Card className="border border-dashed">
-                <CardContent className="pt-6">
-                  <div className="text-center py-8">
-                    <Settings className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                    <h3 className="text-lg font-medium mb-2">More Automations Coming Soon</h3>
-                    <p className="text-muted-foreground">
-                      We&apos;re working on additional automation features to help streamline your workflow.
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
+
             </div>
           )}
         </CardContent>

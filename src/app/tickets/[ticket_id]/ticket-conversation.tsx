@@ -34,6 +34,22 @@ import { getCannedReplies, type CannedReply } from '@/services/canned-replies';
 import { formatRelativeTime } from '@/lib/utils';
 import BoringAvatar from 'boring-avatars';
 
+// Function to process links to open in new tab
+function processLinksForNewTab(htmlContent: string): string {
+  return htmlContent.replace(
+    /<a\s+([^>]*?)href\s*=\s*["']([^"']+)["']([^>]*?)>/gi,
+    (match, beforeHref, url, afterHref) => {
+      // Check if target attribute already exists
+      if (/target\s*=/i.test(beforeHref + afterHref)) {
+        return match; // Return unchanged if target already exists
+      }
+      
+      // Add target="_blank" and rel="noopener noreferrer" for security
+      return `<a ${beforeHref}href="${url}"${afterHref} target="_blank" rel="noopener noreferrer">`;
+    }
+  );
+}
+
 const editorStyles = `
   .auto-expand-editor .ProseMirror {
     min-height: 120px;
@@ -41,7 +57,7 @@ const editorStyles = `
     overflow-y: auto;
     resize: none;
   }
-  
+
   .auto-expand-editor .tiptap {
     min-height: 120px;
     overflow-y: visible;
@@ -120,6 +136,30 @@ function OptimizedMessageItem({ content, isInitial = false }: OptimizedMessageIt
     };
   }, [content.content, content.sender, isInitial]);
 
+
+  const processedContent = React.useMemo(() => {
+    let htmlContent = content.content || ""
+
+    if (htmlContent.includes("<original-sender>")) {
+      htmlContent = htmlContent.replace(/<original-sender>.*?<\/original-sender>/g, "")
+    }
+
+    htmlContent = htmlContent.replace(/<meta[^>]*>/gi, "")
+    htmlContent = htmlContent.replace(/^\s*<html[^>]*>/gi, "")
+    htmlContent = htmlContent.replace(/<\/html>\s*$/gi, "")
+    htmlContent = htmlContent.replace(/^\s*<head[^>]*>[\s\S]*?<\/head>/gi, "")
+    htmlContent = htmlContent.replace(/^\s*<body[^>]*>/gi, "")
+    htmlContent = htmlContent.replace(/<\/body>\s*$/gi, "")
+    htmlContent = htmlContent.replace(/<p>\s*<\/p>/gi, "<p><br></p>")
+    htmlContent = htmlContent.replace(/^\s*(?:<br\s*\/?>\s*)+/i, "")
+    htmlContent = htmlContent.replace(/(?:<br\s*\/?>\s*)+$/i, "")
+
+    // Process links to open in new tab
+    htmlContent = processLinksForNewTab(htmlContent)
+
+    return htmlContent.trim()
+  }, [content.content])
+  /*
   const processedContent = React.useMemo(() => {
     let htmlContent = content.content || '';
 
@@ -133,13 +173,15 @@ function OptimizedMessageItem({ content, isInitial = false }: OptimizedMessageIt
     htmlContent = htmlContent.replace(/^\s*<head[^>]*>[\s\S]*?<\/head>/gi, '');
     htmlContent = htmlContent.replace(/^\s*<body[^>]*>/gi, '');
     htmlContent = htmlContent.replace(/<\/body>\s*$/gi, '');
-    htmlContent = htmlContent.replace(/<p>\s*<\/p>/gi, '<p><br></p>');
+    //Lines commented due to unecessary html format
+    //htmlContent = htmlContent.replace(/<p>\s*<\/p>/gi, '<p><br></p>');
+    //htmlContent = htmlContent.replace(/<p>\s*<\/p>/gi, '<br>');
     htmlContent = htmlContent.replace(/^\s*(?:<br\s*\/?>\s*)+/i, '');
     htmlContent = htmlContent.replace(/(?:<br\s*\/?>\s*)+$/i, '');
 
     return htmlContent.trim();
   }, [content.content]);
-
+*/
   const { displayReplyPart, displayQuotedPart, showToggleButton } = React.useMemo(() => {
     let displayReplyPart = processedContent;
     let displayQuotedPart: string | null = null;
@@ -204,12 +246,12 @@ function OptimizedMessageItem({ content, isInitial = false }: OptimizedMessageIt
           <div
             className="text-sm text-black dark:text-white prose dark:prose-invert max-w-none whitespace-pre-line prose-a:text-blue-600 dark:prose-a:text-blue-400 prose-a:underline"
             dangerouslySetInnerHTML={{
-              __html:
-                displayReplyPart ||
-                (content.content && content.content.trim()
-                  ? content.content
-                  : '<p>Message content could not be loaded</p>'),
-            }}
+          __html:
+          displayReplyPart ||
+          (content.content && content.content.trim()
+            ? processLinksForNewTab(content.content)
+            : "<p>Message content could not be loaded</p>"),
+      }}
           />
 
           {showToggleButton && (
@@ -655,7 +697,7 @@ export function TicketConversation({
       other_unknown_destinaries: extraBccRecipients.trim() || undefined,
     };
 
-    return createComment(ticket.id, payload);
+    return createComment(ticket.id, payload /*ticket.status*/);
   };
 
   useEffect(() => {
