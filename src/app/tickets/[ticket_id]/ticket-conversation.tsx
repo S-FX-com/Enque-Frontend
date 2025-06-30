@@ -34,18 +34,24 @@ import { getCannedReplies, type CannedReply } from '@/services/canned-replies';
 import { formatRelativeTime } from '@/lib/utils';
 import BoringAvatar from 'boring-avatars';
 
-// Function to process links to open in new tab
+// Function to process links to open in new tab and ensure underline
 function processLinksForNewTab(htmlContent: string): string {
   return htmlContent.replace(
     /<a\s+([^>]*?)href\s*=\s*["']([^"']+)["']([^>]*?)>/gi,
     (match, beforeHref, url, afterHref) => {
-      // Check if target attribute already exists
-      if (/target\s*=/i.test(beforeHref + afterHref)) {
-        return match; // Return unchanged if target already exists
-      }
+      let attributes = beforeHref + afterHref;
       
-      // Add target="_blank" and rel="noopener noreferrer" for security
-      return `<a ${beforeHref}href="${url}"${afterHref} target="_blank" rel="noopener noreferrer">`;
+      // Remove text-decoration:none from style attribute
+      attributes = attributes.replace(/style\s*=\s*["']([^"']*?)text-decoration\s*:\s*none\s*;?\s*([^"']*?)["']/gi, (styleMatch: string, before: string, after: string) => {
+        const cleanStyle = (before + after).trim();
+        return cleanStyle ? `style="${cleanStyle}"` : '';
+      });
+      
+      // Check if target attribute already exists
+      const hasTarget = /target\s*=/i.test(attributes);
+      const targetAttr = hasTarget ? '' : ' target="_blank" rel="noopener noreferrer"';
+      
+      return `<a ${attributes}href="${url}"${targetAttr}>`;
     }
   );
 }
