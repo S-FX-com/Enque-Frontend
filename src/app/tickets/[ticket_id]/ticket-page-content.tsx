@@ -363,8 +363,15 @@ export function TicketPageContent({ ticketId }: Props) {
         queryClient.setQueryData(['ticket', ticketId], [context.previousTicket]);
       }
     },
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
       invalidateCounterQueries();
+      
+      // Si se cambió el user_id (contacto principal), invalidar queries relacionadas
+      if (variables.field === 'user_id') {
+        queryClient.invalidateQueries({ queryKey: ['ticket', ticketId] });
+      queryClient.invalidateQueries({ queryKey: ['tickets'] });
+        console.log(`✅ Primary contact updated for ticket ${ticketId}`);
+      }
     },
   });
 
@@ -540,23 +547,40 @@ export function TicketPageContent({ ticketId }: Props) {
   };
 
   // Function to handle primary contact change
-  const handlePrimaryContactChange = (userId: string) => {
-    handleUpdateField('user_id', userId);
+  const handlePrimaryContactChange = async (userId: string) => {
+    try {
+      // Prevent multiple rapid clicks
+      if (updateFieldMutation.isPending) {
+        return;
+      }
 
-    // Update local ticket state immediately for UI feedback
-    if (ticket) {
-      const selectedUser = users.find(u => u.id.toString() === userId) || null;
-      const updatedTicket = {
-        ...ticket,
-        user_id: userId === 'null' ? null : Number.parseInt(userId, 10),
-        user: selectedUser,
-      };
-      setTicket(updatedTicket);
-      queryClient.setQueryData(['ticket', ticketId], [updatedTicket]);
+      // Update local ticket state immediately for UI feedback
+      if (ticket) {
+        const selectedUser = users.find(u => u.id.toString() === userId) || null;
+        const updatedTicket = {
+          ...ticket,
+          user_id: userId === 'null' ? null : Number.parseInt(userId, 10),
+          user: selectedUser,
+        };
+        setTicket(updatedTicket);
+        queryClient.setQueryData(['ticket', ticketId], [updatedTicket]);
+      }
+
+      // Close modal immediately for better UX
+      setIsContactModalOpen(false);
+      setContactSearchQuery('');
+
+      // Make the API call
+      handleUpdateField('user_id', userId);
+      
+    } catch (error) {
+      console.error('Error changing primary contact:', error);
+      // Revert local state if there's an error
+      if (ticket) {
+        setTicket(ticket);
+        queryClient.setQueryData(['ticket', ticketId], [ticket]);
+      }
     }
-
-    setIsContactModalOpen(false);
-    setContactSearchQuery('');
   };
 
   // Mark ticket as read when viewed

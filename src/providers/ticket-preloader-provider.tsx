@@ -29,7 +29,7 @@ export function TicketPreloaderProvider({ children }: { children: ReactNode }) {
   const { socket } = useSocketContext();
 
   // Determinar si debe activarse según la página
-  const shouldActivate = 
+  const shouldActivate =
     pathname.startsWith('/tickets') ||
     pathname.startsWith('/dashboard') ||
     pathname.startsWith('/my-tickets') ||
@@ -54,7 +54,7 @@ export function TicketPreloaderProvider({ children }: { children: ReactNode }) {
         console.log(`🔒 Ticket ${data.id} closed/resolved - skipping cache invalidation`);
         return; // No invalidar para tickets cerrados
       }
-      
+
       console.log(`🔄 Ticket ${data.id} updated - invalidating cache and re-preloading`);
       preloaderHook.invalidateTicket(data.id);
     };
@@ -76,7 +76,11 @@ export function TicketPreloaderProvider({ children }: { children: ReactNode }) {
 
   // Solo proporcionar contexto si está activado
   if (!shouldActivate) {
-    return <TicketPreloaderContext.Provider value={undefined}>{children}</TicketPreloaderContext.Provider>;
+    return (
+      <TicketPreloaderContext.Provider value={undefined}>
+        {children}
+      </TicketPreloaderContext.Provider>
+    );
   }
 
   return (
@@ -93,13 +97,14 @@ export function useTicketPreloaderContext() {
 // Hook auxiliar que maneja casos donde el context puede ser undefined
 export function useTicketPreloaderSafe() {
   const context = useTicketPreloaderContext();
-  
+
   return {
     preloadSpecificTicket: context?.preloadSpecificTicket || (() => {}),
-    getTicketStatus: context?.getTicketStatus || (() => ({ cached: false, preloading: false, queued: false })),
+    getTicketStatus:
+      context?.getTicketStatus || (() => ({ cached: false, preloading: false, queued: false })),
     invalidateTicket: context?.invalidateTicket || (() => {}),
     stats: context?.stats || { preloaded: 0, failed: 0, inProgress: 0, lastPreloadTime: null },
     queueSize: context?.queueSize || 0,
     isActive: !!context,
   };
-} 
+}

@@ -1,6 +1,7 @@
 import { fetchAPI } from '@/lib/fetch-api';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://enque-backend-production.up.railway.app';
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL || 'https://enque-backend-production.up.railway.app';
 
 interface DashboardStats {
   user: {
@@ -49,4 +50,4 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
     console.error('Error fetching dashboard stats:', error);
     throw error;
   }
-}; 
+};

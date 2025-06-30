@@ -194,7 +194,7 @@ export default function AutomationsPage() {
                 <AlertDialogAction
                   onClick={handleDeleteConfirm}
                   disabled={deleteAutomationsMutation.isPending}
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  className="bg-destructive text-white hover:bg-destructive/90"
                 >
                   {deleteAutomationsMutation.isPending ? 'Deleting...' : 'Delete'}
                 </AlertDialogAction>

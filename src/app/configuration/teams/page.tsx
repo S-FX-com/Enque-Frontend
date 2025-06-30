@@ -338,6 +338,7 @@ const TeamsPage = () => {
                   <AlertDialogAction
                     onClick={handleBulkDeleteConfirm}
                     disabled={deleteTeamsMutation.isPending}
+                    className="text-white"
                   >
                     {deleteTeamsMutation.isPending ? 'Deleting...' : 'Delete'}
                   </AlertDialogAction>

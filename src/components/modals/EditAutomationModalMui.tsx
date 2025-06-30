@@ -27,17 +27,18 @@ import { toast } from 'sonner';
 import { updateAutomation, getAutomationById } from '@/services/automation';
 import { getAgents } from '@/services/agent';
 import { getTeams } from '@/services/team';
-import { getUsers } from '@/services/user';
-import { getCompanies } from '@/services/company';
 import { getCategories } from '@/services/category';
+
 import {
   Automation,
   ConditionType,
   ConditionOperator,
+  LogicalOperator,
   ActionType,
   AutomationConditionCreate,
   AutomationActionCreate,
 } from '@/typescript/automation';
+import type { ICategory } from '@/typescript/category';
 
 interface EditAutomationModalMuiProps {
   open: boolean;
@@ -56,19 +57,15 @@ export default function EditAutomationModalMui({
 
   const [name, setName] = useState('');
   const [isActive, setIsActive] = useState(true);
-  const [conditions, setConditions] = useState<AutomationConditionCreate[]>([
-    {
-      condition_type: ConditionType.DESCRIPTION,
-      condition_operator: ConditionOperator.EQL,
-      condition_value: '',
-    },
-  ]);
-  const [actions, setActions] = useState<AutomationActionCreate[]>([
-    { action_type: ActionType.SET_AGENT, action_value: '' },
-  ]);
+  const [conditionsOperator, setConditionsOperator] = useState<LogicalOperator>(
+    LogicalOperator.AND
+  );
+  const [actionsOperator, setActionsOperator] = useState<LogicalOperator>(LogicalOperator.AND);
+  const [conditions, setConditions] = useState<AutomationConditionCreate[]>([]);
+  const [actions, setActions] = useState<AutomationActionCreate[]>([]);
   const [formError, setFormError] = useState<string | null>(null);
 
-  // Fetch the automation data when automationId changes
+  // Fetch automation data
   const { data: automation } = useQuery({
     queryKey: ['automation', automationId],
     queryFn: () => (automationId ? getAutomationById(automationId) : null),
@@ -88,44 +85,31 @@ export default function EditAutomationModalMui({
     enabled: open, // Only fetch when modal is open
   });
 
-  const { data: users = [] } = useQuery({
-    queryKey: ['users'],
-    queryFn: getUsers,
-    enabled: open, // Only fetch when modal is open
-  });
-
-  const { data: companies = [] } = useQuery({
-    queryKey: ['companies'],
-    queryFn: () => getCompanies(),
-    enabled: open, // Only fetch when modal is open
-  });
-
-  const { data: categories = [] } = useQuery({
+  const { data: categories = [] } = useQuery<ICategory[]>({
     queryKey: ['categories'],
     queryFn: () => getCategories(),
     enabled: open, // Only fetch when modal is open
   });
 
-  // Load automation data into form when automation is fetched
+  // Initialize form with automation data
   useEffect(() => {
     if (automation) {
       setName(automation.name);
       setIsActive(automation.is_active);
+      setConditionsOperator(automation.conditions_operator || LogicalOperator.AND);
+      setActionsOperator(automation.actions_operator || LogicalOperator.AND);
       setConditions(
-        automation.conditions.length > 0
-          ? automation.conditions
-          : [
-              {
-                condition_type: ConditionType.DESCRIPTION,
-                condition_operator: ConditionOperator.EQL,
-                condition_value: '',
-              },
-            ]
+        automation.conditions.map(condition => ({
+          condition_type: condition.condition_type,
+          condition_operator: condition.condition_operator,
+          condition_value: condition.condition_value,
+        }))
       );
       setActions(
-        automation.actions.length > 0
-          ? automation.actions
-          : [{ action_type: ActionType.SET_AGENT, action_value: '' }]
+        automation.actions.map(action => ({
+          action_type: action.action_type,
+          action_value: action.action_value,
+        }))
       );
     }
   }, [automation]);
@@ -133,7 +117,9 @@ export default function EditAutomationModalMui({
   const mutation = useMutation({
     mutationFn: async (data: {
       name: string;
-      is_active: boolean;
+      isActive: boolean;
+      conditionsOperator: LogicalOperator;
+      actionsOperator: LogicalOperator;
       conditions: AutomationConditionCreate[];
       actions: AutomationActionCreate[];
     }) => {
@@ -142,14 +128,16 @@ export default function EditAutomationModalMui({
       }
       const payload = {
         name: data.name,
-        is_active: data.is_active,
+        is_active: data.isActive,
+        conditions_operator: data.conditionsOperator,
+        actions_operator: data.actionsOperator,
         conditions: data.conditions,
         actions: data.actions,
       };
       return updateAutomation(automationId, payload);
     },
     onSuccess: (updatedAutomation: Automation) => {
-      toast.success(`Automation "${updatedAutomation.name}" updated successfully`);
+      toast.success(`Workflow "${updatedAutomation.name}" updated successfully`);
       queryClient.invalidateQueries({ queryKey: ['automations'] });
       queryClient.invalidateQueries({ queryKey: ['automation', automationId] });
       if (onUpdateSuccess) {
@@ -158,7 +146,7 @@ export default function EditAutomationModalMui({
       handleCloseAndReset();
     },
     onError: (error: Error) => {
-      toast.error(`Failed to update automation: ${error.message}`);
+      toast.error(`Failed to update workflow: ${error.message}`);
       setFormError(error.message);
     },
   });
@@ -198,20 +186,16 @@ export default function EditAutomationModalMui({
       }
     }
 
-    mutation.mutate({ name, is_active: isActive, conditions, actions });
+    mutation.mutate({ name, isActive, conditionsOperator, actionsOperator, conditions, actions });
   };
 
   const handleCloseAndReset = () => {
     setName('');
     setIsActive(true);
-    setConditions([
-      {
-        condition_type: ConditionType.DESCRIPTION,
-        condition_operator: ConditionOperator.EQL,
-        condition_value: '',
-      },
-    ]);
-    setActions([{ action_type: ActionType.SET_AGENT, action_value: '' }]);
+    setConditionsOperator(LogicalOperator.AND);
+    setActionsOperator(LogicalOperator.AND);
+    setConditions([]);
+    setActions([]);
     setFormError(null);
     onClose();
   };
@@ -236,7 +220,7 @@ export default function EditAutomationModalMui({
   const updateCondition = (
     index: number,
     field: keyof AutomationConditionCreate,
-    value: string | ConditionType | ConditionOperator
+    value: string | ConditionType | ConditionOperator | LogicalOperator
   ) => {
     const newConditions = [...conditions];
     if (field === 'condition_type') {
@@ -379,6 +363,48 @@ export default function EditAutomationModalMui({
           </FormControl>
         );
 
+      case ActionType.SET_CATEGORY:
+        return (
+          <FormControl size="small" sx={{ flexGrow: 1 }}>
+            <InputLabel>Select Category</InputLabel>
+            <Select
+              value={action.action_value || ''}
+              onChange={(e: SelectChangeEvent) =>
+                updateAction(index, 'action_value', e.target.value)
+              }
+              label="Select Category"
+              required
+            >
+              {categories.map(category => (
+                <MenuItem key={category.id} value={category.name}>
+                  {category.name}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        );
+
+      case ActionType.ALSO_NOTIFY:
+        return (
+          <FormControl size="small" sx={{ flexGrow: 1 }}>
+            <InputLabel>Select Agent to Notify</InputLabel>
+            <Select
+              value={action.action_value || ''}
+              onChange={(e: SelectChangeEvent) =>
+                updateAction(index, 'action_value', e.target.value)
+              }
+              label="Select Agent to Notify"
+              required
+            >
+              {agents.map(agent => (
+                <MenuItem key={agent.id} value={agent.email}>
+                  {agent.name} ({agent.email})
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        );
+
       default:
         return (
           <TextField
@@ -393,143 +419,16 @@ export default function EditAutomationModalMui({
     }
   };
 
-  const renderConditionValueField = (condition: AutomationConditionCreate, index: number) => {
-    switch (condition.condition_type) {
-      case ConditionType.PRIORITY:
-        return (
-          <FormControl size="small" sx={{ flexGrow: 1 }}>
-            <InputLabel>Select Priority</InputLabel>
-            <Select
-              value={condition.condition_value || ''}
-              onChange={(e: SelectChangeEvent) =>
-                updateCondition(index, 'condition_value', e.target.value)
-              }
-              label="Select Priority"
-              required
-            >
-              {priorityOptions.map(option => (
-                <MenuItem key={option.value} value={option.value}>
-                  {option.label}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        );
-
-      case ConditionType.USER:
-        return (
-          <FormControl size="small" sx={{ flexGrow: 1 }}>
-            <InputLabel>Select User</InputLabel>
-            <Select
-              value={condition.condition_value || ''}
-              onChange={(e: SelectChangeEvent) =>
-                updateCondition(index, 'condition_value', e.target.value)
-              }
-              label="Select User"
-              required
-            >
-              {users.map(user => (
-                <MenuItem key={user.id} value={user.email}>
-                  {user.name} ({user.email})
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        );
-
-      case ConditionType.AGENT:
-        return (
-          <FormControl size="small" sx={{ flexGrow: 1 }}>
-            <InputLabel>Select Agent</InputLabel>
-            <Select
-              value={condition.condition_value || ''}
-              onChange={(e: SelectChangeEvent) =>
-                updateCondition(index, 'condition_value', e.target.value)
-              }
-              label="Select Agent"
-              required
-            >
-              {agents.map(agent => (
-                <MenuItem key={agent.id} value={agent.email}>
-                  {agent.name} ({agent.email})
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        );
-
-      case ConditionType.COMPANY:
-        return (
-          <FormControl size="small" sx={{ flexGrow: 1 }}>
-            <InputLabel>Select Company</InputLabel>
-            <Select
-              value={condition.condition_value || ''}
-              onChange={(e: SelectChangeEvent) =>
-                updateCondition(index, 'condition_value', e.target.value)
-              }
-              label="Select Company"
-              required
-            >
-              {companies.map(company => (
-                <MenuItem key={company.id} value={company.name}>
-                  {company.name}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        );
-
-      case ConditionType.CATEGORY:
-        return (
-          <FormControl size="small" sx={{ flexGrow: 1 }}>
-            <InputLabel>Select Category</InputLabel>
-            <Select
-              value={condition.condition_value || ''}
-              onChange={(e: SelectChangeEvent) =>
-                updateCondition(index, 'condition_value', e.target.value)
-              }
-              label="Select Category"
-              required
-            >
-              {categories.map(category => (
-                <MenuItem key={category.id} value={category.name}>
-                  {category.name}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        );
-
-      // For DESCRIPTION and NOTE, use regular text field
-      default:
-        return (
-          <TextField
-            size="small"
-            label="Value"
-            value={condition.condition_value || ''}
-            onChange={e => updateCondition(index, 'condition_value', e.target.value)}
-            sx={{ flexGrow: 1 }}
-            required
-          />
-        );
-    }
-  };
-
   const conditionTypeLabels = {
     [ConditionType.DESCRIPTION]: 'Subject',
-    [ConditionType.NOTE]: 'Note',
+    [ConditionType.TICKET_BODY]: 'Ticket Body',
     [ConditionType.USER]: 'User',
+    [ConditionType.USER_DOMAIN]: 'User Domain',
+    [ConditionType.INBOX]: 'Inbox',
     [ConditionType.AGENT]: 'Agent',
     [ConditionType.COMPANY]: 'Company',
     [ConditionType.PRIORITY]: 'Priority',
     [ConditionType.CATEGORY]: 'Category',
-  };
-
-  const conditionOperatorLabels = {
-    [ConditionOperator.EQL]: 'Is',
-    [ConditionOperator.NEQL]: 'Is not',
-    [ConditionOperator.CON]: 'Contains',
-    [ConditionOperator.NCON]: 'Does not contain',
   };
 
   const actionTypeLabels = {
@@ -537,6 +436,8 @@ export default function EditAutomationModalMui({
     [ActionType.SET_PRIORITY]: 'Set Priority',
     [ActionType.SET_STATUS]: 'Set Status',
     [ActionType.SET_TEAM]: 'Set Team',
+    [ActionType.SET_CATEGORY]: 'Set Category',
+    [ActionType.ALSO_NOTIFY]: 'Also Notify',
   };
 
   return (
@@ -585,12 +486,41 @@ export default function EditAutomationModalMui({
             </Button>
           </Box>
 
-          {conditions.map((condition, index) => (
-            <Box key={index} sx={{ display: 'flex', gap: 1, mb: 2, alignItems: 'flex-start' }}>
-              <Typography variant="body2" sx={{ mt: 2, minWidth: 20 }}>
+          {/* Conditions Logical Operator - Only show if multiple conditions */}
+          {conditions.length > 1 && (
+            <Box sx={{ mb: 2 }}>
+              <FormControl size="small" sx={{ minWidth: 300 }}>
+                <InputLabel>Conditions Logic</InputLabel>
+                <Select
+                  value={conditionsOperator}
+                  onChange={(e: SelectChangeEvent) =>
+                    setConditionsOperator(e.target.value as LogicalOperator)
+                  }
+                  label="Conditions Logic"
+                >
+                  <MenuItem value={LogicalOperator.AND}>AND (All conditions must be true)</MenuItem>
+                  <MenuItem value={LogicalOperator.OR}>OR (At least one condition must be true)</MenuItem>
+                </Select>
+              </FormControl>
+            </Box>
+          )}
+
+          <Box sx={{ mt: 2 }}>
+            <Typography variant="body2" sx={{ mb: 1, color: 'text.secondary' }}>
                 If:
               </Typography>
-
+            {conditions.map((condition, index) => (
+              <Box key={index}>
+                {/* Condition Row */}
+                <Box
+                  sx={{
+                    display: 'flex',
+                    gap: 1,
+                    alignItems: 'center',
+                    mb: 1,
+                    flexWrap: 'wrap',
+                  }}
+                >
               <FormControl size="small" sx={{ minWidth: 120 }}>
                 <InputLabel>Field</InputLabel>
                 <Select
@@ -611,36 +541,39 @@ export default function EditAutomationModalMui({
               <FormControl size="small" sx={{ minWidth: 120 }}>
                 <InputLabel>Operator</InputLabel>
                 <Select
-                  value={condition.condition_operator || ConditionOperator.EQL}
+                      value={condition.condition_operator}
                   onChange={(e: SelectChangeEvent) =>
-                    updateCondition(
-                      index,
-                      'condition_operator',
-                      e.target.value as ConditionOperator
-                    )
+                        updateCondition(index, 'condition_operator', e.target.value)
                   }
                   label="Operator"
                 >
-                  {Object.entries(conditionOperatorLabels).map(([value, label]) => (
-                    <MenuItem key={value} value={value}>
-                      {label}
-                    </MenuItem>
-                  ))}
+                      <MenuItem value={ConditionOperator.EQL}>Is</MenuItem>
+                      <MenuItem value={ConditionOperator.NEQL}>Is not</MenuItem>
+                      <MenuItem value={ConditionOperator.CON}>Contains</MenuItem>
+                      <MenuItem value={ConditionOperator.NCON}>Does not contain</MenuItem>
                 </Select>
               </FormControl>
 
-              {renderConditionValueField(condition, index)}
+                  <TextField
+                    size="small"
+                    label="Value"
+                    value={condition.condition_value || ''}
+                    onChange={e => updateCondition(index, 'condition_value', e.target.value)}
+                    sx={{ minWidth: 150, flexGrow: 1 }}
+                  />
 
               <IconButton
-                color="error"
                 onClick={() => removeCondition(index)}
                 disabled={conditions.length === 1}
-                sx={{ mt: 0.5 }}
+                    size="small"
+                    color="error"
               >
                 <Delete />
               </IconButton>
+                </Box>
             </Box>
           ))}
+          </Box>
         </Box>
 
         <Divider sx={{ my: 2 }} />
@@ -693,6 +626,25 @@ export default function EditAutomationModalMui({
               </IconButton>
             </Box>
           ))}
+          {actions.length > 1 && (
+            <Box sx={{ mt: 2 }}>
+              <FormControl size="small" sx={{ minWidth: 300 }}>
+                <InputLabel>Actions Logic</InputLabel>
+                <Select
+                  value={actionsOperator}
+                  onChange={(e: SelectChangeEvent) =>
+                    setActionsOperator(e.target.value as LogicalOperator)
+                  }
+                  label="Actions Logic"
+                >
+                  <MenuItem value={LogicalOperator.AND}>AND (Execute all actions)</MenuItem>
+                  <MenuItem value={LogicalOperator.OR}>
+                    OR (Execute first successful action only)
+                  </MenuItem>
+                </Select>
+              </FormControl>
+            </Box>
+          )}
         </Box>
 
         {formError && (
