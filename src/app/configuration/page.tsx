@@ -76,6 +76,32 @@ export default function ClientPage() {
           href: '/configuration/notifications',
         },
         {
+          name: 'Automations',
+          icon: ({ fill = '#2B3674' }: { fill: string }) => (
+            <svg
+              width="36"
+              height="36"
+              viewBox="0 0 32 32"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M16 0C7.16 0 0 7.16 0 16C0 24.84 7.16 32 16 32C24.84 32 32 24.84 32 16C32 7.16 24.84 0 16 0ZM16 28C9.38 28 4 22.62 4 16C4 9.38 9.38 4 16 4C22.62 4 28 9.38 28 16C28 22.62 22.62 28 16 28Z"
+                fill={fill}
+              />
+              <path
+                d="M16 8C13.24 8 11 10.24 11 13C11 15.76 13.24 18 16 18C18.76 18 21 15.76 21 13C21 10.24 18.76 8 16 8ZM16 14C15.44 14 15 13.56 15 13C15 12.44 15.44 12 16 12C16.56 12 17 12.44 17 13C17 13.56 16.56 14 16 14Z"
+                fill={fill}
+              />
+              <path
+                d="M23 19.5L21.5 18L20 19.5L18.5 18L17 19.5L15.5 18L14 19.5L12.5 18L11 19.5L9.5 18L8 19.5V24H24V19.5L23 19.5Z"
+                fill={fill}
+              />
+            </svg>
+          ),
+          href: '/configuration/automations',
+        },
+        {
           name: 'Workflows',
           icon: ({ fill = '#2B3674' }: { fill: string }) => (
             <svg

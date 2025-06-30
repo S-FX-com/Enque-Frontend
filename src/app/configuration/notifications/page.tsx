@@ -288,6 +288,8 @@ export default function NotificationsConfigPage() {
                           </div>
                         </div>
                       </div>
+
+
                     </div>
                   </div>
                 </div>
