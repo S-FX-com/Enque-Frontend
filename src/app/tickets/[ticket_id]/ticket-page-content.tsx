@@ -617,7 +617,7 @@ export function TicketPageContent({ ticketId }: Props) {
       // Cleanup: restore original title when component unmounts
       return () => {
         document.title = 'Support Tickets';
-      };
+  };
     }
   }, [ticket?.id, ticket?.title]);
 
