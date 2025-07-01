@@ -96,18 +96,28 @@ function DynamicCCInput({
   };
 
   const handlePaste = (e: React.ClipboardEvent) => {
-    e.preventDefault();
     const pastedText = e.clipboardData.getData('text');
-    const emails = pastedText.split(/[,;\s]+/).filter(email => email.trim());
+    
+    // Verificar si el texto pegado contiene emails válidos separados por delimitadores
+    const potentialEmails = pastedText.split(/[,;\s\n\t]+/).filter(email => email.trim());
+    const hasMultipleEmails = potentialEmails.length > 1;
+    const hasValidEmails = potentialEmails.some(email => validateEmail(email.trim()));
+    
+    // Solo interceptar el pegado si hay múltiples emails o emails válidos separados
+    if (hasMultipleEmails && hasValidEmails) {
+      e.preventDefault();
+      
+      const validNewEmails = potentialEmails
+        .map(email => email.trim())
+        .filter(email => validateEmail(email) && !existingEmails.includes(email));
 
-    const validNewEmails = emails
-      .map(email => email.trim())
-      .filter(email => validateEmail(email) && !existingEmails.includes(email));
-
-    if (validNewEmails.length > 0) {
-      onEmailsChange([...existingEmails, ...validNewEmails]);
+      if (validNewEmails.length > 0) {
+        onEmailsChange([...existingEmails, ...validNewEmails]);
+        setInputValue('');
+      }
     }
-    setInputValue('');
+    // Si no hay múltiples emails, dejar que el navegador maneje el pegado normalmente
+    // El usuario podrá pegar texto simple en el input y editarlo
   };
 
   return (
