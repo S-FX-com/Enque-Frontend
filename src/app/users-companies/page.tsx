@@ -239,7 +239,7 @@ export default function UsersCompaniesPage() {
               <h2 className="text-xl font-semibold mb-4 px-6 pt-6 flex-shrink-0">
                 Unassigned Users
               </h2>
-              <div className="flex-grow overflow-y-auto px-6 pb-6">
+              <div className="flex-grow overflow-hidden px-6 pb-6">
                 {isLoadingUnassigned ? (
                   <div className="flex justify-center items-center h-full">
                     <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -249,69 +249,71 @@ export default function UsersCompaniesPage() {
                 ) : !unassignedUsers || unassignedUsers.length === 0 ? (
                   <p className="text-muted-foreground text-center">No unassigned users found.</p>
                 ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="border-b border-slate-200 dark:border-slate-700 hover:bg-transparent">
-                        <TableHead>Name</TableHead>
-                        <TableHead>Email</TableHead>
-                        <TableHead>Phone</TableHead>
-                        <TableHead>Created At</TableHead>
-                        <TableHead className="w-[200px]">Assign Company</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {unassignedUsers.map(user => (
-                        <TableRow key={user.id}>
-                          <TableCell className="font-medium">{user.name}</TableCell>
-                          <TableCell>{user.email}</TableCell>
-                          <TableCell>{user.phone || '-'}</TableCell>
-                          <TableCell>{new Date(user.created_at).toLocaleDateString()}</TableCell>
-                          <TableCell>
-                            <Select
-                              value={
-                                assigningUserCompany.userId === user.id
-                                  ? (assigningUserCompany.companyId ?? undefined)
-                                  : undefined
-                              }
-                              onValueChange={value => {
-                                const targetCompanyId =
-                                  value === 'null' ? null : parseInt(value, 10);
-                                if (targetCompanyId !== null) {
-                                  setAssigningUserCompany({ userId: user.id, companyId: value });
-                                  assignCompanyMutation.mutate({
-                                    userId: user.id,
-                                    companyId: targetCompanyId,
-                                  });
-                                }
-                              }}
-                              disabled={
-                                isLoadingCompanies ||
-                                (assignCompanyMutation.isPending &&
-                                  assigningUserCompany.userId === user.id)
-                              }
-                            >
-                              <SelectTrigger className="h-8">
-                                <SelectValue placeholder="Assign..." />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {companiesError ? (
-                                  <SelectItem value="error" disabled>
-                                    Error loading
-                                  </SelectItem>
-                                ) : (
-                                  companies.map(company => (
-                                    <SelectItem key={company.id} value={company.id.toString()}>
-                                      {company.name}
-                                    </SelectItem>
-                                  ))
-                                )}
-                              </SelectContent>
-                            </Select>
-                          </TableCell>
+                  <div className="overflow-y-auto max-h-[600px] border rounded-md">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="border-b border-slate-200 dark:border-slate-700 hover:bg-transparent">
+                          <TableHead>Name</TableHead>
+                          <TableHead>Email</TableHead>
+                          <TableHead>Phone</TableHead>
+                          <TableHead>Created At</TableHead>
+                          <TableHead className="w-[200px]">Assign Company</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {unassignedUsers.map(user => (
+                          <TableRow key={user.id}>
+                            <TableCell className="font-medium">{user.name}</TableCell>
+                            <TableCell>{user.email}</TableCell>
+                            <TableCell>{user.phone || '-'}</TableCell>
+                            <TableCell>{new Date(user.created_at).toLocaleDateString()}</TableCell>
+                            <TableCell>
+                              <Select
+                                value={
+                                  assigningUserCompany.userId === user.id
+                                    ? (assigningUserCompany.companyId ?? undefined)
+                                    : undefined
+                                }
+                                onValueChange={value => {
+                                  const targetCompanyId =
+                                    value === 'null' ? null : parseInt(value, 10);
+                                  if (targetCompanyId !== null) {
+                                    setAssigningUserCompany({ userId: user.id, companyId: value });
+                                    assignCompanyMutation.mutate({
+                                      userId: user.id,
+                                      companyId: targetCompanyId,
+                                    });
+                                  }
+                                }}
+                                disabled={
+                                  isLoadingCompanies ||
+                                  (assignCompanyMutation.isPending &&
+                                    assigningUserCompany.userId === user.id)
+                                }
+                              >
+                                <SelectTrigger className="h-8">
+                                  <SelectValue placeholder="Assign..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {companiesError ? (
+                                    <SelectItem value="error" disabled>
+                                      Error loading
+                                    </SelectItem>
+                                  ) : (
+                                    companies.map(company => (
+                                      <SelectItem key={company.id} value={company.id.toString()}>
+                                        {company.name}
+                                      </SelectItem>
+                                    ))
+                                  )}
+                                </SelectContent>
+                              </Select>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
                 )}
               </div>
             </div>

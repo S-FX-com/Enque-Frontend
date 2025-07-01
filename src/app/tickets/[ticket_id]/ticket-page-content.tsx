@@ -100,13 +100,13 @@ function DynamicCCInput({
     const pastedText = e.clipboardData.getData('text');
     const emails = pastedText.split(/[,;\s]+/).filter(email => email.trim());
 
-    emails.forEach(email => {
-      const trimmedEmail = email.trim();
-      if (validateEmail(trimmedEmail) && !existingEmails.includes(trimmedEmail)) {
-        // @ts-expect-error none
-        onEmailsChange(prev => [...prev, trimmedEmail]);
-      }
-    });
+    const validNewEmails = emails
+      .map(email => email.trim())
+      .filter(email => validateEmail(email) && !existingEmails.includes(email));
+
+    if (validNewEmails.length > 0) {
+      onEmailsChange([...existingEmails, ...validNewEmails]);
+    }
     setInputValue('');
   };
 
