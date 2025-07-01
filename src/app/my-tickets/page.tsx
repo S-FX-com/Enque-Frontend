@@ -582,14 +582,25 @@ function MyTicketsClientContent() {
     },
   });
 
-  const getUserName = (user_id: number) => {
-    const users = usersData.filter(user => user.id === user_id);
+  const getUserName = (user_id: number, ticket?: ITicket) => {
+    // First try to get user info from the ticket itself (if available)
+    if (ticket?.user && ticket.user.id === user_id) {
+      const user = ticket.user;
+      if (user.company_id) {
+        const company = companiesData.find(company => company.id === user.company_id);
+        if (company) {
+          return `${user.name} (${company.name})`;
+        }
+      }
+      return user.name || '-';
+    }
 
+    // Fallback to usersData
+    const users = usersData.filter(user => user.id === user_id);
     const user = users[0];
     if (!user) return '-';
 
     const companies = companiesData.filter(company => company.id === user.company_id);
-
     const company = companies[0];
     if (!company) return user.name;
 
@@ -1033,7 +1044,7 @@ function MyTicketsClientContent() {
                           </Badge>
                         </TableCell>
                         <TableCell className="p-2 py-4">
-                          {getUserName(ticket.user_id as number)}
+                          {getUserName(ticket.user_id as number, ticket)}
                         </TableCell>
                         <TableCell className="p-2 py-4">
                           {formatRelativeTime(ticket.last_update)}
