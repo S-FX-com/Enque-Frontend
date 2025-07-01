@@ -107,6 +107,7 @@ export default function UsersCompaniesPage() {
     onSuccess: (updatedUser, variables) => {
       toast.success(`User assigned to company successfully.`);
       queryClient.invalidateQueries({ queryKey: ['unassignedUsers'] });
+      queryClient.invalidateQueries({ queryKey: ['users'] }); // Invalidar para el modal "Change Primary Contact"
       if (variables.companyId) {
         queryClient.invalidateQueries({
           queryKey: ['companyUsers', variables.companyId.toString()],
@@ -127,6 +128,7 @@ export default function UsersCompaniesPage() {
   const handleUserSaveSuccess = () => {
     console.log('User saved, refetching relevant lists...');
     queryClient.invalidateQueries({ queryKey: ['unassignedUsers'] });
+    queryClient.invalidateQueries({ queryKey: ['users'] }); // Invalidar para el modal "Change Primary Contact"
     if (selectedCompanyId) {
       queryClient.invalidateQueries({ queryKey: ['companyUsers', selectedCompanyId] });
     }
