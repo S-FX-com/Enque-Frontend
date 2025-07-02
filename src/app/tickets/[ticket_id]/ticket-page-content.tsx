@@ -105,10 +105,12 @@ function DynamicCCInput({
         // @ts-expect-error none
         onEmailsChange(prev => [...prev, trimmedEmail]);
       }
-    }
+    });
     // Si no hay múltiples emails, dejar que el navegador maneje el pegado normalmente
     // El usuario podrá pegar texto simple en el input y editarlo
-  };
+    }
+  }
+
 
   return (
     <div
@@ -365,7 +367,7 @@ export function TicketPageContent({ ticketId }: Props) {
     },
     onSuccess: (data, variables) => {
       invalidateCounterQueries();
-      
+
       // Si se cambió el user_id (contacto principal), invalidar queries relacionadas
       if (variables.field === 'user_id') {
         queryClient.invalidateQueries({ queryKey: ['ticket', ticketId] });
