@@ -191,7 +191,7 @@ function MyTicketsClientContent() {
     let tickets = allTicketsData;
 
     if (selectedStatuses.length === 0) {
-      tickets = tickets.filter(ticket => ticket.status !== 'Closed');
+      tickets = tickets.filter(ticket => ticket.status !== 'Closed' && ticket.status !== 'Resolved');
     }
 
     if (debouncedSubjectFilter) {
