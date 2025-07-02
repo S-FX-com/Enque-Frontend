@@ -315,7 +315,7 @@ function OptimizedMessageItem({ content, isInitial = false }: OptimizedMessageIt
             style={{ 
               wordBreak: 'break-word',
               overflowWrap: 'break-word'
-            }}
+      }}
           />
 
           {showToggleButton && (

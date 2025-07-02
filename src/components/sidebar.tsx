@@ -108,7 +108,8 @@ function SidebarContent() {
   const { data: allTicketsCount = 0 } = useQuery<number>({
     queryKey: ['ticketsCount', 'all'],
     queryFn: async () => {
-      const tickets = await getTickets();
+      // Usar un límite muy alto para obtener todos los tickets
+      const tickets = await getTickets({ limit: 10000 });
       // Filter out closed and resolved tickets to match My Teams behavior
       const activeTickets = tickets.filter(
         ticket => ticket.status !== 'Closed' && ticket.status !== 'Resolved'
@@ -126,7 +127,8 @@ function SidebarContent() {
     queryKey: ['ticketsCount', 'my', user?.id],
     queryFn: async () => {
       if (!user?.id) return 0;
-      const tickets = await getTickets({}, `/v1/tasks/assignee/${user.id}`);
+      // Usar un límite muy alto para obtener todos los tickets
+      const tickets = await getTickets({ limit: 10000 }, `/v1/tasks/assignee/${user.id}`);
       // Filter out closed and resolved tickets to match My Teams behavior
       const activeTickets = tickets.filter(
         ticket => ticket.status !== 'Closed' && ticket.status !== 'Resolved'
