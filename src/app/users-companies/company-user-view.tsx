@@ -241,6 +241,7 @@ const CompanyUserView: React.FC<CompanyUserViewProps> = ({
       toast.success(`${variables.length} user(s) unassigned from ${company.name}.`);
       queryClient.invalidateQueries({ queryKey: ['companyUsers', companyIdStr] });
       queryClient.invalidateQueries({ queryKey: ['unassignedUsers'] });
+      queryClient.invalidateQueries({ queryKey: ['users'] }); // Invalidar para el modal "Change Primary Contact"
     },
     onError: (
       error: Error,
@@ -257,6 +258,7 @@ const CompanyUserView: React.FC<CompanyUserViewProps> = ({
       const companyIdStr = company.id.toString();
       queryClient.invalidateQueries({ queryKey: ['companyUsers', companyIdStr] });
       queryClient.invalidateQueries({ queryKey: ['unassignedUsers'] });
+      queryClient.invalidateQueries({ queryKey: ['users'] }); // Invalidar para el modal "Change Primary Contact"
     },
   });
 

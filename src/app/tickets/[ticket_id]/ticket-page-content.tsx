@@ -96,7 +96,6 @@ function DynamicCCInput({
   };
 
   const handlePaste = (e: React.ClipboardEvent) => {
-    e.preventDefault();
     const pastedText = e.clipboardData.getData('text');
     const emails = pastedText.split(/[,;\s]+/).filter(email => email.trim());
 
@@ -106,8 +105,9 @@ function DynamicCCInput({
         // @ts-expect-error none
         onEmailsChange(prev => [...prev, trimmedEmail]);
       }
-    });
-    setInputValue('');
+    }
+    // Si no hay múltiples emails, dejar que el navegador maneje el pegado normalmente
+    // El usuario podrá pegar texto simple en el input y editarlo
   };
 
   return (
@@ -363,8 +363,15 @@ export function TicketPageContent({ ticketId }: Props) {
         queryClient.setQueryData(['ticket', ticketId], [context.previousTicket]);
       }
     },
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
       invalidateCounterQueries();
+      
+      // Si se cambió el user_id (contacto principal), invalidar queries relacionadas
+      if (variables.field === 'user_id') {
+        queryClient.invalidateQueries({ queryKey: ['ticket', ticketId] });
+      queryClient.invalidateQueries({ queryKey: ['tickets'] });
+        console.log(`✅ Primary contact updated for ticket ${ticketId}`);
+      }
     },
   });
 
@@ -583,7 +590,7 @@ export function TicketPageContent({ ticketId }: Props) {
       // Cleanup: restore original title when component unmounts
       return () => {
         document.title = 'Support Tickets';
-      };
+  };
     }
   }, [ticket?.id, ticket?.title]);
 

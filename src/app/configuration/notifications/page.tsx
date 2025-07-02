@@ -288,39 +288,8 @@ export default function NotificationsConfigPage() {
                           </div>
                         </div>
                       </div>
-                      <div className="flex items-center justify-between py-2 border-b">
-                        <div>
-                          <h4 className="font-medium">Notify Team</h4>
-                          <p className="text-sm text-muted-foreground">
-                            Notify every one of a team that a ticket was created
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-4">
-                          <div className="flex items-center space-x-2">
-                            <Switch
-                              id="notify-team-email"
-                              checked={
-                                notificationSettings?.users.email.new_ticket_created.is_enabled
-                              }
-                              onCheckedChange={() =>
-                                handleToggleSetting(
-                                  notificationSettings?.users.email.new_ticket_created.id || 0,
-                                  notificationSettings?.users.email.new_ticket_created.is_enabled
-                                )
-                              }
-                              disabled={
-                                updatingSettingId ===
-                                (notificationSettings?.users.email.new_ticket_created.id || 0)
-                              }
-                            />
-                            <Label htmlFor="notify-team-email">
-                              {notificationSettings?.users.email.new_ticket_created.is_enabled
-                                ? 'Enabled'
-                                : 'Disabled'}
-                            </Label>
-                          </div>
-                        </div>
-                      </div>
+
+
                     </div>
                   </div>
                 </div>

@@ -189,6 +189,82 @@ const preserveEmptyParagraphs = (html: string): string => {
   return fixedHtml;
 };
 
+// Function to process links to open in new tab and ensure they are clickable
+const processLinksForNewTab = (htmlContent: string): string => {
+  return htmlContent.replace(
+    /<a\s+([^>]*?)href\s*=\s*["']([^"']+)["']([^>]*?)>/gi,
+    (match, beforeHref, url, afterHref) => {
+      let attributes = beforeHref + afterHref;
+      let processedUrl = url;
+      
+      // 🔧 NUEVA FUNCIONALIDAD: Decodificar URLs complejas de Outlook SafeLinks
+      try {
+        // Decodificar URL si está codificada
+        if (processedUrl.includes('%')) {
+          processedUrl = decodeURIComponent(processedUrl);
+        }
+        
+        // Extraer URL real de Outlook SafeLinks
+        if (processedUrl.includes('safelinks.protection.outlook.com')) {
+          const urlMatch = processedUrl.match(/url=([^&]+)/);
+          if (urlMatch) {
+            processedUrl = decodeURIComponent(urlMatch[1]);
+          }
+        }
+        
+        // Extraer URL de otros servicios de protección
+        if (processedUrl.includes('streaklinks.com') || processedUrl.includes('gourl.es')) {
+          // Buscar parámetros url= en la cadena
+          const urlParams = processedUrl.match(/url=([^&]+)/g);
+          if (urlParams && urlParams.length > 0) {
+            // Tomar el último parámetro url= que suele ser el destino final
+            const lastUrlParam = urlParams[urlParams.length - 1];
+            const finalUrl = lastUrlParam.replace('url=', '');
+            processedUrl = decodeURIComponent(finalUrl);
+          }
+        }
+        
+        // Limpiar encoding adicional
+        processedUrl = processedUrl.replace(/&amp;/g, '&');
+        
+      } catch (e) {
+        // Si hay error decodificando, usar URL original
+        console.warn('Error procesando URL:', e);
+        processedUrl = url;
+      }
+      
+      // Check if target attribute already exists
+      const hasTarget = /target\s*=/i.test(attributes);
+      const targetAttr = hasTarget ? '' : ' target="_blank" rel="noopener noreferrer"';
+      
+      // Check if style attribute exists
+      const hasStyle = /style\s*=/i.test(attributes);
+      
+      if (hasStyle) {
+        // Update existing style attribute to include link styling
+        attributes = attributes.replace(/style\s*=\s*["']([^"']*?)["']/gi, (styleMatch: string, styleContent: string) => {
+          let newStyle = styleContent;
+          
+          // Remove text-decoration:none if present
+          newStyle = newStyle.replace(/text-decoration\s*:\s*none\s*;?\s*/gi, '');
+          
+          // Add link styling
+          newStyle = newStyle.trim();
+          if (newStyle && !newStyle.endsWith(';')) newStyle += ';';
+          newStyle += 'color:#2563eb !important;text-decoration:underline !important;cursor:pointer !important;';
+          
+          return `style="${newStyle}"`;
+        });
+      } else {
+        // Add style attribute with link styling
+        attributes += ' style="color:#2563eb !important;text-decoration:underline !important;cursor:pointer !important;"';
+      }
+      
+      return `<a ${attributes}href="${processedUrl}"${targetAttr}>`;
+    }
+  );
+};
+
 const muiModalStyle = {
   position: 'absolute',
   top: '50%',
@@ -316,7 +392,11 @@ function InitialTicketMessage({
           ) : (
             <div
               className="prose prose-sm max-w-none dark:prose-invert"
-              dangerouslySetInnerHTML={{ __html: truncatedContent || '' }}
+              dangerouslySetInnerHTML={{ __html: processLinksForNewTab(truncatedContent || '') }}
+              style={{ 
+                wordBreak: 'break-word',
+                overflowWrap: 'break-word'
+              }}
             />
           )}
 
@@ -494,6 +574,11 @@ export function ConversationMessageItem({ comment }: Props) {
   if (currentDisplayReplyPart && (isUserReply || isInitialMessage)) {
     currentDisplayReplyPart = cleanReplyPreamble(currentDisplayReplyPart);
     currentDisplayReplyPart = preserveEmptyParagraphs(currentDisplayReplyPart);
+  }
+  
+  // Procesar enlaces para que sean clicables y se abran en nueva pestaña
+  if (currentDisplayReplyPart) {
+    currentDisplayReplyPart = processLinksForNewTab(currentDisplayReplyPart);
   }
 
   const isOnlyAttachmentPlaceholder =
@@ -689,7 +774,11 @@ export function ConversationMessageItem({ comment }: Props) {
                 {isExpanded && displayQuotedPart && (
                   <div
                     className="mt-2 p-2 border-l-2 border-gray-200 dark:border-gray-700 text-muted-foreground"
-                    dangerouslySetInnerHTML={{ __html: displayQuotedPart }}
+                    dangerouslySetInnerHTML={{ __html: processLinksForNewTab(displayQuotedPart) }}
+                    style={{ 
+                      wordBreak: 'break-word',
+                      overflowWrap: 'break-word'
+                    }}
                   />
                 )}
               </div>
