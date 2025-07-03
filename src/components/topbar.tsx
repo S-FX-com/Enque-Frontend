@@ -38,7 +38,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAgentAvatar } from '@/hooks/use-agent-avatar';
 import { getAgentById } from '@/services/agent';
 import { useDebounce } from '@/hooks/use-debounce';
-import { getTickets } from '@/services/ticket';
+import { searchTickets } from '@/services/ticket';
 import type { ITicket } from '@/typescript/ticket';
 import { formatRelativeTime, cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -84,15 +84,12 @@ export function Topbar({
     }
   }, [searchInput]);
 
-  // Fetch tickets for search
+  // Fetch tickets for search using the dedicated search endpoint
   const { data: searchTicketsData = [] } = useQuery<ITicket[]>({
     queryKey: ['tickets', 'search', debouncedSearchFilter],
     queryFn: async () => {
       if (!debouncedSearchFilter || debouncedSearchFilter.length < 2) return [];
-      const tickets = await getTickets({ skip: 0, limit: 10 });
-      return tickets.filter(ticket =>
-        ticket.title.toLowerCase().includes(debouncedSearchFilter.toLowerCase())
-      );
+      return await searchTickets(debouncedSearchFilter, 0, 10);
     },
     enabled: !!debouncedSearchFilter && debouncedSearchFilter.length >= 2,
     staleTime: 1000 * 30, // Cache for 30 seconds
