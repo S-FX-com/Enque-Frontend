@@ -5,7 +5,7 @@ import type React from 'react';
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
-import { ArrowLeft, Settings, MoreHorizontal, X, Plus, Search, User } from 'lucide-react';
+import { ArrowLeft, X, Plus, Search, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -16,12 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+
 import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
@@ -179,7 +174,6 @@ export function TicketPageContent({ ticketId }: Props) {
   const { user } = useAuth();
   const [ticket, setTicket] = useState<ITicket | null>(null);
   const [isClosingTicket, setIsClosingTicket] = useState(false);
-  const [isResolvingTicket, setIsResolvingTicket] = useState(false);
   const [existingCcEmails, setExistingCcEmails] = useState<string[]>([]);
   const [extraCcEmails, setExtraCcEmails] = useState<string[]>([]);
   const [existingBccEmails, setExistingBccEmails] = useState<string[]>([]);
@@ -476,66 +470,7 @@ export function TicketPageContent({ ticketId }: Props) {
     }
   );
 
-  // Resolve ticket mutation
-  const resolveTicketMutation = useMutation<
-    ITicket,
-    Error,
-    void,
-    { previousTicket: ITicket | null }
-  >({
-    mutationFn: async () => {
-      if (!ticket) throw new Error('No ticket selected');
-      return updateTicket(ticket.id, { status: 'Closed' });
-    },
-    onMutate: async () => {
-      if (!ticket) return { previousTicket: null };
 
-      setIsResolvingTicket(true);
-      const previousTicket = ticket;
-
-      // Cancel any outgoing refetches for counter queries
-      await queryClient.cancelQueries({ queryKey: ['ticketsCount'] });
-      await queryClient.cancelQueries({ queryKey: ['agentTeams'] });
-
-      const optimisticTicket: ITicket = {
-        ...previousTicket,
-        status: 'Closed' as TicketStatus,
-      };
-
-      setTicket(optimisticTicket);
-      queryClient.setQueryData(['ticket', ticket.id], [optimisticTicket]);
-
-      // Optimistically update counter queries
-      queryClient.setQueryData<number>(['ticketsCount', 'all'], old => Math.max(0, (old || 1) - 1));
-
-      if (ticket.assignee_id === user?.id) {
-        queryClient.setQueryData<number>(['ticketsCount', 'my', user?.id], old =>
-          Math.max(0, (old || 1) - 1)
-        );
-      }
-
-      return { previousTicket };
-    },
-    onSuccess: updatedTicketData => {
-                        toast.success(`Ticket #${updatedTicketData.id} closed successfully.`);
-      invalidateCounterQueries();
-      router.push('/tickets');
-    },
-    onError: (error, _variables, context) => {
-      toast.error(
-        `Error resolving ticket #${ticket?.id}: ${error instanceof Error ? error.message : 'Unknown error'}`
-      );
-      if (context?.previousTicket) {
-        setTicket(context.previousTicket);
-        queryClient.setQueryData(['ticket', ticketId], [context.previousTicket]);
-      }
-      // Revert optimistic updates on error
-      invalidateCounterQueries();
-    },
-    onSettled: () => {
-      setIsResolvingTicket(false);
-    },
-  });
 
   const handleTicketUpdate = (updatedTicket: ITicket) => {
     setTicket(updatedTicket);
@@ -673,32 +608,11 @@ export function TicketPageContent({ ticketId }: Props) {
           <Button
             size="sm"
             variant="default"
-            onClick={() => resolveTicketMutation.mutate()}
-            disabled={isResolvingTicket}
-          >
-            {isResolvingTicket ? 'Closing...' : 'Mark Closed'}
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
             onClick={() => closeTicketMutation.mutate()}
             disabled={isClosingTicket}
           >
             {isClosingTicket ? 'Closing...' : 'Mark Closed'}
           </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm">
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem>
-                <Settings className="mr-2 h-4 w-4" />
-                Settings
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
         </div>
       </div>
 
