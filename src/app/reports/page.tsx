@@ -176,8 +176,8 @@ export default function ReportsPage() {
 
       <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-5">
         {renderSummaryCard('Created Tickets', summaryData?.created_tickets, isLoadingSummary)}
-        {renderSummaryCard('Resolved Tickets', summaryData?.resolved_tickets, isLoadingSummary)}
-        {renderSummaryCard('Unresolved Tickets', summaryData?.unresolved_tickets, isLoadingSummary)}
+        {renderSummaryCard('Closed Tickets', summaryData?.resolved_tickets, isLoadingSummary)}
+        {renderSummaryCard('Open Tickets', summaryData?.unresolved_tickets, isLoadingSummary)}
         {renderSummaryCard(
           'Average Response Time',
           summaryData?.average_response_time,

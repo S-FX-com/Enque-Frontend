@@ -517,7 +517,7 @@ export function TicketPageContent({ ticketId }: Props) {
       return { previousTicket };
     },
     onSuccess: updatedTicketData => {
-      toast.success(`Ticket #${updatedTicketData.id} resolved successfully.`);
+                        toast.success(`Ticket #${updatedTicketData.id} closed successfully.`);
       invalidateCounterQueries();
       router.push('/tickets');
     },
@@ -676,7 +676,7 @@ export function TicketPageContent({ ticketId }: Props) {
             onClick={() => resolveTicketMutation.mutate()}
             disabled={isResolvingTicket}
           >
-            {isResolvingTicket ? 'Resolving...' : 'Mark Resolved'}
+            {isResolvingTicket ? 'Closing...' : 'Mark Closed'}
           </Button>
           <Button
             size="sm"

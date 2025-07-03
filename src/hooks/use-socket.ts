@@ -125,8 +125,7 @@ export function useSocket() {
           if (
             oldTicket &&
             user?.id &&
-            oldTicket.status !== 'Closed' &&
-            oldTicket.status !== 'Resolved'
+            oldTicket.status !== 'Closed'
           ) {
             const currentAllCount = queryClient.getQueryData<number>(['ticketsCount', 'all']) || 0;
             queryClient.setQueryData(['ticketsCount', 'all'], Math.max(0, currentAllCount - 1));

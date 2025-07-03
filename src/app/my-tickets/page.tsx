@@ -191,7 +191,7 @@ function MyTicketsClientContent() {
     let tickets = allTicketsData;
 
     if (selectedStatuses.length === 0) {
-      tickets = tickets.filter(ticket => ticket.status !== 'Closed' && ticket.status !== 'Resolved');
+      tickets = tickets.filter(ticket => ticket.status !== 'Closed');
     }
 
     if (debouncedSubjectFilter) {
@@ -326,13 +326,12 @@ function MyTicketsClientContent() {
       const allTickets = previousTicketsData?.pages.flat() || [];
       const deletedTickets = allTickets.filter(ticket => ticketIdsToDelete.includes(ticket.id));
       const activeDeletedCount = deletedTickets.filter(
-        ticket => ticket.status !== 'Closed' && ticket.status !== 'Resolved'
+        ticket => ticket.status !== 'Closed'
       ).length;
       const myActiveDeletedCount = deletedTickets.filter(
         ticket =>
           ticket.assignee_id === currentUser?.id &&
-          ticket.status !== 'Closed' &&
-          ticket.status !== 'Resolved'
+          ticket.status !== 'Closed'
       ).length;
 
       queryClient.setQueryData(
@@ -444,7 +443,7 @@ function MyTicketsClientContent() {
 
       // Update counters - closed tickets reduce active count
       const activeTicketsToClose = affectedTickets.filter(
-        ticket => ticket.status !== 'Closed' && ticket.status !== 'Resolved'
+        ticket => ticket.status !== 'Closed'
       );
 
       const currentAllCount = queryClient.getQueryData<number>(['ticketsCount', 'all']) || 0;
@@ -543,7 +542,7 @@ function MyTicketsClientContent() {
 
       // Update counters - resolved tickets reduce active count
       const activeTicketsToResolve = affectedTickets.filter(
-        ticket => ticket.status !== 'Closed' && ticket.status !== 'Resolved'
+        ticket => ticket.status !== 'Closed'
       );
 
       const currentAllCount = queryClient.getQueryData<number>(['ticketsCount', 'all']) || 0;
@@ -643,13 +642,12 @@ function MyTicketsClientContent() {
       const allTickets = previousTicketsData?.pages.flat() || [];
       const mergedTickets = allTickets.filter(ticket => ticketIdsToMerge.includes(ticket.id));
       const activeMergedCount = mergedTickets.filter(
-        ticket => ticket.status !== 'Closed' && ticket.status !== 'Resolved'
+        ticket => ticket.status !== 'Closed'
       ).length;
       const myActiveMergedCount = mergedTickets.filter(
         ticket =>
           ticket.assignee_id === currentUser?.id &&
-          ticket.status !== 'Closed' &&
-          ticket.status !== 'Resolved'
+          ticket.status !== 'Closed'
       ).length;
 
       const currentAllCount = queryClient.getQueryData<number>(['ticketsCount', 'all']) || 0;

@@ -262,7 +262,6 @@ export default function NewAutomationModalMui({
   const statusOptions = [
     { value: 'Open', label: 'Open' },
     { value: 'In Progress', label: 'In Progress' },
-    { value: 'Resolved', label: 'Resolved' },
     { value: 'Closed', label: 'Closed' },
     { value: 'On Hold', label: 'On Hold' },
   ];

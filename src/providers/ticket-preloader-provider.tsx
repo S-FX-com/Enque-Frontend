@@ -50,8 +50,8 @@ export function TicketPreloaderProvider({ children }: { children: ReactNode }) {
     const handleTicketUpdated = (data: { id: number; status?: string }) => {
       // ✅ OPTIMIZACIÓN: Solo invalidar si NO es un ticket cerrado/resuelto
       // Los tickets cerrados no necesitan preloading adicional
-      if (data.status === 'Closed' || data.status === 'Resolved') {
-        console.log(`🔒 Ticket ${data.id} closed/resolved - skipping cache invalidation`);
+      if (data.status === 'Closed') {
+        console.log(`🔒 Ticket ${data.id} closed - skipping cache invalidation`);
         return; // No invalidar para tickets cerrados
       }
 

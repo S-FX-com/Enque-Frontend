@@ -13,6 +13,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { getNotificationSettings, toggleNotificationSetting } from '@/services/notifications';
 import { useState } from 'react';
 
+
 // Definir un tipo para los ajustes de notificaciones
 interface NotificationSetting {
   id: number;
@@ -332,30 +333,30 @@ export default function NotificationsConfigPage() {
                   <div className="border rounded-md p-6">
                     <div className="flex items-center justify-between mb-4">
                       <div>
-                        <h3 className="text-lg font-medium">Ticket Resolved Confirmation</h3>
+                        <h3 className="text-lg font-medium">Ticket Closed Confirmation</h3>
                         <p className="text-sm text-muted-foreground">
-                          Email sent to clients when their ticket is resolved
+                          Email sent to clients when their ticket is closed
                         </p>
                       </div>
                       <div className="flex items-center space-x-2">
                         <Switch
-                          id="ticket-resolved-client"
-                          checked={notificationSettings?.users.email.ticket_resolved.is_enabled}
+                          id="ticket-closed-client"
+                          checked={notificationSettings?.users.email.ticket_closed.is_enabled}
                           onCheckedChange={() =>
                             handleToggleSetting(
-                              notificationSettings?.users.email.ticket_resolved.id || 0,
-                              notificationSettings?.users.email.ticket_resolved.is_enabled
+                              notificationSettings?.users.email.ticket_closed.id || 0,
+                              notificationSettings?.users.email.ticket_closed.is_enabled
                             )
                           }
                           disabled={
                             updatingSettingId ===
-                            (notificationSettings?.users.email.ticket_resolved.id || 0)
+                            (notificationSettings?.users.email.ticket_closed.id || 0)
                           }
                         />
-                        <Label htmlFor="ticket-resolved-client">
-                          {notificationSettings?.users.email.ticket_resolved.is_enabled
-                            ? 'Active'
-                            : 'Inactive'}
+                        <Label htmlFor="ticket-closed-client">
+                          {notificationSettings?.users.email.ticket_closed.is_enabled
+                            ? 'Enabled'
+                            : 'Disabled'}
                         </Label>
                       </div>
                     </div>
