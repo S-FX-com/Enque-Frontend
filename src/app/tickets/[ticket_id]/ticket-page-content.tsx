@@ -108,9 +108,7 @@ function DynamicCCInput({
     });
     // Si no hay múltiples emails, dejar que el navegador maneje el pegado normalmente
     // El usuario podrá pegar texto simple en el input y editarlo
-    }
-  }
-
+  };
 
   return (
     <div
@@ -371,7 +369,7 @@ export function TicketPageContent({ ticketId }: Props) {
       // Si se cambió el user_id (contacto principal), invalidar queries relacionadas
       if (variables.field === 'user_id') {
         queryClient.invalidateQueries({ queryKey: ['ticket', ticketId] });
-      queryClient.invalidateQueries({ queryKey: ['tickets'] });
+        queryClient.invalidateQueries({ queryKey: ['tickets'] });
         console.log(`✅ Primary contact updated for ticket ${ticketId}`);
       }
     },
@@ -592,7 +590,7 @@ export function TicketPageContent({ ticketId }: Props) {
       // Cleanup: restore original title when component unmounts
       return () => {
         document.title = 'Support Tickets';
-  };
+      };
     }
   }, [ticket?.id, ticket?.title]);
 
@@ -763,7 +761,7 @@ export function TicketPageContent({ ticketId }: Props) {
                       colors={avatarColors}
                     />
                     <div className="flex flex-col">
-                      <span className="text-sm font-medium">
+                      <span className="text-sm dark:text-black font-medium">
                         {ticket?.user?.name || 'Unknown User'}
                       </span>
                       <span className="text-xs text-muted-foreground">{ticket?.user?.email}</span>
