@@ -92,16 +92,16 @@ function DynamicCCInput({
 
   const handlePaste = (e: React.ClipboardEvent) => {
     const pastedText = e.clipboardData.getData('text');
-    
+
     // Verificar si el texto pegado contiene emails válidos separados por delimitadores
     const potentialEmails = pastedText.split(/[,;\s\n\t]+/).filter(email => email.trim());
     const hasMultipleEmails = potentialEmails.length > 1;
     const hasValidEmails = potentialEmails.some(email => validateEmail(email.trim()));
-    
+
     // Solo interceptar el pegado si hay múltiples emails o emails válidos separados
     if (hasMultipleEmails && hasValidEmails) {
       e.preventDefault();
-      
+
       const validNewEmails = potentialEmails
         .map(email => email.trim())
         .filter(email => validateEmail(email) && !existingEmails.includes(email));
@@ -369,11 +369,11 @@ export function TicketPageContent({ ticketId }: Props) {
     },
     onSuccess: (data, variables) => {
       invalidateCounterQueries();
-      
+
       // Si se cambió el user_id (contacto principal), invalidar queries relacionadas
       if (variables.field === 'user_id') {
         queryClient.invalidateQueries({ queryKey: ['ticket', ticketId] });
-      queryClient.invalidateQueries({ queryKey: ['tickets'] });
+        queryClient.invalidateQueries({ queryKey: ['tickets'] });
         console.log(`✅ Primary contact updated for ticket ${ticketId}`);
       }
     },
@@ -451,7 +451,7 @@ export function TicketPageContent({ ticketId }: Props) {
       onSuccess: updatedTicketData => {
         toast.success(`Ticket #${updatedTicketData.id} closed successfully.`);
         invalidateCounterQueries();
-        router.push('/tickets');
+        router.back();
       },
       onError: (error, _variables, context) => {
         toast.error(
@@ -469,8 +469,6 @@ export function TicketPageContent({ ticketId }: Props) {
       },
     }
   );
-
-
 
   const handleTicketUpdate = (updatedTicket: ITicket) => {
     setTicket(updatedTicket);
@@ -517,7 +515,6 @@ export function TicketPageContent({ ticketId }: Props) {
 
       // Make the API call
       handleUpdateField('user_id', userId);
-      
     } catch (error) {
       console.error('Error changing primary contact:', error);
       // Revert local state if there's an error
@@ -552,7 +549,7 @@ export function TicketPageContent({ ticketId }: Props) {
       // Cleanup: restore original title when component unmounts
       return () => {
         document.title = 'Support Tickets';
-  };
+      };
     }
   }, [ticket?.id, ticket?.title]);
 
