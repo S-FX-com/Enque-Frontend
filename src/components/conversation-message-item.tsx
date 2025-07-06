@@ -391,7 +391,7 @@ function InitialTicketMessage({
             </div>
           ) : (
             <div
-              className="prose prose-sm max-w-none dark:prose-invert text-black dark:text-white"
+              className="prose prose-sm max-w-none dark:prose-invert text-black dark:text-white user-message-content"
               dangerouslySetInnerHTML={{ __html: processLinksForNewTab(truncatedContent || '') }}
               style={{ 
                 wordBreak: 'break-word',
@@ -417,6 +417,34 @@ function InitialTicketMessage({
 
 // Export the InitialTicketMessage component for use in ticket conversation
 export { InitialTicketMessage };
+
+// Agregar esta función helper antes del componente
+const addDarkModeStyles = () => {
+  if (typeof document !== 'undefined') {
+    const existingStyle = document.getElementById('dark-mode-message-styles');
+    if (existingStyle) return;
+    
+    const style = document.createElement('style');
+    style.id = 'dark-mode-message-styles';
+    style.textContent = `
+      @media (prefers-color-scheme: dark) {
+        .dark .user-message-content [style*="color:rgb(0,0,0)"],
+        .dark .user-message-content [style*="color:#000000"],
+        .dark .user-message-content [style*="color:#000"],
+        .dark .user-message-content [style*="color:black"] {
+          color: white !important;
+        }
+      }
+      .dark .user-message-content [style*="color:rgb(0,0,0)"],
+      .dark .user-message-content [style*="color:#000000"],
+      .dark .user-message-content [style*="color:#000"],
+      .dark .user-message-content [style*="color:black"] {
+        color: white !important;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+};
 
 export function ConversationMessageItem({ comment }: Props) {
   // Estado para contenido S3
@@ -716,6 +744,11 @@ export function ConversationMessageItem({ comment }: Props) {
     return <Avatar size={40} name={senderIdentifier} variant="beam" colors={userAvatarColors} />;
   };
 
+  // Agregar esto después de las variables existentes
+  useEffect(() => {
+    addDarkModeStyles();
+  }, []);
+
   return (
     <>
       <div
@@ -758,7 +791,7 @@ export function ConversationMessageItem({ comment }: Props) {
                 className={`text-sm text-black dark:text-white prose dark:prose-invert max-w-none whitespace-pre-line prose-a:text-blue-600 dark:prose-a:text-blue-400 prose-a:underline ${
                   isAgentMessage && !isUserReply && !isInitialMessage && !isAutoResponse
                     ? '[&_*]:!text-black dark:[&_*]:!text-white'
-                    : ''
+                    : 'user-message-content'
                 }`}
                 dangerouslySetInnerHTML={{ __html: currentDisplayReplyPart }}
                 onClick={handleImageClick}

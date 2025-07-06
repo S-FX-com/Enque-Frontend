@@ -32,6 +32,34 @@ import { uploadAttachments } from '@/services/attachmentService';
 import { getEnabledGlobalSignature } from '@/services/global-signature';
 import { getCannedReplies, type CannedReply } from '@/services/canned-replies';
 import { formatRelativeTime } from '@/lib/utils';
+
+// Función helper para agregar estilos CSS de modo oscuro
+const addDarkModeStyles = () => {
+  if (typeof document !== 'undefined') {
+    const existingStyle = document.getElementById('dark-mode-message-styles');
+    if (existingStyle) return;
+    
+    const style = document.createElement('style');
+    style.id = 'dark-mode-message-styles';
+    style.textContent = `
+      @media (prefers-color-scheme: dark) {
+        .dark .user-message-content [style*="color:rgb(0,0,0)"],
+        .dark .user-message-content [style*="color:#000000"],
+        .dark .user-message-content [style*="color:#000"],
+        .dark .user-message-content [style*="color:black"] {
+          color: white !important;
+        }
+      }
+      .dark .user-message-content [style*="color:rgb(0,0,0)"],
+      .dark .user-message-content [style*="color:#000000"],
+      .dark .user-message-content [style*="color:#000"],
+      .dark .user-message-content [style*="color:black"] {
+        color: white !important;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+};
 import BoringAvatar from 'boring-avatars';
 
 // Function to process links to open in new tab and ensure underline
@@ -173,6 +201,11 @@ function findQuoteStartIndex(html: string): number {
 
 function OptimizedMessageItem({ content, isInitial = false }: OptimizedMessageItemProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  
+  // Aplicar estilos CSS para modo oscuro
+  useEffect(() => {
+    addDarkModeStyles();
+  }, []);
 
   const senderInfo = React.useMemo(() => {
     const htmlContent = content.content || '';
@@ -307,7 +340,7 @@ function OptimizedMessageItem({ content, isInitial = false }: OptimizedMessageIt
             className={`text-sm text-black dark:text-white prose dark:prose-invert max-w-none whitespace-pre-line prose-a:text-blue-600 dark:prose-a:text-blue-400 prose-a:underline ${
               isAgentMessage && !isInitial && !senderInfo.isUserReply
                 ? '[&_*]:!text-black dark:[&_*]:!text-white'
-                : ''
+                : 'user-message-content'
             }`}
             dangerouslySetInnerHTML={{
           __html:
