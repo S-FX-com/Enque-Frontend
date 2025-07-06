@@ -304,7 +304,11 @@ function OptimizedMessageItem({ content, isInitial = false }: OptimizedMessageIt
 
         <div className="max-w-none break-words overflow-x-auto">
           <div
-            className="text-sm text-black dark:text-white prose dark:prose-invert max-w-none whitespace-pre-line prose-a:text-blue-600 dark:prose-a:text-blue-400 prose-a:underline [&_*]:!text-black dark:[&_*]:!text-white"
+            className={`text-sm text-black dark:text-white prose dark:prose-invert max-w-none whitespace-pre-line prose-a:text-blue-600 dark:prose-a:text-blue-400 prose-a:underline ${
+              isAgentMessage && !isInitial && !senderInfo.isUserReply
+                ? '[&_*]:!text-black dark:[&_*]:!text-white'
+                : ''
+            }`}
             dangerouslySetInnerHTML={{
           __html:
           displayReplyPart ||
@@ -331,7 +335,11 @@ function OptimizedMessageItem({ content, isInitial = false }: OptimizedMessageIt
 
               {isExpanded && displayQuotedPart && (
                 <div
-                  className="mt-2 p-2 border-l-2 border-gray-200 dark:border-gray-700 text-muted-foreground text-sm [&_*]:!text-muted-foreground"
+                  className={`mt-2 p-2 border-l-2 border-gray-200 dark:border-gray-700 text-muted-foreground text-sm ${
+                    isAgentMessage && !isInitial && !senderInfo.isUserReply
+                      ? '[&_*]:!text-muted-foreground'
+                      : ''
+                  }`}
                   dangerouslySetInnerHTML={{ __html: displayQuotedPart }}
                   style={{ color: 'inherit' }}
                 />
