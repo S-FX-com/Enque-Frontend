@@ -702,7 +702,7 @@ export function TicketPageContent({ ticketId }: Props) {
                       colors={avatarColors}
                     />
                     <div className="flex flex-col">
-                      <span className="text-sm font-medium">
+                      <span className="text-sm dark:text-black font-medium">
                         {ticket?.user?.name || 'Unknown User'}
                       </span>
                       <span className="text-xs text-muted-foreground">{ticket?.user?.email}</span>
