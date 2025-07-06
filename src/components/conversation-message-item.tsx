@@ -391,11 +391,12 @@ function InitialTicketMessage({
             </div>
           ) : (
             <div
-              className="prose prose-sm max-w-none dark:prose-invert"
+              className="prose prose-sm max-w-none dark:prose-invert text-black dark:text-white [&_*]:!text-black dark:[&_*]:!text-white"
               dangerouslySetInnerHTML={{ __html: processLinksForNewTab(truncatedContent || '') }}
               style={{ 
                 wordBreak: 'break-word',
-                overflowWrap: 'break-word'
+                overflowWrap: 'break-word',
+                color: 'inherit'
               }}
             />
           )}
@@ -754,9 +755,12 @@ export function ConversationMessageItem({ comment }: Props) {
           <div className={`max-w-none break-words overflow-x-auto`}>
             {!isOnlyAttachmentPlaceholder && (
               <div
-                className="text-sm text-black dark:text-white prose dark:prose-invert max-w-none whitespace-pre-line prose-a:text-blue-600 dark:prose-a:text-blue-400 prose-a:underline"
+                className="text-sm text-black dark:text-white prose dark:prose-invert max-w-none whitespace-pre-line prose-a:text-blue-600 dark:prose-a:text-blue-400 prose-a:underline [&_*]:!text-black dark:[&_*]:!text-white"
                 dangerouslySetInnerHTML={{ __html: currentDisplayReplyPart }}
                 onClick={handleImageClick}
+                style={{
+                  color: 'inherit',
+                }}
               />
             )}
 
@@ -773,11 +777,12 @@ export function ConversationMessageItem({ comment }: Props) {
 
                 {isExpanded && displayQuotedPart && (
                   <div
-                    className="mt-2 p-2 border-l-2 border-gray-200 dark:border-gray-700 text-muted-foreground"
+                    className="mt-2 p-2 border-l-2 border-gray-200 dark:border-gray-700 text-muted-foreground [&_*]:!text-muted-foreground"
                     dangerouslySetInnerHTML={{ __html: processLinksForNewTab(displayQuotedPart) }}
                     style={{ 
                       wordBreak: 'break-word',
-                      overflowWrap: 'break-word'
+                      overflowWrap: 'break-word',
+                      color: 'inherit'
                     }}
                   />
                 )}
