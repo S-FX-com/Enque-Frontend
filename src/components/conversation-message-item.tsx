@@ -334,14 +334,16 @@ function InitialTicketMessage({
     }
   }, [ticketId, initialContent, isMigratedToS3, s3Content, isLoadingS3]);
 
-  // Cargar contenido desde S3 inmediatamente para contenido migrado
   useEffect(() => {
     if (isMigratedToS3 && !s3Content && !isLoadingS3) {
       loadInitialS3Content();
     }
   }, [isMigratedToS3, loadInitialS3Content, s3Content, isLoadingS3]);
 
-  // Determinar el contenido a mostrar
+  useEffect(() => {
+    addDarkModeStyles();
+  }, []);
+
   let displayContent: string;
   if (isMigratedToS3) {
     if (isLoadingS3) {
@@ -418,7 +420,6 @@ function InitialTicketMessage({
 // Export the InitialTicketMessage component for use in ticket conversation
 export { InitialTicketMessage };
 
-// Agregar esta función helper antes del componente
 const addDarkModeStyles = () => {
   if (typeof document !== 'undefined') {
     const existingStyle = document.getElementById('dark-mode-message-styles');
@@ -447,7 +448,6 @@ const addDarkModeStyles = () => {
 };
 
 export function ConversationMessageItem({ comment }: Props) {
-  // Estado para contenido S3
   const [s3Content, setS3Content] = useState<string | null>(null);
   const [isLoadingS3, setIsLoadingS3] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -455,9 +455,10 @@ export function ConversationMessageItem({ comment }: Props) {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [selectedImageSrc, setSelectedImageSrc] = useState<string | null>(null);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
-
-  // Ref para el intersection observer
   const commentRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    addDarkModeStyles();
+  }, []);
 
   // Detectar si el comentario está migrado a S3
   const isMigratedToS3 = comment.s3_html_url && comment.content?.startsWith('[MIGRATED_TO_S3]');
@@ -473,9 +474,7 @@ export function ConversationMessageItem({ comment }: Props) {
       const response = await getCommentS3Content(comment.id);
 
       if (response.status === 'loaded_from_s3' && response.content) {
-        // Verificar si el contenido de S3 sigue siendo el placeholder (contenido corrupto)
         if (response.content.startsWith('[MIGRATED_TO_S3]')) {
-          // Usar el contenido original pero limpio
           const cleanContent =
             comment.content?.replace(/^\[MIGRATED_TO_S3\][^"]*"[^"]*"/, '').trim() || '';
           setS3Content(cleanContent || 'Content temporarily unavailable');
@@ -483,12 +482,10 @@ export function ConversationMessageItem({ comment }: Props) {
           setS3Content(response.content);
         }
       } else {
-        // Fallback al contenido de la base de datos
         setS3Content(response.content);
       }
     } catch (error) {
       console.error('Error loading S3 content:', error);
-      // Usar el contenido de la base de datos como fallback, pero sin el prefijo
       const cleanContent =
         comment.content?.replace(/^\[MIGRATED_TO_S3\][^"]*"[^"]*"/, '').trim() || comment.content;
       setS3Content(cleanContent);
@@ -497,10 +494,8 @@ export function ConversationMessageItem({ comment }: Props) {
     }
   }, [comment.id, comment.content, isMigratedToS3, s3Content, isLoadingS3]);
 
-  // Cargar contenido desde S3 inmediatamente para comentarios migrados
   useEffect(() => {
     if (isMigratedToS3 && !s3Content && !isLoadingS3) {
-      // Cargar inmediatamente sin esperar visibilidad para comentarios migrados
       loadS3Content();
     }
   }, [isMigratedToS3, loadS3Content, s3Content, isLoadingS3]);
@@ -743,11 +738,6 @@ export function ConversationMessageItem({ comment }: Props) {
     // For any other case (including users that might have comment.agent set), use user colors
     return <Avatar size={40} name={senderIdentifier} variant="beam" colors={userAvatarColors} />;
   };
-
-  // Agregar esto después de las variables existentes
-  useEffect(() => {
-    addDarkModeStyles();
-  }, []);
 
   return (
     <>
