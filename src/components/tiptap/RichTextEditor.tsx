@@ -13,6 +13,7 @@ import { RichTextToolbar } from './RichTextToolbar';
 import './tiptap-styles.css';
 import { uploadImage } from '@/services/upload'; // Importar el servicio de carga de imágenes
 import { toast } from 'sonner';
+import { MentionsInput, Mention } from 'react-mentions';
 
 interface Props {
   content: string;
@@ -20,6 +21,7 @@ interface Props {
   placeholder?: string;
   disabled?: boolean;
   onAttachmentsChange?: (files: File[]) => void;
+  ableMentioning?: boolean;
   // Add other props like 'editable' if needed based on context
 }
 
@@ -89,6 +91,7 @@ export function RichTextEditor({
   placeholder,
   disabled = false,
   onAttachmentsChange,
+  ableMentioning
 }: Props) {
   // Función para manejar el pegado de imágenes
   const handlePasteImage = useCallback(async (file: File, editor: Editor) => {
@@ -277,6 +280,10 @@ export function RichTextEditor({
       editor.setEditable(!disabled);
     }
   }, [disabled, editor]);
+
+  if(ableMentioning === true){
+    return
+  }
 
   return (
     <div className="flex flex-col">

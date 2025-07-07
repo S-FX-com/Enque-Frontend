@@ -33,7 +33,6 @@ import { getEnabledGlobalSignature } from '@/services/global-signature';
 import { getCannedReplies, type CannedReply } from '@/services/canned-replies';
 import { formatRelativeTime } from '@/lib/utils';
 import BoringAvatar from 'boring-avatars';
-
 // Function to process links to open in new tab and ensure underline
 function processLinksForNewTab(htmlContent: string): string {
   return htmlContent.replace(
@@ -222,29 +221,7 @@ function OptimizedMessageItem({ content, isInitial = false }: OptimizedMessageIt
 
     return htmlContent.trim();
   }, [content.content]);
-  /*
-  const processedContent = React.useMemo(() => {
-    let htmlContent = content.content || '';
 
-    if (htmlContent.includes('<original-sender>')) {
-      htmlContent = htmlContent.replace(/<original-sender>.*?<\/original-sender>/g, '');
-    }
-
-    htmlContent = htmlContent.replace(/<meta[^>]*>/gi, '');
-    htmlContent = htmlContent.replace(/^\s*<html[^>]*>/gi, '');
-    htmlContent = htmlContent.replace(/<\/html>\s*$/gi, '');
-    htmlContent = htmlContent.replace(/^\s*<head[^>]*>[\s\S]*?<\/head>/gi, '');
-    htmlContent = htmlContent.replace(/^\s*<body[^>]*>/gi, '');
-    htmlContent = htmlContent.replace(/<\/body>\s*$/gi, '');
-    //Lines commented due to unecessary html format
-    //htmlContent = htmlContent.replace(/<p>\s*<\/p>/gi, '<p><br></p>');
-    //htmlContent = htmlContent.replace(/<p>\s*<\/p>/gi, '<br>');
-    htmlContent = htmlContent.replace(/^\s*(?:<br\s*\/?>\s*)+/i, '');
-    htmlContent = htmlContent.replace(/(?:<br\s*\/?>\s*)+$/i, '');
-
-    return htmlContent.trim();
-  }, [content.content]);
-*/
   const { displayReplyPart, displayQuotedPart, showToggleButton } = React.useMemo(() => {
     let displayReplyPart = processedContent;
     let displayQuotedPart: string | null = null;
@@ -869,6 +846,7 @@ export function TicketConversation({
                 placeholder={isPrivateNote ? 'Write a private note...' : 'Type your reply here...'}
                 disabled={createCommentMutation.isPending}
                 onAttachmentsChange={handleAttachmentsChange}
+                ableMentioning={isPrivateNote ? true : false}
               />
             </div>
 
