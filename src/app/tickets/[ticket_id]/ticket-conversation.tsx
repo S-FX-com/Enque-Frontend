@@ -41,14 +41,14 @@ function processLinksForNewTab(htmlContent: string): string {
     (match, beforeHref, url, afterHref) => {
       let attributes = beforeHref + afterHref;
       let processedUrl = url;
-      
+
       // 🔧 NUEVA FUNCIONALIDAD: Decodificar URLs complejas de Outlook SafeLinks
       try {
         // Decodificar URL si está codificada
         if (processedUrl.includes('%')) {
           processedUrl = decodeURIComponent(processedUrl);
         }
-        
+
         // Extraer URL real de Outlook SafeLinks
         if (processedUrl.includes('safelinks.protection.outlook.com')) {
           const urlMatch = processedUrl.match(/url=([^&]+)/);
@@ -56,7 +56,7 @@ function processLinksForNewTab(htmlContent: string): string {
             processedUrl = decodeURIComponent(urlMatch[1]);
           }
         }
-        
+
         // Extraer URL de otros servicios de protección
         if (processedUrl.includes('streaklinks.com') || processedUrl.includes('gourl.es')) {
           // Buscar parámetros url= en la cadena
@@ -68,43 +68,47 @@ function processLinksForNewTab(htmlContent: string): string {
             processedUrl = decodeURIComponent(finalUrl);
           }
         }
-        
+
         // Limpiar encoding adicional
         processedUrl = processedUrl.replace(/&amp;/g, '&');
-        
       } catch (e) {
         // Si hay error decodificando, usar URL original
         console.warn('Error procesando URL:', e);
         processedUrl = url;
       }
-      
+
       // Check if target attribute already exists
       const hasTarget = /target\s*=/i.test(attributes);
       const targetAttr = hasTarget ? '' : ' target="_blank" rel="noopener noreferrer"';
-      
+
       // Check if style attribute exists
       const hasStyle = /style\s*=/i.test(attributes);
-      
+
       if (hasStyle) {
         // Update existing style attribute to include link styling
-        attributes = attributes.replace(/style\s*=\s*["']([^"']*?)["']/gi, (styleMatch: string, styleContent: string) => {
-          let newStyle = styleContent;
-          
-          // Remove text-decoration:none if present
-          newStyle = newStyle.replace(/text-decoration\s*:\s*none\s*;?\s*/gi, '');
-          
-          // Add link styling
-          newStyle = newStyle.trim();
-          if (newStyle && !newStyle.endsWith(';')) newStyle += ';';
-          newStyle += 'color:#2563eb !important;text-decoration:underline !important;cursor:pointer !important;';
-          
-          return `style="${newStyle}"`;
-        });
+        attributes = attributes.replace(
+          /style\s*=\s*["']([^"']*?)["']/gi,
+          (styleMatch: string, styleContent: string) => {
+            let newStyle = styleContent;
+
+            // Remove text-decoration:none if present
+            newStyle = newStyle.replace(/text-decoration\s*:\s*none\s*;?\s*/gi, '');
+
+            // Add link styling
+            newStyle = newStyle.trim();
+            if (newStyle && !newStyle.endsWith(';')) newStyle += ';';
+            newStyle +=
+              'color:#2563eb !important;text-decoration:underline !important;cursor:pointer !important;';
+
+            return `style="${newStyle}"`;
+          }
+        );
       } else {
         // Add style attribute with link styling
-        attributes += ' style="color:#2563eb !important;text-decoration:underline !important;cursor:pointer !important;"';
+        attributes +=
+          ' style="color:#2563eb !important;text-decoration:underline !important;cursor:pointer !important;"';
       }
-      
+
       return `<a ${attributes}href="${processedUrl}"${targetAttr}>`;
     }
   );
@@ -196,29 +200,28 @@ function OptimizedMessageItem({ content, isInitial = false }: OptimizedMessageIt
     };
   }, [content.content, content.sender, isInitial]);
 
-
   const processedContent = React.useMemo(() => {
-    let htmlContent = content.content || ""
+    let htmlContent = content.content || '';
 
-    if (htmlContent.includes("<original-sender>")) {
-      htmlContent = htmlContent.replace(/<original-sender>.*?<\/original-sender>/g, "")
+    if (htmlContent.includes('<original-sender>')) {
+      htmlContent = htmlContent.replace(/<original-sender>.*?<\/original-sender>/g, '');
     }
 
-    htmlContent = htmlContent.replace(/<meta[^>]*>/gi, "")
-    htmlContent = htmlContent.replace(/^\s*<html[^>]*>/gi, "")
-    htmlContent = htmlContent.replace(/<\/html>\s*$/gi, "")
-    htmlContent = htmlContent.replace(/^\s*<head[^>]*>[\s\S]*?<\/head>/gi, "")
-    htmlContent = htmlContent.replace(/^\s*<body[^>]*>/gi, "")
-    htmlContent = htmlContent.replace(/<\/body>\s*$/gi, "")
-    htmlContent = htmlContent.replace(/<p>\s*<\/p>/gi, "<p><br></p>")
-    htmlContent = htmlContent.replace(/^\s*(?:<br\s*\/?>\s*)+/i, "")
-    htmlContent = htmlContent.replace(/(?:<br\s*\/?>\s*)+$/i, "")
+    htmlContent = htmlContent.replace(/<meta[^>]*>/gi, '');
+    htmlContent = htmlContent.replace(/^\s*<html[^>]*>/gi, '');
+    htmlContent = htmlContent.replace(/<\/html>\s*$/gi, '');
+    htmlContent = htmlContent.replace(/^\s*<head[^>]*>[\s\S]*?<\/head>/gi, '');
+    htmlContent = htmlContent.replace(/^\s*<body[^>]*>/gi, '');
+    htmlContent = htmlContent.replace(/<\/body>\s*$/gi, '');
+    htmlContent = htmlContent.replace(/<p>\s*<\/p>/gi, '<p><br></p>');
+    htmlContent = htmlContent.replace(/^\s*(?:<br\s*\/?>\s*)+/i, '');
+    htmlContent = htmlContent.replace(/(?:<br\s*\/?>\s*)+$/i, '');
 
     // Process links to open in new tab
-    htmlContent = processLinksForNewTab(htmlContent)
+    htmlContent = processLinksForNewTab(htmlContent);
 
-    return htmlContent.trim()
-  }, [content.content])
+    return htmlContent.trim();
+  }, [content.content]);
   /*
   const processedContent = React.useMemo(() => {
     let htmlContent = content.content || '';
@@ -304,18 +307,18 @@ function OptimizedMessageItem({ content, isInitial = false }: OptimizedMessageIt
 
         <div className="max-w-none break-words overflow-x-auto">
           <div
-            className="text-sm text-black dark:text-white prose dark:prose-invert max-w-none whitespace-pre-line prose-a:text-blue-600 dark:prose-a:text-blue-400 prose-a:underline"
+            className="text-sm dark:text-black prose dark:prose-invert max-w-none whitespace-pre-line prose-a:text-blue-600 dark:prose-a:text-blue-400 prose-a:underline"
             dangerouslySetInnerHTML={{
-          __html:
-          displayReplyPart ||
-          (content.content && content.content.trim()
-            ? processLinksForNewTab(content.content)
-            : "<p>Message content could not be loaded</p>"),
-      }}
-            style={{ 
+              __html:
+                displayReplyPart ||
+                (content.content && content.content.trim()
+                  ? processLinksForNewTab(content.content)
+                  : '<p>Message content could not be loaded</p>'),
+            }}
+            style={{
               wordBreak: 'break-word',
-              overflowWrap: 'break-word'
-      }}
+              overflowWrap: 'break-word',
+            }}
           />
 
           {showToggleButton && (
