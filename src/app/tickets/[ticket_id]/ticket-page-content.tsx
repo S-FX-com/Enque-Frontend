@@ -447,7 +447,7 @@ export function TicketPageContent({ ticketId }: Props) {
       onSuccess: updatedTicketData => {
         toast.success(`Ticket #${updatedTicketData.id} closed successfully.`);
         invalidateCounterQueries();
-        router.push('/tickets');
+        router.back();
       },
       onError: (error, _variables, context) => {
         toast.error(
