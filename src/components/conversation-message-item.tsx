@@ -248,16 +248,15 @@ const processLinksForNewTab = (htmlContent: string): string => {
           // Remove text-decoration:none if present
           newStyle = newStyle.replace(/text-decoration\s*:\s*none\s*;?\s*/gi, '');
           
-          // Add link styling
+          // Add link styling - CORREGIDO: Usar clases CSS en lugar de estilos inline con !important
           newStyle = newStyle.trim();
           if (newStyle && !newStyle.endsWith(';')) newStyle += ';';
-          newStyle += 'color:#2563eb !important;text-decoration:underline !important;cursor:pointer !important;';
           
-          return `style="${newStyle}"`;
+          return `style="${newStyle}" class="message-link"`;
         });
       } else {
-        // Add style attribute with link styling
-        attributes += ' style="color:#2563eb !important;text-decoration:underline !important;cursor:pointer !important;"';
+        // Add style attribute with link styling - CORREGIDO: Usar clase CSS
+        attributes += ' class="message-link"';
       }
       
       return `<a ${attributes}href="${processedUrl}"${targetAttr}>`;

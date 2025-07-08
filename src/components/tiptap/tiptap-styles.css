@@ -214,3 +214,16 @@
 .message-content-container u {
   text-decoration: none !important;
 }
+
+/* NUEVO: Clase específica para enlaces de mensajes que reemplaza los estilos inline problemáticos */
+.message-content-container .message-link,
+.quoted-content .message-link {
+  color: #2563eb !important;
+  text-decoration: underline !important;
+  cursor: pointer !important;
+}
+
+.dark .message-content-container .message-link,
+.dark .quoted-content .message-link {
+  color: #60a5fa !important;
+}
