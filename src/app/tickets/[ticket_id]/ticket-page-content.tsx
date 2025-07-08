@@ -173,7 +173,8 @@ export function TicketPageContent({ ticketId }: Props) {
   const { socket } = useSocketContext();
   const { user } = useAuth();
   const [ticket, setTicket] = useState<ITicket | null>(null);
-  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
+  const [isReopening, setIsReopening] = useState(false);
   const [existingCcEmails, setExistingCcEmails] = useState<string[]>([]);
   const [extraCcEmails, setExtraCcEmails] = useState<string[]>([]);
   const [existingBccEmails, setExistingBccEmails] = useState<string[]>([]);
@@ -420,7 +421,7 @@ export function TicketPageContent({ ticketId }: Props) {
       onMutate: async () => {
         if (!ticket) return { previousTicket: null };
 
-        setIsUpdatingStatus(true);
+        setIsClosing(true);
         const previousTicket = ticket;
 
         // Cancel any outgoing refetches for counter queries
@@ -465,7 +466,7 @@ export function TicketPageContent({ ticketId }: Props) {
         invalidateCounterQueries();
       },
       onSettled: () => {
-        setIsUpdatingStatus(false);
+        setIsClosing(false);
       },
     }
   );
@@ -480,7 +481,7 @@ export function TicketPageContent({ ticketId }: Props) {
       onMutate: async () => {
         if (!ticket) return { previousTicket: null };
 
-        setIsUpdatingStatus(true);
+        setIsReopening(true);
         const previousTicket = ticket;
 
         // Cancel any outgoing refetches for counter queries
@@ -524,7 +525,7 @@ export function TicketPageContent({ ticketId }: Props) {
         invalidateCounterQueries();
       },
       onSettled: () => {
-        setIsUpdatingStatus(false);
+        setIsReopening(false);
       },
     }
   );
@@ -666,18 +667,18 @@ export function TicketPageContent({ ticketId }: Props) {
               size="sm"
               variant="default"
               onClick={() => reopenTicketMutation.mutate()}
-              disabled={isUpdatingStatus}
+              disabled={isReopening}
             >
-              {isUpdatingStatus ? 'Reopening...' : 'Reopen Ticket'}
+              {isReopening ? 'Reopening...' : 'Reopen Ticket'}
             </Button>
           ) : (
             <Button
               size="sm"
               variant="default"
               onClick={() => closeTicketMutation.mutate()}
-              disabled={isUpdatingStatus}
+              disabled={isClosing}
             >
-              {isUpdatingStatus ? 'Closing...' : 'Mark Closed'}
+              {isClosing ? 'Closing...' : 'Mark Closed'}
             </Button>
           )}
         </div>
