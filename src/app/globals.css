@@ -261,23 +261,61 @@ nav a,
   color: inherit !important;
 }
 
-.message-content-container a:link,
-.message-content-container a,
-.quoted-content a:link,
-.quoted-content a,
+/* REGLAS CON ALTA ESPECIFICIDAD PARA CONVERSACIONES DE TICKETS */
+div.message-content-container a:link,
+div.message-content-container a[href],
+div.message-content-container a,
+div.quoted-content a:link,
+div.quoted-content a[href],
+div.quoted-content a,
 .ProseMirror a:link,
-.ProseMirror a {
+.ProseMirror a[href],
+.ProseMirror a,
+/* Enlaces procesados con clases específicas */
+a.message-link:link,
+a.message-link[href],
+a.message-link,
+/* Contenido HTML dinámico */
+[class*="message-content-container"] a:link,
+[class*="message-content-container"] a[href],
+[class*="message-content-container"] a,
+[class*="quoted-content"] a:link,
+[class*="quoted-content"] a[href], 
+[class*="quoted-content"] a,
+/* Spans con MsoHyperlink en contexto de mensajes */
+.message-content-container span.x_MsoHyperlink,
+.quoted-content span.x_MsoHyperlink,
+.ProseMirror span.x_MsoHyperlink {
   text-decoration: underline !important;
   color: #2563eb !important;
+  cursor: pointer !important;
 }
 
-.dark .message-content-container a:link,
-.dark .message-content-container a,
-.dark .quoted-content a:link,
-.dark .quoted-content a,
+/* Modo oscuro para conversaciones */
+.dark div.message-content-container a:link,
+.dark div.message-content-container a[href],
+.dark div.message-content-container a,
+.dark div.quoted-content a:link,
+.dark div.quoted-content a[href],
+.dark div.quoted-content a,
 .dark .ProseMirror a:link,
-.dark .ProseMirror a {
+.dark .ProseMirror a[href],
+.dark .ProseMirror a,
+.dark a.message-link:link,
+.dark a.message-link[href],
+.dark a.message-link,
+.dark [class*="message-content-container"] a:link,
+.dark [class*="message-content-container"] a[href],
+.dark [class*="message-content-container"] a,
+.dark [class*="quoted-content"] a:link,
+.dark [class*="quoted-content"] a[href],
+.dark [class*="quoted-content"] a,
+.dark .message-content-container span.x_MsoHyperlink,
+.dark .quoted-content span.x_MsoHyperlink,
+.dark .ProseMirror span.x_MsoHyperlink {
+  text-decoration: underline !important;
   color: #60a5fa !important;
+  cursor: pointer !important;
 }
 
 nav span.x_MsoHyperlink,
