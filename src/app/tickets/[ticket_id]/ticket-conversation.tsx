@@ -336,7 +336,7 @@ function OptimizedMessageItem({ content, isInitial = false }: OptimizedMessageIt
 
         <div className="max-w-none break-words overflow-x-auto">
           <div
-            className={`text-sm text-black dark:text-white prose dark:prose-invert max-w-none whitespace-pre-line prose-a:text-blue-600 dark:prose-a:text-blue-400 prose-a:underline message-content-container ${
+            className={`text-sm text-black dark:text-white prose dark:prose-invert max-w-none whitespace-pre-line prose-a:text-blue-600 dark:prose-a:text-blue-400 prose-a:underline ${
               isAgentMessage && !isInitial && !senderInfo.isUserReply
                 ? '[&_*]:!text-black dark:[&_*]:!text-white'
                 : 'user-message-content'

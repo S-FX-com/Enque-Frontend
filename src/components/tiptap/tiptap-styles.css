@@ -1,27 +1,25 @@
-/* Asegurar que solo se apliquen dentro del contexto del editor */
 .ProseMirror:focus {
   outline: none;
 }
 
-/* Estilos para el cuerpo del mensaje en el editor */
 .ProseMirror p:not(.email-signature p) {
-  line-height: 1.4; /* Reducir el interlineado general */
-  margin-top: 0.5em; /* Ajustar margen superior si es necesario */
-  margin-bottom: 0.5em; /* Ajustar margen inferior si es necesario */
+  line-height: 1.4; 
+  margin-top: 0.5em; 
+  margin-bottom: 0.5em; 
 }
 
 .email-signature,
 .ProseMirror .email-signature {
   color: #6b7280 !important;
-  line-height: 0.6 !important; /* Ajustado a 0.6 */
+  line-height: 0.6 !important; 
 }
 
 .email-signature p,
 .ProseMirror .email-signature p {
   color: #6b7280 !important;
   margin-top: 0 !important;
-  margin-bottom: 0.1em !important; /* Reducido para ajustarse a line-height: 0.6 */
-  line-height: 0.6 !important; /* Ajustado a 0.6 */
+  margin-bottom: 0.1em !important; 
+  line-height: 0.6 !important; 
 }
 
 .email-signature p strong {
@@ -72,8 +70,6 @@
 .prose .email-signature p + p {
   margin-top: 0 !important;
 }
-
-/* CORREGIDO: Solo aplicar estilos de enlaces dentro del editor ProseMirror */
 .ProseMirror a {
   color: theme('colors.blue.600') !important;
   text-decoration: underline !important;
@@ -96,8 +92,6 @@
 .dark .ProseMirror a[href] {
   color: theme('colors.blue.400') !important;
 }
-
-/* Estilos generales para imágenes del contenido del mensaje */
 .ProseMirror img {
   display: block !important;
   margin: 1em 0 !important;
@@ -106,8 +100,6 @@
   object-fit: contain !important;
   border-radius: 4px !important;
 }
-
-/* Estilos específicos para imágenes con dimensiones fijas (del mensaje) */
 .ProseMirror img[width][height] {
   object-fit: contain !important;
   display: block !important;
@@ -116,21 +108,16 @@
   max-height: 200px !important;
 }
 
-/* Contenedor del mensaje para separar del signature */
 .ProseMirror .message-content {
   margin-bottom: 20px !important;
   clear: both !important;
 }
-
-/* Asegurar que la firma esté siempre separada del contenido */
 .ProseMirror .email-signature {
   clear: both !important;
   margin-top: 24px !important;
   padding-top: 16px !important;
   border-top: 1px solid #e5e7eb !important;
 }
-
-/* Estilos específicos para imágenes de la firma - mantener pequeñas */
 .email-signature img,
 .ProseMirror .email-signature img {
   width: 120px !important;
@@ -176,14 +163,11 @@
   margin-bottom: 0;
 }
 
-/* Dark mode adjustments */
 .dark .ProseMirror ul,
 .dark .ProseMirror ol,
 .dark .ProseMirror li {
   color: theme('colors.slate.200');
 }
-
-/* Forzar tamaño específico para logos que vengan como 300x200 pero son de firma */
 .ProseMirror .email-signature img[width='300'][height='200'],
 .email-signature img[width='300'][height='200'] {
   width: 120px !important;
@@ -192,16 +176,12 @@
   max-height: 75px !important;
   object-fit: scale-down !important;
 }
-
-/* NUEVO: Asegurar que el contenido citado no tenga estilos de subrayado globales */
 .quoted-content a,
 .quoted-content [data-type='link'],
 .quoted-content a[href] {
   text-decoration: none !important;
   color: inherit !important;
 }
-
-/* NUEVO: Clase específica para aislar el contenido del mensaje de los estilos globales */
 .message-content-container {
   isolation: isolate;
 }
@@ -215,7 +195,6 @@
   text-decoration: none !important;
 }
 
-/* NUEVO: Clase específica para enlaces de mensajes que reemplaza los estilos inline problemáticos */
 .message-content-container .message-link,
 .quoted-content .message-link {
   color: #2563eb !important;

@@ -173,7 +173,7 @@ export function TicketPageContent({ ticketId }: Props) {
   const { socket } = useSocketContext();
   const { user } = useAuth();
   const [ticket, setTicket] = useState<ITicket | null>(null);
-  const [isClosingTicket, setIsClosingTicket] = useState(false);
+  const [isUpdatingTicketStatus, setIsUpdatingTicketStatus] = useState(false);
   const [existingCcEmails, setExistingCcEmails] = useState<string[]>([]);
   const [extraCcEmails, setExtraCcEmails] = useState<string[]>([]);
   const [existingBccEmails, setExistingBccEmails] = useState<string[]>([]);
@@ -410,30 +410,28 @@ export function TicketPageContent({ ticketId }: Props) {
     updateFieldMutation.mutate({ field, value, originalFieldValue: currentFieldValue });
   };
 
-  // Store original ticket status for button text logic
-  const [originalTicketStatus, setOriginalTicketStatus] = useState<TicketStatus | null>(null);
-
   // Toggle ticket status mutation (Close/Reopen)
   const toggleTicketStatusMutation = useMutation<ITicket, Error, void, { previousTicket: ITicket | null }>(
     {
       mutationFn: async () => {
         if (!ticket) throw new Error('No ticket selected');
+        
+        // Determine the new status based on current status
         const newStatus = ticket.status === 'Closed' ? 'Open' : 'Closed';
         return updateTicket(ticket.id, { status: newStatus });
       },
       onMutate: async () => {
         if (!ticket) return { previousTicket: null };
 
-        setIsClosingTicket(true);
-        // Store the original status before optimistic update
-        setOriginalTicketStatus(ticket.status);
-        
+        setIsUpdatingTicketStatus(true);
         const previousTicket = ticket;
-        const newStatus = ticket.status === 'Closed' ? 'Open' : 'Closed';
 
         // Cancel any outgoing refetches for counter queries
         await queryClient.cancelQueries({ queryKey: ['ticketsCount'] });
         await queryClient.cancelQueries({ queryKey: ['agentTeams'] });
+
+        // Determine the new status based on current status
+        const newStatus = ticket.status === 'Closed' ? 'Open' : 'Closed';
 
         const optimisticTicket: ITicket = {
           ...previousTicket,
@@ -443,9 +441,9 @@ export function TicketPageContent({ ticketId }: Props) {
         setTicket(optimisticTicket);
         queryClient.setQueryData(['ticket', ticket.id], [optimisticTicket]);
 
-        // Optimistically update counter queries based on the action
+        // Optimistically update counter queries
         if (newStatus === 'Closed') {
-          // Closing ticket - decrease counters
+          // Ticket is being closed
           queryClient.setQueryData<number>(['ticketsCount', 'all'], old =>
             Math.max(0, (old || 1) - 1)
           );
@@ -456,7 +454,7 @@ export function TicketPageContent({ ticketId }: Props) {
             );
           }
         } else {
-          // Reopening ticket - increase counters
+          // Ticket is being reopened
           queryClient.setQueryData<number>(['ticketsCount', 'all'], old =>
             (old || 0) + 1
           );
@@ -475,14 +473,13 @@ export function TicketPageContent({ ticketId }: Props) {
         toast.success(`Ticket #${updatedTicketData.id} ${action} successfully.`);
         invalidateCounterQueries();
         
-        // Only go back if ticket was closed, stay on page if reopened
+        // Only navigate back when closing, stay on page when reopening
         if (updatedTicketData.status === 'Closed') {
           router.back();
         }
       },
       onError: (error, _variables, context) => {
-        // Use the original ticket status, not the current optimistically changed one
-        const action = context?.previousTicket?.status === 'Closed' ? 'reopening' : 'closing';
+        const action = ticket?.status === 'Closed' ? 'reopening' : 'closing';
         toast.error(
           `Error ${action} ticket #${ticket?.id}: ${error instanceof Error ? error.message : 'Unknown error'}`
         );
@@ -494,8 +491,7 @@ export function TicketPageContent({ ticketId }: Props) {
         invalidateCounterQueries();
       },
       onSettled: () => {
-        setIsClosingTicket(false);
-        setOriginalTicketStatus(null);
+        setIsUpdatingTicketStatus(false);
       },
     }
   );
@@ -636,10 +632,10 @@ export function TicketPageContent({ ticketId }: Props) {
             size="sm"
             variant="default"
             onClick={() => toggleTicketStatusMutation.mutate()}
-            disabled={isClosingTicket}
+            disabled={isUpdatingTicketStatus}
           >
-            {isClosingTicket 
-              ? (originalTicketStatus === 'Closed' ? 'Reopening...' : 'Closing...') 
+            {isUpdatingTicketStatus 
+              ? (ticket?.status === 'Closed' ? 'Reopening...' : 'Closing...') 
               : (ticket?.status === 'Closed' ? 'Reopen Ticket' : 'Mark Closed')
             }
           </Button>

@@ -392,7 +392,7 @@ function InitialTicketMessage({
             </div>
           ) : (
             <div
-              className="prose prose-sm max-w-none dark:prose-invert text-black dark:text-white user-message-content message-content-container"
+              className="prose prose-sm max-w-none dark:prose-invert text-black dark:text-white user-message-content"
               dangerouslySetInnerHTML={{ __html: processLinksForNewTab(truncatedContent || '') }}
               style={{ 
                 wordBreak: 'break-word',
@@ -777,7 +777,7 @@ export function ConversationMessageItem({ comment }: Props) {
           <div className={`max-w-none break-words overflow-x-auto`}>
             {!isOnlyAttachmentPlaceholder && (
               <div
-                className={`text-sm text-black dark:text-white prose dark:prose-invert max-w-none whitespace-pre-line prose-a:text-blue-600 dark:prose-a:text-blue-400 prose-a:underline message-content-container ${
+                className={`text-sm text-black dark:text-white prose dark:prose-invert max-w-none whitespace-pre-line prose-a:text-blue-600 dark:prose-a:text-blue-400 prose-a:underline ${
                   isAgentMessage && !isUserReply && !isInitialMessage && !isAutoResponse
                     ? '[&_*]:!text-black dark:[&_*]:!text-white'
                     : 'user-message-content'
