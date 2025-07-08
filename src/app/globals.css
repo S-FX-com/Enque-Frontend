@@ -227,9 +227,6 @@ html {
   scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
 }
 
-/* CORREGIR PROBLEMA DE SUBRAYADO GLOBAL CAUSADO POR REGLAS CSS INYECTADAS DE OUTLOOK/MSO */
-
-/* Sobrescribir la regla problemática para sidebar y navegación */
 nav a:link,
 nav a,
 .sidebar a:link,
@@ -245,6 +242,7 @@ nav a,
 .breadcrumb a:link,
 .breadcrumb a {
   text-decoration: none !important;
+  color: inherit !important;
 }
 
 /* Específicamente para el sidebar */
@@ -253,15 +251,16 @@ nav a,
 .space-y-1 a:link,
 .space-y-1 a {
   text-decoration: none !important;
+  color: inherit !important;
 }
 
 /* Para breadcrumbs */
 .flex.items-center.text-sm a:link,
 .flex.items-center.text-sm a {
   text-decoration: none !important;
+  color: inherit !important;
 }
 
-/* Permitir subrayado solo en el contexto de mensajes de conversación */
 .message-content-container a:link,
 .message-content-container a,
 .quoted-content a:link,
@@ -281,7 +280,6 @@ nav a,
   color: #60a5fa !important;
 }
 
-/* Sobrescribir específicamente las clases MsoHyperlink fuera del contexto de mensajes */
 nav span.x_MsoHyperlink,
 .sidebar span.x_MsoHyperlink,
 .navigation span.x_MsoHyperlink,

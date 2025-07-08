@@ -410,18 +410,20 @@ export function TicketPageContent({ ticketId }: Props) {
     updateFieldMutation.mutate({ field, value, originalFieldValue: currentFieldValue });
   };
 
-  // Close ticket mutation
-  const closeTicketMutation = useMutation<ITicket, Error, void, { previousTicket: ITicket | null }>(
+  // Toggle ticket status mutation (Close/Reopen)
+  const toggleTicketStatusMutation = useMutation<ITicket, Error, void, { previousTicket: ITicket | null }>(
     {
       mutationFn: async () => {
         if (!ticket) throw new Error('No ticket selected');
-        return updateTicket(ticket.id, { status: 'Closed' });
+        const newStatus = ticket.status === 'Closed' ? 'Open' : 'Closed';
+        return updateTicket(ticket.id, { status: newStatus });
       },
       onMutate: async () => {
         if (!ticket) return { previousTicket: null };
 
         setIsClosingTicket(true);
         const previousTicket = ticket;
+        const newStatus = ticket.status === 'Closed' ? 'Open' : 'Closed';
 
         // Cancel any outgoing refetches for counter queries
         await queryClient.cancelQueries({ queryKey: ['ticketsCount'] });
@@ -429,33 +431,53 @@ export function TicketPageContent({ ticketId }: Props) {
 
         const optimisticTicket: ITicket = {
           ...previousTicket,
-          status: 'Closed' as TicketStatus,
+          status: newStatus as TicketStatus,
         };
 
         setTicket(optimisticTicket);
         queryClient.setQueryData(['ticket', ticket.id], [optimisticTicket]);
 
-        // Optimistically update counter queries
-        queryClient.setQueryData<number>(['ticketsCount', 'all'], old =>
-          Math.max(0, (old || 1) - 1)
-        );
-
-        if (ticket.assignee_id === user?.id) {
-          queryClient.setQueryData<number>(['ticketsCount', 'my', user?.id], old =>
+        // Optimistically update counter queries based on the action
+        if (newStatus === 'Closed') {
+          // Closing ticket - decrease counters
+          queryClient.setQueryData<number>(['ticketsCount', 'all'], old =>
             Math.max(0, (old || 1) - 1)
           );
+
+          if (ticket.assignee_id === user?.id) {
+            queryClient.setQueryData<number>(['ticketsCount', 'my', user?.id], old =>
+              Math.max(0, (old || 1) - 1)
+            );
+          }
+        } else {
+          // Reopening ticket - increase counters
+          queryClient.setQueryData<number>(['ticketsCount', 'all'], old =>
+            (old || 0) + 1
+          );
+
+          if (ticket.assignee_id === user?.id) {
+            queryClient.setQueryData<number>(['ticketsCount', 'my', user?.id], old =>
+              (old || 0) + 1
+            );
+          }
         }
 
         return { previousTicket };
       },
       onSuccess: updatedTicketData => {
-        toast.success(`Ticket #${updatedTicketData.id} closed successfully.`);
+        const action = updatedTicketData.status === 'Closed' ? 'closed' : 'reopened';
+        toast.success(`Ticket #${updatedTicketData.id} ${action} successfully.`);
         invalidateCounterQueries();
-        router.back();
+        
+        // Only go back if ticket was closed, stay on page if reopened
+        if (updatedTicketData.status === 'Closed') {
+          router.back();
+        }
       },
       onError: (error, _variables, context) => {
+        const action = ticket?.status === 'Closed' ? 'reopening' : 'closing';
         toast.error(
-          `Error closing ticket #${ticket?.id}: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Error ${action} ticket #${ticket?.id}: ${error instanceof Error ? error.message : 'Unknown error'}`
         );
         if (context?.previousTicket) {
           setTicket(context.previousTicket);
@@ -605,10 +627,13 @@ export function TicketPageContent({ ticketId }: Props) {
           <Button
             size="sm"
             variant="default"
-            onClick={() => closeTicketMutation.mutate()}
+            onClick={() => toggleTicketStatusMutation.mutate()}
             disabled={isClosingTicket}
           >
-            {isClosingTicket ? 'Closing...' : 'Mark Closed'}
+            {isClosingTicket 
+              ? (ticket?.status === 'Closed' ? 'Reopening...' : 'Closing...') 
+              : (ticket?.status === 'Closed' ? 'Reopen Ticket' : 'Mark Closed')
+            }
           </Button>
         </div>
       </div>
