@@ -173,7 +173,7 @@ export function TicketPageContent({ ticketId }: Props) {
   const { socket } = useSocketContext();
   const { user } = useAuth();
   const [ticket, setTicket] = useState<ITicket | null>(null);
-  const [isUpdatingTicketStatus, setIsUpdatingTicketStatus] = useState(false);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [existingCcEmails, setExistingCcEmails] = useState<string[]>([]);
   const [extraCcEmails, setExtraCcEmails] = useState<string[]>([]);
   const [existingBccEmails, setExistingBccEmails] = useState<string[]>([]);
@@ -416,23 +416,23 @@ export function TicketPageContent({ ticketId }: Props) {
       mutationFn: async () => {
         if (!ticket) throw new Error('No ticket selected');
         
-        // Determine the new status based on current status
+        // Determine new status based on current status
         const newStatus = ticket.status === 'Closed' ? 'Open' : 'Closed';
         return updateTicket(ticket.id, { status: newStatus });
       },
       onMutate: async () => {
         if (!ticket) return { previousTicket: null };
 
-        setIsUpdatingTicketStatus(true);
+        setIsUpdatingStatus(true);
         const previousTicket = ticket;
 
         // Cancel any outgoing refetches for counter queries
         await queryClient.cancelQueries({ queryKey: ['ticketsCount'] });
         await queryClient.cancelQueries({ queryKey: ['agentTeams'] });
 
-        // Determine the new status based on current status
+        // Determine new status
         const newStatus = ticket.status === 'Closed' ? 'Open' : 'Closed';
-
+        
         const optimisticTicket: ITicket = {
           ...previousTicket,
           status: newStatus as TicketStatus,
@@ -443,7 +443,7 @@ export function TicketPageContent({ ticketId }: Props) {
 
         // Optimistically update counter queries
         if (newStatus === 'Closed') {
-          // Ticket is being closed
+          // Closing ticket - decrease counter
           queryClient.setQueryData<number>(['ticketsCount', 'all'], old =>
             Math.max(0, (old || 1) - 1)
           );
@@ -454,7 +454,7 @@ export function TicketPageContent({ ticketId }: Props) {
             );
           }
         } else {
-          // Ticket is being reopened
+          // Reopening ticket - increase counter
           queryClient.setQueryData<number>(['ticketsCount', 'all'], old =>
             (old || 0) + 1
           );
@@ -491,7 +491,7 @@ export function TicketPageContent({ ticketId }: Props) {
         invalidateCounterQueries();
       },
       onSettled: () => {
-        setIsUpdatingTicketStatus(false);
+        setIsUpdatingStatus(false);
       },
     }
   );
@@ -632,9 +632,9 @@ export function TicketPageContent({ ticketId }: Props) {
             size="sm"
             variant="default"
             onClick={() => toggleTicketStatusMutation.mutate()}
-            disabled={isUpdatingTicketStatus}
+            disabled={isUpdatingStatus}
           >
-            {isUpdatingTicketStatus 
+            {isUpdatingStatus 
               ? (ticket?.status === 'Closed' ? 'Reopening...' : 'Closing...') 
               : (ticket?.status === 'Closed' ? 'Reopen Ticket' : 'Mark Closed')
             }

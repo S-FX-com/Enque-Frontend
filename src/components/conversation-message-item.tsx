@@ -392,7 +392,7 @@ function InitialTicketMessage({
             </div>
           ) : (
             <div
-              className="prose prose-sm max-w-none dark:prose-invert text-black dark:text-white user-message-content"
+              className="prose prose-sm max-w-none dark:prose-invert text-black dark:text-white user-message-content message-content-container"
               dangerouslySetInnerHTML={{ __html: processLinksForNewTab(truncatedContent || '') }}
               style={{ 
                 wordBreak: 'break-word',
