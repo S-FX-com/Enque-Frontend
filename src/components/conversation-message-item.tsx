@@ -804,7 +804,7 @@ export function ConversationMessageItem({ comment }: Props) {
 
                 {isExpanded && displayQuotedPart && (
                   <div
-                    className={`mt-2 p-2 border-l-2 border-gray-200 dark:border-gray-700 text-muted-foreground ${
+                    className={`mt-2 p-2 border-l-2 border-gray-200 dark:border-gray-700 text-muted-foreground quoted-content message-content-container ${
                       isAgentMessage && !isUserReply && !isInitialMessage && !isAutoResponse
                         ? '[&_*]:!text-muted-foreground'
                         : ''

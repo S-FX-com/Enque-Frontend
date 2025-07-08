@@ -368,12 +368,12 @@ function OptimizedMessageItem({ content, isInitial = false }: OptimizedMessageIt
 
               {isExpanded && displayQuotedPart && (
                 <div
-                  className={`mt-2 p-2 border-l-2 border-gray-200 dark:border-gray-700 text-muted-foreground text-sm ${
+                  className={`mt-2 p-2 border-l-2 border-gray-200 dark:border-gray-700 text-muted-foreground text-sm quoted-content message-content-container ${
                     isAgentMessage && !isInitial && !senderInfo.isUserReply
                       ? '[&_*]:!text-muted-foreground'
                       : ''
                   }`}
-                  dangerouslySetInnerHTML={{ __html: displayQuotedPart }}
+                  dangerouslySetInnerHTML={{ __html: displayQuotedPart || '' }}
                   style={{ color: 'inherit' }}
                 />
               )}

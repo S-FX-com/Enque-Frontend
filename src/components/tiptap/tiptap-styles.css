@@ -1,3 +1,4 @@
+/* Asegurar que solo se apliquen dentro del contexto del editor */
 .ProseMirror:focus {
   outline: none;
 }
@@ -72,6 +73,7 @@
   margin-top: 0 !important;
 }
 
+/* CORREGIDO: Solo aplicar estilos de enlaces dentro del editor ProseMirror */
 .ProseMirror a {
   color: theme('colors.blue.600') !important;
   text-decoration: underline !important;
@@ -189,4 +191,26 @@
   max-width: 120px !important;
   max-height: 75px !important;
   object-fit: scale-down !important;
+}
+
+/* NUEVO: Asegurar que el contenido citado no tenga estilos de subrayado globales */
+.quoted-content a,
+.quoted-content [data-type='link'],
+.quoted-content a[href] {
+  text-decoration: none !important;
+  color: inherit !important;
+}
+
+/* NUEVO: Clase específica para aislar el contenido del mensaje de los estilos globales */
+.message-content-container {
+  isolation: isolate;
+}
+
+.message-content-container a {
+  text-decoration: none !important;
+  color: inherit !important;
+}
+
+.message-content-container u {
+  text-decoration: none !important;
 }
