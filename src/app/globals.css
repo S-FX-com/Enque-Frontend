@@ -198,20 +198,15 @@ html {
 
 .dark .text-slate-500,
 .dark p.text-slate-500,
-.dark .profile-role,
-.dark .user-role {
-  color: #a1a1a1 !important;
-}
-
+.dark .text-slate-500,
 .dark input::placeholder,
-.dark input[type='search']::placeholder {
+.dark textarea::placeholder {
   color: #a1a1a1 !important;
-  opacity: 1;
 }
 
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
@@ -219,15 +214,81 @@ html {
 }
 
 ::-webkit-scrollbar-thumb {
-  background-color: rgba(156, 163, 175, 0.5);
-  border-radius: 10px;
-  border: transparent;
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(107, 114, 128, 0.7);
+  background-color: rgba(0, 0, 0, 0.3);
 }
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
+  scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+}
+
+/* CORREGIR PROBLEMA DE SUBRAYADO GLOBAL CAUSADO POR REGLAS CSS INYECTADAS DE OUTLOOK/MSO */
+
+/* Sobrescribir la regla problemática para sidebar y navegación */
+nav a:link,
+nav a,
+.sidebar a:link,
+.sidebar a,
+.navigation a:link,
+.navigation a,
+[class*="sidebar"] a:link,
+[class*="sidebar"] a,
+[class*="nav"] a:link,
+[class*="nav"] a,
+.topbar a:link,
+.topbar a,
+.breadcrumb a:link,
+.breadcrumb a {
+  text-decoration: none !important;
+}
+
+/* Específicamente para el sidebar */
+.flex-1.overflow-y-auto a:link,
+.flex-1.overflow-y-auto a,
+.space-y-1 a:link,
+.space-y-1 a {
+  text-decoration: none !important;
+}
+
+/* Para breadcrumbs */
+.flex.items-center.text-sm a:link,
+.flex.items-center.text-sm a {
+  text-decoration: none !important;
+}
+
+/* Permitir subrayado solo en el contexto de mensajes de conversación */
+.message-content-container a:link,
+.message-content-container a,
+.quoted-content a:link,
+.quoted-content a,
+.ProseMirror a:link,
+.ProseMirror a {
+  text-decoration: underline !important;
+  color: #2563eb !important;
+}
+
+.dark .message-content-container a:link,
+.dark .message-content-container a,
+.dark .quoted-content a:link,
+.dark .quoted-content a,
+.dark .ProseMirror a:link,
+.dark .ProseMirror a {
+  color: #60a5fa !important;
+}
+
+/* Sobrescribir específicamente las clases MsoHyperlink fuera del contexto de mensajes */
+nav span.x_MsoHyperlink,
+.sidebar span.x_MsoHyperlink,
+.navigation span.x_MsoHyperlink,
+[class*="sidebar"] span.x_MsoHyperlink,
+[class*="nav"] span.x_MsoHyperlink,
+.topbar span.x_MsoHyperlink,
+.breadcrumb span.x_MsoHyperlink {
+  text-decoration: none !important;
+  color: inherit !important;
 }
