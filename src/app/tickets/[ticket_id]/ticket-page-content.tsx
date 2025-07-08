@@ -410,6 +410,9 @@ export function TicketPageContent({ ticketId }: Props) {
     updateFieldMutation.mutate({ field, value, originalFieldValue: currentFieldValue });
   };
 
+  // Store original ticket status for button text logic
+  const [originalTicketStatus, setOriginalTicketStatus] = useState<TicketStatus | null>(null);
+
   // Toggle ticket status mutation (Close/Reopen)
   const toggleTicketStatusMutation = useMutation<ITicket, Error, void, { previousTicket: ITicket | null }>(
     {
@@ -422,6 +425,9 @@ export function TicketPageContent({ ticketId }: Props) {
         if (!ticket) return { previousTicket: null };
 
         setIsClosingTicket(true);
+        // Store the original status before optimistic update
+        setOriginalTicketStatus(ticket.status);
+        
         const previousTicket = ticket;
         const newStatus = ticket.status === 'Closed' ? 'Open' : 'Closed';
 
@@ -475,7 +481,8 @@ export function TicketPageContent({ ticketId }: Props) {
         }
       },
       onError: (error, _variables, context) => {
-        const action = ticket?.status === 'Closed' ? 'reopening' : 'closing';
+        // Use the original ticket status, not the current optimistically changed one
+        const action = context?.previousTicket?.status === 'Closed' ? 'reopening' : 'closing';
         toast.error(
           `Error ${action} ticket #${ticket?.id}: ${error instanceof Error ? error.message : 'Unknown error'}`
         );
@@ -488,6 +495,7 @@ export function TicketPageContent({ ticketId }: Props) {
       },
       onSettled: () => {
         setIsClosingTicket(false);
+        setOriginalTicketStatus(null);
       },
     }
   );
@@ -631,7 +639,7 @@ export function TicketPageContent({ ticketId }: Props) {
             disabled={isClosingTicket}
           >
             {isClosingTicket 
-              ? (ticket?.status === 'Closed' ? 'Reopening...' : 'Closing...') 
+              ? (originalTicketStatus === 'Closed' ? 'Reopening...' : 'Closing...') 
               : (ticket?.status === 'Closed' ? 'Reopen Ticket' : 'Mark Closed')
             }
           </Button>
