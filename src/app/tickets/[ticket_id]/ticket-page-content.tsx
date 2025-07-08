@@ -410,15 +410,12 @@ export function TicketPageContent({ ticketId }: Props) {
     updateFieldMutation.mutate({ field, value, originalFieldValue: currentFieldValue });
   };
 
-  // Toggle ticket status mutation (Close/Reopen)
-  const toggleTicketStatusMutation = useMutation<ITicket, Error, void, { previousTicket: ITicket | null }>(
+  // Close ticket mutation
+  const closeTicketMutation = useMutation<ITicket, Error, void, { previousTicket: ITicket | null }>(
     {
       mutationFn: async () => {
         if (!ticket) throw new Error('No ticket selected');
-        
-        // Determine new status based on current status
-        const newStatus = ticket.status === 'Closed' ? 'Open' : 'Closed';
-        return updateTicket(ticket.id, { status: newStatus });
+        return updateTicket(ticket.id, { status: 'Closed' });
       },
       onMutate: async () => {
         if (!ticket) return { previousTicket: null };
@@ -430,58 +427,94 @@ export function TicketPageContent({ ticketId }: Props) {
         await queryClient.cancelQueries({ queryKey: ['ticketsCount'] });
         await queryClient.cancelQueries({ queryKey: ['agentTeams'] });
 
-        // Determine new status
-        const newStatus = ticket.status === 'Closed' ? 'Open' : 'Closed';
-        
         const optimisticTicket: ITicket = {
           ...previousTicket,
-          status: newStatus as TicketStatus,
+          status: 'Closed' as TicketStatus,
         };
 
         setTicket(optimisticTicket);
         queryClient.setQueryData(['ticket', ticket.id], [optimisticTicket]);
 
         // Optimistically update counter queries
-        if (newStatus === 'Closed') {
-          // Closing ticket - decrease counter
-          queryClient.setQueryData<number>(['ticketsCount', 'all'], old =>
+        queryClient.setQueryData<number>(['ticketsCount', 'all'], old =>
+          Math.max(0, (old || 1) - 1)
+        );
+
+        if (ticket.assignee_id === user?.id) {
+          queryClient.setQueryData<number>(['ticketsCount', 'my', user?.id], old =>
             Math.max(0, (old || 1) - 1)
           );
-
-          if (ticket.assignee_id === user?.id) {
-            queryClient.setQueryData<number>(['ticketsCount', 'my', user?.id], old =>
-              Math.max(0, (old || 1) - 1)
-            );
-          }
-        } else {
-          // Reopening ticket - increase counter
-          queryClient.setQueryData<number>(['ticketsCount', 'all'], old =>
-            (old || 0) + 1
-          );
-
-          if (ticket.assignee_id === user?.id) {
-            queryClient.setQueryData<number>(['ticketsCount', 'my', user?.id], old =>
-              (old || 0) + 1
-            );
-          }
         }
 
         return { previousTicket };
       },
       onSuccess: updatedTicketData => {
-        const action = updatedTicketData.status === 'Closed' ? 'closed' : 'reopened';
-        toast.success(`Ticket #${updatedTicketData.id} ${action} successfully.`);
+        toast.success(`Ticket #${updatedTicketData.id} closed successfully.`);
         invalidateCounterQueries();
-        
-        // Only navigate back when closing, stay on page when reopening
-        if (updatedTicketData.status === 'Closed') {
-          router.back();
-        }
+        router.back();
       },
       onError: (error, _variables, context) => {
-        const action = ticket?.status === 'Closed' ? 'reopening' : 'closing';
         toast.error(
-          `Error ${action} ticket #${ticket?.id}: ${error instanceof Error ? error.message : 'Unknown error'}`
+          `Error closing ticket #${ticket?.id}: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
+        if (context?.previousTicket) {
+          setTicket(context.previousTicket);
+          queryClient.setQueryData(['ticket', ticketId], [context.previousTicket]);
+        }
+        // Revert optimistic updates on error
+        invalidateCounterQueries();
+      },
+      onSettled: () => {
+        setIsUpdatingStatus(false);
+      },
+    }
+  );
+
+  // Reopen ticket mutation
+  const reopenTicketMutation = useMutation<ITicket, Error, void, { previousTicket: ITicket | null }>(
+    {
+      mutationFn: async () => {
+        if (!ticket) throw new Error('No ticket selected');
+        return updateTicket(ticket.id, { status: 'Open' });
+      },
+      onMutate: async () => {
+        if (!ticket) return { previousTicket: null };
+
+        setIsUpdatingStatus(true);
+        const previousTicket = ticket;
+
+        // Cancel any outgoing refetches for counter queries
+        await queryClient.cancelQueries({ queryKey: ['ticketsCount'] });
+        await queryClient.cancelQueries({ queryKey: ['agentTeams'] });
+
+        const optimisticTicket: ITicket = {
+          ...previousTicket,
+          status: 'Open' as TicketStatus,
+        };
+
+        setTicket(optimisticTicket);
+        queryClient.setQueryData(['ticket', ticket.id], [optimisticTicket]);
+
+        // Optimistically update counter queries
+        queryClient.setQueryData<number>(['ticketsCount', 'all'], old =>
+          (old || 0) + 1
+        );
+
+        if (ticket.assignee_id === user?.id) {
+          queryClient.setQueryData<number>(['ticketsCount', 'my', user?.id], old =>
+            (old || 0) + 1
+          );
+        }
+
+        return { previousTicket };
+      },
+      onSuccess: updatedTicketData => {
+        toast.success(`Ticket #${updatedTicketData.id} reopened successfully.`);
+        invalidateCounterQueries();
+      },
+      onError: (error, _variables, context) => {
+        toast.error(
+          `Error reopening ticket #${ticket?.id}: ${error instanceof Error ? error.message : 'Unknown error'}`
         );
         if (context?.previousTicket) {
           setTicket(context.previousTicket);
@@ -628,17 +661,25 @@ export function TicketPageContent({ ticketId }: Props) {
         </div>
 
         <div className="flex items-center gap-2">
-          <Button
-            size="sm"
-            variant="default"
-            onClick={() => toggleTicketStatusMutation.mutate()}
-            disabled={isUpdatingStatus}
-          >
-            {isUpdatingStatus 
-              ? (ticket?.status === 'Closed' ? 'Reopening...' : 'Closing...') 
-              : (ticket?.status === 'Closed' ? 'Reopen Ticket' : 'Mark Closed')
-            }
-          </Button>
+          {ticket?.status === 'Closed' ? (
+            <Button
+              size="sm"
+              variant="default"
+              onClick={() => reopenTicketMutation.mutate()}
+              disabled={isUpdatingStatus}
+            >
+              {isUpdatingStatus ? 'Reopening...' : 'Reopen Ticket'}
+            </Button>
+          ) : (
+            <Button
+              size="sm"
+              variant="default"
+              onClick={() => closeTicketMutation.mutate()}
+              disabled={isUpdatingStatus}
+            >
+              {isUpdatingStatus ? 'Closing...' : 'Mark Closed'}
+            </Button>
+          )}
         </div>
       </div>
 
