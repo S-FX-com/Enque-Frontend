@@ -860,11 +860,11 @@ export function TicketPageContent({ ticketId }: Props) {
                 </div>
               </div>
 
-              {/* TO Recipients - Display only, from original email */}
+              {/* TO Recipients - Display only */}
               {existingToEmails.length > 0 && (
                 <div>
                   <label className="text-sm font-medium text-muted-foreground mb-2 block">
-                    TO: <span className="text-xs text-muted-foreground">(from original email)</span>
+                    TO:
                   </label>
                   <div className="space-y-2">
                     <div className="flex flex-wrap gap-1 p-2 border rounded-md bg-gray-50">
@@ -874,9 +874,6 @@ export function TicketPageContent({ ticketId }: Props) {
                         </Badge>
                       ))}
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      These are the original recipients from the email. This helps understand who is responsible for the response.
-                    </p>
                   </div>
                 </div>
               )}
