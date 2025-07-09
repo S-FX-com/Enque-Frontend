@@ -677,7 +677,8 @@ export function TicketPageContent({ ticketId }: Props) {
           {ticket?.status === 'Closed' ? (
             <Button
               size="sm"
-              variant="default"
+              variant="outline"
+              className="border-green-600 text-green-600 hover:bg-green-600 hover:text-white"
               onClick={() => reopenTicketMutation.mutate()}
               disabled={isReopening}
             >
