@@ -120,108 +120,9 @@ export function RichTextEditor({
     }
   }, []);
 
-  const defaultExtensions[] = [StarterKit.configure({
-    // Configure StarterKit extensions as needed
-    // Ensure paragraph is enabled (default in StarterKit)
-    paragraph: {},
-    heading: false, // Disable headings if not needed
-    blockquote: false,
-    codeBlock: false,
-    horizontalRule: false,
-    // Ensure basic formatting is enabled
-    bold: {}, // Enables bold command
-    italic: {}, // Enables italic command
-    bulletList: {
-      keepMarks: true,
-      keepAttributes: true,
-    }, // Enables bullet list command with additional configuration
-    orderedList: {
-      keepMarks: true,
-      keepAttributes: true,
-    }, // Enables ordered list command with additional configuration
-    listItem: {
-      HTMLAttributes: {
-        class: 'list-item',
-      },
-    },
-    // Disable others if not required
-    strike: false,
-    code: false,
-    gapcursor: false,
-    dropcursor: false,
-    // Explicitly disable hardBreak default handling if we add the extension separately
-    // Or configure it here if preferred. Let's add it separately for now.
-    hardBreak: false,
-  }),
-  // Add HardBreak extension separately
-  // This handles Shift+Enter and might influence Enter behavior in lists
-  HardBreak.configure(),
-  Link.configure({
-    // Enables link commands
-    openOnClick: false,
-    autolink: true,
-    linkOnPaste: true,
-    HTMLAttributes: {
-      // Add attributes for security and usability
-      target: '_blank',
-      rel: 'noopener noreferrer nofollow',
-    },
-  }),
-  // Añadir la extensión de subrayado
-  Underline.configure(),
-  Placeholder.configure({
-    placeholder: placeholder || 'Type your message...',
-  }),
-  Image.configure({
-    inline: false,
-    allowBase64: false,
-    HTMLAttributes: {
-      width: 300,
-      height: 200,
-      style:
-        'width: auto; height: auto; max-width: 300px; max-height: 200px; object-fit: contain; border-radius: 4px;',
-    },
-  }).extend({
-    // Extend the Image extension to add custom attribute handling
-    addAttributes() {
-      return {
-        ...this.parent?.(), // Keep existing attributes like src, alt, title
-        width: {
-          default: 300,
-          // Parse width attribute from HTML
-          parseHTML: element => element.getAttribute('width'),
-          // Render width attribute back to HTML
-          renderHTML: attributes => {
-            return { width: attributes.width };
-          },
-        },
-        height: {
-          default: 200,
-          // Parse height attribute from HTML
-          parseHTML: element => element.getAttribute('height'),
-          // Render height attribute back to HTML
-          renderHTML: attributes => {
-            return { height: attributes.height };
-          },
-        },
-        // Keep style attribute handling if we decide to use it later, otherwise remove
-        style: {
-          default:
-            'width: auto; height: auto; max-width: 300px; max-height: 200px; object-fit: contain; border-radius: 4px;',
-          parseHTML: element => element.getAttribute('style'),
-          renderHTML: attributes => {
-            return { style: attributes.style };
-          },
-        },
-      };
-    },
-  }),
-  // Añadir la extensión personalizada para manejar doble espacio en listas
-  ListKeyboardShortcuts,];
-  const [extensions, setExtensions] = useState<Array<any>>(defaultExtensions);
-
   const editor = useEditor({
-    extensions: extensions /*[
+    //extensions
+    extensions: [
       StarterKit.configure({
         // Configure StarterKit extensions as needed
         // Ensure paragraph is enabled (default in StarterKit)
@@ -320,8 +221,13 @@ export function RichTextEditor({
       }),
       // Añadir la extensión personalizada para manejar doble espacio en listas
       ListKeyboardShortcuts,
-      ]*/
-    ,
+      Mention.configure({
+        HTMLAttributes: {
+          class: 'mention',
+        },
+        suggestion: suggestion(),
+      }),
+    ],
     content: content,
     editable: !disabled,
     onUpdate: ({ editor }) => {
@@ -382,20 +288,9 @@ export function RichTextEditor({
     if (editor) {
       editor.setEditable(!disabled);
     }
-    if (ableMentioning === true) {
-      const currentContent = editor?.getHTML()
-      editor?.destroy
-      setExtensions(prev => [...prev, Mention.configure({
-              HTMLAttributes: {
-                class: 'mention',
-              },
-              suggestion:suggestion(),
-            })])
-    }
   }, [disabled, editor]);
 
-
-
+  //console.log(editor);
   return (
     <div className="flex flex-col">
       <RichTextToolbar editor={editor} onAttachmentsChange={onAttachmentsChange} />

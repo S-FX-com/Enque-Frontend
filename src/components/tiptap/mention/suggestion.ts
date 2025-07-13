@@ -2,11 +2,22 @@ import { ReactRenderer } from '@tiptap/react';
 import tippy from 'tippy.js';
 
 import MentionList from './MentionList';
+import { getAgents } from '@/services/agent';
 
 export default function suggestion() {
+  const agentNames = [];
+  /*const agentsNamesAPI = async () =>
+    await getAgents().then(data =>
+      data.forEach(agent => {
+        //console.log(agent.name);
+        agentNamesOff.push(agent.name);
+      })
+    );
+  agentsNamesAPI();*/
+  console.log(agentNames);
   return {
     items: ({ query }) => {
-      return [
+      /*return [
         'Lea Thompson',
         'Cyndi Lauper',
         'Tom Cruise',
@@ -32,9 +43,14 @@ export default function suggestion() {
         'Matthew Broderick',
         'Justine Bateman',
         'Lisa Bonet',
-      ]
-        .filter(item => item.toLowerCase().startsWith(query.toLowerCase()))
-        .slice(0, 5);
+      ]*/
+      //return agentNamesOff
+      return getAgents().then(data =>
+        data
+          .filter(agent => agent.name.toLowerCase().startsWith(query.toLowerCase()))
+          .map(agent => agent.name)
+          .slice(0, 5)
+      );
     },
 
     render: () => {
