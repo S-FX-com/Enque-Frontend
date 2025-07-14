@@ -6,21 +6,26 @@ import { getWorkspaceMentions, MentionUser } from '@/services/mentions';
 export const createMentionSuggestion = () => {
   return {
     items: async ({ query }: { query: string }): Promise<MentionUser[]> => {
+      console.log('🔍 Mention items called with query:', query);
       try {
         const allMentions = await getWorkspaceMentions();
         
         if (!query) {
+          console.log('📋 No query, returning first 10 mentions');
           return allMentions.slice(0, 10); // Mostrar los primeros 10 por defecto
         }
 
-        return allMentions
+        const filtered = allMentions
           .filter(item => 
             item.name.toLowerCase().includes(query.toLowerCase()) ||
             item.email.toLowerCase().includes(query.toLowerCase())
           )
           .slice(0, 10); // Limitar a 10 resultados
+        
+        console.log('🔎 Filtered mentions:', filtered.length, filtered);
+        return filtered;
       } catch (error) {
-        console.error('Error fetching mention suggestions:', error);
+        console.error('❌ Error fetching mention suggestions:', error);
         return [];
       }
     },

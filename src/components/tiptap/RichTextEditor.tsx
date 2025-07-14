@@ -224,15 +224,22 @@ export function RichTextEditor({
 
   // Agregar extensión de menciones solo si está habilitada
   if (enableMentions) {
-    extensions.push(
-      Mention.configure({
+    console.log('🔍 Mentions enabled, adding extension...');
+    try {
+      const mentionExtension = Mention.configure({
         HTMLAttributes: {
           class: 'mention',
         },
         suggestion: createMentionSuggestion(),
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      }) as any
-    );
+      }) as any;
+      extensions.push(mentionExtension);
+      console.log('✅ Mention extension added successfully');
+    } catch (error) {
+      console.error('❌ Error adding mention extension:', error);
+    }
+  } else {
+    console.log('❌ Mentions disabled');
   }
 
   const editor = useEditor({

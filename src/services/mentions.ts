@@ -11,11 +11,17 @@ export interface MentionUser {
 }
 
 export async function getWorkspaceMentions(): Promise<MentionUser[]> {
+  console.log('🚀 Fetching workspace mentions...');
   try {
     const [agentsResponse, usersResponse] = await Promise.all([
       apiClient.get<Agent[]>('/agents/'),
       apiClient.get<IUser[]>('/users/')
     ]);
+
+    console.log('📡 API responses:', { 
+      agents: agentsResponse.data?.length, 
+      users: usersResponse.data?.length 
+    });
 
     const mentions: MentionUser[] = [];
 
@@ -45,9 +51,11 @@ export async function getWorkspaceMentions(): Promise<MentionUser[]> {
     }
 
     // Ordenar por nombre
-    return mentions.sort((a, b) => a.name.localeCompare(b.name));
+    const sortedMentions = mentions.sort((a, b) => a.name.localeCompare(b.name));
+    console.log('✅ Mentions loaded:', sortedMentions.length, sortedMentions);
+    return sortedMentions;
   } catch (error) {
-    console.error('Error fetching workspace mentions:', error);
+    console.error('❌ Error fetching workspace mentions:', error);
     return [];
   }
 } 
