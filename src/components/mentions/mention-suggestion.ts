@@ -1,33 +1,32 @@
 import { ReactRenderer } from '@tiptap/react';
 import tippy, { Instance as TippyInstance } from 'tippy.js';
 import { MentionList, MentionListRef } from './mention-list';
-import { getWorkspaceMentions, MentionUser } from '@/services/mentions';
+import { MentionUser } from '@/services/mentions';
 
 export const createMentionSuggestion = () => {
   return {
-    items: async ({ query }: { query: string }): Promise<MentionUser[]> => {
+    items: ({ query }: { query: string }) => {
       console.log('🔍 Mention items called with query:', query);
-      try {
-        const allMentions = await getWorkspaceMentions();
-        
-        if (!query) {
-          console.log('📋 No query, returning first 10 mentions');
-          return allMentions.slice(0, 10); // Mostrar los primeros 10 por defecto
-        }
+      
+      // Datos de prueba para verificar que funciona
+      const testMentions: MentionUser[] = [
+        { id: 1, name: 'Juan Pérez', email: 'juan@example.com', type: 'agent', role: 'admin' },
+        { id: 2, name: 'María García', email: 'maria@example.com', type: 'agent', role: 'agent' },
+        { id: 3, name: 'Carlos López', email: 'carlos@example.com', type: 'user' },
+      ];
 
-        const filtered = allMentions
-          .filter(item => 
-            item.name.toLowerCase().includes(query.toLowerCase()) ||
-            item.email.toLowerCase().includes(query.toLowerCase())
-          )
-          .slice(0, 10); // Limitar a 10 resultados
-        
-        console.log('🔎 Filtered mentions:', filtered.length, filtered);
-        return filtered;
-      } catch (error) {
-        console.error('❌ Error fetching mention suggestions:', error);
-        return [];
+      if (!query) {
+        console.log('📋 No query, returning test mentions');
+        return testMentions;
       }
+
+      const filtered = testMentions.filter(item => 
+        item.name.toLowerCase().includes(query.toLowerCase()) ||
+        item.email.toLowerCase().includes(query.toLowerCase())
+      );
+      
+      console.log('🔎 Filtered mentions:', filtered.length, filtered);
+      return filtered;
     },
 
     render: () => {
@@ -37,12 +36,15 @@ export const createMentionSuggestion = () => {
       return {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         onStart: (props: any) => {
+          console.log('🎯 Mention popup starting...', props);
+          
           component = new ReactRenderer(MentionList, {
             props,
             editor: props.editor,
           });
 
           if (!props.clientRect) {
+            console.log('❌ No clientRect provided');
             return;
           }
 
@@ -54,14 +56,15 @@ export const createMentionSuggestion = () => {
             interactive: true,
             trigger: 'manual',
             placement: 'bottom-start',
-            theme: 'mention-list',
-            maxWidth: 'none',
             zIndex: 9999,
           })[0];
+          
+          console.log('✅ Mention popup created');
         },
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         onUpdate(props: any) {
+          console.log('🔄 Mention popup updating...', props);
           component?.updateProps(props);
 
           if (!props.clientRect) {
@@ -75,6 +78,7 @@ export const createMentionSuggestion = () => {
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         onKeyDown(props: any) {
+          console.log('⌨️ Mention key pressed:', props.event.key);
           if (props.event.key === 'Escape') {
             popup?.hide();
             return true;
@@ -84,6 +88,7 @@ export const createMentionSuggestion = () => {
         },
 
         onExit() {
+          console.log('👋 Mention popup exiting...');
           popup?.destroy();
           component?.destroy();
         },

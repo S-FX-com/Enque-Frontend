@@ -120,127 +120,116 @@ export function RichTextEditor({
     }
   }, []);
 
-  // Crear array de extensiones base
-  const extensions = [
-    StarterKit.configure({
-      // Configure StarterKit extensions as needed
-      // Ensure paragraph is enabled (default in StarterKit)
-      paragraph: {},
-      heading: false, // Disable headings if not needed
-      blockquote: false,
-      codeBlock: false,
-      horizontalRule: false,
-      // Ensure basic formatting is enabled
-      bold: {}, // Enables bold command
-      italic: {}, // Enables italic command
-      bulletList: {
-        keepMarks: true,
-        keepAttributes: true,
-      }, // Enables bullet list command with additional configuration
-      orderedList: {
-        keepMarks: true,
-        keepAttributes: true,
-      }, // Enables ordered list command with additional configuration
-      listItem: {
-        HTMLAttributes: {
-          class: 'list-item',
+  // Crear array de extensiones usando useMemo para evitar re-renders
+  const extensions = React.useMemo(() => {
+    const baseExtensions = [
+      StarterKit.configure({
+        paragraph: {},
+        heading: false,
+        blockquote: false,
+        codeBlock: false,
+        horizontalRule: false,
+        bold: {},
+        italic: {},
+        bulletList: {
+          keepMarks: true,
+          keepAttributes: true,
         },
-      },
-      // Disable others if not required
-      strike: false,
-      code: false,
-      gapcursor: false,
-      dropcursor: false,
-      // Explicitly disable hardBreak default handling if we add the extension separately
-      // Or configure it here if preferred. Let's add it separately for now.
-      hardBreak: false,
-    }),
-    // Add HardBreak extension separately
-    // This handles Shift+Enter and might influence Enter behavior in lists
-    HardBreak.configure(),
-    Link.configure({
-      // Enables link commands
-      openOnClick: false,
-      autolink: true,
-      linkOnPaste: true,
-      HTMLAttributes: {
-        // Add attributes for security and usability
-        target: '_blank',
-        rel: 'noopener noreferrer nofollow',
-      },
-    }),
-    // Añadir la extensión de subrayado
-    Underline.configure(),
-    Placeholder.configure({
-      placeholder: placeholder || 'Type your message...',
-    }),
-    Image.configure({
-      inline: false,
-      allowBase64: false,
-      HTMLAttributes: {
-        width: 300,
-        height: 200,
-        style:
-          'width: auto; height: auto; max-width: 300px; max-height: 200px; object-fit: contain; border-radius: 4px;',
-      },
-    }).extend({
-      // Extend the Image extension to add custom attribute handling
-      addAttributes() {
-        return {
-          ...this.parent?.(), // Keep existing attributes like src, alt, title
-          width: {
-            default: 300,
-            // Parse width attribute from HTML
-            parseHTML: element => element.getAttribute('width'),
-            // Render width attribute back to HTML
-            renderHTML: attributes => {
-              return { width: attributes.width };
-            },
+        orderedList: {
+          keepMarks: true,
+          keepAttributes: true,
+        },
+        listItem: {
+          HTMLAttributes: {
+            class: 'list-item',
           },
-          height: {
-            default: 200,
-            // Parse height attribute from HTML
-            parseHTML: element => element.getAttribute('height'),
-            // Render height attribute back to HTML
-            renderHTML: attributes => {
-              return { height: attributes.height };
+        },
+        strike: false,
+        code: false,
+        gapcursor: false,
+        dropcursor: false,
+        hardBreak: false,
+      }),
+      HardBreak.configure(),
+      Link.configure({
+        openOnClick: false,
+        autolink: true,
+        linkOnPaste: true,
+        HTMLAttributes: {
+          target: '_blank',
+          rel: 'noopener noreferrer nofollow',
+        },
+      }),
+      Underline.configure(),
+      Placeholder.configure({
+        placeholder: placeholder || 'Type your message...',
+      }),
+      Image.configure({
+        inline: false,
+        allowBase64: false,
+        HTMLAttributes: {
+          width: 300,
+          height: 200,
+          style:
+            'width: auto; height: auto; max-width: 300px; max-height: 200px; object-fit: contain; border-radius: 4px;',
+        },
+      }).extend({
+        addAttributes() {
+          return {
+            ...this.parent?.(),
+            width: {
+              default: 300,
+              parseHTML: element => element.getAttribute('width'),
+              renderHTML: attributes => {
+                return { width: attributes.width };
+              },
             },
-          },
-          // Keep style attribute handling if we decide to use it later, otherwise remove
-          style: {
-            default:
-              'width: auto; height: auto; max-width: 300px; max-height: 200px; object-fit: contain; border-radius: 4px;',
-            parseHTML: element => element.getAttribute('style'),
-            renderHTML: attributes => {
-              return { style: attributes.style };
+            height: {
+              default: 200,
+              parseHTML: element => element.getAttribute('height'),
+              renderHTML: attributes => {
+                return { height: attributes.height };
+              },
             },
-          },
-        };
-      },
-    }),
-    // Añadir la extensión personalizada para manejar doble espacio en listas
-    ListKeyboardShortcuts,
-  ];
+            style: {
+              default:
+                'width: auto; height: auto; max-width: 300px; max-height: 200px; object-fit: contain; border-radius: 4px;',
+              parseHTML: element => element.getAttribute('style'),
+              renderHTML: attributes => {
+                return { style: attributes.style };
+              },
+            },
+          };
+        },
+      }),
+      ListKeyboardShortcuts,
+    ];
 
-  // Agregar extensión de menciones solo si está habilitada
-  if (enableMentions) {
-    console.log('🔍 Mentions enabled, adding extension...');
-    try {
-      const mentionExtension = Mention.configure({
-        HTMLAttributes: {
-          class: 'mention',
-        },
-        suggestion: createMentionSuggestion(),
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      }) as any;
-      extensions.push(mentionExtension);
-      console.log('✅ Mention extension added successfully');
-    } catch (error) {
-      console.error('❌ Error adding mention extension:', error);
-    }
-  } else {
-    console.log('❌ Mentions disabled');
-  }
+    // Agregar extensión de menciones solo si está habilitada
+          if (enableMentions) {
+        console.log('🔍 Mentions enabled, adding extension...');
+        try {
+          const mentionExtension = Mention.configure({
+            HTMLAttributes: {
+              class: 'mention',
+            },
+            renderLabel({ options, node }) {
+              return `${options.suggestion.char}${node.attrs.label ?? node.attrs.id}`;
+            },
+            suggestion: createMentionSuggestion(),
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          }) as any;
+          baseExtensions.push(mentionExtension);
+          console.log('✅ Mention extension added successfully');
+        } catch (error) {
+          console.error('❌ Error adding mention extension:', error);
+        }
+      } else {
+        console.log('❌ Mentions disabled');
+      }
+
+    return baseExtensions;
+  }, [enableMentions, placeholder]);
 
   const editor = useEditor({
     extensions,
