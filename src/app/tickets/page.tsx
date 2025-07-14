@@ -193,7 +193,9 @@ function TicketsClientContent() {
     let tickets = allTicketsData;
 
     if (selectedStatuses.length === 0) {
-      tickets = tickets.filter(ticket => ticket.status !== 'Closed' && ticket.status !== 'Resolved');
+      tickets = tickets.filter(
+        ticket => ticket.status !== 'Closed' && ticket.status !== 'Resolved'
+      );
     }
 
     if (debouncedSubjectFilter) {
@@ -1292,7 +1294,7 @@ function TicketsClientContent() {
                 Close ({selectedTicketIds.size})
               </Button>
 
-              <Button
+              {/*<Button
                 variant="outline"
                 size="sm"
                 disabled={bulkResolveTicketsMutation.isPending}
@@ -1300,8 +1302,8 @@ function TicketsClientContent() {
                 onClick={handleResolveTicketsConfirm}
               >
                 <Settings2 className="mr-2 h-4 w-4" />
-                Resolve ({selectedTicketIds.size})
-              </Button>
+                 Resolve ({selectedTicketIds.size})
+                 </Button>*/}
 
               {selectedTicketIds.size > 1 && (
                 <AlertDialog open={isMergeDialogOpen} onOpenChange={setIsMergeDialogOpen}>

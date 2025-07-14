@@ -5,46 +5,8 @@ import MentionList from './MentionList';
 import { getAgents } from '@/services/agent';
 
 export default function suggestion() {
-  const agentNames = [];
-  /*const agentsNamesAPI = async () =>
-    await getAgents().then(data =>
-      data.forEach(agent => {
-        //console.log(agent.name);
-        agentNamesOff.push(agent.name);
-      })
-    );
-  agentsNamesAPI();*/
-  console.log(agentNames);
   return {
     items: ({ query }) => {
-      /*return [
-        'Lea Thompson',
-        'Cyndi Lauper',
-        'Tom Cruise',
-        'Madonna',
-        'Jerry Hall',
-        'Joan Collins',
-        'Winona Ryder',
-        'Christina Applegate',
-        'Alyssa Milano',
-        'Molly Ringwald',
-        'Ally Sheedy',
-        'Debbie Harry',
-        'Olivia Newton-John',
-        'Elton John',
-        'Michael J. Fox',
-        'Axl Rose',
-        'Emilio Estevez',
-        'Ralph Macchio',
-        'Rob Lowe',
-        'Jennifer Grey',
-        'Mickey Rourke',
-        'John Cusack',
-        'Matthew Broderick',
-        'Justine Bateman',
-        'Lisa Bonet',
-      ]*/
-      //return agentNamesOff
       return getAgents().then(data =>
         data
           .filter(agent => agent.name.toLowerCase().startsWith(query.toLowerCase()))
