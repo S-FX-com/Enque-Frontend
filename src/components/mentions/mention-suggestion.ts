@@ -7,8 +7,6 @@ export const createMentionSuggestion = () => {
   console.log('🔧 Creating mention suggestion configuration...');
   
   return {
-    char: '@',
-    
     items: async ({ query }: { query: string }) => {
       console.log('🔍 Mention items called with query:', `"${query}"`);
       

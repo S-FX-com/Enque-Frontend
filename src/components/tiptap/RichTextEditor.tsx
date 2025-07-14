@@ -214,9 +214,13 @@ export function RichTextEditor({
             class: 'mention',
           },
           renderLabel({ options, node }) {
-            return `${options.suggestion.char}${node.attrs.label ?? node.attrs.id}`;
+            return `@${node.attrs.label ?? node.attrs.id}`;
           },
-          suggestion: createMentionSuggestion(),
+          suggestion: {
+            char: '@',
+            startOfLine: false,
+            ...createMentionSuggestion(),
+          },
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
         }) as any;
         baseExtensions.push(mentionExtension);
