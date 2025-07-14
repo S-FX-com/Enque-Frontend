@@ -1,35 +1,57 @@
 import { ReactRenderer } from '@tiptap/react';
 import tippy, { Instance as TippyInstance } from 'tippy.js';
 import { MentionList, MentionListRef } from './mention-list';
-import { MentionUser } from '@/services/mentions';
+import { getWorkspaceMentions, MentionUser } from '@/services/mentions';
 
 export const createMentionSuggestion = () => {
+  console.log('🔧 Creating mention suggestion configuration...');
+  
   return {
-    items: ({ query }: { query: string }) => {
-      console.log('🔍 Mention items called with query:', query);
+    char: '@',
+    
+    items: async ({ query }: { query: string }) => {
+      console.log('🔍 Mention items called with query:', `"${query}"`);
       
-      // Datos de prueba para verificar que funciona
-      const testMentions: MentionUser[] = [
-        { id: 1, name: 'Juan Pérez', email: 'juan@example.com', type: 'agent', role: 'admin' },
-        { id: 2, name: 'María García', email: 'maria@example.com', type: 'agent', role: 'agent' },
-        { id: 3, name: 'Carlos López', email: 'carlos@example.com', type: 'user' },
-      ];
+      try {
+        // Obtener menciones del workspace
+        const mentions = await getWorkspaceMentions();
+        console.log('📦 Loaded mentions from service:', mentions.length);
 
-      if (!query) {
-        console.log('📋 No query, returning test mentions');
-        return testMentions;
+        if (!query || query.trim() === '') {
+          console.log('📋 No query, returning all mentions');
+          return mentions;
+        }
+
+        const filtered = mentions.filter(item => 
+          item.name.toLowerCase().includes(query.toLowerCase()) ||
+          item.email.toLowerCase().includes(query.toLowerCase())
+        );
+        
+        console.log('🔎 Filtered mentions:', filtered.length, 'results for query:', `"${query}"`);
+        return filtered;
+      } catch (error) {
+        console.error('❌ Error loading mentions:', error);
+        
+        // Fallback a datos de prueba si hay error
+        const testMentions: MentionUser[] = [
+          { id: 1, name: 'Juan Pérez', email: 'juan@example.com', type: 'agent', role: 'admin' },
+          { id: 2, name: 'María García', email: 'maria@example.com', type: 'agent', role: 'agent' },
+          { id: 3, name: 'Carlos López', email: 'carlos@example.com', type: 'user' },
+        ];
+        
+        if (!query || query.trim() === '') {
+          return testMentions;
+        }
+        
+        return testMentions.filter(item => 
+          item.name.toLowerCase().includes(query.toLowerCase()) ||
+          item.email.toLowerCase().includes(query.toLowerCase())
+        );
       }
-
-      const filtered = testMentions.filter(item => 
-        item.name.toLowerCase().includes(query.toLowerCase()) ||
-        item.email.toLowerCase().includes(query.toLowerCase())
-      );
-      
-      console.log('🔎 Filtered mentions:', filtered.length, filtered);
-      return filtered;
     },
 
     render: () => {
+      console.log('🎨 Creating mention render configuration...');
       let component: ReactRenderer<MentionListRef> | undefined;
       let popup: TippyInstance | undefined;
 
@@ -37,6 +59,12 @@ export const createMentionSuggestion = () => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         onStart: (props: any) => {
           console.log('🎯 Mention popup starting...', props);
+          console.log('🔍 Props details:', {
+            items: props.items?.length,
+            clientRect: !!props.clientRect,
+            range: props.range,
+            query: props.query
+          });
           
           component = new ReactRenderer(MentionList, {
             props,
@@ -59,12 +87,15 @@ export const createMentionSuggestion = () => {
             zIndex: 9999,
           })[0];
           
-          console.log('✅ Mention popup created');
+          console.log('✅ Mention popup created successfully');
         },
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         onUpdate(props: any) {
-          console.log('🔄 Mention popup updating...', props);
+          console.log('🔄 Mention popup updating...', {
+            items: props.items?.length,
+            query: props.query
+          });
           component?.updateProps(props);
 
           if (!props.clientRect) {

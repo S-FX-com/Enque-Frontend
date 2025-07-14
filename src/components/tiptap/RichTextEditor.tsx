@@ -206,27 +206,28 @@ export function RichTextEditor({
     ];
 
     // Agregar extensión de menciones solo si está habilitada
-          if (enableMentions) {
-        console.log('🔍 Mentions enabled, adding extension...');
-        try {
-          const mentionExtension = Mention.configure({
-            HTMLAttributes: {
-              class: 'mention',
-            },
-            renderLabel({ options, node }) {
-              return `${options.suggestion.char}${node.attrs.label ?? node.attrs.id}`;
-            },
-            suggestion: createMentionSuggestion(),
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          }) as any;
-          baseExtensions.push(mentionExtension);
-          console.log('✅ Mention extension added successfully');
-        } catch (error) {
-          console.error('❌ Error adding mention extension:', error);
-        }
-      } else {
-        console.log('❌ Mentions disabled');
+    if (enableMentions) {
+      console.log('🔍 Mentions enabled, adding extension...');
+      try {
+        const mentionExtension = Mention.configure({
+          HTMLAttributes: {
+            class: 'mention',
+          },
+          renderLabel({ options, node }) {
+            return `${options.suggestion.char}${node.attrs.label ?? node.attrs.id}`;
+          },
+          suggestion: createMentionSuggestion(),
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        }) as any;
+        baseExtensions.push(mentionExtension);
+        console.log('✅ Mention extension added successfully');
+        console.log('🔧 Mention extension config:', mentionExtension.options);
+      } catch (error) {
+        console.error('❌ Error adding mention extension:', error);
       }
+    } else {
+      console.log('❌ Mentions disabled');
+    }
 
     return baseExtensions;
   }, [enableMentions, placeholder]);
@@ -237,7 +238,21 @@ export function RichTextEditor({
     editable: !disabled,
     onUpdate: ({ editor }) => {
       // Get HTML content and pass it up
-      onChange(editor.getHTML());
+      const html = editor.getHTML();
+      console.log('📝 Editor content updated:', html);
+      onChange(html);
+    },
+    onCreate: ({ editor }) => {
+      console.log('🎉 Editor created successfully');
+      console.log('📋 Extensions loaded:', editor.extensionManager.extensions.map(ext => ext.name));
+      
+      // Verificar si la extensión de menciones está cargada
+      const mentionExtension = editor.extensionManager.extensions.find(ext => ext.name === 'mention');
+      if (mentionExtension) {
+        console.log('✅ Mention extension found in editor:', mentionExtension);
+      } else {
+        console.log('❌ Mention extension NOT found in editor');
+      }
     },
     // Basic editor styling directly or via CSS file
     editorProps: {
