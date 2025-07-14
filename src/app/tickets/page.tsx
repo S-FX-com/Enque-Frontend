@@ -1294,17 +1294,6 @@ function TicketsClientContent() {
                 Close ({selectedTicketIds.size})
               </Button>
 
-              {/*<Button
-                variant="outline"
-                size="sm"
-                disabled={bulkResolveTicketsMutation.isPending}
-                className="bg-white hover:bg-white"
-                onClick={handleResolveTicketsConfirm}
-              >
-                <Settings2 className="mr-2 h-4 w-4" />
-                 Resolve ({selectedTicketIds.size})
-                 </Button>*/}
-
               {selectedTicketIds.size > 1 && (
                 <AlertDialog open={isMergeDialogOpen} onOpenChange={setIsMergeDialogOpen}>
                   <AlertDialogTrigger asChild>
