@@ -8,11 +8,14 @@ import Placeholder from '@tiptap/extension-placeholder';
 import HardBreak from '@tiptap/extension-hard-break';
 import Image from '@tiptap/extension-image'; // Import Image extension
 import Underline from '@tiptap/extension-underline'; // Importar extensión de subrayado
+import Mention from '@tiptap/extension-mention'; // Importar extensión de menciones
 import { Extension } from '@tiptap/core'; // Importar Extension
 import { RichTextToolbar } from './RichTextToolbar';
 import './tiptap-styles.css';
+import '../mentions/mentions.css'; // Importar estilos de menciones
 import { uploadImage } from '@/services/upload'; // Importar el servicio de carga de imágenes
 import { toast } from 'sonner';
+import { createMentionSuggestion } from '@/components/mentions/mention-suggestion';
 
 interface Props {
   content: string;
@@ -20,6 +23,7 @@ interface Props {
   placeholder?: string;
   disabled?: boolean;
   onAttachmentsChange?: (files: File[]) => void;
+  enableMentions?: boolean; // Nueva prop para habilitar menciones
   // Add other props like 'editable' if needed based on context
 }
 
@@ -89,6 +93,7 @@ export function RichTextEditor({
   placeholder,
   disabled = false,
   onAttachmentsChange,
+  enableMentions = false,
 }: Props) {
   // Función para manejar el pegado de imágenes
   const handlePasteImage = useCallback(async (file: File, editor: Editor) => {
@@ -115,107 +120,123 @@ export function RichTextEditor({
     }
   }, []);
 
-  const editor = useEditor({
-    extensions: [
-      StarterKit.configure({
-        // Configure StarterKit extensions as needed
-        // Ensure paragraph is enabled (default in StarterKit)
-        paragraph: {},
-        heading: false, // Disable headings if not needed
-        blockquote: false,
-        codeBlock: false,
-        horizontalRule: false,
-        // Ensure basic formatting is enabled
-        bold: {}, // Enables bold command
-        italic: {}, // Enables italic command
-        bulletList: {
-          keepMarks: true,
-          keepAttributes: true,
-        }, // Enables bullet list command with additional configuration
-        orderedList: {
-          keepMarks: true,
-          keepAttributes: true,
-        }, // Enables ordered list command with additional configuration
-        listItem: {
-          HTMLAttributes: {
-            class: 'list-item',
+  // Crear array de extensiones base
+  const extensions = [
+    StarterKit.configure({
+      // Configure StarterKit extensions as needed
+      // Ensure paragraph is enabled (default in StarterKit)
+      paragraph: {},
+      heading: false, // Disable headings if not needed
+      blockquote: false,
+      codeBlock: false,
+      horizontalRule: false,
+      // Ensure basic formatting is enabled
+      bold: {}, // Enables bold command
+      italic: {}, // Enables italic command
+      bulletList: {
+        keepMarks: true,
+        keepAttributes: true,
+      }, // Enables bullet list command with additional configuration
+      orderedList: {
+        keepMarks: true,
+        keepAttributes: true,
+      }, // Enables ordered list command with additional configuration
+      listItem: {
+        HTMLAttributes: {
+          class: 'list-item',
+        },
+      },
+      // Disable others if not required
+      strike: false,
+      code: false,
+      gapcursor: false,
+      dropcursor: false,
+      // Explicitly disable hardBreak default handling if we add the extension separately
+      // Or configure it here if preferred. Let's add it separately for now.
+      hardBreak: false,
+    }),
+    // Add HardBreak extension separately
+    // This handles Shift+Enter and might influence Enter behavior in lists
+    HardBreak.configure(),
+    Link.configure({
+      // Enables link commands
+      openOnClick: false,
+      autolink: true,
+      linkOnPaste: true,
+      HTMLAttributes: {
+        // Add attributes for security and usability
+        target: '_blank',
+        rel: 'noopener noreferrer nofollow',
+      },
+    }),
+    // Añadir la extensión de subrayado
+    Underline.configure(),
+    Placeholder.configure({
+      placeholder: placeholder || 'Type your message...',
+    }),
+    Image.configure({
+      inline: false,
+      allowBase64: false,
+      HTMLAttributes: {
+        width: 300,
+        height: 200,
+        style:
+          'width: auto; height: auto; max-width: 300px; max-height: 200px; object-fit: contain; border-radius: 4px;',
+      },
+    }).extend({
+      // Extend the Image extension to add custom attribute handling
+      addAttributes() {
+        return {
+          ...this.parent?.(), // Keep existing attributes like src, alt, title
+          width: {
+            default: 300,
+            // Parse width attribute from HTML
+            parseHTML: element => element.getAttribute('width'),
+            // Render width attribute back to HTML
+            renderHTML: attributes => {
+              return { width: attributes.width };
+            },
           },
-        },
-        // Disable others if not required
-        strike: false,
-        code: false,
-        gapcursor: false,
-        dropcursor: false,
-        // Explicitly disable hardBreak default handling if we add the extension separately
-        // Or configure it here if preferred. Let's add it separately for now.
-        hardBreak: false,
-      }),
-      // Add HardBreak extension separately
-      // This handles Shift+Enter and might influence Enter behavior in lists
-      HardBreak.configure(),
-      Link.configure({
-        // Enables link commands
-        openOnClick: false,
-        autolink: true,
-        linkOnPaste: true,
+          height: {
+            default: 200,
+            // Parse height attribute from HTML
+            parseHTML: element => element.getAttribute('height'),
+            // Render height attribute back to HTML
+            renderHTML: attributes => {
+              return { height: attributes.height };
+            },
+          },
+          // Keep style attribute handling if we decide to use it later, otherwise remove
+          style: {
+            default:
+              'width: auto; height: auto; max-width: 300px; max-height: 200px; object-fit: contain; border-radius: 4px;',
+            parseHTML: element => element.getAttribute('style'),
+            renderHTML: attributes => {
+              return { style: attributes.style };
+            },
+          },
+        };
+      },
+    }),
+    // Añadir la extensión personalizada para manejar doble espacio en listas
+    ListKeyboardShortcuts,
+  ];
+
+  // Agregar extensión de menciones solo si está habilitada
+  if (enableMentions) {
+    extensions.push(
+      Mention.configure({
         HTMLAttributes: {
-          // Add attributes for security and usability
-          target: '_blank',
-          rel: 'noopener noreferrer nofollow',
+          class: 'mention',
         },
-      }),
-      // Añadir la extensión de subrayado
-      Underline.configure(),
-      Placeholder.configure({
-        placeholder: placeholder || 'Type your message...',
-      }),
-      Image.configure({
-        inline: false,
-        allowBase64: false,
-        HTMLAttributes: {
-          width: 300,
-          height: 200,
-          style:
-            'width: auto; height: auto; max-width: 300px; max-height: 200px; object-fit: contain; border-radius: 4px;',
-        },
-      }).extend({
-        // Extend the Image extension to add custom attribute handling
-        addAttributes() {
-          return {
-            ...this.parent?.(), // Keep existing attributes like src, alt, title
-            width: {
-              default: 300,
-              // Parse width attribute from HTML
-              parseHTML: element => element.getAttribute('width'),
-              // Render width attribute back to HTML
-              renderHTML: attributes => {
-                return { width: attributes.width };
-              },
-            },
-            height: {
-              default: 200,
-              // Parse height attribute from HTML
-              parseHTML: element => element.getAttribute('height'),
-              // Render height attribute back to HTML
-              renderHTML: attributes => {
-                return { height: attributes.height };
-              },
-            },
-            // Keep style attribute handling if we decide to use it later, otherwise remove
-            style: {
-              default:
-                'width: auto; height: auto; max-width: 300px; max-height: 200px; object-fit: contain; border-radius: 4px;',
-              parseHTML: element => element.getAttribute('style'),
-              renderHTML: attributes => {
-                return { style: attributes.style };
-              },
-            },
-          };
-        },
-      }),
-      // Añadir la extensión personalizada para manejar doble espacio en listas
-      ListKeyboardShortcuts,
-    ],
+        suggestion: createMentionSuggestion(),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      }) as any
+    );
+  }
+
+  const editor = useEditor({
+    extensions,
     content: content,
     editable: !disabled,
     onUpdate: ({ editor }) => {
