@@ -213,7 +213,7 @@ export function RichTextEditor({
           HTMLAttributes: {
             class: 'mention',
           },
-          renderLabel({ options, node }) {
+          renderLabel({ node }) {
             return `@${node.attrs.label ?? node.attrs.id}`;
           },
           suggestion: {
