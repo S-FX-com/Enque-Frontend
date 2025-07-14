@@ -908,7 +908,7 @@ export function TicketConversation({
                 placeholder={isPrivateNote ? 'Write a private note...' : 'Type your reply here...'}
                 disabled={createCommentMutation.isPending}
                 onAttachmentsChange={handleAttachmentsChange}
-                enableMentions={isPrivateNote}
+                ableMentioning={isPrivateNote}
               />
             </div>
 
