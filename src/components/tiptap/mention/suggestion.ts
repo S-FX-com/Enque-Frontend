@@ -14,12 +14,19 @@ interface TippyInstance {
 export default function suggestion() {
   return {
     items: ({ query }: { query: string }) => {
-      return getAgents().then(data =>
-        data
+      console.log('🔍 Mention search triggered with query:', query);
+      return getAgents().then(data => {
+        console.log('📋 Raw agents data:', data);
+        const filteredAgents = data
           .filter(agent => agent.name.toLowerCase().startsWith(query.toLowerCase()))
           .map(agent => agent.name)
-          .slice(0, 5)
-      );
+          .slice(0, 5);
+        console.log('✅ Filtered agents for mention:', filteredAgents);
+        return filteredAgents;
+      }).catch(error => {
+        console.error('❌ Error fetching agents for mentions:', error);
+        return [];
+      });
     },
 
     render: () => {

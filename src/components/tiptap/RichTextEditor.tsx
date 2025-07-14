@@ -95,6 +95,7 @@ export function RichTextEditor({
   onAttachmentsChange,
   ableMentioning = false,
 }: Props) {
+  console.log('📝 RichTextEditor rendered with ableMentioning:', ableMentioning);
   // Función para manejar el pegado de imágenes
   const handlePasteImage = useCallback(async (file: File, editor: Editor) => {
     try {

@@ -3,11 +3,12 @@
 }
 
 .tiptap .mention {
-  background-color: var(--purple-light);
+  background-color: #ddd6fe;
   border-radius: 0.4rem;
   box-decoration-break: clone;
-  color: var(--purple);
+  color: #7c3aed;
   padding: 0.1rem 0.3rem;
+  font-weight: 500;
 }
 
 .tiptap .mention::after {
