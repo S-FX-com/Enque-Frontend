@@ -1058,20 +1058,34 @@ export function TicketConversation({
                         }
                       />
                     )
-                  : conversationItems.items.length > 0 && (
-                      <ConversationMessageItem
-                        key={
-                          (conversationItems.items[0] as IComment).id === -1
-                            ? 'initial-message'
-                            : (conversationItems.items[0] as IComment).id
-                        }
-                        comment={conversationItems.items[0] as IComment}
-                        emailHeaders={{
-                          toRecipients: ticket.to_recipients,
-                          ccRecipients: ticket.cc_recipients,
-                          bccRecipients: ticket.bcc_recipients,
-                        }}
-                      />
+                  : (
+                      <>
+                        {/* Always show initial message first if it exists and is the latest */}
+                        {conversationItems.hasInitialMessage && 
+                         conversationItems.initialMessageContent &&
+                         conversationItems.items.length > 0 &&
+                         (conversationItems.items[0] as IComment).id === -1 ? (
+                          <InitialTicketMessage
+                            key="initial-message-latest"
+                            ticketId={ticket.id}
+                            initialContent={conversationItems.initialMessageContent}
+                            user={conversationItems.initialMessageSender}
+                            createdAt={ticket.created_at}
+                            ticket={{
+                              to_recipients: ticket.to_recipients,
+                              cc_recipients: ticket.cc_recipients,
+                              bcc_recipients: ticket.bcc_recipients,
+                            }}
+                          />
+                        ) : (
+                          conversationItems.items.length > 0 && (
+                            <ConversationMessageItem
+                              key={(conversationItems.items[0] as IComment).id}
+                              comment={conversationItems.items[0] as IComment}
+                            />
+                          )
+                        )}
+                      </>
                     )}
               </>
             )}
@@ -1107,9 +1121,10 @@ export function TicketConversation({
                     ))
                 : (conversationItems.items as IComment[])
                     .slice(1)
+                    .filter((item: IComment) => item.id !== -1) // Filtrar mensaje inicial de la lista expandida
                     .map((item: IComment) => (
                       <ConversationMessageItem
-                        key={item.id === -1 ? 'initial-message-prev' : item.id}
+                        key={item.id}
                         comment={item}
                       />
                     ))}
@@ -1161,28 +1176,29 @@ export function TicketConversation({
                   )
                 ) : (
                   <>
-                    {conversationItems.hasInitialMessage &&
-                      conversationItems.initialMessageContent?.startsWith('[MIGRATED_TO_S3]') && (
+                    {conversationItems.hasInitialMessage && conversationItems.initialMessageContent && (
                         <InitialTicketMessage
-                          key="initial-message-s3"
+                          key="initial-message"
                           ticketId={ticket.id}
                           initialContent={conversationItems.initialMessageContent}
                           user={conversationItems.initialMessageSender}
                           createdAt={ticket.created_at}
+                          ticket={{
+                            to_recipients: ticket.to_recipients,
+                            cc_recipients: ticket.cc_recipients,
+                            bcc_recipients: ticket.bcc_recipients,
+                          }}
                         />
                       )}
 
-                    {(conversationItems.items as IComment[]).map((item: IComment, index: number) => (
-                      <ConversationMessageItem
-                        key={item.id === -1 ? 'initial-message' : item.id}
-                        comment={item}
-                        emailHeaders={index === 0 ? {
-                          toRecipients: ticket.to_recipients,
-                          ccRecipients: ticket.cc_recipients,
-                          bccRecipients: ticket.bcc_recipients,
-                        } : undefined}
-                      />
-                    ))}
+                    {(conversationItems.items as IComment[])
+                      .filter((item: IComment) => item.id !== -1) // Filtrar el mensaje inicial
+                      .map((item: IComment) => (
+                        <ConversationMessageItem
+                          key={item.id}
+                          comment={item}
+                        />
+                      ))}
                   </>
                 )}
               </>

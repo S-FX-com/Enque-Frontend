@@ -42,64 +42,9 @@ const fileTypeColors: { [key: string]: string } = {
   generic_attach: '#737373',
 };
 
-interface EmailHeadersProps {
-  toRecipients?: string;
-  ccRecipients?: string;
-  bccRecipients?: string;
-}
-
 interface Props {
   comment: IComment;
-  emailHeaders?: EmailHeadersProps;
 }
-
-// Componente para mostrar encabezados de email estilo Outlook
-const EmailHeaders: React.FC<EmailHeadersProps> = ({ toRecipients, ccRecipients, bccRecipients }) => {
-  const parseRecipients = (recipients?: string): string[] => {
-    if (!recipients) return [];
-    return recipients.split(',').map(email => email.trim()).filter(email => email.length > 0);
-  };
-
-  const toEmails = parseRecipients(toRecipients);
-  const ccEmails = parseRecipients(ccRecipients);
-  const bccEmails = parseRecipients(bccRecipients);
-
-  // Solo mostrar si hay al menos uno de los tipos de destinatarios
-  if (toEmails.length === 0 && ccEmails.length === 0 && bccEmails.length === 0) {
-    return null;
-  }
-
-  const formatEmailList = (emails: string[]): string => {
-    if (emails.length === 0) return '';
-    if (emails.length <= 3) {
-      return emails.join(', ');
-    }
-    return `${emails.slice(0, 2).join(', ')} and ${emails.length - 2} more`;
-  };
-
-  return (
-    <div className="text-xs text-muted-foreground bg-slate-50 dark:bg-slate-800/30 p-2 rounded border-l-2 border-slate-300 dark:border-slate-600 mb-2 space-y-0.5">
-      {toEmails.length > 0 && (
-        <div className="flex">
-          <span className="font-medium w-8 flex-shrink-0">To:</span>
-          <span className="break-all">{formatEmailList(toEmails)}</span>
-        </div>
-      )}
-      {ccEmails.length > 0 && (
-        <div className="flex">
-          <span className="font-medium w-8 flex-shrink-0">CC:</span>
-          <span className="break-all">{formatEmailList(ccEmails)}</span>
-        </div>
-      )}
-      {bccEmails.length > 0 && (
-        <div className="flex">
-          <span className="font-medium w-8 flex-shrink-0">BCC:</span>
-          <span className="break-all">{formatEmailList(bccEmails)}</span>
-        </div>
-      )}
-    </div>
-  );
-};
 
 const parseSenderFromContent = (content: string): { name: string; email: string } | null => {
   // Primero buscar el nuevo formato especial
@@ -341,6 +286,11 @@ interface InitialTicketMessageProps {
   initialContent: string;
   user: IComment['user'];
   createdAt: string;
+  ticket?: {
+    to_recipients?: string;
+    cc_recipients?: string;
+    bcc_recipients?: string;
+  };
 }
 
 function InitialTicketMessage({
@@ -348,6 +298,7 @@ function InitialTicketMessage({
   initialContent,
   user,
   createdAt,
+  ticket,
 }: InitialTicketMessageProps) {
   const [s3Content, setS3Content] = useState<string | null>(null);
   const [isLoadingS3, setIsLoadingS3] = useState(false);
@@ -413,6 +364,61 @@ function InitialTicketMessage({
   const senderName = user?.name || 'Unknown User';
   const senderIdentifier = user?.email || 'unknown';
 
+  // Helper function to render email recipients
+  const renderEmailRecipients = () => {
+    if (!ticket) return null;
+    
+    const recipients: { label: string; emails: string; show: boolean }[] = [
+      { 
+        label: 'TO:', 
+        emails: ticket.to_recipients || '', 
+        show: Boolean(ticket.to_recipients?.trim()) 
+      },
+      { 
+        label: 'CC:', 
+        emails: ticket.cc_recipients || '', 
+        show: Boolean(ticket.cc_recipients?.trim()) 
+      },
+      { 
+        label: 'BCC:', 
+        emails: ticket.bcc_recipients || '', 
+        show: Boolean(ticket.bcc_recipients?.trim()) 
+      }
+    ];
+
+    const hasAnyRecipients = recipients.some(r => r.show);
+    if (!hasAnyRecipients) return null;
+
+    return (
+      <div className="mb-3 text-xs text-muted-foreground space-y-1 border-l-2 border-muted pl-2">
+        {recipients.map(recipient => {
+          if (!recipient.show) return null;
+          
+          const emailList = recipient.emails.split(',').map(email => email.trim()).filter(Boolean);
+          
+          return (
+            <div key={recipient.label} className="flex items-start gap-2">
+              <span className="font-medium min-w-[30px] text-slate-600 dark:text-slate-400">
+                {recipient.label}
+              </span>
+              <div className="flex flex-wrap gap-1">
+                {emailList.map((email, index) => (
+                  <Badge 
+                    key={index} 
+                    variant="secondary" 
+                    className="text-xs px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-0"
+                  >
+                    {email}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
   const truncateLength = 300;
   const shouldTruncate = displayContent && displayContent.length > truncateLength;
   const truncatedContent =
@@ -434,10 +440,10 @@ function InitialTicketMessage({
         <div className="flex items-center gap-2 mb-1">
           <span className="text-sm font-medium text-blue-700 dark:text-blue-300">{senderName}</span>
           <span className="text-xs text-muted-foreground">{formatRelativeTime(createdAt)}</span>
-          <Badge variant="outline" className="text-xs">
-            Initial Message
-          </Badge>
         </div>
+
+        {/* Email Recipients - TO, CC, BCC */}
+        {renderEmailRecipients()}
 
         <div className="message-content">
           {isLoadingS3 ? (
@@ -501,7 +507,7 @@ const addDarkModeStyles = () => {
   }
 };
 
-export function ConversationMessageItem({ comment, emailHeaders }: Props) {
+export function ConversationMessageItem({ comment }: Props) {
   const [s3Content, setS3Content] = useState<string | null>(null);
   const [isLoadingS3, setIsLoadingS3] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -829,16 +835,6 @@ export function ConversationMessageItem({ comment, emailHeaders }: Props) {
             </p>
             <p className="text-xs text-muted-foreground mt-0.5">{formattedDate}</p>
           </div>
-          
-          {/* Encabezados de email estilo Outlook */}
-          {emailHeaders && (
-            <EmailHeaders 
-              toRecipients={emailHeaders.toRecipients}
-              ccRecipients={emailHeaders.ccRecipients}
-              bccRecipients={emailHeaders.bccRecipients}
-            />
-          )}
-
           <div className={`max-w-none break-words overflow-x-auto`}>
             {!isOnlyAttachmentPlaceholder && (
               <div
