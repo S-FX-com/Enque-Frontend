@@ -208,7 +208,12 @@ export function TicketPageContent({ ticketId }: Props) {
 
   useEffect(() => {
     if (currentTicket) {
-      console.log(currentTicket);
+      console.log('🔍 [TICKET DEBUG] Ticket data received:', currentTicket);
+      console.log('🔍 [TICKET DEBUG] Recipients in ticket:', {
+        to_recipients: currentTicket.to_recipients,
+        cc_recipients: currentTicket.cc_recipients,
+        bcc_recipients: currentTicket.bcc_recipients
+      });
       setTicket(currentTicket as unknown as ITicket);
 
       // Initialize TO emails if they exist in the ticket data
