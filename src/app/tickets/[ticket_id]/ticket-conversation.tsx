@@ -166,6 +166,11 @@ interface Props {
 interface OptimizedMessageItemProps {
   content: TicketHtmlContent;
   isInitial?: boolean;
+  ticket?: {
+    to_recipients?: string | null;
+    cc_recipients?: string | null;
+    bcc_recipients?: string | null;
+  };
 }
 
 function findQuoteStartIndex(html: string): number {
@@ -198,7 +203,7 @@ function findQuoteStartIndex(html: string): number {
   return earliestIndex;
 }
 
-function OptimizedMessageItem({ content, isInitial = false }: OptimizedMessageItemProps) {
+function OptimizedMessageItem({ content, isInitial = false, ticket }: OptimizedMessageItemProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   
   // Aplicar estilos CSS para modo oscuro
@@ -308,6 +313,62 @@ function OptimizedMessageItem({ content, isInitial = false }: OptimizedMessageIt
   const isAgentMessage = senderInfo.type === 'agent';
   const applyAgentBackground = isAgentMessage && !isInitial && !senderInfo.isUserReply;
 
+  // Función para renderizar destinatarios de email en el mensaje inicial
+  const renderEmailRecipients = () => {
+    if (!isInitial || !ticket) return null;
+
+    const recipients = [];
+    
+    if (ticket.to_recipients) {
+      recipients.push(
+        <div key="to" className="flex items-center gap-1 flex-wrap">
+          <span className="text-xs font-medium text-slate-600 dark:text-slate-400">TO:</span>
+          {ticket.to_recipients.split(',').map((email, index) => (
+            <span key={index} className="inline-flex items-center rounded-full bg-slate-100 dark:bg-slate-700 px-2 py-0.5 text-xs font-medium text-slate-700 dark:text-slate-300">
+              {email.trim()}
+            </span>
+          ))}
+        </div>
+      );
+    }
+
+    if (ticket.cc_recipients) {
+      recipients.push(
+        <div key="cc" className="flex items-center gap-1 flex-wrap">
+          <span className="text-xs font-medium text-slate-600 dark:text-slate-400">CC:</span>
+          {ticket.cc_recipients.split(',').map((email, index) => (
+            <span key={index} className="inline-flex items-center rounded-full bg-slate-100 dark:bg-slate-700 px-2 py-0.5 text-xs font-medium text-slate-700 dark:text-slate-300">
+              {email.trim()}
+            </span>
+          ))}
+        </div>
+      );
+    }
+
+    if (ticket.bcc_recipients) {
+      recipients.push(
+        <div key="bcc" className="flex items-center gap-1 flex-wrap">
+          <span className="text-xs font-medium text-slate-600 dark:text-slate-400">BCC:</span>
+          {ticket.bcc_recipients.split(',').map((email, index) => (
+            <span key={index} className="inline-flex items-center rounded-full bg-slate-100 dark:bg-slate-700 px-2 py-0.5 text-xs font-medium text-slate-700 dark:text-slate-300">
+              {email.trim()}
+            </span>
+          ))}
+        </div>
+      );
+    }
+
+    if (recipients.length === 0) return null;
+
+    return (
+      <div className="mb-3 p-2 border-l-2 border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/50 rounded-r-md">
+        <div className="space-y-1">
+          {recipients}
+        </div>
+      </div>
+    );
+  };
+
   const containerClasses = content.is_private
     ? 'flex items-start space-x-3 py-4 border-b border-slate-200 dark:border-slate-700 last:border-b-0 bg-yellow-50 dark:bg-yellow-800/30 p-3 rounded-md'
     : applyAgentBackground
@@ -333,6 +394,9 @@ function OptimizedMessageItem({ content, isInitial = false }: OptimizedMessageIt
             {formatRelativeTime(content.created_at)}
           </p>
         </div>
+
+        {/* Renderizar destinatarios si es el mensaje inicial */}
+        {renderEmailRecipients()}
 
         <div className="max-w-none break-words overflow-x-auto">
           <div
@@ -1056,6 +1120,11 @@ export function TicketConversation({
                         isInitial={
                           (conversationItems.items[0] as TicketHtmlContent).id === 'initial'
                         }
+                        ticket={{
+                          to_recipients: ticket.to_recipients,
+                          cc_recipients: ticket.cc_recipients,
+                          bcc_recipients: ticket.bcc_recipients,
+                        }}
                       />
                     )
                   : (
@@ -1123,6 +1192,11 @@ export function TicketConversation({
                         key={item.id}
                         content={item}
                         isInitial={item.id === 'initial'}
+                        ticket={{
+                          to_recipients: ticket.to_recipients,
+                          cc_recipients: ticket.cc_recipients,
+                          bcc_recipients: ticket.bcc_recipients,
+                        }}
                       />
                     ))
                 : (conversationItems.items as IComment[])
@@ -1177,6 +1251,11 @@ export function TicketConversation({
                         key={item.id}
                         content={item}
                         isInitial={item.id === 'initial'}
+                        ticket={{
+                          to_recipients: ticket.to_recipients,
+                          cc_recipients: ticket.cc_recipients,
+                          bcc_recipients: ticket.bcc_recipients,
+                        }}
                       />
                     )
                   )
