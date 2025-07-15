@@ -3,6 +3,7 @@ import tippy from 'tippy.js';
 
 import MentionList from './MentionList';
 import { getAgents } from '@/services/agent';
+//import { SuggestionOptions } from '@tiptap/suggestion';
 
 export default function suggestion() {
   return {

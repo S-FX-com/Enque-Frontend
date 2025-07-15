@@ -889,7 +889,7 @@ function TicketsClientContent() {
     },
   });
 
-  const bulkResolveTicketsMutation = useMutation({
+  /*const bulkResolveTicketsMutation = useMutation({
     mutationFn: async (ticketIds: number[]) => {
       const results = await Promise.allSettled(
         ticketIds.map(id => updateTicket(id, { status: 'Closed' }))
@@ -989,7 +989,7 @@ function TicketsClientContent() {
       queryClient.invalidateQueries({ queryKey: ['tickets'] });
       queryClient.invalidateQueries({ queryKey: ['ticketsCount'] });
     },
-  });
+  });*/
 
   const handleCloseTicketsConfirm = () => {
     if (selectedTicketIds.size > 0) {
@@ -997,11 +997,11 @@ function TicketsClientContent() {
     }
   };
 
-  const handleResolveTicketsConfirm = () => {
-    if (selectedTicketIds.size > 0) {
-      bulkResolveTicketsMutation.mutate(Array.from(selectedTicketIds));
-    }
-  };
+  //const handleResolveTicketsConfirm = () => {
+  //  if (selectedTicketIds.size > 0) {
+  //    bulkResolveTicketsMutation.mutate(Array.from(selectedTicketIds));
+  //  }
+  //};
 
   const handleAssignToAgentConfirm = () => {
     if (selectedTicketIds.size > 0) {

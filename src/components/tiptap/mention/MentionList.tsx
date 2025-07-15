@@ -1,15 +1,16 @@
 import './MentionList.css';
-
 import React, { useEffect, useImperativeHandle, useState } from 'react';
+import { SuggestionProps } from '@tiptap/suggestion';
 
-export default function MentionList(props) {
+export default function MentionList(props: SuggestionProps) {
   const [selectedIndex, setSelectedIndex] = useState(0);
 
-  const selectItem = index => {
+  const selectItem = (index: number) => {
     const item = props.items[index];
 
     if (item) {
       props.command({ id: item });
+      //console.log(props.command({ id: item }));
     }
   };
 
@@ -28,7 +29,7 @@ export default function MentionList(props) {
   useEffect(() => setSelectedIndex(0), [props.items]);
 
   useImperativeHandle(props.ref, () => ({
-    onKeyDown: ({ event }) => {
+    onKeyDown: event => {
       if (event.key === 'ArrowUp') {
         upHandler();
         return true;
