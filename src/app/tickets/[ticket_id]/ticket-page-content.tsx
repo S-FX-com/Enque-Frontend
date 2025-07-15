@@ -209,12 +209,6 @@ export function TicketPageContent({ ticketId }: Props) {
   
   useEffect(() => {
     if (currentTicket) {
-      console.log('🔍 [TICKET DEBUG] Ticket data received:', currentTicket);
-      console.log('🔍 [TICKET DEBUG] Recipients in ticket:', {
-        to_recipients: currentTicket.to_recipients,
-        cc_recipients: currentTicket.cc_recipients,
-        bcc_recipients: currentTicket.bcc_recipients
-      });
       setTicket(currentTicket as unknown as ITicket);
 
       // Initialize TO emails if they exist in the ticket data
@@ -871,7 +865,7 @@ export function TicketPageContent({ ticketId }: Props) {
               {existingToEmails.length > 0 && (
                 <div>
                   <label className="text-sm font-medium text-muted-foreground mb-2 block">
-                    TO:
+                    To:
                   </label>
                   <div className="space-y-2">
                     <div className="flex flex-wrap gap-1 p-2 border rounded-md bg-gray-50">
@@ -887,7 +881,7 @@ export function TicketPageContent({ ticketId }: Props) {
 
               {/* CC Recipients */}
               <div>
-                <label className="text-sm font-medium text-muted-foreground mb-2 block">CC:</label>
+                <label className="text-sm font-medium text-muted-foreground mb-2 block">Cc:</label>
                 <div className="space-y-2">
                   <DynamicCCInput
                     id="cc"
@@ -903,7 +897,7 @@ export function TicketPageContent({ ticketId }: Props) {
                       setExistingCcEmails(updatedExistingEmails);
                       setExtraCcEmails(newExtraEmails);
                     }}
-                    placeholder="Add CC recipients..."
+                    placeholder="Add Cc recipients..."
                   />
                   <p className="text-xs text-muted-foreground">
                     Type email addresses and press Enter or comma to add them.
@@ -913,7 +907,7 @@ export function TicketPageContent({ ticketId }: Props) {
 
               {/* BCC Recipients */}
               <div>
-                <label className="text-sm font-medium text-muted-foreground mb-2 block">BCC:</label>
+                <label className="text-sm font-medium text-muted-foreground mb-2 block">Bcc:</label>
                 <div className="space-y-2">
                   <DynamicCCInput
                     id="bcc"
@@ -929,10 +923,10 @@ export function TicketPageContent({ ticketId }: Props) {
                       setExistingBccEmails(updatedExistingBccEmails);
                       setExtraBccEmails(newExtraBccEmails);
                     }}
-                    placeholder="Add BCC recipients..."
+                    placeholder="Add Bcc recipients..."
                   />
                   <p className="text-xs text-muted-foreground">
-                    BCC recipients will receive copies but won&apos;t be visible to other
+                    Bcc recipients will receive copies but won&apos;t be visible to other
                     recipients.
                   </p>
                 </div>
