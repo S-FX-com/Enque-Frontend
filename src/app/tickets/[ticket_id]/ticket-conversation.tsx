@@ -765,7 +765,6 @@ export function TicketConversation({
     ticket.user?.name,
     currentAgentData,
     globalSignatureData,
-    onExtraRecipientsChange,
   ]);
 
   const handleAttachmentsChange = (files: File[]) => {
