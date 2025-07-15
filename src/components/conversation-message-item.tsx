@@ -42,9 +42,64 @@ const fileTypeColors: { [key: string]: string } = {
   generic_attach: '#737373',
 };
 
+interface EmailHeadersProps {
+  toRecipients?: string;
+  ccRecipients?: string;
+  bccRecipients?: string;
+}
+
 interface Props {
   comment: IComment;
+  emailHeaders?: EmailHeadersProps;
 }
+
+// Componente para mostrar encabezados de email estilo Outlook
+const EmailHeaders: React.FC<EmailHeadersProps> = ({ toRecipients, ccRecipients, bccRecipients }) => {
+  const parseRecipients = (recipients?: string): string[] => {
+    if (!recipients) return [];
+    return recipients.split(',').map(email => email.trim()).filter(email => email.length > 0);
+  };
+
+  const toEmails = parseRecipients(toRecipients);
+  const ccEmails = parseRecipients(ccRecipients);
+  const bccEmails = parseRecipients(bccRecipients);
+
+  // Solo mostrar si hay al menos uno de los tipos de destinatarios
+  if (toEmails.length === 0 && ccEmails.length === 0 && bccEmails.length === 0) {
+    return null;
+  }
+
+  const formatEmailList = (emails: string[]): string => {
+    if (emails.length === 0) return '';
+    if (emails.length <= 3) {
+      return emails.join(', ');
+    }
+    return `${emails.slice(0, 2).join(', ')} and ${emails.length - 2} more`;
+  };
+
+  return (
+    <div className="text-xs text-muted-foreground bg-slate-50 dark:bg-slate-800/30 p-2 rounded border-l-2 border-slate-300 dark:border-slate-600 mb-2 space-y-0.5">
+      {toEmails.length > 0 && (
+        <div className="flex">
+          <span className="font-medium w-8 flex-shrink-0">To:</span>
+          <span className="break-all">{formatEmailList(toEmails)}</span>
+        </div>
+      )}
+      {ccEmails.length > 0 && (
+        <div className="flex">
+          <span className="font-medium w-8 flex-shrink-0">CC:</span>
+          <span className="break-all">{formatEmailList(ccEmails)}</span>
+        </div>
+      )}
+      {bccEmails.length > 0 && (
+        <div className="flex">
+          <span className="font-medium w-8 flex-shrink-0">BCC:</span>
+          <span className="break-all">{formatEmailList(bccEmails)}</span>
+        </div>
+      )}
+    </div>
+  );
+};
 
 const parseSenderFromContent = (content: string): { name: string; email: string } | null => {
   // Primero buscar el nuevo formato especial
@@ -446,7 +501,7 @@ const addDarkModeStyles = () => {
   }
 };
 
-export function ConversationMessageItem({ comment }: Props) {
+export function ConversationMessageItem({ comment, emailHeaders }: Props) {
   const [s3Content, setS3Content] = useState<string | null>(null);
   const [isLoadingS3, setIsLoadingS3] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -774,6 +829,16 @@ export function ConversationMessageItem({ comment }: Props) {
             </p>
             <p className="text-xs text-muted-foreground mt-0.5">{formattedDate}</p>
           </div>
+          
+          {/* Encabezados de email estilo Outlook */}
+          {emailHeaders && (
+            <EmailHeaders 
+              toRecipients={emailHeaders.toRecipients}
+              ccRecipients={emailHeaders.ccRecipients}
+              bccRecipients={emailHeaders.bccRecipients}
+            />
+          )}
+
           <div className={`max-w-none break-words overflow-x-auto`}>
             {!isOnlyAttachmentPlaceholder && (
               <div

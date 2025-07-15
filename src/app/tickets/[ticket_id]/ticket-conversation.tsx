@@ -1066,6 +1066,11 @@ export function TicketConversation({
                             : (conversationItems.items[0] as IComment).id
                         }
                         comment={conversationItems.items[0] as IComment}
+                        emailHeaders={{
+                          toRecipients: ticket.to_recipients,
+                          ccRecipients: ticket.cc_recipients,
+                          bccRecipients: ticket.bcc_recipients,
+                        }}
                       />
                     )}
               </>
@@ -1167,10 +1172,15 @@ export function TicketConversation({
                         />
                       )}
 
-                    {(conversationItems.items as IComment[]).map((item: IComment) => (
+                    {(conversationItems.items as IComment[]).map((item: IComment, index: number) => (
                       <ConversationMessageItem
                         key={item.id === -1 ? 'initial-message' : item.id}
                         comment={item}
+                        emailHeaders={index === 0 ? {
+                          toRecipients: ticket.to_recipients,
+                          ccRecipients: ticket.cc_recipients,
+                          bccRecipients: ticket.bcc_recipients,
+                        } : undefined}
                       />
                     ))}
                   </>
