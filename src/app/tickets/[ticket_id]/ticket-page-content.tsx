@@ -206,6 +206,7 @@ export function TicketPageContent({ ticketId }: Props) {
 
   const currentTicket = ticketData?.[0] || null;
 
+  
   useEffect(() => {
     if (currentTicket) {
       console.log('🔍 [TICKET DEBUG] Ticket data received:', currentTicket);
