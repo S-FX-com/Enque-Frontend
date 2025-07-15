@@ -1082,6 +1082,12 @@ export function TicketConversation({
                             <ConversationMessageItem
                               key={(conversationItems.items[0] as IComment).id}
                               comment={conversationItems.items[0] as IComment}
+                              ticket={{
+                                to_recipients: ticket.to_recipients,
+                                cc_recipients: ticket.cc_recipients,
+                                bcc_recipients: ticket.bcc_recipients,
+                              }}
+                              isFirstMessage={true}
                             />
                           )
                         )}

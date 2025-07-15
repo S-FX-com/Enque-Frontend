@@ -44,6 +44,12 @@ const fileTypeColors: { [key: string]: string } = {
 
 interface Props {
   comment: IComment;
+  ticket?: {
+    to_recipients?: string;
+    cc_recipients?: string;
+    bcc_recipients?: string;
+  };
+  isFirstMessage?: boolean;
 }
 
 const parseSenderFromContent = (content: string): { name: string; email: string } | null => {
@@ -304,6 +310,61 @@ function InitialTicketMessage({
   const [isLoadingS3, setIsLoadingS3] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
 
+  // Helper function to render email recipients
+  const renderEmailRecipients = () => {
+    if (!ticket) return null;
+    
+    const recipients: { label: string; emails: string; show: boolean }[] = [
+      { 
+        label: 'TO:', 
+        emails: ticket.to_recipients || '', 
+        show: Boolean(ticket.to_recipients?.trim()) 
+      },
+      { 
+        label: 'CC:', 
+        emails: ticket.cc_recipients || '', 
+        show: Boolean(ticket.cc_recipients?.trim()) 
+      },
+      { 
+        label: 'BCC:', 
+        emails: ticket.bcc_recipients || '', 
+        show: Boolean(ticket.bcc_recipients?.trim()) 
+      }
+    ];
+
+    const hasAnyRecipients = recipients.some(r => r.show);
+    if (!hasAnyRecipients) return null;
+
+    return (
+      <div className="mb-3 text-xs text-muted-foreground space-y-1 border-l-2 border-muted pl-2">
+        {recipients.map(recipient => {
+          if (!recipient.show) return null;
+          
+          const emailList = recipient.emails.split(',').map(email => email.trim()).filter(Boolean);
+          
+          return (
+            <div key={recipient.label} className="flex items-start gap-2">
+              <span className="font-medium min-w-[30px] text-slate-600 dark:text-slate-400">
+                {recipient.label}
+              </span>
+              <div className="flex flex-wrap gap-1">
+                {emailList.map((email, index) => (
+                  <Badge 
+                    key={index} 
+                    variant="secondary" 
+                    className="text-xs px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-0"
+                  >
+                    {email}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
   // Detectar si el contenido inicial está migrado a S3
   const isMigratedToS3 = initialContent?.startsWith('[MIGRATED_TO_S3]');
 
@@ -363,61 +424,6 @@ function InitialTicketMessage({
 
   const senderName = user?.name || 'Unknown User';
   const senderIdentifier = user?.email || 'unknown';
-
-  // Helper function to render email recipients
-  const renderEmailRecipients = () => {
-    if (!ticket) return null;
-    
-    const recipients: { label: string; emails: string; show: boolean }[] = [
-      { 
-        label: 'TO:', 
-        emails: ticket.to_recipients || '', 
-        show: Boolean(ticket.to_recipients?.trim()) 
-      },
-      { 
-        label: 'CC:', 
-        emails: ticket.cc_recipients || '', 
-        show: Boolean(ticket.cc_recipients?.trim()) 
-      },
-      { 
-        label: 'BCC:', 
-        emails: ticket.bcc_recipients || '', 
-        show: Boolean(ticket.bcc_recipients?.trim()) 
-      }
-    ];
-
-    const hasAnyRecipients = recipients.some(r => r.show);
-    if (!hasAnyRecipients) return null;
-
-    return (
-      <div className="mb-3 text-xs text-muted-foreground space-y-1 border-l-2 border-muted pl-2">
-        {recipients.map(recipient => {
-          if (!recipient.show) return null;
-          
-          const emailList = recipient.emails.split(',').map(email => email.trim()).filter(Boolean);
-          
-          return (
-            <div key={recipient.label} className="flex items-start gap-2">
-              <span className="font-medium min-w-[30px] text-slate-600 dark:text-slate-400">
-                {recipient.label}
-              </span>
-              <div className="flex flex-wrap gap-1">
-                {emailList.map((email, index) => (
-                  <Badge 
-                    key={index} 
-                    variant="secondary" 
-                    className="text-xs px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-0"
-                  >
-                    {email}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    );
-  };
 
   const truncateLength = 300;
   const shouldTruncate = displayContent && displayContent.length > truncateLength;
@@ -507,7 +513,7 @@ const addDarkModeStyles = () => {
   }
 };
 
-export function ConversationMessageItem({ comment }: Props) {
+export function ConversationMessageItem({ comment, ticket, isFirstMessage }: Props) {
   const [s3Content, setS3Content] = useState<string | null>(null);
   const [isLoadingS3, setIsLoadingS3] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -516,6 +522,61 @@ export function ConversationMessageItem({ comment }: Props) {
   const [selectedImageSrc, setSelectedImageSrc] = useState<string | null>(null);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   const commentRef = useRef<HTMLDivElement>(null);
+  
+  // Helper function to render email recipients
+  const renderEmailRecipients = () => {
+    if (!ticket) return null;
+    
+    const recipients: { label: string; emails: string; show: boolean }[] = [
+      { 
+        label: 'TO:', 
+        emails: ticket.to_recipients || '', 
+        show: Boolean(ticket.to_recipients?.trim()) 
+      },
+      { 
+        label: 'CC:', 
+        emails: ticket.cc_recipients || '', 
+        show: Boolean(ticket.cc_recipients?.trim()) 
+      },
+      { 
+        label: 'BCC:', 
+        emails: ticket.bcc_recipients || '', 
+        show: Boolean(ticket.bcc_recipients?.trim()) 
+      }
+    ];
+
+    const hasAnyRecipients = recipients.some(r => r.show);
+    if (!hasAnyRecipients) return null;
+
+    return (
+      <div className="mb-3 text-xs text-muted-foreground space-y-1 border-l-2 border-muted pl-2">
+        {recipients.map(recipient => {
+          if (!recipient.show) return null;
+          
+          const emailList = recipient.emails.split(',').map(email => email.trim()).filter(Boolean);
+          
+          return (
+            <div key={recipient.label} className="flex items-start gap-2">
+              <span className="font-medium min-w-[30px] text-slate-600 dark:text-slate-400">
+                {recipient.label}
+              </span>
+              <div className="flex flex-wrap gap-1">
+                {emailList.map((email, index) => (
+                  <Badge 
+                    key={index} 
+                    variant="secondary" 
+                    className="text-xs px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-0"
+                  >
+                    {email}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
   useEffect(() => {
     addDarkModeStyles();
   }, []);
@@ -835,6 +896,10 @@ export function ConversationMessageItem({ comment }: Props) {
             </p>
             <p className="text-xs text-muted-foreground mt-0.5">{formattedDate}</p>
           </div>
+
+          {/* Show email recipients only for first message */}
+          {isFirstMessage && renderEmailRecipients()}
+
           <div className={`max-w-none break-words overflow-x-auto`}>
             {!isOnlyAttachmentPlaceholder && (
               <div
