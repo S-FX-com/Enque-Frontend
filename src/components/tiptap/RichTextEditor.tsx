@@ -289,7 +289,6 @@ export function RichTextEditor({
       editor.setEditable(!disabled);
     }
   }, [disabled, editor]);
-
   //console.log(editor);
   return (
     <div className="flex flex-col">
