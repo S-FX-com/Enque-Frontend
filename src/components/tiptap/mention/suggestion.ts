@@ -11,7 +11,6 @@ export default function suggestion() {
     items: async ({ query }: { query: string; editor: Editor }) => {
       try {
         const agents = await getAgents();
-        //console.log(agents);
         return agents
           .filter(agent => agent.name.toLowerCase().startsWith(query.toLowerCase()))
           .map(agent => agent.name)
@@ -38,7 +37,6 @@ export default function suggestion() {
           }
 
           const target: Targets = document.body.getElementsByClassName('auto-expand-editor')[0];
-          console.log(target);
           popup = tippy(target, {
             getReferenceClientRect: () =>
               ({
