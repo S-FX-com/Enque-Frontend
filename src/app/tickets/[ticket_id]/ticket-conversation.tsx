@@ -175,31 +175,52 @@ interface OptimizedMessageItemProps {
 
 function findQuoteStartIndex(html: string): number {
   const patterns = [
-    /On .*? wrote:/i,
-    /From:.*?</i,
-    /Sent from my /i,
-    /<div class="gmail_quote/i,
-    /<blockquote class="gmail_quote/i,
-    /<blockquote/i,
-    /<div class="gmail_attr"/i,
+    // Common email quote headers - más específicos
+    /On .+? wrote:\s*</i,
+    // From patterns - más específicos para evitar falsos positivos  
+    /<p[^>]*><strong>From:<\/strong>/i, // HTML From header
+    /<div[^>]*>From:\s+[^<]+<[^@]+@[^>]+>/i, // From with email format
+    /^From:\s+[^<]+<[^@]+@[^>]+>/m, // From at line start with email
+    /Sent from my \w+/i, // e.g., Sent from my iPhone
+    // HTML quote elements
+    /<div[^>]*class="gmail_quote/i,
+    /<blockquote[^>]*class="gmail_quote/i,
+    /<blockquote[^>]*type="cite"/i,
+    /<div[^>]*class="gmail_attr"/i,
+    // Outlook separators
     /<hr\s*style=["'][^"']*border-top:\s*1px\s*solid\s*[^;]+;["']/i,
-    /<hr/i,
+    // Forwarded message indicators
     /---------- Forwarded message ---------/i,
     /Begin forwarded message:/i,
+    // Outlook quote indicators
+    /<div[^>]*style=["'][^"']*border:none;\s*border-top:solid\s+#E1E1E1/i,
   ];
+  
   let earliestIndex = -1;
-
+  
   for (const pattern of patterns) {
     const match = html.match(pattern);
     if (match && match.index !== undefined) {
-      if (pattern.source === '<hr/i' && match.index < 10) {
+      // Para HR, asegurarse que no esté al principio del mensaje
+      if (pattern.source.includes('<hr') && match.index < 50) {
         continue;
       }
+      
+      // Para patrones From, asegurarse que esté en un contexto apropiado
+      if (pattern.source.includes('From:')) {
+        // Verificar que hay suficiente contenido antes para justificar un corte
+        const textBeforeMatch = html.substring(0, match.index).replace(/<[^>]*>/g, '').trim();
+        if (textBeforeMatch.length < 30) {
+          continue;
+        }
+      }
+      
       if (earliestIndex === -1 || match.index < earliestIndex) {
         earliestIndex = match.index;
       }
     }
   }
+  
   return earliestIndex;
 }
 
@@ -713,71 +734,59 @@ export function TicketConversation({
     };
   }, [htmlContent, comments, ticket]);
 
-  // useEffect para manejar el contenido del editor
   useEffect(() => {
-    const currentTicketId = ticket.id;
-    const prevTicketId = prevTicketIdRef.current;
-    
-    // Solo resetear el contenido cuando cambie el ticket, no cuando cambien otros parámetros
-    if (currentTicketId !== prevTicketId || !replyContent) {
-      let signatureToUse = '';
+    let signatureToUse = '';
 
-      if (globalSignatureData?.content) {
-        signatureToUse = globalSignatureData.content
-          .replace(/\[Agent Name\]/g, currentAgentData?.name || '')
-          .replace(/\[Agent Role\]/g, currentAgentData?.job_title || '-');
-      } else if (currentAgentData?.email_signature) {
-        signatureToUse = currentAgentData.email_signature;
-      }
-
-      if (signatureToUse) {
-        signatureToUse = signatureToUse
-          .replace(/<\/strong><\/p>\s*<p>\s*<em>/g, '</strong><br><em>')
-          .replace(/<\/em><\/p>\s*<p>\s*<em>/g, '</em><br><em>')
-          .replace(/<\/strong><\/p>\s*<p>/g, '</strong><br>')
-          .replace(/<\/em><\/p>\s*<p>/g, '</em><br>')
-          .replace(/<\/p>\s*<p>\s*<strong>/g, '<br><strong>')
-          .replace(/<\/p>\s*<p>\s*<em>/g, '<br><em>')
-          .replace(/<\/p>\s*<p>/g, '<br>');
-
-        signatureToUse = signatureToUse.replace(
-          /<img([^>]*?)width="300"([^>]*?)height="200"([^>]*?)>/g,
-          '<img$1width="120"$2height="75"$3style="width: 120px; height: 75px; max-width: 120px; max-height: 75px; object-fit: scale-down; border-radius: 4px;">'
-        );
-
-        signatureToUse = `<div class="email-signature text-gray-500" style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #e5e7eb; clear: both;">${signatureToUse}</div>`;
-      }
-
-      const userName = ticket.user?.name || 'there';
-      const greeting = `<p>Hi ${userName},</p><div class="message-content" style="min-height: 60px; margin-bottom: 16px;"><p><br></p></div>`;
-      const initialContent = signatureToUse ? `${greeting}${signatureToUse}` : greeting;
-
-      setReplyContent(initialContent);
-      setEditorKey(prevKey => prevKey + 1);
-
-      if (currentTicketId !== prevTicketId) {
-        setIsPrivateNote(false);
-      }
-      
-      prevTicketIdRef.current = currentTicketId;
+    if (globalSignatureData?.content) {
+      signatureToUse = globalSignatureData.content
+        .replace(/\[Agent Name\]/g, currentAgentData?.name || '')
+        .replace(/\[Agent Role\]/g, currentAgentData?.job_title || '-');
+    } else if (currentAgentData?.email_signature) {
+      signatureToUse = currentAgentData.email_signature;
     }
+
+    if (signatureToUse) {
+      signatureToUse = signatureToUse
+        .replace(/<\/strong><\/p>\s*<p>\s*<em>/g, '</strong><br><em>')
+        .replace(/<\/em><\/p>\s*<p>\s*<em>/g, '</em><br><em>')
+        .replace(/<\/strong><\/p>\s*<p>/g, '</strong><br>')
+        .replace(/<\/em><\/p>\s*<p>/g, '</em><br>')
+        .replace(/<\/p>\s*<p>\s*<strong>/g, '<br><strong>')
+        .replace(/<\/p>\s*<p>\s*<em>/g, '<br><em>')
+        .replace(/<\/p>\s*<p>/g, '<br>');
+
+      signatureToUse = signatureToUse.replace(
+        /<img([^>]*?)width="300"([^>]*?)height="200"([^>]*?)>/g,
+        '<img$1width="120"$2height="75"$3style="width: 120px; height: 75px; max-width: 120px; max-height: 75px; object-fit: scale-down; border-radius: 4px;">'
+      );
+
+      signatureToUse = `<div class="email-signature text-gray-500" style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #e5e7eb; clear: both;">${signatureToUse}</div>`;
+    }
+
+    const currentTicketId = ticket.id;
+    const userName = ticket.user?.name || 'there';
+
+    const greeting = `<p>Hi ${userName},</p><div class="message-content" style="min-height: 60px; margin-bottom: 16px;"><p><br></p></div>`;
+
+    const prevTicketId = prevTicketIdRef.current;
+    const initialContent = signatureToUse ? `${greeting}${signatureToUse}` : greeting;
+
+    setReplyContent(initialContent);
+    setEditorKey(prevKey => prevKey + 1);
+
+    if (currentTicketId !== prevTicketId) {
+      setIsPrivateNote(false);
+      if (onExtraRecipientsChange) {
+        onExtraRecipientsChange('');
+      }
+    }
+    prevTicketIdRef.current = currentTicketId;
   }, [
     ticket.id,
     ticket.user?.name,
     currentAgentData,
     globalSignatureData,
-    replyContent,
   ]);
-
-  // useEffect separado para manejar el reset de CC/BCC cuando cambia el ticket
-  useEffect(() => {
-    const currentTicketId = ticket.id;
-    const prevTicketId = prevTicketIdRef.current;
-    
-    if (currentTicketId !== prevTicketId && onExtraRecipientsChange) {
-      onExtraRecipientsChange('');
-    }
-  }, [ticket.id, onExtraRecipientsChange]);
 
   const handleAttachmentsChange = (files: File[]) => {
     setSelectedAttachments(files);

@@ -1186,7 +1186,7 @@ function TicketsClientContent() {
                 Close ({selectedTicketIds.size})
               </Button>
 
-
+ 
 
               {selectedTicketIds.size > 1 && (
                 <AlertDialog open={isMergeDialogOpen} onOpenChange={setIsMergeDialogOpen}>

@@ -32,10 +32,6 @@ export default function suggestion() {
             editor: props.editor,
           });
 
-          if (!props.clientRect) {
-            return;
-          }
-
           const target: Targets = document.body.getElementsByClassName('auto-expand-editor')[0];
           popup = tippy(target, {
             getReferenceClientRect: () =>
@@ -47,7 +43,7 @@ export default function suggestion() {
                 top: target.getBoundingClientRect().top,
                 bottom: target.getBoundingClientRect().bottom,
               }) as DOMRect,
-            appendTo: () => document.body,
+            appendTo: () => target,
             content: component.element,
             showOnCreate: true,
             interactive: true,
@@ -59,9 +55,20 @@ export default function suggestion() {
         onUpdate(props: SuggestionProps) {
           component.updateProps(props);
 
-          if (!props.clientRect) {
-            return;
-          }
+          const target: Targets = document.body.getElementsByClassName('auto-expand-editor')[0];
+
+          popup.setProps({
+            getReferenceClientRect: () =>
+              ({
+                width: 200,
+                height: 200,
+                left: target.getBoundingClientRect().left,
+                right: target.getBoundingClientRect().right,
+                top: target.getBoundingClientRect().top,
+                bottom: target.getBoundingClientRect().bottom,
+              }) as DOMRect,
+          });
+          component.updateProps(props);
         },
 
         onKeyDown(props: SuggestionKeyDownProps) {
@@ -71,7 +78,7 @@ export default function suggestion() {
             return true;
           }
 
-          return true;
+          return false;
         },
 
         onExit() {

@@ -69,35 +69,52 @@ const parseSenderFromContent = (content: string): { name: string; email: string 
 // Helper to find the start of the quoted text
 function findQuoteStartIndex(html: string): number {
   const patterns = [
-    // Common email quote headers
-    /On .*? wrote:/i,
-    /From:.*?</i, // Basic check for lines starting with From:
-    /Sent from my /i, // e.g., Sent from my iPhone
+    // Common email quote headers - más específicos
+    /On .+? wrote:\s*</i,
+    // From patterns - más específicos para evitar falsos positivos  
+    /<p[^>]*><strong>From:<\/strong>/i, // HTML From header
+    /<div[^>]*>From:\s+[^<]+<[^@]+@[^>]+>/i, // From with email format
+    /^From:\s+[^<]+<[^@]+@[^>]+>/m, // From at line start with email
+    /Sent from my \w+/i, // e.g., Sent from my iPhone
     // HTML quote elements
-    /<div class="gmail_quote/i, // Modified to catch any class that starts with gmail_quote
-    /<blockquote class="gmail_quote/i, // Modified to catch any class that starts with gmail_quote
-    /<blockquote/i, // Any blockquote element
-    /<div class="gmail_attr"/i, // Gmail attribute div
-    // Separators (look for one *after* the potential start)
-    /<hr\s*style=["'][^"']*border-top:\s*1px\s*solid\s*[^;]+;["']/i, // Outlook HR
-    /<hr/i, // General hr, check later if it's the first one
+    /<div[^>]*class="gmail_quote/i,
+    /<blockquote[^>]*class="gmail_quote/i,
+    /<blockquote[^>]*type="cite"/i,
+    /<div[^>]*class="gmail_attr"/i,
+    // Outlook separators
+    /<hr\s*style=["'][^"']*border-top:\s*1px\s*solid\s*[^;]+;["']/i,
     // Forwarded message indicators
     /---------- Forwarded message ---------/i,
     /Begin forwarded message:/i,
+    // Outlook quote indicators
+    /<div[^>]*style=["'][^"']*border:none;\s*border-top:solid\s+#E1E1E1/i,
   ];
+  
   let earliestIndex = -1;
-
+  
   for (const pattern of patterns) {
     const match = html.match(pattern);
     if (match && match.index !== undefined) {
-      if (pattern.source === '<hr/i' && match.index < 10) {
+      // Para HR, asegurarse que no esté al principio del mensaje
+      if (pattern.source.includes('<hr') && match.index < 50) {
         continue;
       }
+      
+      // Para patrones From, asegurarse que esté en un contexto apropiado
+      if (pattern.source.includes('From:')) {
+        // Verificar que hay suficiente contenido antes para justificar un corte
+        const textBeforeMatch = html.substring(0, match.index).replace(/<[^>]*>/g, '').trim();
+        if (textBeforeMatch.length < 30) {
+          continue;
+        }
+      }
+      
       if (earliestIndex === -1 || match.index < earliestIndex) {
         earliestIndex = match.index;
       }
     }
   }
+  
   return earliestIndex;
 }
 
@@ -1228,3 +1245,4 @@ export function ConversationMessageItem({ comment, ticket, isFirstMessage }: Pro
     </>
   );
 }
+
