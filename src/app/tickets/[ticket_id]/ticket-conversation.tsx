@@ -765,6 +765,7 @@ export function TicketConversation({
     ticket.user?.name,
     currentAgentData,
     globalSignatureData,
+    onExtraRecipientsChange,
   ]);
 
   const handleAttachmentsChange = (files: File[]) => {
@@ -971,6 +972,7 @@ export function TicketConversation({
                 placeholder={isPrivateNote ? 'Write a private note...' : 'Type your reply here...'}
                 disabled={createCommentMutation.isPending}
                 onAttachmentsChange={handleAttachmentsChange}
+                ableMentioning={isPrivateNote}
               />
             </div>
 

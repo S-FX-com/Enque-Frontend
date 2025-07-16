@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback } from 'react';
+import React, { useCallback /*useState*/ } from 'react';
 import { useEditor, EditorContent, type Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
@@ -13,6 +13,9 @@ import { RichTextToolbar } from './RichTextToolbar';
 import './tiptap-styles.css';
 import { uploadImage } from '@/services/upload'; // Importar el servicio de carga de imágenes
 import { toast } from 'sonner';
+import './mention.css';
+import suggestion from './mention/suggestion';
+import Mention from '@tiptap/extension-mention';
 
 interface Props {
   content: string;
@@ -20,6 +23,7 @@ interface Props {
   placeholder?: string;
   disabled?: boolean;
   onAttachmentsChange?: (files: File[]) => void;
+  ableMentioning?: boolean;
   // Add other props like 'editable' if needed based on context
 }
 
@@ -89,6 +93,7 @@ export function RichTextEditor({
   placeholder,
   disabled = false,
   onAttachmentsChange,
+  //ableMentioning,
 }: Props) {
   // Función para manejar el pegado de imágenes
   const handlePasteImage = useCallback(async (file: File, editor: Editor) => {
@@ -116,6 +121,7 @@ export function RichTextEditor({
   }, []);
 
   const editor = useEditor({
+    //extensions
     extensions: [
       StarterKit.configure({
         // Configure StarterKit extensions as needed
@@ -215,6 +221,12 @@ export function RichTextEditor({
       }),
       // Añadir la extensión personalizada para manejar doble espacio en listas
       ListKeyboardShortcuts,
+      Mention.configure({
+        HTMLAttributes: {
+          class: 'mention',
+        },
+        suggestion: suggestion(),
+      }),
     ],
     content: content,
     editable: !disabled,
@@ -277,7 +289,7 @@ export function RichTextEditor({
       editor.setEditable(!disabled);
     }
   }, [disabled, editor]);
-
+  //console.log(editor);
   return (
     <div className="flex flex-col">
       <RichTextToolbar editor={editor} onAttachmentsChange={onAttachmentsChange} />
