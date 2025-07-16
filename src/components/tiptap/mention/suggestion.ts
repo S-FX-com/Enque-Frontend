@@ -14,7 +14,7 @@ export default function suggestion() {
         return agents
           .filter(agent => agent.name.toLowerCase().startsWith(query.toLowerCase()))
           .map(agent => agent.name)
-          .slice(0, -1);
+          .slice(0, 5);
       } catch (error) {
         console.error('Failed to fetch agents:', error);
         return [];
@@ -31,10 +31,6 @@ export default function suggestion() {
             props,
             editor: props.editor,
           });
-
-          if (!props.clientRect) {
-            return;
-          }
 
           const target: Targets = document.body.getElementsByClassName('auto-expand-editor')[0];
           popup = tippy(target, {
@@ -59,9 +55,6 @@ export default function suggestion() {
         onUpdate(props: SuggestionProps) {
           component.updateProps(props);
 
-          if (!props.clientRect) {
-            return;
-          }
           const target: Targets = document.body.getElementsByClassName('auto-expand-editor')[0];
 
           popup.setProps({
@@ -75,6 +68,7 @@ export default function suggestion() {
                 bottom: target.getBoundingClientRect().bottom,
               }) as DOMRect,
           });
+          component.updateProps(props);
         },
 
         onKeyDown(props: SuggestionKeyDownProps) {
@@ -84,7 +78,7 @@ export default function suggestion() {
             return true;
           }
 
-          return true;
+          return false;
         },
 
         onExit() {
