@@ -14,7 +14,7 @@ export default function suggestion() {
         return agents
           .filter(agent => agent.name.toLowerCase().startsWith(query.toLowerCase()))
           .map(agent => agent.name)
-          .slice(0, 5);
+          .slice(0, -1);
       } catch (error) {
         console.error('Failed to fetch agents:', error);
         return [];
@@ -47,7 +47,7 @@ export default function suggestion() {
                 top: target.getBoundingClientRect().top,
                 bottom: target.getBoundingClientRect().bottom,
               }) as DOMRect,
-            appendTo: () => document.body,
+            appendTo: () => target,
             content: component.element,
             showOnCreate: true,
             interactive: true,
@@ -62,6 +62,19 @@ export default function suggestion() {
           if (!props.clientRect) {
             return;
           }
+          const target: Targets = document.body.getElementsByClassName('auto-expand-editor')[0];
+
+          popup.setProps({
+            getReferenceClientRect: () =>
+              ({
+                width: 200,
+                height: 200,
+                left: target.getBoundingClientRect().left,
+                right: target.getBoundingClientRect().right,
+                top: target.getBoundingClientRect().top,
+                bottom: target.getBoundingClientRect().bottom,
+              }) as DOMRect,
+          });
         },
 
         onKeyDown(props: SuggestionKeyDownProps) {
