@@ -713,60 +713,71 @@ export function TicketConversation({
     };
   }, [htmlContent, comments, ticket]);
 
+  // useEffect para manejar el contenido del editor
   useEffect(() => {
-    let signatureToUse = '';
-
-    if (globalSignatureData?.content) {
-      signatureToUse = globalSignatureData.content
-        .replace(/\[Agent Name\]/g, currentAgentData?.name || '')
-        .replace(/\[Agent Role\]/g, currentAgentData?.job_title || '-');
-    } else if (currentAgentData?.email_signature) {
-      signatureToUse = currentAgentData.email_signature;
-    }
-
-    if (signatureToUse) {
-      signatureToUse = signatureToUse
-        .replace(/<\/strong><\/p>\s*<p>\s*<em>/g, '</strong><br><em>')
-        .replace(/<\/em><\/p>\s*<p>\s*<em>/g, '</em><br><em>')
-        .replace(/<\/strong><\/p>\s*<p>/g, '</strong><br>')
-        .replace(/<\/em><\/p>\s*<p>/g, '</em><br>')
-        .replace(/<\/p>\s*<p>\s*<strong>/g, '<br><strong>')
-        .replace(/<\/p>\s*<p>\s*<em>/g, '<br><em>')
-        .replace(/<\/p>\s*<p>/g, '<br>');
-
-      signatureToUse = signatureToUse.replace(
-        /<img([^>]*?)width="300"([^>]*?)height="200"([^>]*?)>/g,
-        '<img$1width="120"$2height="75"$3style="width: 120px; height: 75px; max-width: 120px; max-height: 75px; object-fit: scale-down; border-radius: 4px;">'
-      );
-
-      signatureToUse = `<div class="email-signature text-gray-500" style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #e5e7eb; clear: both;">${signatureToUse}</div>`;
-    }
-
     const currentTicketId = ticket.id;
-    const userName = ticket.user?.name || 'there';
-
-    const greeting = `<p>Hi ${userName},</p><div class="message-content" style="min-height: 60px; margin-bottom: 16px;"><p><br></p></div>`;
-
     const prevTicketId = prevTicketIdRef.current;
-    const initialContent = signatureToUse ? `${greeting}${signatureToUse}` : greeting;
+    
+    // Solo resetear el contenido cuando cambie el ticket, no cuando cambien otros parámetros
+    if (currentTicketId !== prevTicketId || !replyContent) {
+      let signatureToUse = '';
 
-    setReplyContent(initialContent);
-    setEditorKey(prevKey => prevKey + 1);
-
-    if (currentTicketId !== prevTicketId) {
-      setIsPrivateNote(false);
-      if (onExtraRecipientsChange) {
-        onExtraRecipientsChange('');
+      if (globalSignatureData?.content) {
+        signatureToUse = globalSignatureData.content
+          .replace(/\[Agent Name\]/g, currentAgentData?.name || '')
+          .replace(/\[Agent Role\]/g, currentAgentData?.job_title || '-');
+      } else if (currentAgentData?.email_signature) {
+        signatureToUse = currentAgentData.email_signature;
       }
+
+      if (signatureToUse) {
+        signatureToUse = signatureToUse
+          .replace(/<\/strong><\/p>\s*<p>\s*<em>/g, '</strong><br><em>')
+          .replace(/<\/em><\/p>\s*<p>\s*<em>/g, '</em><br><em>')
+          .replace(/<\/strong><\/p>\s*<p>/g, '</strong><br>')
+          .replace(/<\/em><\/p>\s*<p>/g, '</em><br>')
+          .replace(/<\/p>\s*<p>\s*<strong>/g, '<br><strong>')
+          .replace(/<\/p>\s*<p>\s*<em>/g, '<br><em>')
+          .replace(/<\/p>\s*<p>/g, '<br>');
+
+        signatureToUse = signatureToUse.replace(
+          /<img([^>]*?)width="300"([^>]*?)height="200"([^>]*?)>/g,
+          '<img$1width="120"$2height="75"$3style="width: 120px; height: 75px; max-width: 120px; max-height: 75px; object-fit: scale-down; border-radius: 4px;">'
+        );
+
+        signatureToUse = `<div class="email-signature text-gray-500" style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #e5e7eb; clear: both;">${signatureToUse}</div>`;
+      }
+
+      const userName = ticket.user?.name || 'there';
+      const greeting = `<p>Hi ${userName},</p><div class="message-content" style="min-height: 60px; margin-bottom: 16px;"><p><br></p></div>`;
+      const initialContent = signatureToUse ? `${greeting}${signatureToUse}` : greeting;
+
+      setReplyContent(initialContent);
+      setEditorKey(prevKey => prevKey + 1);
+
+      if (currentTicketId !== prevTicketId) {
+        setIsPrivateNote(false);
+      }
+      
+      prevTicketIdRef.current = currentTicketId;
     }
-    prevTicketIdRef.current = currentTicketId;
   }, [
     ticket.id,
     ticket.user?.name,
     currentAgentData,
     globalSignatureData,
-    onExtraRecipientsChange,
+    replyContent,
   ]);
+
+  // useEffect separado para manejar el reset de CC/BCC cuando cambia el ticket
+  useEffect(() => {
+    const currentTicketId = ticket.id;
+    const prevTicketId = prevTicketIdRef.current;
+    
+    if (currentTicketId !== prevTicketId && onExtraRecipientsChange) {
+      onExtraRecipientsChange('');
+    }
+  }, [ticket.id, onExtraRecipientsChange]);
 
   const handleAttachmentsChange = (files: File[]) => {
     setSelectedAttachments(files);
