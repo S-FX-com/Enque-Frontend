@@ -83,7 +83,7 @@ export default function AutomationsPage() {
 
     // Optimistic update
     const optimisticSettings = JSON.parse(JSON.stringify(automationSettings));
-    if (optimisticSettings && optimisticSettings.team_notifications.id === settingId) {
+    if (optimisticSettings && optimisticSettings.team_notifications && optimisticSettings.team_notifications.id === settingId) {
       optimisticSettings.team_notifications.is_enabled = newValue;
       queryClient.setQueryData(['automationSettings', workspaceId], optimisticSettings);
     }
@@ -103,7 +103,7 @@ export default function AutomationsPage() {
 
     // Optimistic update
     const optimisticSettings = JSON.parse(JSON.stringify(automationSettings));
-    if (optimisticSettings && optimisticSettings.weekly_agent_summary) {
+    if (optimisticSettings && optimisticSettings.weekly_agent_summary && optimisticSettings.weekly_agent_summary.id) {
       optimisticSettings.weekly_agent_summary.is_enabled = newValue;
       queryClient.setQueryData(['automationSettings', workspaceId], optimisticSettings);
     }
@@ -169,10 +169,19 @@ export default function AutomationsPage() {
                   : 'An unknown error occurred.'}
               </AlertDescription>
             </Alert>
+          ) : !automationSettings ? (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>No Data Available</AlertTitle>
+              <AlertDescription>
+                Unable to load automation settings. Please try refreshing the page.
+              </AlertDescription>
+            </Alert>
           ) : (
             <div className="space-y-6">
               {/* Team Notifications Card */}
-              <Card className="border">
+              {automationSettings.team_notifications && (
+                <Card className="border">
                 <CardHeader>
                   <div className="flex items-center gap-2">
                     <Users className="h-4 w-4" />
@@ -195,19 +204,19 @@ export default function AutomationsPage() {
                         <div className="flex items-center space-x-2">
                           <Switch
                             id="team-notifications-email"
-                            checked={automationSettings?.team_notifications.is_enabled || false}
+                            checked={automationSettings.team_notifications.is_enabled || false}
                             onCheckedChange={() =>
                               handleToggleSetting(
-                                automationSettings?.team_notifications.id || 0,
-                                automationSettings?.team_notifications.is_enabled
+                                automationSettings.team_notifications.id,
+                                automationSettings.team_notifications.is_enabled
                               )
                             }
                             disabled={
-                              updatingSettingId === (automationSettings?.team_notifications.id || 0)
+                              updatingSettingId === automationSettings.team_notifications.id
                             }
                           />
                           <Label htmlFor="team-notifications-email" className="font-medium">
-                            {automationSettings?.team_notifications.is_enabled ? 'Enabled' : 'Disabled'}
+                            {automationSettings.team_notifications.is_enabled ? 'Enabled' : 'Disabled'}
                           </Label>
                         </div>
                       </div>
@@ -215,9 +224,11 @@ export default function AutomationsPage() {
                   </div>
                 </CardContent>
               </Card>
+              )}
 
               {/* Weekly Agent Summary Card */}
-              <Card className="border">
+              {automationSettings.weekly_agent_summary && (
+                <Card className="border">
                 <CardHeader>
                   <div className="flex items-center gap-2">
                     <Calendar className="h-4 w-4" />
@@ -244,16 +255,16 @@ export default function AutomationsPage() {
                         <div className="flex items-center space-x-2">
                           <Switch
                             id="weekly-agent-summary"
-                            checked={automationSettings?.weekly_agent_summary.is_enabled || false}
+                            checked={automationSettings.weekly_agent_summary.is_enabled || false}
                             onCheckedChange={() =>
                               handleToggleWeeklySummary(
-                                automationSettings?.weekly_agent_summary.is_enabled
+                                automationSettings.weekly_agent_summary.is_enabled
                               )
                             }
                             disabled={updatingWeeklySummary}
                           />
                           <Label htmlFor="weekly-agent-summary" className="font-medium">
-                            {automationSettings?.weekly_agent_summary.is_enabled ? 'Enabled' : 'Disabled'}
+                            {automationSettings.weekly_agent_summary.is_enabled ? 'Enabled' : 'Disabled'}
                           </Label>
                         </div>
                       </div>
@@ -261,6 +272,7 @@ export default function AutomationsPage() {
                   </div>
                 </CardContent>
               </Card>
+              )}
 
             </div>
           )}
