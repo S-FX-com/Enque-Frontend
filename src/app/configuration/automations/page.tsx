@@ -8,17 +8,19 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
-import { AlertCircle, Info, Settings, Mail, Users } from 'lucide-react';
+import { AlertCircle, Info, Settings, Mail, Users, Clock, Calendar } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { 
   getAutomationSettings, 
-  toggleAutomationSetting
+  toggleAutomationSetting,
+  toggleWeeklySummarySetting
 } from '@/services/automations';
 
 export default function AutomationsPage() {
   const queryClient = useQueryClient();
   const { user, isLoading: isLoadingAuthUser } = useAuth();
   const [updatingSettingId, setUpdatingSettingId] = useState<number | null>(null);
+  const [updatingWeeklySummary, setUpdatingWeeklySummary] = useState<boolean>(false);
 
   const currentUserRole = user?.role;
   const workspaceId = user?.workspace_id;
@@ -53,6 +55,25 @@ export default function AutomationsPage() {
     },
   });
 
+  const toggleWeeklySummaryMutation = useMutation({
+    mutationFn: async ({ enabled }: { enabled: boolean }) => {
+      if (!workspaceId) throw new Error('Workspace ID is missing');
+      setUpdatingWeeklySummary(true);
+      return toggleWeeklySummarySetting(workspaceId, enabled);
+    },
+    onSuccess: () => {
+      setUpdatingWeeklySummary(false);
+      toast.success('Weekly agent summary setting updated successfully');
+      queryClient.invalidateQueries({ queryKey: ['automationSettings', workspaceId] });
+    },
+    onError: error => {
+      console.error('Failed to toggle weekly summary setting:', error);
+      toast.error(`Failed to update weekly summary setting: ${error.message}`);
+      setUpdatingWeeklySummary(false);
+      queryClient.invalidateQueries({ queryKey: ['automationSettings', workspaceId] });
+    },
+  });
+
   const handleToggleSetting = (settingId: number, currentValue: boolean | undefined) => {
     if (updatingSettingId === settingId) {
       return;
@@ -69,6 +90,25 @@ export default function AutomationsPage() {
 
     toggleSettingMutation.mutate({
       settingId,
+      enabled: newValue,
+    });
+  };
+
+  const handleToggleWeeklySummary = (currentValue: boolean | undefined) => {
+    if (updatingWeeklySummary) {
+      return;
+    }
+
+    const newValue = !(currentValue || false);
+
+    // Optimistic update
+    const optimisticSettings = JSON.parse(JSON.stringify(automationSettings));
+    if (optimisticSettings && optimisticSettings.weekly_agent_summary) {
+      optimisticSettings.weekly_agent_summary.is_enabled = newValue;
+      queryClient.setQueryData(['automationSettings', workspaceId], optimisticSettings);
+    }
+
+    toggleWeeklySummaryMutation.mutate({
       enabled: newValue,
     });
   };
@@ -149,10 +189,6 @@ export default function AutomationsPage() {
                         <Mail className="h-5 w-5 mt-0.5 text-muted-foreground" />
                         <div>
                           <h4 className="font-medium">New Ticket for Your Team</h4>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            Send email notifications to all team members when a new ticket is assigned to their team
-                            without a specific agent assigned. This helps ensure tickets don&apos;t go unnoticed.
-                          </p>
                         </div>
                       </div>
                       <div className="flex items-center gap-4 ml-4">
@@ -180,6 +216,51 @@ export default function AutomationsPage() {
                 </CardContent>
               </Card>
 
+              {/* Weekly Agent Summary Card */}
+              <Card className="border">
+                <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4" />
+                    <CardTitle className="text-lg">Weekly Agent Summary</CardTitle>
+                  </div>
+                  <CardDescription>
+                    Automated weekly summary emails sent to agents on Fridays at 3pm ET
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between py-3 border-b">
+                      <div className="flex items-start gap-3">
+                        <Clock className="h-5 w-5 mt-0.5 text-muted-foreground" />
+                        <div>
+                          <h4 className="font-medium">Weekly Summary for Agents</h4>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            Send weekly summary emails cataloguing all tickets marked as &quot;Closed&quot; over the past week for each agent. 
+                            Emails are sent every Friday at 3pm ET with the format: ticket created date, closed date, and ticket name.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4 ml-4">
+                        <div className="flex items-center space-x-2">
+                          <Switch
+                            id="weekly-agent-summary"
+                            checked={automationSettings?.weekly_agent_summary.is_enabled || false}
+                            onCheckedChange={() =>
+                              handleToggleWeeklySummary(
+                                automationSettings?.weekly_agent_summary.is_enabled
+                              )
+                            }
+                            disabled={updatingWeeklySummary}
+                          />
+                          <Label htmlFor="weekly-agent-summary" className="font-medium">
+                            {automationSettings?.weekly_agent_summary.is_enabled ? 'Enabled' : 'Disabled'}
+                          </Label>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
             </div>
           )}

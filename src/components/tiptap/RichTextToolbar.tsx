@@ -1,19 +1,19 @@
-// frontend/src/components/tiptap/RichTextToolbar.tsx
 'use client';
 
-import React, { useState, useCallback, useRef, useEffect } from 'react'; // Importar useEffect
-import { type Editor } from '@tiptap/react';
+import type React from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
+import type { Editor } from '@tiptap/react';
 import {
   Bold,
   Italic,
   Underline,
   List,
   ListOrdered,
-  Link as LinkIcon,
-  Image as ImageIcon,
+  LinkIcon,
+  ImageIcon,
   Paperclip,
-  X as XIcon, // <<< NUEVO: Importar icono X
-} from 'lucide-react'; // Removed unused Upload icon
+  XIcon,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { LinkModal } from './LinkModal';
@@ -26,80 +26,66 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useMutation } from '@tanstack/react-query'; // Import useMutation
-import { uploadImage as uploadImageService } from '@/services/upload'; // Import upload service
-import { toast } from 'sonner'; // Import toast
+import { useMutation } from '@tanstack/react-query';
+import { uploadImage as uploadImageService } from '@/services/upload';
+import { toast } from 'sonner';
 
 interface Props {
   editor: Editor | null;
-  onAttachmentsChange?: (files: File[]) => void; // <<< NUEVO: Prop para notificar cambios en adjuntos
+  onAttachmentsChange?: (files: File[]) => void;
 }
 
 export function RichTextToolbar({ editor, onAttachmentsChange }: Props) {
-  // <<< MODIFICADO: Añadir prop
   const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
   const [initialLinkUrl, setInitialLinkUrl] = useState('');
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   const [imageUrl, setImageUrl] = useState('');
-  const [selectedFile, setSelectedFile] = useState<File | null>(null); // State for selected image file
-  const imageInputRef = useRef<HTMLInputElement>(null); // Ref for image file input
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
-  // --- Estados y Refs para ADJUNTOS ---
-  const [selectedAttachments, setSelectedAttachments] = useState<File[]>([]); // State for multiple attachments
-  const attachmentInputRef = useRef<HTMLInputElement>(null); // Ref for attachment input
+  const [selectedAttachments, setSelectedAttachments] = useState<File[]>([]);
+  const attachmentInputRef = useRef<HTMLInputElement>(null);
 
-  // <<< NUEVO: useEffect para notificar al padre cuando los adjuntos cambian >>>
   useEffect(() => {
     if (onAttachmentsChange) {
       onAttachmentsChange(selectedAttachments);
     }
-    // Limpiar el valor del input para permitir seleccionar el mismo archivo después de quitarlo
     if (attachmentInputRef.current) {
       attachmentInputRef.current.value = '';
     }
   }, [selectedAttachments, onAttachmentsChange]);
 
-  // --- Upload Mutation ---
   const uploadMutation = useMutation({
-    mutationFn: uploadImageService, // Use the imported service function
+    mutationFn: uploadImageService,
     onSuccess: data => {
       toast.success('Image uploaded successfully!');
-      // Insert the uploaded image URL into the editor
       if (editor && data?.url) {
-        // Usar la URL tal como viene del servicio sin modificarla
         const src = data.url;
 
-        // Apply fixed dimensions using both attributes and inline styles
         const attrs: {
           src: string;
           width?: number;
           height?: number;
           alt?: string;
-          style?: string;
         } = {
-          src, // Use the URL returned from the backend
-          alt: selectedFile?.name || 'Uploaded Image', // Use file name as alt text
+          src,
+          alt: selectedFile?.name || 'Uploaded Image',
           width: 300,
           height: 200,
-          style:
-            'width: auto; height: auto; max-width: 300px; max-height: 200px; object-fit: contain; border-radius: 4px;',
         };
         editor.chain().focus().setImage(attrs).run();
       }
-      setIsImageModalOpen(false); // Close modal on success
-      setSelectedFile(null); // Reset file state
-      setImageUrl(''); // Reset URL state
+      setIsImageModalOpen(false);
+      setSelectedFile(null);
+      setImageUrl('');
     },
     onError: error => {
       console.error('Image upload failed:', error);
       toast.error(`Image upload failed: ${error.message}`);
-      // Keep modal open on error? Or close? Let's close for now.
-      // setIsImageModalOpen(false);
-      setSelectedFile(null); // Reset file state
+      setSelectedFile(null);
     },
   });
 
-  // Callback to open the link modal
   const openLinkModal = useCallback(() => {
     if (!editor) return;
     const url = editor.getAttributes('link').href || '';
@@ -107,7 +93,6 @@ export function RichTextToolbar({ editor, onAttachmentsChange }: Props) {
     setIsLinkModalOpen(true);
   }, [editor]);
 
-  // Callback to handle setting the link from the modal
   const handleSetLink = useCallback(
     (url: string) => {
       if (!editor) return;
@@ -120,50 +105,40 @@ export function RichTextToolbar({ editor, onAttachmentsChange }: Props) {
     [editor]
   );
 
-  // Callback to open the image modal
   const openImageModal = useCallback(() => {
     setImageUrl('');
-    setSelectedFile(null); // Reset selected file
+    setSelectedFile(null);
     setIsImageModalOpen(true);
   }, []);
 
-  // Callback to handle setting the image from URL input
   const handleSetImageFromUrl = useCallback(() => {
     if (editor && imageUrl) {
-      // No modificar URLs externas que ya comienzan con http o https
       const src = imageUrl;
 
-      // Apply fixed dimensions using both attributes and inline styles
-      const attrs: { src: string; width?: number; height?: number; alt?: string; style?: string } =
-        {
-          src,
-          alt: 'Signature Image',
-          width: 300,
-          height: 200,
-          style:
-            'width: auto; height: auto; max-width: 300px; max-height: 200px; object-fit: contain; border-radius: 4px;',
-        };
+      const attrs: { src: string; width?: number; height?: number; alt?: string } = {
+        src,
+        alt: 'Image from URL',
+        width: 300,
+        height: 200,
+      };
       editor.chain().focus().setImage(attrs).run();
     }
     setIsImageModalOpen(false);
   }, [editor, imageUrl]);
 
-  // Handle file selection
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       setSelectedFile(file);
-      setImageUrl(''); // Clear URL input if file is selected
+      setImageUrl('');
     }
   };
 
-  // Handle attachment file selection
   const handleAttachmentFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files) {
       setSelectedAttachments(prev => {
         const newFiles = Array.from(files);
-        // Filtrar duplicados basados en el nombre del archivo
         const updatedAttachments = [...prev];
         newFiles.forEach(newFile => {
           if (!prev.find(existingFile => existingFile.name === newFile.name)) {
@@ -175,24 +150,18 @@ export function RichTextToolbar({ editor, onAttachmentsChange }: Props) {
     }
   };
 
-  // Callback to open the attachment selector
   const openAttachmentSelector = useCallback(() => {
     attachmentInputRef.current?.click();
   }, []);
 
-  // Handle image insertion (either from URL or Upload)
   const handleInsertImage = () => {
     if (selectedFile) {
-      // Trigger the upload mutation
       uploadMutation.mutate(selectedFile);
     } else if (imageUrl) {
-      // Insert from URL
       handleSetImageFromUrl();
     }
-    // If neither is present, the button should be disabled
   };
 
-  // <<< NUEVO: Manejar eliminación de un adjunto >>>
   const handleRemoveAttachment = (fileNameToRemove: string) => {
     setSelectedAttachments(prev => prev.filter(file => file.name !== fileNameToRemove));
   };
@@ -297,13 +266,11 @@ export function RichTextToolbar({ editor, onAttachmentsChange }: Props) {
 
       {/* Image Modal */}
       <Dialog open={isImageModalOpen} onOpenChange={setIsImageModalOpen}>
-        {/* Add bg-white to force white background */}
         <DialogContent className="bg-white">
           <DialogHeader>
             <DialogTitle>Insert Image</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            {/* Insert from URL */}
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="imageUrl" className="text-right">
                 Image URL
@@ -314,28 +281,22 @@ export function RichTextToolbar({ editor, onAttachmentsChange }: Props) {
                 onChange={e => {
                   setImageUrl(e.target.value);
                   setSelectedFile(null);
-                }} // Clear file if URL is typed
+                }}
                 className="col-span-3"
                 placeholder="https://example.com/image.png"
                 disabled={uploadMutation.isPending}
               />
             </div>
 
-            {/* Separator */}
             <div className="relative my-2">
               <div className="absolute inset-0 flex items-center">
                 <span className="w-full border-t" />
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-white px-2 text-muted-foreground">
-                  {' '}
-                  {/* Changed bg-background to bg-white */}
-                  Or
-                </span>
+                <span className="bg-white px-2 text-muted-foreground">Or</span>
               </div>
             </div>
 
-            {/* Upload File */}
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="imageUpload" className="text-right">
                 Upload File
@@ -378,37 +339,35 @@ export function RichTextToolbar({ editor, onAttachmentsChange }: Props) {
         </DialogContent>
       </Dialog>
 
-      {/* <<< NUEVO: Botón de Adjuntar Archivos >>> */}
+      {/* Attachment Button */}
       <Button
         variant="ghost"
         size="icon"
         className={cn('h-8 w-8')}
         onClick={openAttachmentSelector}
-        // disabled={!editor} // Habilitar según la lógica de la aplicación
         title="Attach files"
       >
         <Paperclip className="h-4 w-4" />
       </Button>
 
-      {/* <<< NUEVO: Input de archivo oculto para imágenes (renombrado) >>> */}
+      {/* Hidden file inputs */}
       <input
         type="file"
         ref={imageInputRef}
         onChange={handleFileChange}
-        accept="image/*" // Solo imágenes para este input
+        accept="image/*"
         style={{ display: 'none' }}
       />
 
-      {/* <<< NUEVO: Input de archivo oculto para adjuntos >>> */}
       <input
         type="file"
         ref={attachmentInputRef}
         onChange={handleAttachmentFileChange}
-        multiple // Permitir múltiples archivos
+        multiple
         style={{ display: 'none' }}
       />
 
-      {/* <<< NUEVO: Sección para mostrar adjuntos seleccionados >>> */}
+      {/* Selected attachments display */}
       {selectedAttachments.length > 0 && (
         <div className="mt-2 p-2 border rounded-md bg-slate-50 dark:bg-slate-800/50">
           <p className="text-xs font-medium text-muted-foreground mb-1.5">Selected files:</p>

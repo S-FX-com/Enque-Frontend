@@ -1,17 +1,17 @@
 'use client';
 
-import React, { useCallback /*useState*/ } from 'react';
+import React, { useCallback } from 'react';
 import { useEditor, EditorContent, type Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
 import Placeholder from '@tiptap/extension-placeholder';
 import HardBreak from '@tiptap/extension-hard-break';
-import Image from '@tiptap/extension-image'; // Import Image extension
-import Underline from '@tiptap/extension-underline'; // Importar extensión de subrayado
-import { Extension } from '@tiptap/core'; // Importar Extension
+import Image from '@tiptap/extension-image';
+import Underline from '@tiptap/extension-underline';
+import { Extension } from '@tiptap/core';
 import { RichTextToolbar } from './RichTextToolbar';
 import './tiptap-styles.css';
-import { uploadImage } from '@/services/upload'; // Importar el servicio de carga de imágenes
+import { uploadImage } from '@/services/upload';
 import { toast } from 'sonner';
 import './mention.css';
 import suggestion from './mention/suggestion';
@@ -24,7 +24,6 @@ interface Props {
   disabled?: boolean;
   onAttachmentsChange?: (files: File[]) => void;
   ableMentioning?: boolean;
-  // Add other props like 'editable' if needed based on context
 }
 
 // Extensión personalizada para manejar doble espacio en listas
@@ -32,7 +31,6 @@ const ListKeyboardShortcuts = Extension.create({
   name: 'listKeyboardShortcuts',
 
   addKeyboardShortcuts() {
-    // Variable para registrar el último momento en que se presionó espacio
     let lastSpaceTime = 0;
 
     return {
@@ -41,48 +39,242 @@ const ListKeyboardShortcuts = Extension.create({
         const { selection } = state;
         const { empty, $head } = selection;
 
-        // Solo funciona si el cursor está vacío (no hay texto seleccionado)
         if (!empty) return false;
 
-        // Verificar si estamos en un elemento de lista
         const isInList = $head.parent.type.name === 'listItem';
         if (!isInList) return false;
 
-        // Obtener el contenido del nodo actual
         const nodeContent = $head.parent.textContent;
 
-        // Verificar si el nodo está vacío (solo tiene espacios o está totalmente vacío)
         if (nodeContent.trim() === '') {
-          // Si está vacío, salir de la lista
           editor.chain().liftListItem('listItem').run();
           return true;
         }
 
-        // Implementación del doble espacio (al estilo Word)
         const now = Date.now();
-        const isDoubleSpace = now - lastSpaceTime < 500; // 500ms para detectar doble espacio
-
-        // Actualizar el tiempo del último espacio
+        const isDoubleSpace = now - lastSpaceTime < 500;
         lastSpaceTime = now;
 
-        // Si es doble espacio, verificar la posición del cursor
         if (isDoubleSpace && $head.parentOffset === nodeContent.length) {
-          // Estamos al final del texto y se detectó doble espacio
-          // Primero eliminamos el espacio anterior
           editor.commands.deleteRange({
             from: $head.pos - 1,
             to: $head.pos,
           });
 
-          // Insertamos un salto de línea y salimos de la lista
           editor.chain().createParagraphNear().liftListItem('listItem').run();
-
           return true;
         }
 
-        // Si no es doble espacio o no estamos al final, continuar normalmente
         return false;
       },
+    };
+  },
+});
+
+// Extensión personalizada para imágenes redimensionables
+const ResizableImage = Image.extend({
+  name: 'resizableImage',
+
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      width: {
+        default: null,
+        parseHTML: element => {
+          const width = element.getAttribute('width') || element.style.width;
+          return width ? Number.parseInt(width) : null;
+        },
+        renderHTML: attributes => {
+          if (!attributes.width) return {};
+          return { width: attributes.width };
+        },
+      },
+      height: {
+        default: null,
+        parseHTML: element => {
+          const height = element.getAttribute('height') || element.style.height;
+          return height ? Number.parseInt(height) : null;
+        },
+        renderHTML: attributes => {
+          if (!attributes.height) return {};
+          return { height: attributes.height };
+        },
+      },
+    };
+  },
+
+  addNodeView() {
+    return ({ node, HTMLAttributes, getPos, editor }) => {
+      const container = document.createElement('div');
+      container.className = 'image-resizer';
+      container.style.cssText = `
+        position: relative;
+        display: inline-block;
+        max-width: 100%;
+        line-height: 0;
+      `;
+
+      const img = document.createElement('img');
+      Object.entries(HTMLAttributes).forEach(([key, value]) => {
+        img.setAttribute(key, value);
+      });
+
+      // Establecer dimensiones iniciales si no existen
+      const initialWidth = node.attrs.width || 300;
+
+      img.style.cssText = `
+        max-width: 100%;
+        height: auto;
+        width: ${initialWidth}px;
+        border-radius: 4px;
+        cursor: pointer;
+      `;
+
+      // Crear handles de redimensionamiento
+      const createHandle = (position: string) => {
+        const handle = document.createElement('div');
+        handle.className = `resize-handle resize-handle-${position}`;
+        handle.style.cssText = `
+          position: absolute;
+          width: 10px;
+          height: 10px;
+          background: #3b82f6;
+          border: 2px solid white;
+          border-radius: 50%;
+          cursor: ${
+            position.includes('e') || position.includes('w')
+              ? 'ew-resize'
+              : position.includes('n') || position.includes('s')
+                ? 'ns-resize'
+                : position.includes('nw') || position.includes('se')
+                  ? 'nw-resize'
+                  : 'ne-resize'
+          };
+          opacity: 0;
+          transition: opacity 0.2s;
+          z-index: 10;
+        `;
+
+        // Posicionar handles
+        switch (position) {
+          case 'nw':
+            handle.style.top = '-5px';
+            handle.style.left = '-5px';
+            break;
+          case 'ne':
+            handle.style.top = '-5px';
+            handle.style.right = '-5px';
+            break;
+          case 'sw':
+            handle.style.bottom = '-5px';
+            handle.style.left = '-5px';
+            break;
+          case 'se':
+            handle.style.bottom = '-5px';
+            handle.style.right = '-5px';
+            break;
+        }
+
+        return handle;
+      };
+
+      const handles = ['nw', 'ne', 'sw', 'se'].map(createHandle);
+      handles.forEach(handle => container.appendChild(handle));
+
+      // Mostrar/ocultar handles al hacer hover
+      container.addEventListener('mouseenter', () => {
+        handles.forEach(handle => (handle.style.opacity = '1'));
+      });
+
+      container.addEventListener('mouseleave', () => {
+        handles.forEach(handle => (handle.style.opacity = '0'));
+      });
+
+      // Lógica de redimensionamiento
+      let isResizing = false;
+      let startX = 0;
+      let startWidth = 0;
+
+      const startResize = (e: MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        isResizing = true;
+        startX = e.clientX;
+        startWidth = img.offsetWidth;
+
+        document.addEventListener('mousemove', handleResize);
+        document.addEventListener('mouseup', stopResize);
+
+        // Prevenir selección de texto durante el redimensionamiento
+        document.body.style.userSelect = 'none';
+      };
+
+      const handleResize = (e: MouseEvent) => {
+        if (!isResizing) return;
+
+        const deltaX = e.clientX - startX;
+
+        // Calcular nuevas dimensiones manteniendo la proporción
+        let newWidth = startWidth + deltaX;
+
+        // Límites mínimos y máximos
+        newWidth = Math.max(50, Math.min(800, newWidth));
+
+        img.style.width = `${newWidth}px`;
+        img.style.height = 'auto';
+      };
+
+      const stopResize = () => {
+        if (!isResizing) return;
+
+        isResizing = false;
+        document.removeEventListener('mousemove', handleResize);
+        document.removeEventListener('mouseup', stopResize);
+        document.body.style.userSelect = '';
+
+        // Actualizar los atributos del nodo
+        const newWidth = img.offsetWidth;
+        const newHeight = img.offsetHeight;
+
+        if (typeof getPos === 'function') {
+          const pos = getPos();
+          editor.view.dispatch(
+            editor.view.state.tr.setNodeMarkup(pos, null, {
+              ...node.attrs,
+              width: newWidth,
+              height: newHeight,
+            })
+          );
+        }
+      };
+
+      // Agregar event listeners a los handles
+      handles.forEach(handle => {
+        handle.addEventListener('mousedown', e => startResize(e));
+      });
+
+      container.appendChild(img);
+
+      return {
+        dom: container,
+        update: updatedNode => {
+          if (updatedNode.type.name !== this.name) return false;
+
+          // Actualizar atributos de la imagen
+          Object.entries(updatedNode.attrs).forEach(([key, value]) => {
+            if (key === 'src' || key === 'alt' || key === 'title') {
+              img.setAttribute(key, value);
+            }
+          });
+
+          if (updatedNode.attrs.width) {
+            img.style.width = `${updatedNode.attrs.width}px`;
+          }
+
+          return true;
+        },
+      };
     };
   },
 });
@@ -93,16 +285,12 @@ export function RichTextEditor({
   placeholder,
   disabled = false,
   onAttachmentsChange,
-  //ableMentioning,
 }: Props) {
-  // Función para manejar el pegado de imágenes
   const handlePasteImage = useCallback(async (file: File, editor: Editor) => {
     try {
-      // Eliminar la notificación de carga
       const result = await uploadImage(file);
 
       if (result && result.url) {
-        // Insertar la imagen en el editor con dimensiones fijas
         editor
           .chain()
           .focus()
@@ -121,105 +309,57 @@ export function RichTextEditor({
   }, []);
 
   const editor = useEditor({
-    //extensions
     extensions: [
       StarterKit.configure({
-        // Configure StarterKit extensions as needed
-        // Ensure paragraph is enabled (default in StarterKit)
-        paragraph: {},
-        heading: false, // Disable headings if not needed
+        paragraph: {
+          HTMLAttributes: {
+            style: 'margin: 0 !important',
+          },
+        },
+        heading: false,
         blockquote: false,
         codeBlock: false,
         horizontalRule: false,
-        // Ensure basic formatting is enabled
-        bold: {}, // Enables bold command
-        italic: {}, // Enables italic command
+        bold: {},
+        italic: {},
         bulletList: {
           keepMarks: true,
           keepAttributes: true,
-        }, // Enables bullet list command with additional configuration
+        },
         orderedList: {
           keepMarks: true,
           keepAttributes: true,
-        }, // Enables ordered list command with additional configuration
+        },
         listItem: {
           HTMLAttributes: {
             class: 'list-item',
           },
         },
-        // Disable others if not required
         strike: false,
         code: false,
         gapcursor: false,
         dropcursor: false,
-        // Explicitly disable hardBreak default handling if we add the extension separately
-        // Or configure it here if preferred. Let's add it separately for now.
         hardBreak: false,
       }),
-      // Add HardBreak extension separately
-      // This handles Shift+Enter and might influence Enter behavior in lists
       HardBreak.configure(),
       Link.configure({
-        // Enables link commands
         openOnClick: false,
         autolink: true,
         linkOnPaste: true,
         HTMLAttributes: {
-          // Add attributes for security and usability
           target: '_blank',
           rel: 'noopener noreferrer nofollow',
         },
       }),
-      // Añadir la extensión de subrayado
       Underline.configure(),
       Placeholder.configure({
         placeholder: placeholder || 'Type your message...',
       }),
-      Image.configure({
+      // Usar la extensión personalizada de imagen redimensionable
+      ResizableImage.configure({
         inline: false,
         allowBase64: false,
-        HTMLAttributes: {
-          width: 300,
-          height: 200,
-          style:
-            'width: auto; height: auto; max-width: 300px; max-height: 200px; object-fit: contain; border-radius: 4px;',
-        },
-      }).extend({
-        // Extend the Image extension to add custom attribute handling
-        addAttributes() {
-          return {
-            ...this.parent?.(), // Keep existing attributes like src, alt, title
-            width: {
-              default: 300,
-              // Parse width attribute from HTML
-              parseHTML: element => element.getAttribute('width'),
-              // Render width attribute back to HTML
-              renderHTML: attributes => {
-                return { width: attributes.width };
-              },
-            },
-            height: {
-              default: 200,
-              // Parse height attribute from HTML
-              parseHTML: element => element.getAttribute('height'),
-              // Render height attribute back to HTML
-              renderHTML: attributes => {
-                return { height: attributes.height };
-              },
-            },
-            // Keep style attribute handling if we decide to use it later, otherwise remove
-            style: {
-              default:
-                'width: auto; height: auto; max-width: 300px; max-height: 200px; object-fit: contain; border-radius: 4px;',
-              parseHTML: element => element.getAttribute('style'),
-              renderHTML: attributes => {
-                return { style: attributes.style };
-              },
-            },
-          };
-        },
       }),
-      // Añadir la extensión personalizada para manejar doble espacio en listas
       ListKeyboardShortcuts,
       Mention.configure({
         HTMLAttributes: {
@@ -231,65 +371,50 @@ export function RichTextEditor({
     content: content,
     editable: !disabled,
     onUpdate: ({ editor }) => {
-      // Get HTML content and pass it up
       onChange(editor.getHTML());
     },
-    // Basic editor styling directly or via CSS file
     editorProps: {
       attributes: {
-        // Remove prose classes, keep basic styling and dimensions/scroll
         class:
           'max-w-none focus:outline-none p-2 border rounded-md min-h-[120px] max-h-[1200px] overflow-hidden resize-none',
       },
-      // Añadir manejador de eventos para pegar
       handlePaste: (view, event) => {
         const currentEditor = editor;
-        // Verificar que no esté deshabilitado y que el editor exista
         if (disabled || !currentEditor) return false;
 
-        // Revisar si hay imágenes en el clipboard
         const items = event.clipboardData?.items;
         if (!items) return false;
 
-        // Buscar imágenes en los datos del portapapeles
         for (let i = 0; i < items.length; i++) {
           const item = items[i];
 
-          // Si encontramos una imagen, manejarla
           if (item.type.indexOf('image') !== -1) {
             const file = item.getAsFile();
             if (file) {
-              // Prevenir el comportamiento predeterminado
               event.preventDefault();
-              // Cargar y insertar la imagen
               handlePasteImage(file, currentEditor);
               return true;
             }
           }
         }
 
-        // Si no hay imágenes, dejar que TipTap maneje el pegado normalmente
         return false;
       },
     },
   });
 
-  // Set content programmatically if the external content changes
-  // (e.g., clearing the editor after sending)
   React.useEffect(() => {
     if (editor && editor.getHTML() !== content) {
-      // Restore comparison: Only set content if it actually differs
-      editor.commands.setContent(content, false); // Set content without emitting update initially
+      editor.commands.setContent(content, false);
     }
   }, [content, editor]);
 
-  // Update editable state if disabled prop changes
   React.useEffect(() => {
     if (editor) {
       editor.setEditable(!disabled);
     }
   }, [disabled, editor]);
-  //console.log(editor);
+
   return (
     <div className="flex flex-col">
       <RichTextToolbar editor={editor} onAttachmentsChange={onAttachmentsChange} />

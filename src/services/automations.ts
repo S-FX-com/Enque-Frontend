@@ -11,6 +11,7 @@ export interface AutomationSetting {
 
 export interface AutomationsResponse {
   team_notifications: AutomationSetting;
+  weekly_agent_summary: AutomationSetting;
 }
 
 interface ApiSuccessResponse {
@@ -38,6 +39,22 @@ export const toggleAutomationSetting = async (
 ): Promise<ApiSuccessResponse> => {
   const response = await apiClient.put<ApiSuccessResponse>(
     `/automation-settings/${workspaceId}/toggle/${settingId}`,
+    {
+      is_enabled: enabled,
+    }
+  );
+  return response.data;
+};
+
+/**
+ * Toggle weekly agent summary setting
+ */
+export const toggleWeeklySummarySetting = async (
+  workspaceId: number,
+  enabled: boolean
+): Promise<ApiSuccessResponse> => {
+  const response = await apiClient.post<ApiSuccessResponse>(
+    `/automation-settings/${workspaceId}/weekly-summary`,
     {
       is_enabled: enabled,
     }
