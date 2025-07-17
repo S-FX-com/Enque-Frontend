@@ -5,7 +5,7 @@ import type React from 'react';
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
-import { ArrowLeft, Settings, MoreHorizontal, X, Plus, Search, User } from 'lucide-react';
+import { ArrowLeft, X, Plus, Search, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -16,12 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+
 import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
@@ -97,7 +92,23 @@ function DynamicCCInput({
 
   const handlePaste = (e: React.ClipboardEvent) => {
     const pastedText = e.clipboardData.getData('text');
+<<<<<<< HEAD
     const emails = pastedText.split(/[,;\s]+/).filter(email => email.trim());
+=======
+
+    // Verificar si el texto pegado contiene emails válidos separados por delimitadores
+    const potentialEmails = pastedText.split(/[,;\s\n\t]+/).filter(email => email.trim());
+    const hasMultipleEmails = potentialEmails.length > 1;
+    const hasValidEmails = potentialEmails.some(email => validateEmail(email.trim()));
+
+    // Solo interceptar el pegado si hay múltiples emails o emails válidos separados
+    if (hasMultipleEmails && hasValidEmails) {
+      e.preventDefault();
+
+      const validNewEmails = potentialEmails
+        .map(email => email.trim())
+        .filter(email => validateEmail(email) && !existingEmails.includes(email));
+>>>>>>> 0f9f96ac424022068b1e8061722a3aa053ece17f
 
     emails.forEach(email => {
       const trimmedEmail = email.trim();
@@ -168,8 +179,9 @@ export function TicketPageContent({ ticketId }: Props) {
   const { socket } = useSocketContext();
   const { user } = useAuth();
   const [ticket, setTicket] = useState<ITicket | null>(null);
-  const [isClosingTicket, setIsClosingTicket] = useState(false);
-  const [isResolvingTicket, setIsResolvingTicket] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
+  const [isReopening, setIsReopening] = useState(false);
+  const [existingToEmails, setExistingToEmails] = useState<string[]>([]);
   const [existingCcEmails, setExistingCcEmails] = useState<string[]>([]);
   const [extraCcEmails, setExtraCcEmails] = useState<string[]>([]);
   const [existingBccEmails, setExistingBccEmails] = useState<string[]>([]);
@@ -200,10 +212,21 @@ export function TicketPageContent({ ticketId }: Props) {
 
   const currentTicket = ticketData?.[0] || null;
 
+  
   useEffect(() => {
     if (currentTicket) {
-      console.log(currentTicket);
       setTicket(currentTicket as unknown as ITicket);
+
+      // Initialize TO emails if they exist in the ticket data
+      if (currentTicket?.to_recipients) {
+        const toEmails = currentTicket.to_recipients
+          .split(',')
+          .map(email => email.trim())
+          .filter(email => email.length > 0);
+        setExistingToEmails(toEmails);
+      } else {
+        setExistingToEmails([]);
+      }
 
       if (currentTicket?.cc_recipients) {
         const emails = currentTicket.cc_recipients
@@ -416,7 +439,7 @@ export function TicketPageContent({ ticketId }: Props) {
       onMutate: async () => {
         if (!ticket) return { previousTicket: null };
 
-        setIsClosingTicket(true);
+        setIsClosing(true);
         const previousTicket = ticket;
 
         // Cancel any outgoing refetches for counter queries
@@ -461,71 +484,69 @@ export function TicketPageContent({ ticketId }: Props) {
         invalidateCounterQueries();
       },
       onSettled: () => {
-        setIsClosingTicket(false);
+        setIsClosing(false);
       },
     }
   );
 
-  // Resolve ticket mutation
-  const resolveTicketMutation = useMutation<
-    ITicket,
-    Error,
-    void,
-    { previousTicket: ITicket | null }
-  >({
-    mutationFn: async () => {
-      if (!ticket) throw new Error('No ticket selected');
-      return updateTicket(ticket.id, { status: 'Closed' });
-    },
-    onMutate: async () => {
-      if (!ticket) return { previousTicket: null };
+  // Reopen ticket mutation
+  const reopenTicketMutation = useMutation<ITicket, Error, void, { previousTicket: ITicket | null }>(
+    {
+      mutationFn: async () => {
+        if (!ticket) throw new Error('No ticket selected');
+        return updateTicket(ticket.id, { status: 'Open' });
+      },
+      onMutate: async () => {
+        if (!ticket) return { previousTicket: null };
 
-      setIsResolvingTicket(true);
-      const previousTicket = ticket;
+        setIsReopening(true);
+        const previousTicket = ticket;
 
-      // Cancel any outgoing refetches for counter queries
-      await queryClient.cancelQueries({ queryKey: ['ticketsCount'] });
-      await queryClient.cancelQueries({ queryKey: ['agentTeams'] });
+        // Cancel any outgoing refetches for counter queries
+        await queryClient.cancelQueries({ queryKey: ['ticketsCount'] });
+        await queryClient.cancelQueries({ queryKey: ['agentTeams'] });
 
-      const optimisticTicket: ITicket = {
-        ...previousTicket,
-        status: 'Closed' as TicketStatus,
-      };
+        const optimisticTicket: ITicket = {
+          ...previousTicket,
+          status: 'Open' as TicketStatus,
+        };
 
-      setTicket(optimisticTicket);
-      queryClient.setQueryData(['ticket', ticket.id], [optimisticTicket]);
+        setTicket(optimisticTicket);
+        queryClient.setQueryData(['ticket', ticket.id], [optimisticTicket]);
 
-      // Optimistically update counter queries
-      queryClient.setQueryData<number>(['ticketsCount', 'all'], old => Math.max(0, (old || 1) - 1));
-
-      if (ticket.assignee_id === user?.id) {
-        queryClient.setQueryData<number>(['ticketsCount', 'my', user?.id], old =>
-          Math.max(0, (old || 1) - 1)
+        // Optimistically update counter queries
+        queryClient.setQueryData<number>(['ticketsCount', 'all'], old =>
+          (old || 0) + 1
         );
-      }
 
-      return { previousTicket };
-    },
-    onSuccess: updatedTicketData => {
-      toast.success(`Ticket #${updatedTicketData.id} resolved successfully.`);
-      invalidateCounterQueries();
-      router.push('/tickets');
-    },
-    onError: (error, _variables, context) => {
-      toast.error(
-        `Error resolving ticket #${ticket?.id}: ${error instanceof Error ? error.message : 'Unknown error'}`
-      );
-      if (context?.previousTicket) {
-        setTicket(context.previousTicket);
-        queryClient.setQueryData(['ticket', ticketId], [context.previousTicket]);
-      }
-      // Revert optimistic updates on error
-      invalidateCounterQueries();
-    },
-    onSettled: () => {
-      setIsResolvingTicket(false);
-    },
-  });
+        if (ticket.assignee_id === user?.id) {
+          queryClient.setQueryData<number>(['ticketsCount', 'my', user?.id], old =>
+            (old || 0) + 1
+          );
+        }
+
+        return { previousTicket };
+      },
+      onSuccess: updatedTicketData => {
+        toast.success(`Ticket #${updatedTicketData.id} reopened successfully.`);
+        invalidateCounterQueries();
+      },
+      onError: (error, _variables, context) => {
+        toast.error(
+          `Error reopening ticket #${ticket?.id}: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
+        if (context?.previousTicket) {
+          setTicket(context.previousTicket);
+          queryClient.setQueryData(['ticket', ticketId], [context.previousTicket]);
+        }
+        // Revert optimistic updates on error
+        invalidateCounterQueries();
+      },
+      onSettled: () => {
+        setIsReopening(false);
+      },
+    }
+  );
 
   const handleTicketUpdate = (updatedTicket: ITicket) => {
     setTicket(updatedTicket);
@@ -550,6 +571,7 @@ export function TicketPageContent({ ticketId }: Props) {
   const handlePrimaryContactChange = (userId: string) => {
     handleUpdateField('user_id', userId);
 
+<<<<<<< HEAD
     // Update local ticket state immediately for UI feedback
     if (ticket) {
       const selectedUser = users.find(u => u.id.toString() === userId) || null;
@@ -560,6 +582,33 @@ export function TicketPageContent({ ticketId }: Props) {
       };
       setTicket(updatedTicket);
       queryClient.setQueryData(['ticket', ticketId], [updatedTicket]);
+=======
+      // Update local ticket state immediately for UI feedback
+      if (ticket) {
+        const selectedUser = users.find(u => u.id.toString() === userId) || null;
+        const updatedTicket = {
+          ...ticket,
+          user_id: userId === 'null' ? null : Number.parseInt(userId, 10),
+          user: selectedUser,
+        };
+        setTicket(updatedTicket);
+        queryClient.setQueryData(['ticket', ticketId], [updatedTicket]);
+      }
+
+      // Close modal immediately for better UX
+      setIsContactModalOpen(false);
+      setContactSearchQuery('');
+
+      // Make the API call
+      handleUpdateField('user_id', userId);
+    } catch (error) {
+      console.error('Error changing primary contact:', error);
+      // Revert local state if there's an error
+      if (ticket) {
+        setTicket(ticket);
+        queryClient.setQueryData(['ticket', ticketId], [ticket]);
+      }
+>>>>>>> 0f9f96ac424022068b1e8061722a3aa053ece17f
     }
 
     setIsContactModalOpen(false);
@@ -643,35 +692,26 @@ export function TicketPageContent({ ticketId }: Props) {
         </div>
 
         <div className="flex items-center gap-2">
-          <Button
-            size="sm"
-            variant="default"
-            onClick={() => resolveTicketMutation.mutate()}
-            disabled={isResolvingTicket}
-          >
-            {isResolvingTicket ? 'Resolving...' : 'Mark Resolved'}
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => closeTicketMutation.mutate()}
-            disabled={isClosingTicket}
-          >
-            {isClosingTicket ? 'Closing...' : 'Mark Closed'}
-          </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm">
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem>
-                <Settings className="mr-2 h-4 w-4" />
-                Settings
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {ticket?.status === 'Closed' ? (
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-green-600 text-green-600 hover:bg-green-600 hover:text-white"
+              onClick={() => reopenTicketMutation.mutate()}
+              disabled={isReopening}
+            >
+              {isReopening ? 'Reopening...' : 'Reopen Ticket'}
+            </Button>
+          ) : (
+            <Button
+              size="sm"
+              variant="default"
+              onClick={() => closeTicketMutation.mutate()}
+              disabled={isClosing}
+            >
+              {isClosing ? 'Closing...' : 'Mark Closed'}
+            </Button>
+          )}
         </div>
       </div>
 
@@ -839,9 +879,27 @@ export function TicketPageContent({ ticketId }: Props) {
                 </div>
               </div>
 
+              {/* TO Recipients - Display only */}
+              {existingToEmails.length > 0 && (
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground mb-2 block">
+                    To:
+                  </label>
+                  <div className="space-y-2">
+                    <div className="flex flex-wrap gap-1 p-2 border rounded-md bg-gray-50">
+                      {existingToEmails.map((email, index) => (
+                        <Badge key={index} variant="outline" className="text-xs">
+                          {email}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* CC Recipients */}
               <div>
-                <label className="text-sm font-medium text-muted-foreground mb-2 block">CC:</label>
+                <label className="text-sm font-medium text-muted-foreground mb-2 block">Cc:</label>
                 <div className="space-y-2">
                   <DynamicCCInput
                     id="cc"
@@ -857,7 +915,7 @@ export function TicketPageContent({ ticketId }: Props) {
                       setExistingCcEmails(updatedExistingEmails);
                       setExtraCcEmails(newExtraEmails);
                     }}
-                    placeholder="Add CC recipients..."
+                    placeholder="Add Cc recipients..."
                   />
                   <p className="text-xs text-muted-foreground">
                     Type email addresses and press Enter or comma to add them.
@@ -867,7 +925,7 @@ export function TicketPageContent({ ticketId }: Props) {
 
               {/* BCC Recipients */}
               <div>
-                <label className="text-sm font-medium text-muted-foreground mb-2 block">BCC:</label>
+                <label className="text-sm font-medium text-muted-foreground mb-2 block">Bcc:</label>
                 <div className="space-y-2">
                   <DynamicCCInput
                     id="bcc"
@@ -883,10 +941,10 @@ export function TicketPageContent({ ticketId }: Props) {
                       setExistingBccEmails(updatedExistingBccEmails);
                       setExtraBccEmails(newExtraBccEmails);
                     }}
-                    placeholder="Add BCC recipients..."
+                    placeholder="Add Bcc recipients..."
                   />
                   <p className="text-xs text-muted-foreground">
-                    BCC recipients will receive copies but won&apos;t be visible to other
+                    Bcc recipients will receive copies but won&apos;t be visible to other
                     recipients.
                   </p>
                 </div>

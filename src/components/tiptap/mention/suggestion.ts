@@ -88,4 +88,8 @@ export default function suggestion() {
       };
     },
   };
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> 0f9f96ac424022068b1e8061722a3aa053ece17f

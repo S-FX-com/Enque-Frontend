@@ -1,7 +1,7 @@
 import { BaseFilters } from './index';
 import { IUser } from './user';
 import { ICategory } from './category';
-export type TicketStatus = 'Unread' | 'Open' | 'With User' | 'In Progress' | 'Closed' | 'Resolved';
+export type TicketStatus = 'Unread' | 'Open' | 'With User' | 'In Progress' | 'Closed';
 export type TicketPriority = 'Low' | 'Medium' | 'High' | 'Critical';
 export type TicketType = 'bug' | 'feature' | 'support' | 'other';
 
@@ -20,6 +20,7 @@ export interface ITicket {
   status: TicketStatus;
   priority: TicketPriority;
   type: TicketType;
+  to_recipients: string;
   cc_recipients: string;
   bcc_recipients: string;
   user_id: number | null;

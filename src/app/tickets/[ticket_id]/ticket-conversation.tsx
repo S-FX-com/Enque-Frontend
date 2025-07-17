@@ -114,21 +114,18 @@ function processLinksForNewTab(htmlContent: string): string {
 
       if (hasStyle) {
         // Update existing style attribute to include link styling
-        attributes = attributes.replace(
-          /style\s*=\s*["']([^"']*?)["']/gi,
-          (styleMatch: string, styleContent: string) => {
-            let newStyle = styleContent;
+        attributes = attributes.replace(/style\s*=\s*["']([^"']*?)["']/gi, (styleMatch: string, styleContent: string) => {
+          let newStyle = styleContent;
 
-            // Remove text-decoration:none if present
-            newStyle = newStyle.replace(/text-decoration\s*:\s*none\s*;?\s*/gi, '');
+          // Remove text-decoration:none if present
+          newStyle = newStyle.replace(/text-decoration\s*:\s*none\s*;?\s*/gi, '');
 
-            // Add link styling - CORREGIDO: Usar clases CSS en lugar de estilos inline con !important
-            newStyle = newStyle.trim();
-            if (newStyle && !newStyle.endsWith(';')) newStyle += ';';
+          // Add link styling - CORREGIDO: Usar clases CSS en lugar de estilos inline con !important
+          newStyle = newStyle.trim();
+          if (newStyle && !newStyle.endsWith(';')) newStyle += ';';
 
-            return `style="${newStyle}" class="message-link"`;
-          }
-        );
+          return `style="${newStyle}" class="message-link"`;
+        });
       } else {
         // Add style attribute with link styling - CORREGIDO: Usar clase CSS
         attributes += ' class="message-link"';
@@ -211,10 +208,7 @@ function findQuoteStartIndex(html: string): number {
       // Para patrones From, asegurarse que esté en un contexto apropiado
       if (pattern.source.includes('From:')) {
         // Verificar que hay suficiente contenido antes para justificar un corte
-        const textBeforeMatch = html
-          .substring(0, match.index)
-          .replace(/<[^>]*>/g, '')
-          .trim();
+        const textBeforeMatch = html.substring(0, match.index).replace(/<[^>]*>/g, '').trim();
         if (textBeforeMatch.length < 30) {
           continue;
         }
@@ -231,6 +225,11 @@ function findQuoteStartIndex(html: string): number {
 
 function OptimizedMessageItem({ content, isInitial = false, ticket }: OptimizedMessageItemProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+
+  // Aplicar estilos CSS para modo oscuro
+  useEffect(() => {
+    addDarkModeStyles();
+  }, []);
 
   // Aplicar estilos CSS para modo oscuro
   useEffect(() => {
@@ -349,10 +348,7 @@ function OptimizedMessageItem({ content, isInitial = false, ticket }: OptimizedM
         <div key="to" className="flex items-center gap-1 flex-wrap">
           <span className="text-xs font-medium text-slate-600 dark:text-slate-400">To:</span>
           {ticket.to_recipients.split(',').map((email, index) => (
-            <span
-              key={index}
-              className="inline-flex items-center rounded-full bg-slate-100 dark:bg-slate-700 px-2 py-0.5 text-xs font-medium text-slate-700 dark:text-slate-300"
-            >
+            <span key={index} className="inline-flex items-center rounded-full bg-slate-100 dark:bg-slate-700 px-2 py-0.5 text-xs font-medium text-slate-700 dark:text-slate-300">
               {email.trim()}
             </span>
           ))}
@@ -365,10 +361,7 @@ function OptimizedMessageItem({ content, isInitial = false, ticket }: OptimizedM
         <div key="cc" className="flex items-center gap-1 flex-wrap">
           <span className="text-xs font-medium text-slate-600 dark:text-slate-400">Cc:</span>
           {ticket.cc_recipients.split(',').map((email, index) => (
-            <span
-              key={index}
-              className="inline-flex items-center rounded-full bg-slate-100 dark:bg-slate-700 px-2 py-0.5 text-xs font-medium text-slate-700 dark:text-slate-300"
-            >
+            <span key={index} className="inline-flex items-center rounded-full bg-slate-100 dark:bg-slate-700 px-2 py-0.5 text-xs font-medium text-slate-700 dark:text-slate-300">
               {email.trim()}
             </span>
           ))}
@@ -381,10 +374,7 @@ function OptimizedMessageItem({ content, isInitial = false, ticket }: OptimizedM
         <div key="bcc" className="flex items-center gap-1 flex-wrap">
           <span className="text-xs font-medium text-slate-600 dark:text-slate-400">Bcc:</span>
           {ticket.bcc_recipients.split(',').map((email, index) => (
-            <span
-              key={index}
-              className="inline-flex items-center rounded-full bg-slate-100 dark:bg-slate-700 px-2 py-0.5 text-xs font-medium text-slate-700 dark:text-slate-300"
-            >
+            <span key={index} className="inline-flex items-center rounded-full bg-slate-100 dark:bg-slate-700 px-2 py-0.5 text-xs font-medium text-slate-700 dark:text-slate-300">
               {email.trim()}
             </span>
           ))}
@@ -396,7 +386,9 @@ function OptimizedMessageItem({ content, isInitial = false, ticket }: OptimizedM
 
     return (
       <div className="mb-3 p-2 border-l-2 border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/50 rounded-r-md">
-        <div className="space-y-1">{recipients}</div>
+        <div className="space-y-1">
+          {recipients}
+        </div>
       </div>
     );
   };
@@ -447,8 +439,8 @@ function OptimizedMessageItem({ content, isInitial = false, ticket }: OptimizedM
             style={{
               wordBreak: 'break-word',
               overflowWrap: 'break-word',
-              color: 'inherit',
-            }}
+              color: 'inherit'
+      }}
           />
 
           {showToggleButton && (
@@ -797,7 +789,6 @@ export function TicketConversation({
     ticket.user?.name,
     currentAgentData,
     globalSignatureData,
-    onExtraRecipientsChange,
   ]);
 
   const handleAttachmentsChange = (files: File[]) => {
@@ -1145,51 +1136,55 @@ export function TicketConversation({
             ) : (
               <>
                 {/* Show only the latest message */}
-                {conversationItems.isOptimized ? (
-                  conversationItems.items.length > 0 && (
-                    <OptimizedMessageItem
-                      key={(conversationItems.items[0] as TicketHtmlContent).id}
-                      content={conversationItems.items[0] as TicketHtmlContent}
-                      isInitial={(conversationItems.items[0] as TicketHtmlContent).id === 'initial'}
-                      ticket={{
-                        to_recipients: ticket.to_recipients,
-                        cc_recipients: ticket.cc_recipients,
-                        bcc_recipients: ticket.bcc_recipients,
-                      }}
-                    />
-                  )
-                ) : (
-                  <>
-                    {/* Always show initial message first if it exists and is the latest */}
-                    {conversationItems.hasInitialMessage &&
-                    conversationItems.initialMessageContent &&
-                    conversationItems.items.length > 0 &&
-                    (conversationItems.items[0] as IComment).id === -1 ? (
-                      <InitialTicketMessage
-                        key="initial-message-latest"
-                        ticketId={ticket.id}
-                        initialContent={conversationItems.initialMessageContent}
-                        user={conversationItems.initialMessageSender}
-                        createdAt={ticket.created_at}
+                {conversationItems.isOptimized
+                  ? conversationItems.items.length > 0 && (
+                      <OptimizedMessageItem
+                        key={(conversationItems.items[0] as TicketHtmlContent).id}
+                        content={conversationItems.items[0] as TicketHtmlContent}
+                        isInitial={
+                          (conversationItems.items[0] as TicketHtmlContent).id === 'initial'
+                        }
                         ticket={{
                           to_recipients: ticket.to_recipients,
                           cc_recipients: ticket.cc_recipients,
                           bcc_recipients: ticket.bcc_recipients,
                         }}
                       />
-                    ) : (
-                      conversationItems.items.length > 0 && (
-                        <ConversationMessageItem
-                          key={(conversationItems.items[0] as IComment).id}
-                          comment={conversationItems.items[0] as IComment}
-                          ticket={{
-                            to_recipients: ticket.to_recipients,
-                            cc_recipients: ticket.cc_recipients,
-                            bcc_recipients: ticket.bcc_recipients,
-                          }}
-                          isFirstMessage={true}
-                        />
-                      )
+                    )
+                  : (
+                      <>
+                        {/* Always show initial message first if it exists and is the latest */}
+                        {conversationItems.hasInitialMessage &&
+                         conversationItems.initialMessageContent &&
+                         conversationItems.items.length > 0 &&
+                         (conversationItems.items[0] as IComment).id === -1 ? (
+                          <InitialTicketMessage
+                            key="initial-message-latest"
+                            ticketId={ticket.id}
+                            initialContent={conversationItems.initialMessageContent}
+                            user={conversationItems.initialMessageSender}
+                            createdAt={ticket.created_at}
+                            ticket={{
+                              to_recipients: ticket.to_recipients,
+                              cc_recipients: ticket.cc_recipients,
+                              bcc_recipients: ticket.bcc_recipients,
+                            }}
+                          />
+                        ) : (
+                          conversationItems.items.length > 0 && (
+                            <ConversationMessageItem
+                              key={(conversationItems.items[0] as IComment).id}
+                              comment={conversationItems.items[0] as IComment}
+                              ticket={{
+                                to_recipients: ticket.to_recipients,
+                                cc_recipients: ticket.cc_recipients,
+                                bcc_recipients: ticket.bcc_recipients,
+                              }}
+                              isFirstMessage={true}
+                            />
+                          )
+                        )}
+                      </>
                     )}
                   </>
                 )}
@@ -1234,7 +1229,10 @@ export function TicketConversation({
                     .slice(1)
                     .filter((item: IComment) => item.id !== -1) // Filtrar mensaje inicial de la lista expandida
                     .map((item: IComment) => (
-                      <ConversationMessageItem key={item.id} comment={item} />
+                      <ConversationMessageItem
+                        key={item.id}
+                        comment={item}
+                      />
                     ))}
             </div>
           )}
@@ -1289,8 +1287,7 @@ export function TicketConversation({
                   )
                 ) : (
                   <>
-                    {conversationItems.hasInitialMessage &&
-                      conversationItems.initialMessageContent && (
+                    {conversationItems.hasInitialMessage && conversationItems.initialMessageContent && (
                         <InitialTicketMessage
                           key="initial-message"
                           ticketId={ticket.id}
@@ -1308,7 +1305,10 @@ export function TicketConversation({
                     {(conversationItems.items as IComment[])
                       .filter((item: IComment) => item.id !== -1) // Filtrar el mensaje inicial
                       .map((item: IComment) => (
-                        <ConversationMessageItem key={item.id} comment={item} />
+                        <ConversationMessageItem
+                          key={item.id}
+                          comment={item}
+                        />
                       ))}
                   </>
                 )}

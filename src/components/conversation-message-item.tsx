@@ -44,6 +44,12 @@ const fileTypeColors: { [key: string]: string } = {
 
 interface Props {
   comment: IComment;
+  ticket?: {
+    to_recipients?: string;
+    cc_recipients?: string;
+    bcc_recipients?: string;
+  };
+  isFirstMessage?: boolean;
 }
 
 const parseSenderFromContent = (content: string): { name: string; email: string } | null => {
@@ -63,35 +69,52 @@ const parseSenderFromContent = (content: string): { name: string; email: string 
 // Helper to find the start of the quoted text
 function findQuoteStartIndex(html: string): number {
   const patterns = [
-    // Common email quote headers
-    /On .*? wrote:/i,
-    /From:.*?</i, // Basic check for lines starting with From:
-    /Sent from my /i, // e.g., Sent from my iPhone
+    // Common email quote headers - más específicos
+    /On .+? wrote:\s*</i,
+    // From patterns - más específicos para evitar falsos positivos  
+    /<p[^>]*><strong>From:<\/strong>/i, // HTML From header
+    /<div[^>]*>From:\s+[^<]+<[^@]+@[^>]+>/i, // From with email format
+    /^From:\s+[^<]+<[^@]+@[^>]+>/m, // From at line start with email
+    /Sent from my \w+/i, // e.g., Sent from my iPhone
     // HTML quote elements
-    /<div class="gmail_quote/i, // Modified to catch any class that starts with gmail_quote
-    /<blockquote class="gmail_quote/i, // Modified to catch any class that starts with gmail_quote
-    /<blockquote/i, // Any blockquote element
-    /<div class="gmail_attr"/i, // Gmail attribute div
-    // Separators (look for one *after* the potential start)
-    /<hr\s*style=["'][^"']*border-top:\s*1px\s*solid\s*[^;]+;["']/i, // Outlook HR
-    /<hr/i, // General hr, check later if it's the first one
+    /<div[^>]*class="gmail_quote/i,
+    /<blockquote[^>]*class="gmail_quote/i,
+    /<blockquote[^>]*type="cite"/i,
+    /<div[^>]*class="gmail_attr"/i,
+    // Outlook separators
+    /<hr\s*style=["'][^"']*border-top:\s*1px\s*solid\s*[^;]+;["']/i,
     // Forwarded message indicators
     /---------- Forwarded message ---------/i,
     /Begin forwarded message:/i,
+    // Outlook quote indicators
+    /<div[^>]*style=["'][^"']*border:none;\s*border-top:solid\s+#E1E1E1/i,
   ];
+  
   let earliestIndex = -1;
-
+  
   for (const pattern of patterns) {
     const match = html.match(pattern);
     if (match && match.index !== undefined) {
-      if (pattern.source === '<hr/i' && match.index < 10) {
+      // Para HR, asegurarse que no esté al principio del mensaje
+      if (pattern.source.includes('<hr') && match.index < 50) {
         continue;
       }
+      
+      // Para patrones From, asegurarse que esté en un contexto apropiado
+      if (pattern.source.includes('From:')) {
+        // Verificar que hay suficiente contenido antes para justificar un corte
+        const textBeforeMatch = html.substring(0, match.index).replace(/<[^>]*>/g, '').trim();
+        if (textBeforeMatch.length < 30) {
+          continue;
+        }
+      }
+      
       if (earliestIndex === -1 || match.index < earliestIndex) {
         earliestIndex = match.index;
       }
     }
   }
+  
   return earliestIndex;
 }
 
@@ -248,16 +271,15 @@ const processLinksForNewTab = (htmlContent: string): string => {
           // Remove text-decoration:none if present
           newStyle = newStyle.replace(/text-decoration\s*:\s*none\s*;?\s*/gi, '');
           
-          // Add link styling
+          // Add link styling - CORREGIDO: Usar clases CSS en lugar de estilos inline con !important
           newStyle = newStyle.trim();
           if (newStyle && !newStyle.endsWith(';')) newStyle += ';';
-          newStyle += 'color:#2563eb !important;text-decoration:underline !important;cursor:pointer !important;';
           
-          return `style="${newStyle}"`;
+          return `style="${newStyle}" class="message-link"`;
         });
       } else {
-        // Add style attribute with link styling
-        attributes += ' style="color:#2563eb !important;text-decoration:underline !important;cursor:pointer !important;"';
+        // Add style attribute with link styling - CORREGIDO: Usar clase CSS
+        attributes += ' class="message-link"';
       }
       
       return `<a ${attributes}href="${processedUrl}"${targetAttr}>`;
@@ -287,6 +309,11 @@ interface InitialTicketMessageProps {
   initialContent: string;
   user: IComment['user'];
   createdAt: string;
+  ticket?: {
+    to_recipients?: string;
+    cc_recipients?: string;
+    bcc_recipients?: string;
+  };
 }
 
 function InitialTicketMessage({
@@ -294,10 +321,66 @@ function InitialTicketMessage({
   initialContent,
   user,
   createdAt,
+  ticket,
 }: InitialTicketMessageProps) {
   const [s3Content, setS3Content] = useState<string | null>(null);
   const [isLoadingS3, setIsLoadingS3] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+
+  // Helper function to render email recipients
+  const renderEmailRecipients = () => {
+    if (!ticket) return null;
+    
+    const recipients: { label: string; emails: string; show: boolean }[] = [
+      { 
+        label: 'TO:', 
+        emails: ticket.to_recipients || '', 
+        show: Boolean(ticket.to_recipients?.trim()) 
+      },
+      { 
+        label: 'CC:', 
+        emails: ticket.cc_recipients || '', 
+        show: Boolean(ticket.cc_recipients?.trim()) 
+      },
+      { 
+        label: 'BCC:', 
+        emails: ticket.bcc_recipients || '', 
+        show: Boolean(ticket.bcc_recipients?.trim()) 
+      }
+    ];
+
+    const hasAnyRecipients = recipients.some(r => r.show);
+    if (!hasAnyRecipients) return null;
+
+    return (
+      <div className="mb-3 text-xs text-muted-foreground space-y-1 border-l-2 border-muted pl-2">
+        {recipients.map(recipient => {
+          if (!recipient.show) return null;
+          
+          const emailList = recipient.emails.split(',').map(email => email.trim()).filter(Boolean);
+          
+          return (
+            <div key={recipient.label} className="flex items-start gap-2">
+              <span className="font-medium min-w-[30px] text-slate-600 dark:text-slate-400">
+                {recipient.label}
+              </span>
+              <div className="flex flex-wrap gap-1">
+                {emailList.map((email, index) => (
+                  <Badge 
+                    key={index} 
+                    variant="secondary" 
+                    className="text-xs px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-0"
+                  >
+                    {email}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
 
   // Detectar si el contenido inicial está migrado a S3
   const isMigratedToS3 = initialContent?.startsWith('[MIGRATED_TO_S3]');
@@ -334,14 +417,16 @@ function InitialTicketMessage({
     }
   }, [ticketId, initialContent, isMigratedToS3, s3Content, isLoadingS3]);
 
-  // Cargar contenido desde S3 inmediatamente para contenido migrado
   useEffect(() => {
     if (isMigratedToS3 && !s3Content && !isLoadingS3) {
       loadInitialS3Content();
     }
   }, [isMigratedToS3, loadInitialS3Content, s3Content, isLoadingS3]);
 
-  // Determinar el contenido a mostrar
+  useEffect(() => {
+    addDarkModeStyles();
+  }, []);
+
   let displayContent: string;
   if (isMigratedToS3) {
     if (isLoadingS3) {
@@ -378,10 +463,10 @@ function InitialTicketMessage({
         <div className="flex items-center gap-2 mb-1">
           <span className="text-sm font-medium text-blue-700 dark:text-blue-300">{senderName}</span>
           <span className="text-xs text-muted-foreground">{formatRelativeTime(createdAt)}</span>
-          <Badge variant="outline" className="text-xs">
-            Initial Message
-          </Badge>
         </div>
+
+        {/* Email Recipients - TO, CC, BCC */}
+        {renderEmailRecipients()}
 
         <div className="message-content">
           {isLoadingS3 ? (
@@ -391,11 +476,12 @@ function InitialTicketMessage({
             </div>
           ) : (
             <div
-              className="prose prose-sm max-w-none dark:prose-invert"
+              className="prose prose-sm max-w-none dark:prose-invert text-black dark:text-white user-message-content message-content-container"
               dangerouslySetInnerHTML={{ __html: processLinksForNewTab(truncatedContent || '') }}
               style={{ 
                 wordBreak: 'break-word',
-                overflowWrap: 'break-word'
+                overflowWrap: 'break-word',
+                color: 'inherit'
               }}
             />
           )}
@@ -417,8 +503,34 @@ function InitialTicketMessage({
 // Export the InitialTicketMessage component for use in ticket conversation
 export { InitialTicketMessage };
 
-export function ConversationMessageItem({ comment }: Props) {
-  // Estado para contenido S3
+const addDarkModeStyles = () => {
+  if (typeof document !== 'undefined') {
+    const existingStyle = document.getElementById('dark-mode-message-styles');
+    if (existingStyle) return;
+    
+    const style = document.createElement('style');
+    style.id = 'dark-mode-message-styles';
+    style.textContent = `
+      @media (prefers-color-scheme: dark) {
+        .dark .user-message-content [style*="color:rgb(0,0,0)"],
+        .dark .user-message-content [style*="color:#000000"],
+        .dark .user-message-content [style*="color:#000"],
+        .dark .user-message-content [style*="color:black"] {
+          color: white !important;
+        }
+      }
+      .dark .user-message-content [style*="color:rgb(0,0,0)"],
+      .dark .user-message-content [style*="color:#000000"],
+      .dark .user-message-content [style*="color:#000"],
+      .dark .user-message-content [style*="color:black"] {
+        color: white !important;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+};
+
+export function ConversationMessageItem({ comment, ticket, isFirstMessage }: Props) {
   const [s3Content, setS3Content] = useState<string | null>(null);
   const [isLoadingS3, setIsLoadingS3] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -426,9 +538,65 @@ export function ConversationMessageItem({ comment }: Props) {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [selectedImageSrc, setSelectedImageSrc] = useState<string | null>(null);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
-
-  // Ref para el intersection observer
   const commentRef = useRef<HTMLDivElement>(null);
+  
+  // Helper function to render email recipients
+  const renderEmailRecipients = () => {
+    if (!ticket) return null;
+    
+    const recipients: { label: string; emails: string; show: boolean }[] = [
+      { 
+        label: 'TO:', 
+        emails: ticket.to_recipients || '', 
+        show: Boolean(ticket.to_recipients?.trim()) 
+      },
+      { 
+        label: 'CC:', 
+        emails: ticket.cc_recipients || '', 
+        show: Boolean(ticket.cc_recipients?.trim()) 
+      },
+      { 
+        label: 'BCC:', 
+        emails: ticket.bcc_recipients || '', 
+        show: Boolean(ticket.bcc_recipients?.trim()) 
+      }
+    ];
+
+    const hasAnyRecipients = recipients.some(r => r.show);
+    if (!hasAnyRecipients) return null;
+
+    return (
+      <div className="mb-3 text-xs text-muted-foreground space-y-1 border-l-2 border-muted pl-2">
+        {recipients.map(recipient => {
+          if (!recipient.show) return null;
+          
+          const emailList = recipient.emails.split(',').map(email => email.trim()).filter(Boolean);
+          
+          return (
+            <div key={recipient.label} className="flex items-start gap-2">
+              <span className="font-medium min-w-[30px] text-slate-600 dark:text-slate-400">
+                {recipient.label}
+              </span>
+              <div className="flex flex-wrap gap-1">
+                {emailList.map((email, index) => (
+                  <Badge 
+                    key={index} 
+                    variant="secondary" 
+                    className="text-xs px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-0"
+                  >
+                    {email}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+  useEffect(() => {
+    addDarkModeStyles();
+  }, []);
 
   // Detectar si el comentario está migrado a S3
   const isMigratedToS3 = comment.s3_html_url && comment.content?.startsWith('[MIGRATED_TO_S3]');
@@ -444,9 +612,7 @@ export function ConversationMessageItem({ comment }: Props) {
       const response = await getCommentS3Content(comment.id);
 
       if (response.status === 'loaded_from_s3' && response.content) {
-        // Verificar si el contenido de S3 sigue siendo el placeholder (contenido corrupto)
         if (response.content.startsWith('[MIGRATED_TO_S3]')) {
-          // Usar el contenido original pero limpio
           const cleanContent =
             comment.content?.replace(/^\[MIGRATED_TO_S3\][^"]*"[^"]*"/, '').trim() || '';
           setS3Content(cleanContent || 'Content temporarily unavailable');
@@ -454,12 +620,10 @@ export function ConversationMessageItem({ comment }: Props) {
           setS3Content(response.content);
         }
       } else {
-        // Fallback al contenido de la base de datos
         setS3Content(response.content);
       }
     } catch (error) {
       console.error('Error loading S3 content:', error);
-      // Usar el contenido de la base de datos como fallback, pero sin el prefijo
       const cleanContent =
         comment.content?.replace(/^\[MIGRATED_TO_S3\][^"]*"[^"]*"/, '').trim() || comment.content;
       setS3Content(cleanContent);
@@ -468,10 +632,8 @@ export function ConversationMessageItem({ comment }: Props) {
     }
   }, [comment.id, comment.content, isMigratedToS3, s3Content, isLoadingS3]);
 
-  // Cargar contenido desde S3 inmediatamente para comentarios migrados
   useEffect(() => {
     if (isMigratedToS3 && !s3Content && !isLoadingS3) {
-      // Cargar inmediatamente sin esperar visibilidad para comentarios migrados
       loadS3Content();
     }
   }, [isMigratedToS3, loadS3Content, s3Content, isLoadingS3]);
@@ -751,12 +913,23 @@ export function ConversationMessageItem({ comment }: Props) {
             </p>
             <p className="text-xs text-muted-foreground mt-0.5">{formattedDate}</p>
           </div>
+
+          {/* Show email recipients only for first message */}
+          {isFirstMessage && renderEmailRecipients()}
+
           <div className={`max-w-none break-words overflow-x-auto`}>
             {!isOnlyAttachmentPlaceholder && (
               <div
-                className="text-sm text-black dark:text-white prose dark:prose-invert max-w-none whitespace-pre-line prose-a:text-blue-600 dark:prose-a:text-blue-400 prose-a:underline"
+                className={`text-sm text-black dark:text-white prose dark:prose-invert max-w-none whitespace-pre-line prose-a:text-blue-600 dark:prose-a:text-blue-400 prose-a:underline ${
+                  isAgentMessage && !isUserReply && !isInitialMessage && !isAutoResponse
+                    ? '[&_*]:!text-black dark:[&_*]:!text-white'
+                    : 'user-message-content'
+                }`}
                 dangerouslySetInnerHTML={{ __html: currentDisplayReplyPart }}
                 onClick={handleImageClick}
+                style={{
+                  color: 'inherit',
+                }}
               />
             )}
 
@@ -773,11 +946,16 @@ export function ConversationMessageItem({ comment }: Props) {
 
                 {isExpanded && displayQuotedPart && (
                   <div
-                    className="mt-2 p-2 border-l-2 border-gray-200 dark:border-gray-700 text-muted-foreground"
+                    className={`mt-2 p-2 border-l-2 border-gray-200 dark:border-gray-700 text-muted-foreground quoted-content message-content-container ${
+                      isAgentMessage && !isUserReply && !isInitialMessage && !isAutoResponse
+                        ? '[&_*]:!text-muted-foreground'
+                        : ''
+                    }`}
                     dangerouslySetInnerHTML={{ __html: processLinksForNewTab(displayQuotedPart) }}
                     style={{ 
                       wordBreak: 'break-word',
-                      overflowWrap: 'break-word'
+                      overflowWrap: 'break-word',
+                      color: 'inherit'
                     }}
                   />
                 )}
@@ -1067,3 +1245,4 @@ export function ConversationMessageItem({ comment }: Props) {
     </>
   );
 }
+

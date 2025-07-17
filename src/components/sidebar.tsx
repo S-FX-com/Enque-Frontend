@@ -104,15 +104,15 @@ function SidebarContent() {
     refetchOnMount: false, // ❌ OPTIMIZADO: Solo si datos obsoletos
   });
 
-  // Add query for all tickets count (excluding closed/resolved)
+  // Add query for all tickets count (excluding closed)
   const { data: allTicketsCount = 0 } = useQuery<number>({
     queryKey: ['ticketsCount', 'all'],
     queryFn: async () => {
       // Usar un límite muy alto para obtener todos los tickets
       const tickets = await getTickets({ limit: 10000 });
-      // Filter out closed and resolved tickets to match My Teams behavior
+      // Filter out closed tickets to match My Teams behavior
       const activeTickets = tickets.filter(
-        ticket => ticket.status !== 'Closed' && ticket.status !== 'Resolved'
+        ticket => ticket.status !== 'Closed'
       );
       return activeTickets.length || 0;
     },
@@ -122,16 +122,16 @@ function SidebarContent() {
     refetchOnMount: false, // ❌ OPTIMIZADO: Solo si datos obsoletos
   });
 
-  // Add query for my tickets count (excluding closed/resolved)
+  // Add query for my tickets count (excluding closed)
   const { data: myTicketsCount = 0 } = useQuery<number>({
     queryKey: ['ticketsCount', 'my', user?.id],
     queryFn: async () => {
       if (!user?.id) return 0;
       // Usar un límite muy alto para obtener todos los tickets
       const tickets = await getTickets({ limit: 10000 }, `/v1/tasks/assignee/${user.id}`);
-      // Filter out closed and resolved tickets to match My Teams behavior
+      // Filter out closed tickets to match My Teams behavior
       const activeTickets = tickets.filter(
-        ticket => ticket.status !== 'Closed' && ticket.status !== 'Resolved'
+        ticket => ticket.status !== 'Closed'
       );
       return activeTickets.length || 0;
     },

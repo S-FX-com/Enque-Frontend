@@ -22,7 +22,7 @@ interface NotificationResponse {
   users: {
     email: {
       new_ticket_created: { is_enabled: boolean; id: number; template: string };
-      ticket_resolved: { is_enabled: boolean; id: number; template: string };
+      ticket_closed: { is_enabled: boolean; id: number; template: string };
       new_agent_response: { is_enabled: boolean; id: number; template: string };
     };
   };

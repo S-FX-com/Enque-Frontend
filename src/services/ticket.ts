@@ -285,6 +285,38 @@ export async function getTicketHtmlContent(ticketId: number): Promise<TicketHtml
  * @param ticketIdsToMerge Array of ticket IDs to merge into the target.
  * @returns A promise that resolves to the BaseResponse from the API.
  */
+/**
+ * Search for tickets using the search endpoint
+ * @param query Search term to find in ticket title, description, body, or ticket ID
+ * @param skip Number of tickets to skip for pagination
+ * @param limit Maximum number of tickets to return
+ * @returns A promise that resolves to an array of ITicket objects matching the search
+ */
+export async function searchTickets(
+  query: string,
+  skip: number = 0,
+  limit: number = 30
+): Promise<ITicket[]> {
+  try {
+    const queryParams = new URLSearchParams({
+      q: query,
+      skip: skip.toString(),
+      limit: limit.toString(),
+    });
+    const url = `${API_BASE_URL}/v1/tasks/search?${queryParams.toString()}`;
+    const response = await fetchAPI.GET<ITicket[]>(url);
+    if (response && response.success && response.data) {
+      return response.data;
+    } else {
+      console.error('Error searching tickets:', response?.message || 'Unknown API error');
+      return [];
+    }
+  } catch (error) {
+    console.error('Error searching tickets (catch block):', error);
+    return [];
+  }
+}
+
 export async function mergeTickets(
   targetTicketId: number,
   ticketIdsToMerge: number[]

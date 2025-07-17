@@ -3,6 +3,8 @@
 export enum TaskStatus {
   UNREAD = 'Unread',
   OPEN = 'Open',
+  WITH_USER = 'With User',
+  IN_PROGRESS = 'In Progress',
   CLOSED = 'Closed',
 }
 
