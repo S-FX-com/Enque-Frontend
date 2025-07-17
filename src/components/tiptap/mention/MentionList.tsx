@@ -74,8 +74,4 @@ const MentionList = forwardRef<MentionListHandle, SuggestionProps>(function Ment
   );
 });
 
-<<<<<<< HEAD
 export default MentionList;
-=======
-export default MentionList;
->>>>>>> 0f9f96ac424022068b1e8061722a3aa053ece17f

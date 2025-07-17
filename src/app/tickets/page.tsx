@@ -193,13 +193,7 @@ function TicketsClientContent() {
     let tickets = allTicketsData;
 
     if (selectedStatuses.length === 0) {
-<<<<<<< HEAD
-      tickets = tickets.filter(
-        ticket => ticket.status !== 'Closed' && ticket.status !== 'Resolved'
-      );
-=======
       tickets = tickets.filter(ticket => ticket.status !== 'Closed');
->>>>>>> 0f9f96ac424022068b1e8061722a3aa053ece17f
     }
 
     if (debouncedSubjectFilter) {
@@ -416,13 +410,9 @@ function TicketsClientContent() {
 
       const allTickets = previousTicketsData?.pages.flat() || [];
       const deletedTickets = allTickets.filter(ticket => ticketIdsToDelete.includes(ticket.id));
-      const activeDeletedCount = deletedTickets.filter(
-        ticket => ticket.status !== 'Closed'
-      ).length;
+      const activeDeletedCount = deletedTickets.filter(ticket => ticket.status !== 'Closed').length;
       const myActiveDeletedCount = deletedTickets.filter(
-        ticket =>
-          ticket.assignee_id === user?.id &&
-          ticket.status !== 'Closed'
+        ticket => ticket.assignee_id === user?.id && ticket.status !== 'Closed'
       ).length;
 
       queryClient.setQueryData(
@@ -689,9 +679,7 @@ function TicketsClientContent() {
 
       // Optimistically update "my tickets" counter if current user is affected
       if (user?.id) {
-        const activeTicketsToUser = affectedTickets.filter(
-          ticket => ticket.status !== 'Closed'
-        );
+        const activeTicketsToUser = affectedTickets.filter(ticket => ticket.status !== 'Closed');
 
         // Count tickets that were assigned to current user that are now being reassigned
         const ticketsRemovedFromUser = activeTicketsToUser.filter(
@@ -849,9 +837,7 @@ function TicketsClientContent() {
       });
 
       // Update counters - closed tickets reduce active count
-      const activeTicketsToClose = affectedTickets.filter(
-        ticket => ticket.status !== 'Closed'
-      );
+      const activeTicketsToClose = affectedTickets.filter(ticket => ticket.status !== 'Closed');
 
       const currentAllCount = queryClient.getQueryData<number>(['ticketsCount', 'all']) || 0;
       const currentMyCount =
@@ -892,7 +878,6 @@ function TicketsClientContent() {
     },
   });
 
-<<<<<<< HEAD
   /*const bulkResolveTicketsMutation = useMutation({
     mutationFn: async (ticketIds: number[]) => {
       const results = await Promise.allSettled(
@@ -994,9 +979,6 @@ function TicketsClientContent() {
       queryClient.invalidateQueries({ queryKey: ['ticketsCount'] });
     },
   });*/
-=======
-
->>>>>>> 0f9f96ac424022068b1e8061722a3aa053ece17f
 
   const handleCloseTicketsConfirm = () => {
     if (selectedTicketIds.size > 0) {
@@ -1004,15 +986,11 @@ function TicketsClientContent() {
     }
   };
 
-<<<<<<< HEAD
   //const handleResolveTicketsConfirm = () => {
   //  if (selectedTicketIds.size > 0) {
   //    bulkResolveTicketsMutation.mutate(Array.from(selectedTicketIds));
   //  }
   //};
-=======
-
->>>>>>> 0f9f96ac424022068b1e8061722a3aa053ece17f
 
   const handleAssignToAgentConfirm = () => {
     if (selectedTicketIds.size > 0) {
@@ -1099,13 +1077,9 @@ function TicketsClientContent() {
       // Update counters
       const allTickets = previousTicketsData?.pages.flat() || [];
       const mergedTickets = allTickets.filter(ticket => ticketIdsToMerge.includes(ticket.id));
-      const activeMergedCount = mergedTickets.filter(
-        ticket => ticket.status !== 'Closed'
-      ).length;
+      const activeMergedCount = mergedTickets.filter(ticket => ticket.status !== 'Closed').length;
       const myActiveMergedCount = mergedTickets.filter(
-        ticket =>
-          ticket.assignee_id === user?.id &&
-          ticket.status !== 'Closed'
+        ticket => ticket.assignee_id === user?.id && ticket.status !== 'Closed'
       ).length;
 
       const currentAllCount = queryClient.getQueryData<number>(['ticketsCount', 'all']) || 0;
@@ -1303,12 +1277,6 @@ function TicketsClientContent() {
                 <Settings2 className="mr-2 h-4 w-4" />
                 Close ({selectedTicketIds.size})
               </Button>
-
-<<<<<<< HEAD
-=======
- 
-
->>>>>>> 0f9f96ac424022068b1e8061722a3aa053ece17f
               {selectedTicketIds.size > 1 && (
                 <AlertDialog open={isMergeDialogOpen} onOpenChange={setIsMergeDialogOpen}>
                   <AlertDialogTrigger asChild>

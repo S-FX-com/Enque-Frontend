@@ -114,6 +114,8 @@
   * {
     @apply border-border outline-ring/50;
     outline-color: transparent !important;
+    font-family: var(--font-geist-sans) !important;
+    font-size: 10pt !important;
   }
   body {
     @apply bg-background text-foreground font-sans;
@@ -233,10 +235,10 @@ nav a,
 .sidebar a,
 .navigation a:link,
 .navigation a,
-[class*="sidebar"] a:link,
-[class*="sidebar"] a,
-[class*="nav"] a:link,
-[class*="nav"] a,
+[class*='sidebar'] a:link,
+[class*='sidebar'] a,
+[class*='nav'] a:link,
+[class*='nav'] a,
 .topbar a:link,
 .topbar a,
 .breadcrumb a:link,
@@ -278,7 +280,7 @@ html body [class*="message-content-container"] a:link,
 html body [class*="message-content-container"] a[href],
 html body [class*="message-content-container"] a,
 html body [class*="quoted-content"] a:link,
-html body [class*="quoted-content"] a[href], 
+html body [class*="quoted-content"] a[href],
 html body [class*="quoted-content"] a,
 html body .message-content-container span.x_MsoHyperlink,
 html body .quoted-content span.x_MsoHyperlink,
@@ -323,9 +325,9 @@ body .quoted-content span.x_MsoHyperlink {
 }
 
 /* Anular cualquier regla de MSO/Outlook directamente */
-.message-content-container *[class*="MsoHyperlink"],
-.quoted-content *[class*="MsoHyperlink"],
-.user-message-content *[class*="MsoHyperlink"] {
+.message-content-container *[class*='MsoHyperlink'],
+.quoted-content *[class*='MsoHyperlink'],
+.user-message-content *[class*='MsoHyperlink'] {
   text-decoration: underline !important;
   color: #2563eb !important;
 }
@@ -339,15 +341,15 @@ body .user-message-content a:link {
 }
 
 /* Regla nuclear para combatir estilos inline */
-.message-content-container a[style*="text-decoration"],
-.quoted-content a[style*="text-decoration"],
-.user-message-content a[style*="text-decoration"] {
+.message-content-container a[style*='text-decoration'],
+.quoted-content a[style*='text-decoration'],
+.user-message-content a[style*='text-decoration'] {
   text-decoration: underline !important;
 }
 
-.message-content-container a[style*="color"],
-.quoted-content a[style*="color"],
-.user-message-content a[style*="color"] {
+.message-content-container a[style*='color'],
+.quoted-content a[style*='color'],
+.user-message-content a[style*='color'] {
   color: #2563eb !important;
 }
 
@@ -423,8 +425,8 @@ html body .dark .user-message-content span.x_MsoHyperlink,
 nav span.x_MsoHyperlink,
 .sidebar span.x_MsoHyperlink,
 .navigation span.x_MsoHyperlink,
-[class*="sidebar"] span.x_MsoHyperlink,
-[class*="nav"] span.x_MsoHyperlink,
+[class*='sidebar'] span.x_MsoHyperlink,
+[class*='nav'] span.x_MsoHyperlink,
 .topbar span.x_MsoHyperlink,
 .breadcrumb span.x_MsoHyperlink {
   text-decoration: none !important;

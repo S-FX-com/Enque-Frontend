@@ -121,7 +121,7 @@ const ResizableImage = Image.extend({
 
       // Establecer dimensiones iniciales si no existen
       const initialWidth = node.attrs.width || 300;
-      const initialHeight = node.attrs.height || 200;
+      //const initialHeight = node.attrs.height || 200;
 
       img.style.cssText = `
         max-width: 100%;
@@ -194,21 +194,21 @@ const ResizableImage = Image.extend({
       // Lógica de redimensionamiento
       let isResizing = false;
       let startX = 0;
-      let startY = 0;
+      //let startY = 0;
       let startWidth = 0;
-      let startHeight = 0;
-      let aspectRatio = 1;
+      //let startHeight = 0;
+      //let aspectRatio = 1;
 
-      const startResize = (e: MouseEvent, handle: HTMLElement) => {
+      const startResize = (e: MouseEvent /* handle: HTMLElement */) => {
         e.preventDefault();
         e.stopPropagation();
 
         isResizing = true;
         startX = e.clientX;
-        startY = e.clientY;
+        //startY = e.clientY;
         startWidth = img.offsetWidth;
-        startHeight = img.offsetHeight;
-        aspectRatio = startWidth / startHeight;
+        //startHeight = img.offsetHeight;
+        //aspectRatio = startWidth / startHeight;
 
         document.addEventListener('mousemove', handleResize);
         document.addEventListener('mouseup', stopResize);
@@ -221,15 +221,15 @@ const ResizableImage = Image.extend({
         if (!isResizing) return;
 
         const deltaX = e.clientX - startX;
-        const deltaY = e.clientY - startY;
+        //const deltaY = e.clientY - startY;
 
         // Calcular nuevas dimensiones manteniendo la proporción
         let newWidth = startWidth + deltaX;
-        let newHeight = newWidth / aspectRatio;
+        //let newHeight = newWidth / aspectRatio;
 
         // Límites mínimos y máximos
         newWidth = Math.max(50, Math.min(800, newWidth));
-        newHeight = newWidth / aspectRatio;
+        //newHeight = newWidth / aspectRatio;
 
         img.style.width = `${newWidth}px`;
         img.style.height = 'auto';
@@ -261,7 +261,7 @@ const ResizableImage = Image.extend({
 
       // Agregar event listeners a los handles
       handles.forEach(handle => {
-        handle.addEventListener('mousedown', e => startResize(e, handle));
+        handle.addEventListener('mousedown', e => startResize(e /* handle*/));
       });
 
       container.appendChild(img);
@@ -307,8 +307,8 @@ export function RichTextEditor({
           .setImage({
             src: result.url,
             alt: 'Pasted Image',
-            width: 300,
-            height: 200,
+            //width: 300,
+            //height: 200,
           })
           .run();
 

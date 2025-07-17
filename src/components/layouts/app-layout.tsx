@@ -76,7 +76,7 @@ export default function AppLayout({
   }, []);
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex h-screen overflow-hidden" style={{}}>
       <aside className="fixed h-screen">
         <Sidebar />
       </aside>
