@@ -179,6 +179,8 @@ export function TicketPageContent({ ticketId }: Props) {
   const { socket } = useSocketContext();
   const { user } = useAuth();
   const [ticket, setTicket] = useState<ITicket | null>(null);
+  const [titleEditing, setTitleEditing] = useState<boolean>(false);
+  const [ticketTitle, setTicketTitle] = useState<string>('');
   const [isClosing, setIsClosing] = useState(false);
   const [isReopening, setIsReopening] = useState(false);
   const [existingToEmails, setExistingToEmails] = useState<string[]>([]);
@@ -213,7 +215,7 @@ export function TicketPageContent({ ticketId }: Props) {
   useEffect(() => {
     if (currentTicket) {
       setTicket(currentTicket as unknown as ITicket);
-
+      setTicketTitle(currentTicket.title);
       // Initialize TO emails if they exist in the ticket data
       if (currentTicket?.to_recipients) {
         const toEmails = currentTicket.to_recipients
@@ -247,6 +249,7 @@ export function TicketPageContent({ ticketId }: Props) {
       }
     }
   }, [currentTicket]);
+  //  const memoizedTitle = useMemo(() => ticketTitle, [ticketTitle]);
 
   // Socket listener for real-time updates
   useEffect(() => {
@@ -317,7 +320,7 @@ export function TicketPageContent({ ticketId }: Props) {
     ITicket,
     Error,
     {
-      field: 'priority' | 'assignee_id' | 'team_id' | 'category_id' | 'user_id';
+      field: 'priority' | 'assignee_id' | 'team_id' | 'category_id' | 'user_id' | 'title';
       value: string | null;
       originalFieldValue: string | number | null;
     },
@@ -396,7 +399,7 @@ export function TicketPageContent({ ticketId }: Props) {
   });
 
   const handleUpdateField = (
-    field: 'priority' | 'assignee_id' | 'team_id' | 'category_id' | 'user_id',
+    field: 'priority' | 'assignee_id' | 'team_id' | 'category_id' | 'user_id' | 'title',
     value: string | null
   ) => {
     if (!ticket) return;
@@ -651,11 +654,31 @@ export function TicketPageContent({ ticketId }: Props) {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div
+        className="flex items-center justify-between"
+        onDoubleClick={() => {
+          setTitleEditing(!titleEditing);
+        }}
+      >
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">#{ticket?.id}</span>
-            <h1 className="text-xl font-semibold">{ticket?.title}</h1>
+            <h1 className="text-xl font-semibold">
+              {titleEditing ? (
+                <input
+                  value={ticketTitle}
+                  onChange={e => setTicketTitle(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') {
+                      setTitleEditing(false);
+                      handleUpdateField('title', ticketTitle);
+                    }
+                  }}
+                />
+              ) : (
+                ticketTitle
+              )}
+            </h1>
           </div>
         </div>
 
