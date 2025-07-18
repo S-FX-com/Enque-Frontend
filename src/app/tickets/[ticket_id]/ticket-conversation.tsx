@@ -38,7 +38,7 @@ const addDarkModeStyles = () => {
   if (typeof document !== 'undefined') {
     const existingStyle = document.getElementById('dark-mode-message-styles');
     if (existingStyle) return;
-    
+
     const style = document.createElement('style');
     style.id = 'dark-mode-message-styles';
     style.textContent = `
@@ -69,14 +69,14 @@ function processLinksForNewTab(htmlContent: string): string {
     (match, beforeHref, url, afterHref) => {
       let attributes = beforeHref + afterHref;
       let processedUrl = url;
-      
+
       // 🔧 NUEVA FUNCIONALIDAD: Decodificar URLs complejas de Outlook SafeLinks
       try {
         // Decodificar URL si está codificada
         if (processedUrl.includes('%')) {
           processedUrl = decodeURIComponent(processedUrl);
         }
-        
+
         // Extraer URL real de Outlook SafeLinks
         if (processedUrl.includes('safelinks.protection.outlook.com')) {
           const urlMatch = processedUrl.match(/url=([^&]+)/);
@@ -84,7 +84,7 @@ function processLinksForNewTab(htmlContent: string): string {
             processedUrl = decodeURIComponent(urlMatch[1]);
           }
         }
-        
+
         // Extraer URL de otros servicios de protección
         if (processedUrl.includes('streaklinks.com') || processedUrl.includes('gourl.es')) {
           // Buscar parámetros url= en la cadena
@@ -96,42 +96,44 @@ function processLinksForNewTab(htmlContent: string): string {
             processedUrl = decodeURIComponent(finalUrl);
           }
         }
-        
+
         // Limpiar encoding adicional
         processedUrl = processedUrl.replace(/&amp;/g, '&');
-        
       } catch (e) {
         // Si hay error decodificando, usar URL original
         console.warn('Error procesando URL:', e);
         processedUrl = url;
       }
-      
+
       // Check if target attribute already exists
       const hasTarget = /target\s*=/i.test(attributes);
       const targetAttr = hasTarget ? '' : ' target="_blank" rel="noopener noreferrer"';
-      
+
       // Check if style attribute exists
       const hasStyle = /style\s*=/i.test(attributes);
-      
+
       if (hasStyle) {
         // Update existing style attribute to include link styling
-        attributes = attributes.replace(/style\s*=\s*["']([^"']*?)["']/gi, (styleMatch: string, styleContent: string) => {
-          let newStyle = styleContent;
-          
-          // Remove text-decoration:none if present
-          newStyle = newStyle.replace(/text-decoration\s*:\s*none\s*;?\s*/gi, '');
-          
-          // Add link styling - CORREGIDO: Usar clases CSS en lugar de estilos inline con !important
-          newStyle = newStyle.trim();
-          if (newStyle && !newStyle.endsWith(';')) newStyle += ';';
-          
-          return `style="${newStyle}" class="message-link"`;
-        });
+        attributes = attributes.replace(
+          /style\s*=\s*["']([^"']*?)["']/gi,
+          (styleMatch: string, styleContent: string) => {
+            let newStyle = styleContent;
+
+            // Remove text-decoration:none if present
+            newStyle = newStyle.replace(/text-decoration\s*:\s*none\s*;?\s*/gi, '');
+
+            // Add link styling - CORREGIDO: Usar clases CSS en lugar de estilos inline con !important
+            newStyle = newStyle.trim();
+            if (newStyle && !newStyle.endsWith(';')) newStyle += ';';
+
+            return `style="${newStyle}" class="message-link"`;
+          }
+        );
       } else {
         // Add style attribute with link styling - CORREGIDO: Usar clase CSS
         attributes += ' class="message-link"';
       }
-      
+
       return `<a ${attributes}href="${processedUrl}"${targetAttr}>`;
     }
   );
@@ -177,7 +179,7 @@ function findQuoteStartIndex(html: string): number {
   const patterns = [
     // Common email quote headers - más específicos
     /On .+? wrote:\s*</i,
-    // From patterns - más específicos para evitar falsos positivos  
+    // From patterns - más específicos para evitar falsos positivos
     /<p[^>]*><strong>From:<\/strong>/i, // HTML From header
     /<div[^>]*>From:\s+[^<]+<[^@]+@[^>]+>/i, // From with email format
     /^From:\s+[^<]+<[^@]+@[^>]+>/m, // From at line start with email
@@ -195,9 +197,9 @@ function findQuoteStartIndex(html: string): number {
     // Outlook quote indicators
     /<div[^>]*style=["'][^"']*border:none;\s*border-top:solid\s+#E1E1E1/i,
   ];
-  
+
   let earliestIndex = -1;
-  
+
   for (const pattern of patterns) {
     const match = html.match(pattern);
     if (match && match.index !== undefined) {
@@ -205,28 +207,31 @@ function findQuoteStartIndex(html: string): number {
       if (pattern.source.includes('<hr') && match.index < 50) {
         continue;
       }
-      
+
       // Para patrones From, asegurarse que esté en un contexto apropiado
       if (pattern.source.includes('From:')) {
         // Verificar que hay suficiente contenido antes para justificar un corte
-        const textBeforeMatch = html.substring(0, match.index).replace(/<[^>]*>/g, '').trim();
+        const textBeforeMatch = html
+          .substring(0, match.index)
+          .replace(/<[^>]*>/g, '')
+          .trim();
         if (textBeforeMatch.length < 30) {
           continue;
         }
       }
-      
+
       if (earliestIndex === -1 || match.index < earliestIndex) {
         earliestIndex = match.index;
       }
     }
   }
-  
+
   return earliestIndex;
 }
 
 function OptimizedMessageItem({ content, isInitial = false, ticket }: OptimizedMessageItemProps) {
   const [isExpanded, setIsExpanded] = useState(false);
-  
+
   // Aplicar estilos CSS para modo oscuro
   useEffect(() => {
     addDarkModeStyles();
@@ -254,29 +259,33 @@ function OptimizedMessageItem({ content, isInitial = false, ticket }: OptimizedM
     };
   }, [content.content, content.sender, isInitial]);
 
-
   const processedContent = React.useMemo(() => {
-    let htmlContent = content.content || ""
+    let htmlContent = content.content || '';
 
-    if (htmlContent.includes("<original-sender>")) {
-      htmlContent = htmlContent.replace(/<original-sender>.*?<\/original-sender>/g, "")
+    if (htmlContent.includes('<original-sender>')) {
+      htmlContent = htmlContent.replace(/<original-sender>.*?<\/original-sender>/g, '');
     }
 
-    htmlContent = htmlContent.replace(/<meta[^>]*>/gi, "")
-    htmlContent = htmlContent.replace(/^\s*<html[^>]*>/gi, "")
-    htmlContent = htmlContent.replace(/<\/html>\s*$/gi, "")
-    htmlContent = htmlContent.replace(/^\s*<head[^>]*>[\s\S]*?<\/head>/gi, "")
-    htmlContent = htmlContent.replace(/^\s*<body[^>]*>/gi, "")
-    htmlContent = htmlContent.replace(/<\/body>\s*$/gi, "")
-    htmlContent = htmlContent.replace(/<p>\s*<\/p>/gi, "<p><br></p>")
-    htmlContent = htmlContent.replace(/^\s*(?:<br\s*\/?>\s*)+/i, "")
-    htmlContent = htmlContent.replace(/(?:<br\s*\/?>\s*)+$/i, "")
+    htmlContent = htmlContent.replace(/<meta[^>]*>/gi, '');
+    htmlContent = htmlContent.replace(/^\s*<html[^>]*>/gi, '');
+    htmlContent = htmlContent.replace(/<\/html>\s*$/gi, '');
+    htmlContent = htmlContent.replace(/^\s*<head[^>]*>[\s\S]*?<\/head>/gi, '');
+    htmlContent = htmlContent.replace(/^\s*<body[^>]*>/gi, '');
+    htmlContent = htmlContent.replace(/<\/body>\s*$/gi, '');
+    htmlContent = htmlContent.replace(/<p[^>]*>\s*<\/p>/gi, '<p><br></p>');
+    htmlContent = htmlContent.replace(
+      /(<p\s+style=["']margin:\s*0\s*!important["']>[\s\S]*?)(<br\s*\/?>)(\s*<\/p>)/gi,
+      '$1</p>$2'
+    );
+
+    htmlContent = htmlContent.replace(/^\s*(?:<br\s*\/?>\s*)+/i, '');
+    htmlContent = htmlContent.replace(/(?:<br\s*\/?>\s*)+$/i, '');
 
     // Process links to open in new tab
-    htmlContent = processLinksForNewTab(htmlContent)
+    htmlContent = processLinksForNewTab(htmlContent);
 
-    return htmlContent.trim()
-  }, [content.content])
+    return htmlContent.trim();
+  }, [content.content]);
   /*
   const processedContent = React.useMemo(() => {
     let htmlContent = content.content || '';
@@ -339,13 +348,16 @@ function OptimizedMessageItem({ content, isInitial = false, ticket }: OptimizedM
     if (!isInitial || !ticket) return null;
 
     const recipients = [];
-    
+
     if (ticket.to_recipients) {
       recipients.push(
         <div key="to" className="flex items-center gap-1 flex-wrap">
           <span className="text-xs font-medium text-slate-600 dark:text-slate-400">To:</span>
           {ticket.to_recipients.split(',').map((email, index) => (
-            <span key={index} className="inline-flex items-center rounded-full bg-slate-100 dark:bg-slate-700 px-2 py-0.5 text-xs font-medium text-slate-700 dark:text-slate-300">
+            <span
+              key={index}
+              className="inline-flex items-center rounded-full bg-slate-100 dark:bg-slate-700 px-2 py-0.5 text-xs font-medium text-slate-700 dark:text-slate-300"
+            >
               {email.trim()}
             </span>
           ))}
@@ -358,7 +370,10 @@ function OptimizedMessageItem({ content, isInitial = false, ticket }: OptimizedM
         <div key="cc" className="flex items-center gap-1 flex-wrap">
           <span className="text-xs font-medium text-slate-600 dark:text-slate-400">Cc:</span>
           {ticket.cc_recipients.split(',').map((email, index) => (
-            <span key={index} className="inline-flex items-center rounded-full bg-slate-100 dark:bg-slate-700 px-2 py-0.5 text-xs font-medium text-slate-700 dark:text-slate-300">
+            <span
+              key={index}
+              className="inline-flex items-center rounded-full bg-slate-100 dark:bg-slate-700 px-2 py-0.5 text-xs font-medium text-slate-700 dark:text-slate-300"
+            >
               {email.trim()}
             </span>
           ))}
@@ -371,7 +386,10 @@ function OptimizedMessageItem({ content, isInitial = false, ticket }: OptimizedM
         <div key="bcc" className="flex items-center gap-1 flex-wrap">
           <span className="text-xs font-medium text-slate-600 dark:text-slate-400">Bcc:</span>
           {ticket.bcc_recipients.split(',').map((email, index) => (
-            <span key={index} className="inline-flex items-center rounded-full bg-slate-100 dark:bg-slate-700 px-2 py-0.5 text-xs font-medium text-slate-700 dark:text-slate-300">
+            <span
+              key={index}
+              className="inline-flex items-center rounded-full bg-slate-100 dark:bg-slate-700 px-2 py-0.5 text-xs font-medium text-slate-700 dark:text-slate-300"
+            >
               {email.trim()}
             </span>
           ))}
@@ -383,9 +401,7 @@ function OptimizedMessageItem({ content, isInitial = false, ticket }: OptimizedM
 
     return (
       <div className="mb-3 p-2 border-l-2 border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/50 rounded-r-md">
-        <div className="space-y-1">
-          {recipients}
-        </div>
+        <div className="space-y-1">{recipients}</div>
       </div>
     );
   };
@@ -427,17 +443,17 @@ function OptimizedMessageItem({ content, isInitial = false, ticket }: OptimizedM
                 : 'user-message-content'
             }`}
             dangerouslySetInnerHTML={{
-          __html:
-          displayReplyPart ||
-          (content.content && content.content.trim()
-            ? processLinksForNewTab(content.content)
-            : "<p>Message content could not be loaded</p>"),
-      }}
-            style={{ 
+              __html:
+                displayReplyPart ||
+                (content.content && content.content.trim()
+                  ? processLinksForNewTab(content.content)
+                  : '<p>Message content could not be loaded</p>'),
+            }}
+            style={{
               wordBreak: 'break-word',
               overflowWrap: 'break-word',
-              color: 'inherit'
-      }}
+              color: 'inherit',
+            }}
           />
 
           {showToggleButton && (
@@ -781,12 +797,7 @@ export function TicketConversation({
       }
     }
     prevTicketIdRef.current = currentTicketId;
-  }, [
-    ticket.id,
-    ticket.user?.name,
-    currentAgentData,
-    globalSignatureData,
-  ]);
+  }, [ticket.id, ticket.user?.name, currentAgentData, globalSignatureData]);
 
   const handleAttachmentsChange = (files: File[]) => {
     setSelectedAttachments(files);
@@ -1133,56 +1144,54 @@ export function TicketConversation({
             ) : (
               <>
                 {/* Show only the latest message */}
-                {conversationItems.isOptimized
-                  ? conversationItems.items.length > 0 && (
-                      <OptimizedMessageItem
-                        key={(conversationItems.items[0] as TicketHtmlContent).id}
-                        content={conversationItems.items[0] as TicketHtmlContent}
-                        isInitial={
-                          (conversationItems.items[0] as TicketHtmlContent).id === 'initial'
-                        }
+                {conversationItems.isOptimized ? (
+                  conversationItems.items.length > 0 && (
+                    <OptimizedMessageItem
+                      key={(conversationItems.items[0] as TicketHtmlContent).id}
+                      content={conversationItems.items[0] as TicketHtmlContent}
+                      isInitial={(conversationItems.items[0] as TicketHtmlContent).id === 'initial'}
+                      ticket={{
+                        to_recipients: ticket.to_recipients,
+                        cc_recipients: ticket.cc_recipients,
+                        bcc_recipients: ticket.bcc_recipients,
+                      }}
+                    />
+                  )
+                ) : (
+                  <>
+                    {/* Always show initial message first if it exists and is the latest */}
+                    {conversationItems.hasInitialMessage &&
+                    conversationItems.initialMessageContent &&
+                    conversationItems.items.length > 0 &&
+                    (conversationItems.items[0] as IComment).id === -1 ? (
+                      <InitialTicketMessage
+                        key="initial-message-latest"
+                        ticketId={ticket.id}
+                        initialContent={conversationItems.initialMessageContent}
+                        user={conversationItems.initialMessageSender}
+                        createdAt={ticket.created_at}
                         ticket={{
                           to_recipients: ticket.to_recipients,
                           cc_recipients: ticket.cc_recipients,
                           bcc_recipients: ticket.bcc_recipients,
                         }}
                       />
-                    )
-                  : (
-                      <>
-                        {/* Always show initial message first if it exists and is the latest */}
-                        {conversationItems.hasInitialMessage && 
-                         conversationItems.initialMessageContent &&
-                         conversationItems.items.length > 0 &&
-                         (conversationItems.items[0] as IComment).id === -1 ? (
-                          <InitialTicketMessage
-                            key="initial-message-latest"
-                            ticketId={ticket.id}
-                            initialContent={conversationItems.initialMessageContent}
-                            user={conversationItems.initialMessageSender}
-                            createdAt={ticket.created_at}
-                            ticket={{
-                              to_recipients: ticket.to_recipients,
-                              cc_recipients: ticket.cc_recipients,
-                              bcc_recipients: ticket.bcc_recipients,
-                            }}
-                          />
-                        ) : (
-                          conversationItems.items.length > 0 && (
-                            <ConversationMessageItem
-                              key={(conversationItems.items[0] as IComment).id}
-                              comment={conversationItems.items[0] as IComment}
-                              ticket={{
-                                to_recipients: ticket.to_recipients,
-                                cc_recipients: ticket.cc_recipients,
-                                bcc_recipients: ticket.bcc_recipients,
-                              }}
-                              isFirstMessage={true}
-                            />
-                          )
-                        )}
-                      </>
+                    ) : (
+                      conversationItems.items.length > 0 && (
+                        <ConversationMessageItem
+                          key={(conversationItems.items[0] as IComment).id}
+                          comment={conversationItems.items[0] as IComment}
+                          ticket={{
+                            to_recipients: ticket.to_recipients,
+                            cc_recipients: ticket.cc_recipients,
+                            bcc_recipients: ticket.bcc_recipients,
+                          }}
+                          isFirstMessage={true}
+                        />
+                      )
                     )}
+                  </>
+                )}
               </>
             )}
           </div>
@@ -1224,10 +1233,7 @@ export function TicketConversation({
                     .slice(1)
                     .filter((item: IComment) => item.id !== -1) // Filtrar mensaje inicial de la lista expandida
                     .map((item: IComment) => (
-                      <ConversationMessageItem
-                        key={item.id}
-                        comment={item}
-                      />
+                      <ConversationMessageItem key={item.id} comment={item} />
                     ))}
             </div>
           )}
@@ -1282,7 +1288,8 @@ export function TicketConversation({
                   )
                 ) : (
                   <>
-                    {conversationItems.hasInitialMessage && conversationItems.initialMessageContent && (
+                    {conversationItems.hasInitialMessage &&
+                      conversationItems.initialMessageContent && (
                         <InitialTicketMessage
                           key="initial-message"
                           ticketId={ticket.id}
@@ -1300,10 +1307,7 @@ export function TicketConversation({
                     {(conversationItems.items as IComment[])
                       .filter((item: IComment) => item.id !== -1) // Filtrar el mensaje inicial
                       .map((item: IComment) => (
-                        <ConversationMessageItem
-                          key={item.id}
-                          comment={item}
-                        />
+                        <ConversationMessageItem key={item.id} comment={item} />
                       ))}
                   </>
                 )}
