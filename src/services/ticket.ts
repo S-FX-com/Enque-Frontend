@@ -82,12 +82,16 @@ type TicketUpdatePayload = {
   team_id?: number | null;
   category_id?: number | null;
   user_id?: number | null;
+  title?: string | null;
 };
 
 export async function updateTicket(
   ticketId: number,
   updates: Partial<
-    Pick<ITicket, 'status' | 'priority' | 'user_id' | 'assignee_id' | 'team_id' | 'category_id'>
+    Pick<
+      ITicket,
+      'status' | 'priority' | 'user_id' | 'assignee_id' | 'team_id' | 'category_id' | 'title'
+    >
   >
 ): Promise<ITicket> {
   try {
@@ -130,6 +134,10 @@ export async function updateTicket(
         const parsed = Number.parseInt(payload.user_id, 10);
         payload.user_id = isNaN(parsed) ? null : parsed;
       }
+    }
+    if ('title' in updates) {
+      const userValue = updates.title;
+      payload.title = userValue === null || userValue === undefined ? null : String(userValue);
     }
 
     console.log('Sending update payload:', payload);

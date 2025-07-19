@@ -181,7 +181,7 @@ export default function AutomationsPage() {
             <div className="space-y-6">
               {/* Team Notifications Card */}
               {automationSettings.team_notifications && (
-                <Card className="border">
+              <Card className="border">
                 <CardHeader>
                   <div className="flex items-center gap-2">
                     <Users className="h-4 w-4" />
@@ -246,8 +246,7 @@ export default function AutomationsPage() {
                         <div>
                           <h4 className="font-medium">Weekly Summary for Agents</h4>
                           <p className="text-sm text-muted-foreground mt-1">
-                            Send weekly summary emails cataloguing all tickets marked as &quot;Closed&quot; over the past week for each agent. 
-                            Emails are sent every Friday at 3pm ET with the format: ticket created date, closed date, and ticket name.
+                            Weekly email to agents with their closed tickets from the past week. Sent Fridays at 3pm ET.
                           </p>
                         </div>
                       </div>
