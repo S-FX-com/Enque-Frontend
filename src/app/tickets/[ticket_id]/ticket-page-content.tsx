@@ -5,7 +5,7 @@ import type React from 'react';
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
-import { ArrowLeft, X, Plus, Search, User } from 'lucide-react';
+import { ArrowLeft, X, Plus, Search, User, Edit2, Check, X as XIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -173,8 +173,6 @@ export function TicketPageContent({ ticketId }: Props) {
   const { socket } = useSocketContext();
   const { user } = useAuth();
   const [ticket, setTicket] = useState<ITicket | null>(null);
-  const [titleEditing, setTitleEditing] = useState<boolean>(false);
-  const [ticketTitle, setTicketTitle] = useState<string>('');
   const [isClosing, setIsClosing] = useState(false);
   const [isReopening, setIsReopening] = useState(false);
   const [existingToEmails, setExistingToEmails] = useState<string[]>([]);
@@ -184,6 +182,10 @@ export function TicketPageContent({ ticketId }: Props) {
   const [extraBccEmails, setExtraBccEmails] = useState<string[]>([]);
   const [contactSearchQuery, setContactSearchQuery] = useState('');
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
+  
+  // States for title editing
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [editedTitle, setEditedTitle] = useState('');
 
   // New state variables for modals
   // const [isCcModalOpen, setIsCcModalOpen] = useState(false);
@@ -212,8 +214,6 @@ export function TicketPageContent({ ticketId }: Props) {
   useEffect(() => {
     if (currentTicket) {
       setTicket(currentTicket as unknown as ITicket);
-
-      setTicketTitle(currentTicket.title);
 
       // Initialize TO emails if they exist in the ticket data
       if (currentTicket?.to_recipients) {
@@ -318,7 +318,7 @@ export function TicketPageContent({ ticketId }: Props) {
     ITicket,
     Error,
     {
-      field: 'priority' | 'assignee_id' | 'team_id' | 'category_id' | 'user_id' | 'title';
+      field: 'priority' | 'assignee_id' | 'team_id' | 'category_id' | 'user_id';
       value: string | null;
       originalFieldValue: string | number | null;
     },
@@ -397,7 +397,7 @@ export function TicketPageContent({ ticketId }: Props) {
   });
 
   const handleUpdateField = (
-    field: 'priority' | 'assignee_id' | 'team_id' | 'category_id' | 'user_id' | 'title',
+    field: 'priority' | 'assignee_id' | 'team_id' | 'category_id' | 'user_id',
     value: string | null
   ) => {
     if (!ticket) return;
@@ -546,6 +546,44 @@ export function TicketPageContent({ ticketId }: Props) {
     }
   );
 
+  // Update title mutation
+  const updateTitleMutation = useMutation<ITicket, Error, string, { previousTicket: ITicket | null }>({
+    mutationFn: async (newTitle: string) => {
+      if (!ticket) throw new Error('No ticket selected');
+      return updateTicket(ticket.id, { title: newTitle });
+    },
+    onMutate: async (newTitle: string) => {
+      if (!ticket) return { previousTicket: null };
+      
+      const previousTicket = ticket;
+      
+      // Optimistically update the title
+      const optimisticTicket: ITicket = {
+        ...previousTicket,
+        title: newTitle,
+      };
+
+      setTicket(optimisticTicket);
+      queryClient.setQueryData(['ticket', ticket.id], [optimisticTicket]);
+
+      return { previousTicket };
+    },
+    onSuccess: () => {
+      toast.success('Title updated successfully');
+      setIsEditingTitle(false);
+      setEditedTitle('');
+    },
+    onError: (error, _variables, context) => {
+      toast.error(`Error updating title: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      if (context?.previousTicket) {
+        setTicket(context.previousTicket);
+        queryClient.setQueryData(['ticket', ticketId], [context.previousTicket]);
+      }
+      setIsEditingTitle(false);
+      setEditedTitle('');
+    },
+  });
+
   const handleTicketUpdate = (updatedTicket: ITicket) => {
     setTicket(updatedTicket);
     queryClient.setQueryData(['ticket', ticketId], [updatedTicket]);
@@ -598,6 +636,43 @@ export function TicketPageContent({ ticketId }: Props) {
         setTicket(ticket);
         queryClient.setQueryData(['ticket', ticketId], [ticket]);
       }
+    }
+  };
+
+  // Functions for title editing
+  const handleStartTitleEdit = () => {
+    setEditedTitle(ticket?.title || '');
+    setIsEditingTitle(true);
+  };
+
+  const handleCancelTitleEdit = () => {
+    setEditedTitle('');
+    setIsEditingTitle(false);
+  };
+
+  const handleSaveTitle = () => {
+    if (!editedTitle.trim()) {
+      toast.error('Title cannot be empty');
+      return;
+    }
+    
+    if (editedTitle.trim() === ticket?.title) {
+      setIsEditingTitle(false);
+      setEditedTitle('');
+      return;
+    }
+
+    updateTitleMutation.mutate(editedTitle.trim());
+  };
+
+  const handleTitleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleSaveTitle();
+    }
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      handleCancelTitleEdit();
     }
   };
 
@@ -669,31 +744,52 @@ export function TicketPageContent({ ticketId }: Props) {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div
-        className="flex items-center justify-between"
-        onDoubleClick={() => {
-          setTitleEditing(!titleEditing);
-        }}
-      >
+      <div className="flex items-center justify-between">
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">#{ticket?.id}</span>
-            <h1 className="text-xl font-semibold">
-              {titleEditing ? (
-                <input
-                  value={ticketTitle}
-                  onChange={e => setTicketTitle(e.target.value)}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter') {
-                      setTitleEditing(false);
-                      handleUpdateField('title', ticketTitle);
-                    }
-                  }}
+            {isEditingTitle ? (
+              <div className="flex items-center gap-2 flex-1">
+                <Input
+                  value={editedTitle}
+                  onChange={(e) => setEditedTitle(e.target.value)}
+                  onKeyDown={handleTitleKeyDown}
+                  className="text-xl font-semibold h-auto border-none shadow-none p-0 focus-visible:ring-0"
+                  autoFocus
+                  disabled={updateTitleMutation.isPending}
                 />
-              ) : (
-                ticketTitle
-              )}
-            </h1>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={handleSaveTitle}
+                  disabled={updateTitleMutation.isPending}
+                  className="h-8 w-8 p-0"
+                >
+                  <Check className="h-4 w-4 text-green-600" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={handleCancelTitleEdit}
+                  disabled={updateTitleMutation.isPending}
+                  className="h-8 w-8 p-0"
+                >
+                  <XIcon className="h-4 w-4 text-red-600" />
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 group">
+                <h1 className="text-xl font-semibold">{ticket?.title}</h1>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={handleStartTitleEdit}
+                  className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <Edit2 className="h-4 w-4 text-muted-foreground" />
+                </Button>
+              </div>
+            )}
           </div>
         </div>
 

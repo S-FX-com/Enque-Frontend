@@ -797,7 +797,7 @@ export function TicketConversation({
       }
     }
     prevTicketIdRef.current = currentTicketId;
-  }, [ticket.id, ticket.user?.name, currentAgentData, globalSignatureData]);
+  }, [ticket.id, ticket.user?.name, currentAgentData, globalSignatureData, onExtraRecipientsChange]);
 
   const handleAttachmentsChange = (files: File[]) => {
     setSelectedAttachments(files);
