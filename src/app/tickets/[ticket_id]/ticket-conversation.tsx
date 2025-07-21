@@ -211,6 +211,8 @@ function findQuoteStartIndex(html: string): number {
     /Begin forwarded message:/i,
     // Outlook quote indicators
     /<div[^>]*style=["'][^"']*border:none;\s*border-top:solid\s+#E1E1E1/i,
+    // Gmail-style reply line (e.g., "On Tue, Jun 10, 2025 at 9:27 AM Name <email> wrote:")
+    /^On\s+\w{3},\s+\w{3,9}\s+\d{1,2},\s+\d{4}\s+at\s+\d{1,2}:\d{2}\s*(AM|PM|am|pm)?\s+.+<[^@]+@[^>]+>\s+wrote:/m,
   ];
 
   let earliestIndex = -1;
