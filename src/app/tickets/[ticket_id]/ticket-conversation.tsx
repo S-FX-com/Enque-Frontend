@@ -277,6 +277,34 @@ function OptimizedMessageItem({ content, isInitial = false, ticket }: OptimizedM
     htmlContent = htmlContent.replace(/^\s*<head[^>]*>[\s\S]*?<\/head>/gi, '');
     htmlContent = htmlContent.replace(/^\s*<body[^>]*>/gi, '');
     htmlContent = htmlContent.replace(/<\/body>\s*$/gi, '');
+    htmlContent = htmlContent.replace(/<p[^>]*>\s*<\/p>/gi, '<p><br></p>');
+    htmlContent = htmlContent.replace(
+      /(<p\s+style=["']margin:\s*0\s*!important["']>[\s\S]*?)(<br\s*\/?>)(\s*<\/p>)/gi,
+      '$1</p>$2'
+    );
+
+    htmlContent = htmlContent.replace(/^\s*(?:<br\s*\/?>\s*)+/i, '');
+    htmlContent = htmlContent.replace(/(?:<br\s*\/?>\s*)+$/i, '');
+
+    // Process links to open in new tab
+    htmlContent = processLinksForNewTab(htmlContent);
+
+    return htmlContent.trim();
+  }, [content.content]);
+  /*
+  const processedContent = React.useMemo(() => {
+    let htmlContent = content.content || '';
+
+    if (htmlContent.includes('<original-sender>')) {
+      htmlContent = htmlContent.replace(/<original-sender>.*?<\/original-sender>/g, '');
+    }
+
+    htmlContent = htmlContent.replace(/<meta[^>]*>/gi, '');
+    htmlContent = htmlContent.replace(/^\s*<html[^>]*>/gi, '');
+    htmlContent = htmlContent.replace(/<\/html>\s*$/gi, '');
+    htmlContent = htmlContent.replace(/^\s*<head[^>]*>[\s\S]*?<\/head>/gi, '');
+    htmlContent = htmlContent.replace(/^\s*<body[^>]*>/gi, '');
+    htmlContent = htmlContent.replace(/<\/body>\s*$/gi, '');
     htmlContent = htmlContent.replace(/<p>\s*<\/p>/gi, '<p><br></p>');
     htmlContent = htmlContent.replace(/^\s*(?:<br\s*\/?>\s*)+/i, '');
     htmlContent = htmlContent.replace(/(?:<br\s*\/?>\s*)+$/i, '');
@@ -326,6 +354,7 @@ function OptimizedMessageItem({ content, isInitial = false, ticket }: OptimizedM
     if (!isInitial || !ticket) return null;
 
     const recipients = [];
+
     if (ticket.to_recipients) {
       recipients.push(
         <div key="to" className="flex items-center gap-1 flex-wrap">

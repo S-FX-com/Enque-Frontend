@@ -194,21 +194,15 @@ const ResizableImage = Image.extend({
       // Lógica de redimensionamiento
       let isResizing = false;
       let startX = 0;
-      //let startY = 0;
       let startWidth = 0;
-      //let startHeight = 0;
-      //let aspectRatio = 1;
 
-      const startResize = (e: MouseEvent /* handle: HTMLElement */) => {
+      const startResize = (e: MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
 
         isResizing = true;
         startX = e.clientX;
-        //startY = e.clientY;
         startWidth = img.offsetWidth;
-        //startHeight = img.offsetHeight;
-        //aspectRatio = startWidth / startHeight;
 
         document.addEventListener('mousemove', handleResize);
         document.addEventListener('mouseup', stopResize);
@@ -221,15 +215,12 @@ const ResizableImage = Image.extend({
         if (!isResizing) return;
 
         const deltaX = e.clientX - startX;
-        //const deltaY = e.clientY - startY;
 
         // Calcular nuevas dimensiones manteniendo la proporción
         let newWidth = startWidth + deltaX;
-        //let newHeight = newWidth / aspectRatio;
 
         // Límites mínimos y máximos
         newWidth = Math.max(50, Math.min(800, newWidth));
-        //newHeight = newWidth / aspectRatio;
 
         img.style.width = `${newWidth}px`;
         img.style.height = 'auto';
@@ -261,7 +252,7 @@ const ResizableImage = Image.extend({
 
       // Agregar event listeners a los handles
       handles.forEach(handle => {
-        handle.addEventListener('mousedown', e => startResize(e /* handle*/));
+        handle.addEventListener('mousedown', e => startResize(e));
       });
 
       container.appendChild(img);

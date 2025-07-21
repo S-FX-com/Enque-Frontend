@@ -26,7 +26,6 @@ import MuiCloseIcon from '@mui/icons-material/Close';
 import { useAgentAvatar } from '@/hooks/use-agent-avatar';
 import { getCommentS3Content } from '@/services/comment';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Badge } from '@/components/ui/badge';
 
 const fileTypeColors: { [key: string]: string } = {
   pdf: '#D93025',
@@ -357,24 +356,14 @@ function InitialTicketMessage({
         {recipients.map(recipient => {
           if (!recipient.show) return null;
           
-          const emailList = recipient.emails.split(',').map(email => email.trim()).filter(Boolean);
-          
           return (
             <div key={recipient.label} className="flex items-start gap-2">
               <span className="font-medium min-w-[30px] text-slate-600 dark:text-slate-400">
                 {recipient.label}
               </span>
-              <div className="flex flex-wrap gap-1">
-                {emailList.map((email, index) => (
-                  <Badge 
-                    key={index} 
-                    variant="secondary" 
-                    className="text-xs px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-0"
-                  >
-                    {email}
-                  </Badge>
-                ))}
-              </div>
+              <span className="text-xs text-slate-700 dark:text-slate-300">
+                {recipient.emails}
+              </span>
             </div>
           );
         })}
@@ -570,24 +559,14 @@ export function ConversationMessageItem({ comment, ticket, isFirstMessage }: Pro
         {recipients.map(recipient => {
           if (!recipient.show) return null;
           
-          const emailList = recipient.emails.split(',').map(email => email.trim()).filter(Boolean);
-          
           return (
             <div key={recipient.label} className="flex items-start gap-2">
               <span className="font-medium min-w-[30px] text-slate-600 dark:text-slate-400">
                 {recipient.label}
               </span>
-              <div className="flex flex-wrap gap-1">
-                {emailList.map((email, index) => (
-                  <Badge 
-                    key={index} 
-                    variant="secondary" 
-                    className="text-xs px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-0"
-                  >
-                    {email}
-                  </Badge>
-                ))}
-              </div>
+              <span className="text-xs text-slate-700 dark:text-slate-300">
+                {recipient.emails}
+              </span>
             </div>
           );
         })}
@@ -1245,4 +1224,5 @@ export function ConversationMessageItem({ comment, ticket, isFirstMessage }: Pro
     </>
   );
 }
+
 
