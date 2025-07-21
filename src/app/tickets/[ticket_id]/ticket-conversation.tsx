@@ -862,7 +862,6 @@ export function TicketConversation({
 
     setCannedRepliesOpen(false);
     setCannedSearchTerm('');
-    // @ts-expect-error none
     setEditorKey(prev => prev + 1);
   };
 
