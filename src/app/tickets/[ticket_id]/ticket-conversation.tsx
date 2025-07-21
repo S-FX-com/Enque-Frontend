@@ -797,13 +797,13 @@ export function TicketConversation({
     const currentTicketId = ticket.id;
     const userName = ticket.user?.name || 'there';
 
-    const greeting = `<p>Hi ${userName},</p><div class="message-content" style="min-height: 60px; margin-bottom: 16px;"><p><br></p></div>`;
+    // const greeting = `<p>Hi ${userName},</p><div class="message-content" style="min-height: 60px; margin-bottom: 16px;"><p><br></p></div>`;
 
     const prevTicketId = prevTicketIdRef.current;
-    const initialContent = signatureToUse ? `${greeting}${signatureToUse}` : greeting;
+    const initialContent = signatureToUse ? `${signatureToUse}` : ``;
 
     setReplyContent(initialContent);
-    setEditorKey(prevKey => prevKey + 1);
+    setEditorKey((prevKey: any) => prevKey + 1);
 
     if (currentTicketId !== prevTicketId) {
       setIsPrivateNote(false);
