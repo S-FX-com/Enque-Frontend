@@ -351,48 +351,33 @@ function OptimizedMessageItem({ content, isInitial = false, ticket }: OptimizedM
 
     if (ticket.to_recipients) {
       recipients.push(
-        <div key="to" className="flex items-center gap-1 flex-wrap">
+        <div key="to" className="flex items-center gap-2 flex-wrap">
           <span className="text-xs font-medium text-slate-600 dark:text-slate-400">To:</span>
-          {ticket.to_recipients.split(',').map((email, index) => (
-            <span
-              key={index}
-              className="inline-flex items-center rounded-full bg-slate-100 dark:bg-slate-700 px-2 py-0.5 text-xs font-medium text-slate-700 dark:text-slate-300"
-            >
-              {email.trim()}
-            </span>
-          ))}
+          <span className="text-xs text-slate-700 dark:text-slate-300">
+            {ticket.to_recipients}
+          </span>
         </div>
       );
     }
 
     if (ticket.cc_recipients) {
       recipients.push(
-        <div key="cc" className="flex items-center gap-1 flex-wrap">
+        <div key="cc" className="flex items-center gap-2 flex-wrap">
           <span className="text-xs font-medium text-slate-600 dark:text-slate-400">Cc:</span>
-          {ticket.cc_recipients.split(',').map((email, index) => (
-            <span
-              key={index}
-              className="inline-flex items-center rounded-full bg-slate-100 dark:bg-slate-700 px-2 py-0.5 text-xs font-medium text-slate-700 dark:text-slate-300"
-            >
-              {email.trim()}
-            </span>
-          ))}
+          <span className="text-xs text-slate-700 dark:text-slate-300">
+            {ticket.cc_recipients}
+          </span>
         </div>
       );
     }
 
     if (ticket.bcc_recipients) {
       recipients.push(
-        <div key="bcc" className="flex items-center gap-1 flex-wrap">
+        <div key="bcc" className="flex items-center gap-2 flex-wrap">
           <span className="text-xs font-medium text-slate-600 dark:text-slate-400">Bcc:</span>
-          {ticket.bcc_recipients.split(',').map((email, index) => (
-            <span
-              key={index}
-              className="inline-flex items-center rounded-full bg-slate-100 dark:bg-slate-700 px-2 py-0.5 text-xs font-medium text-slate-700 dark:text-slate-300"
-            >
-              {email.trim()}
-            </span>
-          ))}
+          <span className="text-xs text-slate-700 dark:text-slate-300">
+            {ticket.bcc_recipients}
+          </span>
         </div>
       );
     }
