@@ -157,6 +157,23 @@ const editorStyles = `
     min-height: 120px;
     overflow-y: visible;
   }
+
+  .enque-quote {
+    border-left: 3px solid #e5e7eb;
+    padding-left: 12px;
+    margin-bottom: 16px;
+    color: #6b7280;
+    font-style: italic;
+    background-color: #f9fafb;
+    padding: 8px 12px;
+    border-radius: 4px;
+  }
+
+  .dark .enque-quote {
+    border-left-color: #374151;
+    color: #9ca3af;
+    background-color: #1f2937;
+  }
 `;
 
 interface Props {
@@ -202,6 +219,8 @@ function findQuoteStartIndex(html: string): number {
     /Begin forwarded message:/i,
     // Outlook quote indicators
     /<div[^>]*style=["'][^"']*border:none;\s*border-top:solid\s+#E1E1E1/i,
+    // Gmail-style reply line (e.g., "On Tue, Jun 10, 2025 at 9:27 AM Name <email> wrote:")
+    /^On\s+\w{3},\s+\w{3,9}\s+\d{1,2},\s+\d{4}\s+at\s+\d{1,2}:\d{2}\s*(AM|PM|am|pm)?\s+.+<[^@]+@[^>]+>\s+wrote:/m,
   ];
 
   let earliestIndex = -1;
@@ -766,12 +785,12 @@ export function TicketConversation({
     }
 
     const currentTicketId = ticket.id;
-    const userName = ticket.user?.name || 'there';
+    // const userName = ticket.user?.name || 'there';
 
-    const greeting = `<p>Hi ${userName},</p><div class="message-content" style="min-height: 60px; margin-bottom: 16px;"><p><br></p></div>`;
+    // const greeting = `<p>Hi ${userName},</p><div class="message-content" style="min-height: 60px; margin-bottom: 16px;"><p><br></p></div>`;
 
     const prevTicketId = prevTicketIdRef.current;
-    const initialContent = signatureToUse ? `${greeting}${signatureToUse}` : greeting;
+    const initialContent = signatureToUse ? `${signatureToUse}` : ``;
 
     setReplyContent(initialContent);
     setEditorKey(prevKey => prevKey + 1);
@@ -864,6 +883,36 @@ export function TicketConversation({
       throw new Error('Invalid email addresses in BCC recipients.');
     }
 
+    // Extract latest message content and prepend it with enque-quote class
+    let finalContent = content;
+    if (conversationItems.items.length > 0 && !isPrivate) {
+      const latestMessage = conversationItems.items[0];
+      let latestMessageContent = '';
+
+      if (conversationItems.isOptimized) {
+        const optimizedMessage = latestMessage as TicketHtmlContent;
+        latestMessageContent = optimizedMessage.content || '';
+      } else {
+        const commentMessage = latestMessage as IComment;
+        latestMessageContent = commentMessage.content || '';
+      }
+
+      // Clean and prepare the latest message content
+      if (latestMessageContent.trim()) {
+        // Remove any existing enque-quote divs to avoid nesting
+        const cleanedLatestContent = latestMessageContent.replace(
+          /<div[^>]*class="enque-quote"[^>]*>[\s\S]*?<\/div>/gi,
+          ''
+        );
+
+        // Wrap the latest message in enque-quote div
+        const quotedContent = `<div class="enque-quote" style="border-left: 3px solid #e5e7eb; padding-left: 12px; margin-bottom: 16px; color: #6b7280; font-style: italic;">${cleanedLatestContent}</div>`;
+
+        // Prepend to the current content
+        finalContent = quotedContent + content;
+      }
+    }
+
     let attachmentIds: number[] = [];
 
     if (selectedAttachments && selectedAttachments.length > 0) {
@@ -880,7 +929,7 @@ export function TicketConversation({
     }
 
     const payload: CreateCommentPayload = {
-      content,
+      content: finalContent, // Use the modified content with quote
       ticket_id: ticket.id,
       agent_id: currentUser.id,
       workspace_id: currentUser.workspace_id,
