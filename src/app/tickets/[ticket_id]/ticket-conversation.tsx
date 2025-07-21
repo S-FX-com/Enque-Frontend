@@ -803,7 +803,7 @@ export function TicketConversation({
     const initialContent = signatureToUse ? `${signatureToUse}` : ``;
 
     setReplyContent(initialContent);
-    setEditorKey((prevKey: any) => prevKey + 1);
+    setEditorKey(prevKey => prevKey + 1);
 
     if (currentTicketId !== prevTicketId) {
       setIsPrivateNote(false);
