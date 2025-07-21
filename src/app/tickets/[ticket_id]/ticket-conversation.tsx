@@ -795,7 +795,7 @@ export function TicketConversation({
     }
 
     const currentTicketId = ticket.id;
-    const userName = ticket.user?.name || 'there';
+    // const userName = ticket.user?.name || 'there';
 
     // const greeting = `<p>Hi ${userName},</p><div class="message-content" style="min-height: 60px; margin-bottom: 16px;"><p><br></p></div>`;
 
