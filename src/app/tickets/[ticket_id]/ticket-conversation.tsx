@@ -177,8 +177,6 @@ interface OptimizedMessageItemProps {
 
 function findQuoteStartIndex(html: string): number {
   const patterns = [
-    // Common email quote headers - más específicos
-    /On .+? wrote:\s*</i,
     // From patterns - más específicos para evitar falsos positivos
     /<p[^>]*><strong>From:<\/strong>/i, // HTML From header
     /<div[^>]*>From:\s+[^<]+<[^@]+@[^>]+>/i, // From with email format
@@ -351,33 +349,48 @@ function OptimizedMessageItem({ content, isInitial = false, ticket }: OptimizedM
 
     if (ticket.to_recipients) {
       recipients.push(
-        <div key="to" className="flex items-center gap-2 flex-wrap">
+        <div key="to" className="flex items-center gap-1 flex-wrap">
           <span className="text-xs font-medium text-slate-600 dark:text-slate-400">To:</span>
-          <span className="text-xs text-slate-700 dark:text-slate-300">
-            {ticket.to_recipients}
-          </span>
+          {ticket.to_recipients.split(',').map((email, index) => (
+            <span
+              key={index}
+              className="inline-flex items-center rounded-full bg-slate-100 dark:bg-slate-700 px-2 py-0.5 text-xs font-medium text-slate-700 dark:text-slate-300"
+            >
+              {email.trim()}
+            </span>
+          ))}
         </div>
       );
     }
 
     if (ticket.cc_recipients) {
       recipients.push(
-        <div key="cc" className="flex items-center gap-2 flex-wrap">
+        <div key="cc" className="flex items-center gap-1 flex-wrap">
           <span className="text-xs font-medium text-slate-600 dark:text-slate-400">Cc:</span>
-          <span className="text-xs text-slate-700 dark:text-slate-300">
-            {ticket.cc_recipients}
-          </span>
+          {ticket.cc_recipients.split(',').map((email, index) => (
+            <span
+              key={index}
+              className="inline-flex items-center rounded-full bg-slate-100 dark:bg-slate-700 px-2 py-0.5 text-xs font-medium text-slate-700 dark:text-slate-300"
+            >
+              {email.trim()}
+            </span>
+          ))}
         </div>
       );
     }
 
     if (ticket.bcc_recipients) {
       recipients.push(
-        <div key="bcc" className="flex items-center gap-2 flex-wrap">
+        <div key="bcc" className="flex items-center gap-1 flex-wrap">
           <span className="text-xs font-medium text-slate-600 dark:text-slate-400">Bcc:</span>
-          <span className="text-xs text-slate-700 dark:text-slate-300">
-            {ticket.bcc_recipients}
-          </span>
+          {ticket.bcc_recipients.split(',').map((email, index) => (
+            <span
+              key={index}
+              className="inline-flex items-center rounded-full bg-slate-100 dark:bg-slate-700 px-2 py-0.5 text-xs font-medium text-slate-700 dark:text-slate-300"
+            >
+              {email.trim()}
+            </span>
+          ))}
         </div>
       );
     }
@@ -782,7 +795,13 @@ export function TicketConversation({
       }
     }
     prevTicketIdRef.current = currentTicketId;
-  }, [ticket.id, ticket.user?.name, currentAgentData, globalSignatureData, onExtraRecipientsChange]);
+  }, [
+    ticket.id,
+    ticket.user?.name,
+    currentAgentData,
+    globalSignatureData,
+    onExtraRecipientsChange,
+  ]);
 
   const handleAttachmentsChange = (files: File[]) => {
     setSelectedAttachments(files);
