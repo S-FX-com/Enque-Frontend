@@ -2,12 +2,18 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuItem,
+  DropdownMenuContent,
+} from '@radix-ui/react-dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Send, Mail, Clock, MessageSquare, Search } from 'lucide-react';
+import { Send, Mail, Clock, MessageSquare, Search, ChevronDown } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -291,29 +297,6 @@ function OptimizedMessageItem({ content, isInitial = false, ticket }: OptimizedM
 
     return htmlContent.trim();
   }, [content.content]);
-  /*
-  const processedContent = React.useMemo(() => {
-    let htmlContent = content.content || '';
-
-    if (htmlContent.includes('<original-sender>')) {
-      htmlContent = htmlContent.replace(/<original-sender>.*?<\/original-sender>/g, '');
-    }
-
-    htmlContent = htmlContent.replace(/<meta[^>]*>/gi, '');
-    htmlContent = htmlContent.replace(/^\s*<html[^>]*>/gi, '');
-    htmlContent = htmlContent.replace(/<\/html>\s*$/gi, '');
-    htmlContent = htmlContent.replace(/^\s*<head[^>]*>[\s\S]*?<\/head>/gi, '');
-    htmlContent = htmlContent.replace(/^\s*<body[^>]*>/gi, '');
-    htmlContent = htmlContent.replace(/<\/body>\s*$/gi, '');
-    htmlContent = htmlContent.replace(/<p>\s*<\/p>/gi, '<p><br></p>');
-    htmlContent = htmlContent.replace(/^\s*(?:<br\s*\/?>\s*)+/i, '');
-    htmlContent = htmlContent.replace(/(?:<br\s*\/?>\s*)+$/i, '');
-
-    // Process links to open in new tab
-    htmlContent = processLinksForNewTab(htmlContent);
-
-    return htmlContent.trim();
-  }, [content.content]);
 
   const { displayReplyPart, displayQuotedPart, showToggleButton } = React.useMemo(() => {
     let displayReplyPart = processedContent;
@@ -436,10 +419,8 @@ function OptimizedMessageItem({ content, isInitial = false, ticket }: OptimizedM
             {formatRelativeTime(content.created_at)}
           </p>
         </div>
-
-        {/* Renderizar destinatarios si es el mensaje inicial */}
+        {/*Renderizar destinatarios si es el mensaje inicial*/}
         {renderEmailRecipients()}
-
         <div className="max-w-none break-words overflow-x-auto">
           <div
             className={`text-sm text-black dark:text-white prose dark:prose-invert max-w-none whitespace-pre-line prose-a:text-blue-600 dark:prose-a:text-blue-400 prose-a:underline message-content-container ${
@@ -485,7 +466,6 @@ function OptimizedMessageItem({ content, isInitial = false, ticket }: OptimizedM
             </div>
           )}
         </div>
-
         {content.attachments && content.attachments.length > 0 && (
           <div className="mt-3 space-y-2">
             <p className="text-xs font-medium text-muted-foreground mb-2">Attachments:</p>
@@ -608,6 +588,7 @@ export function TicketConversation({
   // Canned replies state
   const [cannedRepliesOpen, setCannedRepliesOpen] = useState(false);
   const [cannedSearchTerm, setCannedSearchTerm] = useState('');
+  const [selectSend, setSelectSend] = useState<string>('Send now');
 
   // Fetch ticket HTML content
   const {
@@ -1109,20 +1090,45 @@ export function TicketConversation({
                   </PopoverContent>
                 </Popover>
               </div>
+              <div className="flex justify-between">
+                <div className="bg-primary border-tl-1 rounded-l-lg">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button>
+                        <ChevronDown color="#ffffff" />
+                      </Button>
+                    </DropdownMenuTrigger>
 
-              <Button
-                onClick={handleSendReply}
-                disabled={
-                  (!replyContent.trim() ||
-                    !ticket?.id ||
-                    isSending ||
-                    createCommentMutation.isPending ||
-                    (extraRecipients.trim() && !validateEmails(extraRecipients))) as boolean
-                }
-              >
-                <Send className="mr-2 h-4 w-4" />
-                Send
-              </Button>
+                    <DropdownMenuContent>
+                      <div
+                        className="bg-primary text-white text-center"
+                        style={{ fontFamily: 'var(--font-sans)' }}
+                      >
+                        <DropdownMenuItem onSelect={() => setSelectSend('Send now')}>
+                          <span>Send now</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => setSelectSend('Schedule send')}>
+                          <span>Schedule send</span>
+                        </DropdownMenuItem>
+                      </div>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+                <Button
+                  style={{ borderTopLeftRadius: 0, borderBottomLeftRadius: 0 }}
+                  onClick={handleSendReply}
+                  disabled={
+                    (!replyContent.trim() ||
+                      !ticket?.id ||
+                      isSending ||
+                      createCommentMutation.isPending ||
+                      (extraRecipients.trim() && !validateEmails(extraRecipients))) as boolean
+                  }
+                >
+                  {selectSend}
+                  <Send className="mr-2 h-4 w-4" />
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>

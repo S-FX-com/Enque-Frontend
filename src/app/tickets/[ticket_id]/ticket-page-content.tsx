@@ -180,7 +180,6 @@ export function TicketPageContent({ ticketId }: Props) {
   const { user } = useAuth();
   const [ticket, setTicket] = useState<ITicket | null>(null);
   const [titleEditing, setTitleEditing] = useState<boolean>(false);
-  const [ticketTitle, setTicketTitle] = useState<string>('');
   const [isClosing, setIsClosing] = useState(false);
   const [isReopening, setIsReopening] = useState(false);
   const [existingToEmails, setExistingToEmails] = useState<string[]>([]);
@@ -219,7 +218,6 @@ export function TicketPageContent({ ticketId }: Props) {
   useEffect(() => {
     if (currentTicket) {
       setTicket(currentTicket as unknown as ITicket);
-      setTicketTitle(currentTicket.title);
       // Initialize TO emails if they exist in the ticket data
       if (currentTicket?.to_recipients) {
         const toEmails = currentTicket.to_recipients
