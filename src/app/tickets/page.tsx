@@ -335,7 +335,7 @@ function TicketsClientContent() {
       // REMOVED: Don't clear selectedTeams when no teamId in URL
       // This was causing the filter to reset when users manually select teams
     }
-  }, [searchParams, pathname, selectedTeams]);
+  }, [searchParams, pathname]);
 
   const agentIdToNameMap = React.useMemo(() => {
     return agentsData.reduce(

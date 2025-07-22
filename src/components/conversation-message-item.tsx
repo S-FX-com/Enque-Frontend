@@ -528,7 +528,9 @@ export function ConversationMessageItem({ comment, ticket }: Props) {
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   const commentRef = useRef<HTMLDivElement>(null);
   
-  // ✅ Helper function to render email recipients - uses ticket for TO, comment for CC/BCC with ticket fallback
+
+
+  // ✅ Helper function to render email recipients with consistent badge styling  
   const renderEmailRecipients = () => {
     // TO siempre viene del ticket, CC/BCC del comentario con fallback al ticket
     const toRecipients = ticket?.to_recipients || '';
@@ -557,24 +559,32 @@ export function ConversationMessageItem({ comment, ticket }: Props) {
     if (!hasAnyRecipients) return null;
 
     return (
-      <div className="mb-3 text-xs text-muted-foreground space-y-1 border-l-2 border-muted pl-2">
-        {recipients.map(recipient => {
-          if (!recipient.show) return null;
-          
-          return (
-            <div key={recipient.label} className="flex items-start gap-2">
-              <span className="font-medium min-w-[30px] text-slate-600 dark:text-slate-400">
-                {recipient.label}
-              </span>
-              <span className="text-xs text-slate-700 dark:text-slate-300">
-                {recipient.emails}
-              </span>
-            </div>
-          );
-        })}
+      <div className="mb-3 p-2 border-l-2 border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/50 rounded-r-md">
+        <div className="space-y-1">
+          {recipients.map(recipient => {
+            if (!recipient.show) return null;
+            
+            return (
+              <div key={recipient.label} className="flex items-center gap-1 flex-wrap">
+                <span className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                  {recipient.label}
+                </span>
+                {recipient.emails.split(',').map((email, index) => (
+                  <span
+                    key={index}
+                    className="inline-flex items-center rounded-full bg-slate-100 dark:bg-slate-700 px-2 py-0.5 text-xs font-medium text-slate-700 dark:text-slate-300"
+                  >
+                    {email.trim()}
+                  </span>
+                ))}
+              </div>
+            );
+          })}
+        </div>
       </div>
     );
   };
+
   useEffect(() => {
     addDarkModeStyles();
   }, []);
