@@ -44,7 +44,7 @@ import {
 import { useDebounce } from '@/hooks/use-debounce';
 import { motion } from 'framer-motion';
 import { getAgents } from '@/services/agent';
-import { getTeams } from '@/services/team';
+import { getTeams, getAgentTeams } from '@/services/team';
 import { getUsers } from '@/services/user';
 import { getCompanies } from '@/services/company';
 import { getCategories } from '@/services/category';
@@ -133,18 +133,35 @@ function TicketsClientContent() {
     }));
   }, [agentsData]);
 
-  const { data: teamsData = [] } = useQuery<Team[]>({
-    queryKey: ['teams'],
-    queryFn: getTeams,
+  const { data: teamsData = [], isLoading: isLoadingTeams, error: teamsError } = useQuery<Team[]>({
+    queryKey: user?.role === 'admin' ? ['teams'] : ['agentTeams', user?.id],
+    queryFn: async () => {
+      console.log('🔍 Loading teams for user:', user?.role, user?.id);
+      if (user?.role === 'admin') {
+        const teams = await getTeams();
+        console.log('👨‍💼 Admin teams loaded:', teams);
+        return teams;
+      } else if (user?.id) {
+        const teams = await getAgentTeams(user.id);
+        console.log('👥 Agent teams loaded for user', user.id, ':', teams);
+        return teams;
+      }
+      console.log('⚠️ No user or invalid role, returning empty array');
+      return [];
+    },
     enabled: !!user,
     staleTime: 1000 * 60 * 5,
   });
   const teamOptions: OptionType[] = useMemo(() => {
-    return teamsData.map(team => ({
+    const options = teamsData.map(team => ({
       value: team.id.toString(),
       label: team.name,
     }));
-  }, [teamsData]);
+    console.log('🏷️ Team options generated:', options);
+    console.log('📊 Teams data:', teamsData);
+    console.log('📝 Current selected teams:', selectedTeams);
+    return options;
+  }, [teamsData, selectedTeams]);
 
   const { data: usersData = [] } = useQuery<IUser[]>({
     queryKey: ['users'],
@@ -207,7 +224,16 @@ function TicketsClientContent() {
     }
     if (selectedTeams.length > 0) {
       const teamIds = selectedTeams.map(id => Number.parseInt(id, 10));
-      tickets = tickets.filter(ticket => ticket.team_id && teamIds.includes(ticket.team_id));
+      console.log('🔍 Filtering tickets by teams:', selectedTeams, 'parsed IDs:', teamIds);
+      const beforeCount = tickets.length;
+      tickets = tickets.filter(ticket => {
+        const hasTeam = ticket.team_id && teamIds.includes(ticket.team_id);
+        if (!hasTeam && ticket.team_id) {
+          console.log('❌ Ticket', ticket.id, 'team_id:', ticket.team_id, 'not in filter');
+        }
+        return hasTeam;
+      });
+      console.log(`📊 Team filter: ${beforeCount} → ${tickets.length} tickets`);
     }
 
     if (selectedAgents.length > 0) {
@@ -300,16 +326,16 @@ function TicketsClientContent() {
 
     if (pathname === '/tickets') {
       if (teamIdFromQuery) {
+        // Only set if it's different from current selection
         if (!selectedTeams.includes(teamIdFromQuery)) {
+          console.log('🔗 Setting team from URL:', teamIdFromQuery);
           setSelectedTeams([teamIdFromQuery]);
         }
-      } else {
-        if (selectedTeams.length > 0) {
-          setSelectedTeams([]);
-        }
       }
+      // REMOVED: Don't clear selectedTeams when no teamId in URL
+      // This was causing the filter to reset when users manually select teams
     }
-  }, [searchParams, allTicketsData, router, pathname, selectedTeams]);
+  }, [searchParams, pathname]);
 
   const agentIdToNameMap = React.useMemo(() => {
     return agentsData.reduce(
@@ -1509,15 +1535,24 @@ function TicketsClientContent() {
                 </div>
                 <div>
                   <label htmlFor="team-filter" className="text-sm font-medium">
-                    Teams
+                    Teams {isLoadingTeams && '(Loading...)'} {teamsError && '(Error!)'}
                   </label>
                   <MultiSelectFilter
                     options={teamOptions}
                     selected={selectedTeams}
-                    onChange={setSelectedTeams}
+                    onChange={(newSelection) => {
+                      console.log('🎯 Team filter onChange:', newSelection);
+                      setSelectedTeams(newSelection);
+                    }}
                     placeholder="Filter by team..."
                     className="mt-1"
                   />
+                  {/* Debug info */}
+                  {teamOptions.length === 0 && !isLoadingTeams && (
+                    <div className="text-xs text-yellow-600 mt-1">
+                      No teams available. Role: {user?.role}, ID: {user?.id}
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label htmlFor="agent-filter" className="text-sm font-medium">
