@@ -870,8 +870,16 @@ export function TicketConversation({
   const validateEmails = (emailString: string): boolean => {
     if (!emailString.trim()) return true; // Empty is valid
     const emails = emailString.split(',').map(email => email.trim());
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emails.every(email => emailRegex.test(email));
+    
+    return emails.every(email => {
+      // ✅ Handle both formats: "email@domain.com" and "Name <email@domain.com>"
+      const emailMatch = email.match(/<([^>]+)>/) || [null, email];
+      const extractedEmail = emailMatch[1]?.trim() || email.trim();
+      
+      // Basic email validation regex
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      return emailRegex.test(extractedEmail);
+    });
   };
 
   const sendComment = async (content: string, isPrivate: boolean): Promise<CommentResponseData> => {
