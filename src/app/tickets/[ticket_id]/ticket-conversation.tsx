@@ -1230,7 +1230,6 @@ export function TicketConversation({
                             cc_recipients: ticket.cc_recipients,
                             bcc_recipients: ticket.bcc_recipients,
                           }}
-                          isFirstMessage={true}
                         />
                       )
                     )}

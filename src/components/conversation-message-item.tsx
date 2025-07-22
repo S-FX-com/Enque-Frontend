@@ -48,7 +48,6 @@ interface Props {
     cc_recipients?: string;
     bcc_recipients?: string;
   };
-  isFirstMessage?: boolean;
 }
 
 const parseSenderFromContent = (content: string): { name: string; email: string } | null => {
@@ -519,7 +518,7 @@ const addDarkModeStyles = () => {
   }
 };
 
-export function ConversationMessageItem({ comment, ticket, isFirstMessage }: Props) {
+export function ConversationMessageItem({ comment, ticket }: Props) {
   const [s3Content, setS3Content] = useState<string | null>(null);
   const [isLoadingS3, setIsLoadingS3] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -529,10 +528,10 @@ export function ConversationMessageItem({ comment, ticket, isFirstMessage }: Pro
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   const commentRef = useRef<HTMLDivElement>(null);
   
-  // ✅ Helper function to render email recipients - now uses comment data first, then ticket fallback
+  // ✅ Helper function to render email recipients - uses ticket for TO, comment for CC/BCC with ticket fallback
   const renderEmailRecipients = () => {
-    // Priorizar información del comentario, usar ticket como fallback
-    const toRecipients = comment.to_recipients || ticket?.to_recipients || '';
+    // TO siempre viene del ticket, CC/BCC del comentario con fallback al ticket
+    const toRecipients = ticket?.to_recipients || '';
     const ccRecipients = comment.other_destinaries || ticket?.cc_recipients || '';
     const bccRecipients = comment.bcc_recipients || ticket?.bcc_recipients || '';
     
