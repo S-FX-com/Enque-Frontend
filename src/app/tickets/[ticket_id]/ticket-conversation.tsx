@@ -886,30 +886,41 @@ export function TicketConversation({
     // Extract latest message content and prepend it with enque-quote class
     let finalContent = content;
     if (conversationItems.items.length > 0 && !isPrivate) {
-      const latestMessage = conversationItems.items[0];
+      let latestMessage = null;
       let latestMessageContent = '';
 
-      if (conversationItems.isOptimized) {
-        const optimizedMessage = latestMessage as TicketHtmlContent;
-        latestMessageContent = optimizedMessage.content || '';
-      } else {
-        const commentMessage = latestMessage as IComment;
-        latestMessageContent = commentMessage.content || '';
-      }
+      if (conversationItems.items[0] && !conversationItems.items[0].is_private)
+        latestMessage = conversationItems.items[0];
+      else if (conversationItems.items[1] && !conversationItems.items[1].is_private)
+        latestMessage = conversationItems.items[1];
+      else if (conversationItems.items[2] && !conversationItems.items[2].is_private)
+        latestMessage = conversationItems.items[2];
+      else if (conversationItems.items[3] && !conversationItems.items[3].is_private)
+        latestMessage = conversationItems.items[3];
 
-      // Clean and prepare the latest message content
-      if (latestMessageContent.trim()) {
-        // Remove any existing enque-quote divs to avoid nesting
-        const cleanedLatestContent = latestMessageContent.replace(
-          /<div[^>]*class="enque-quote"[^>]*>[\s\S]*?<\/div>/gi,
-          ''
-        );
+      if (latestMessage) {
+        if (conversationItems.isOptimized) {
+          const optimizedMessage = latestMessage as TicketHtmlContent;
+          latestMessageContent = optimizedMessage.content || '';
+        } else {
+          const commentMessage = latestMessage as IComment;
+          latestMessageContent = commentMessage.content || '';
+        }
 
-        // Wrap the latest message in enque-quote div
-        const quotedContent = `<div class="enque-quote" style="border-left: 3px solid #e5e7eb; padding-left: 12px; margin-bottom: 16px; color: #6b7280; font-style: italic;">${cleanedLatestContent}</div>`;
+        // Clean and prepare the latest message content
+        if (latestMessageContent.trim()) {
+          // Remove any existing enque-quote divs to avoid nesting
+          const cleanedLatestContent = latestMessageContent.replace(
+            /<div[^>]*class="enque-quote"[^>]*>[\s\S]*?<\/div>/gi,
+            ''
+          );
 
-        // Prepend to the current content
-        finalContent = content + quotedContent;
+          // Wrap the latest message in enque-quote div
+          const quotedContent = `<div class="enque-quote" style="border-left: 3px solid #e5e7eb; padding-left: 12px; margin-bottom: 16px; color: #6b7280; font-style: italic;">${cleanedLatestContent}</div>`;
+
+          // Prepend to the current content
+          finalContent = content + quotedContent;
+        }
       }
     }
 
