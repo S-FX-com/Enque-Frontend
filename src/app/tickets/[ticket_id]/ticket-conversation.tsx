@@ -60,6 +60,7 @@ const addDarkModeStyles = () => {
     document.head.appendChild(style);
   }
 };
+
 import BoringAvatar from 'boring-avatars';
 
 // Function to process links to open in new tab and ensure underline
@@ -111,21 +112,17 @@ function processLinksForNewTab(htmlContent: string): string {
 
       // Check if style attribute exists
       const hasStyle = /style\s*=/i.test(attributes);
-
       if (hasStyle) {
         // Update existing style attribute to include link styling
         attributes = attributes.replace(
           /style\s*=\s*["']([^"']*?)["']/gi,
           (styleMatch: string, styleContent: string) => {
             let newStyle = styleContent;
-
             // Remove text-decoration:none if present
             newStyle = newStyle.replace(/text-decoration\s*:\s*none\s*;?\s*/gi, '');
-
             // Add link styling - CORREGIDO: Usar clases CSS en lugar de estilos inline con !important
             newStyle = newStyle.trim();
             if (newStyle && !newStyle.endsWith(';')) newStyle += ';';
-
             return `style="${newStyle}" class="message-link"`;
           }
         );
@@ -199,19 +196,24 @@ function findQuoteStartIndex(html: string): number {
     /<div[^>]*>From:\s+[^<]+<[^@]+@[^>]+>/i, // From with email format
     /^From:\s+[^<]+<[^@]+@[^>]+>/m, // From at line start with email
     /Sent from my \w+/i, // e.g., Sent from my iPhone
+
     // HTML quote elements
     /<div[^>]*class="gmail_quote/i,
     /<blockquote[^>]*class="gmail_quote/i,
     /<blockquote[^>]*type="cite"/i,
     /<div[^>]*class="gmail_attr"/i,
+
     // Outlook separators
     /<hr\s*style=["'][^"']*border-top:\s*1px\s*solid\s*[^;]+;["']/i,
+
     // Forwarded message indicators
     /---------- Forwarded message ---------/i,
     /Begin forwarded message:/i,
+
     // Outlook quote indicators
     /<div[^>]*style=["'][^"']*border:none;\s*border-top:solid\s+#E1E1E1/i,
-    // Gmail-style reply line (e.g., "On Tue, Jun 10, 2025 at 9:27 AM Name <email> wrote:")
+
+    // Gmail-style reply line (e.g., "On Tue, Jun 10, 2025 at 9:27 AM Name <email> wrote:")
     /^On\s+\w{3},\s+\w{3,9}\s+\d{1,2},\s+\d{4}\s+at\s+\d{1,2}:\d{2}\s*(AM|PM|am|pm)?\s+.+<[^@]+@[^>]+>\s+wrote:/m,
   ];
 
@@ -246,6 +248,33 @@ function findQuoteStartIndex(html: string): number {
   return earliestIndex;
 }
 
+// 🔧 NUEVA FUNCIÓN: Limpiar contenido citado del mensaje
+function cleanQuotedContent(htmlContent: string): string {
+  if (!htmlContent || !htmlContent.trim()) {
+    return htmlContent;
+  }
+
+  // 1. Remover divs con clase enque-quote existentes
+  let cleanedContent = htmlContent.replace(
+    /<div[^>]*class="enque-quote"[^>]*>[\s\S]*?<\/div>/gi,
+    ''
+  );
+
+  // 2. Encontrar y remover contenido detectado por findQuoteStartIndex
+  const quoteStartIndex = findQuoteStartIndex(cleanedContent);
+  if (quoteStartIndex !== -1) {
+    cleanedContent = cleanedContent.substring(0, quoteStartIndex);
+  }
+
+  // 3. Limpiar espacios en blanco y elementos vacíos al final
+  cleanedContent = cleanedContent
+    .replace(/(?:<br\s*\/?>\s*)+$/i, '') // Remover <br> al final
+    .replace(/<p[^>]*>\s*<\/p>\s*$/gi, '') // Remover <p> vacíos al final
+    .replace(/\s+$/g, ''); // Remover espacios en blanco al final
+
+  return cleanedContent;
+}
+
 function OptimizedMessageItem({ content, isInitial = false, ticket }: OptimizedMessageItemProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -256,8 +285,8 @@ function OptimizedMessageItem({ content, isInitial = false, ticket }: OptimizedM
 
   const senderInfo = React.useMemo(() => {
     const htmlContent = content.content || '';
-
     const metadataMatch = htmlContent.match(/<original-sender>(.*?)\|(.*?)<\/original-sender>/);
+
     if (metadataMatch && metadataMatch[1] && metadataMatch[2]) {
       return {
         name: metadataMatch[1].trim(),
@@ -294,7 +323,6 @@ function OptimizedMessageItem({ content, isInitial = false, ticket }: OptimizedM
       /(<p\s+style=["']margin:\s*0\s*!important["']>[\s\S]*?)(<br\s*\/?>)(\s*<\/p>)/gi,
       '$1</p>$2'
     );
-
     htmlContent = htmlContent.replace(/^\s*(?:<br\s*\/?>\s*)+/i, '');
     htmlContent = htmlContent.replace(/(?:<br\s*\/?>\s*)+$/i, '');
 
@@ -303,29 +331,7 @@ function OptimizedMessageItem({ content, isInitial = false, ticket }: OptimizedM
 
     return htmlContent.trim();
   }, [content.content]);
-  /*
-  const processedContent = React.useMemo(() => {
-    let htmlContent = content.content || '';
 
-    if (htmlContent.includes('<original-sender>')) {
-      htmlContent = htmlContent.replace(/<original-sender>.*?<\/original-sender>/g, '');
-    }
-
-    htmlContent = htmlContent.replace(/<meta[^>]*>/gi, '');
-    htmlContent = htmlContent.replace(/^\s*<html[^>]*>/gi, '');
-    htmlContent = htmlContent.replace(/<\/html>\s*$/gi, '');
-    htmlContent = htmlContent.replace(/^\s*<head[^>]*>[\s\S]*?<\/head>/gi, '');
-    htmlContent = htmlContent.replace(/^\s*<body[^>]*>/gi, '');
-    htmlContent = htmlContent.replace(/<\/body>\s*$/gi, '');
-    //Lines commented due to unecessary html format
-    //htmlContent = htmlContent.replace(/<p>\s*<\/p>/gi, '<p><br></p>');
-    //htmlContent = htmlContent.replace(/<p>\s*<\/p>/gi, '<br>');
-    htmlContent = htmlContent.replace(/^\s*(?:<br\s*\/?>\s*)+/i, '');
-    htmlContent = htmlContent.replace(/(?:<br\s*\/?>\s*)+$/i, '');
-
-    return htmlContent.trim();
-  }, [content.content]);
-*/
   const { displayReplyPart, displayQuotedPart, showToggleButton } = React.useMemo(() => {
     let displayReplyPart = processedContent;
     let displayQuotedPart: string | null = null;
@@ -482,7 +488,6 @@ function OptimizedMessageItem({ content, isInitial = false, ticket }: OptimizedM
                 <span className="h-3 w-3 flex-shrink-0">⏷</span>
                 {isExpanded ? 'Show less' : 'Show quoted text'}
               </button>
-
               {isExpanded && displayQuotedPart && (
                 <div
                   className={`mt-2 p-2 border-l-2 border-gray-200 dark:border-gray-700 text-muted-foreground text-sm quoted-content message-content-container ${
@@ -691,7 +696,6 @@ export function TicketConversation({
 
   const filteredCannedReplies = React.useMemo(() => {
     let filtered = cannedReplies;
-
     if (cannedSearchTerm) {
       const searchLower = cannedSearchTerm.toLowerCase();
       filtered = filtered.filter(
@@ -701,7 +705,6 @@ export function TicketConversation({
           (reply.description && reply.description.toLowerCase().includes(searchLower))
       );
     }
-
     return filtered;
   }, [cannedReplies, cannedSearchTerm]);
 
@@ -710,7 +713,6 @@ export function TicketConversation({
       const finalContents = [...htmlContent.contents].sort(
         (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       );
-
       return {
         items: finalContents as (TicketHtmlContent | IComment)[],
         isOptimized: true,
@@ -797,10 +799,6 @@ export function TicketConversation({
     }
 
     const currentTicketId = ticket.id;
-    // const userName = ticket.user?.name || 'there';
-
-    // const greeting = `<p>Hi ${userName},</p><div class="message-content" style="min-height: 60px; margin-bottom: 16px;"><p><br></p></div>`;
-
     const prevTicketId = prevTicketIdRef.current;
     const initialContent = signatureToUse ? `${signatureToUse}` : ``;
 
@@ -813,6 +811,7 @@ export function TicketConversation({
         onExtraRecipientsChange('');
       }
     }
+
     prevTicketIdRef.current = currentTicketId;
   }, [
     ticket.id,
@@ -841,8 +840,8 @@ export function TicketConversation({
       setReplyContent(content);
     } else {
       const greeting = `<p>Hi ${userName},</p><p><br></p>`;
-
       let signatureToUse = '';
+
       if (globalSignatureData?.content) {
         signatureToUse = globalSignatureData.content
           .replace(/\[Agent Name\]/g, currentAgentData?.name || '')
@@ -870,10 +869,8 @@ export function TicketConversation({
   // Function to validate email addresses
   const validateEmails = (emailString: string): boolean => {
     if (!emailString.trim()) return true; // Empty is valid
-
     const emails = emailString.split(',').map(email => email.trim());
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
     return emails.every(email => emailRegex.test(email));
   };
 
@@ -909,24 +906,22 @@ export function TicketConversation({
         latestMessageContent = commentMessage.content || '';
       }
 
-      // Clean and prepare the latest message content
+      // 🔧 MODIFICACIÓN PRINCIPAL: Limpiar contenido citado antes de agregarlo como quote
       if (latestMessageContent.trim()) {
-        // Remove any existing enque-quote divs to avoid nesting
-        const cleanedLatestContent = latestMessageContent.replace(
-          /<div[^>]*class="enque-quote"[^>]*>[\s\S]*?<\/div>/gi,
-          ''
-        );
+        // Usar la nueva función para limpiar el contenido citado
+        const cleanedLatestContent = cleanQuotedContent(latestMessageContent);
 
-        // Wrap the latest message in enque-quote div
-        const quotedContent = `<div class="enque-quote" style="border-left: 3px solid #e5e7eb; padding-left: 12px; margin-bottom: 16px; color: #6b7280; font-style: italic;">${cleanedLatestContent}</div>`;
-
-        // Prepend to the current content
-        finalContent = quotedContent + content;
+        // Solo agregar como quote si queda contenido después de la limpieza
+        if (cleanedLatestContent.trim()) {
+          // Wrap the cleaned latest message in enque-quote div
+          const quotedContent = `<div class="enque-quote" style="border-left: 3px solid #e5e7eb; padding-left: 12px; margin-top: 16px; color: #6b7280; font-style: italic;">${cleanedLatestContent}</div>`;
+          // Prepend to the current content
+          finalContent = content + quotedContent;
+        }
       }
     }
 
     let attachmentIds: number[] = [];
-
     if (selectedAttachments && selectedAttachments.length > 0) {
       try {
         console.log(`Uploading ${selectedAttachments.length} attachments...`);
@@ -951,7 +946,7 @@ export function TicketConversation({
       other_unknown_destinaries: extraBccRecipients.trim() || undefined,
     };
 
-    return createComment(ticket.id, payload /*ticket.status*/);
+    return createComment(ticket.id, payload);
   };
 
   useEffect(() => {
@@ -979,7 +974,6 @@ export function TicketConversation({
     },
     onSuccess: (data: CommentResponseData) => {
       setIsSending(false);
-
       setReplyContent('');
       setSelectedAttachments([]);
       setIsPrivateNote(false);
@@ -1092,7 +1086,6 @@ export function TicketConversation({
                   <PopoverContent className="w-96 p-0" align="start">
                     <div className="p-4 border-b">
                       <h3 className="font-semibold text-sm mb-3">Canned Replies</h3>
-
                       <div className="relative mb-3">
                         <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                         <Input
@@ -1103,7 +1096,6 @@ export function TicketConversation({
                         />
                       </div>
                     </div>
-
                     <ScrollArea className="h-64">
                       <div className="p-2">
                         {isLoadingCannedReplies ? (
@@ -1138,7 +1130,6 @@ export function TicketConversation({
                                   )}
                                 </div>
                               </div>
-
                               <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
                                 {reply.description ||
                                   reply.content.replace(/<[^>]*>/g, '').substring(0, 100) + '...'}
@@ -1356,7 +1347,6 @@ export function TicketConversation({
                           }}
                         />
                       )}
-
                     {(conversationItems.items as IComment[])
                       .filter((item: IComment) => item.id !== -1) // Filtrar el mensaje inicial
                       .map((item: IComment) => (
