@@ -313,7 +313,7 @@ export function RichTextEditor({
       StarterKit.configure({
         paragraph: {
           HTMLAttributes: {
-            style: 'margin-block: 10px !important',
+            style: 'margin: 0 !important',
           },
         },
         heading: false,

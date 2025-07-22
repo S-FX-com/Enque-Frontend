@@ -366,8 +366,8 @@ function OptimizedMessageItem({ content, isInitial = false, ticket }: OptimizedM
   const isAgentMessage = senderInfo.type === 'agent';
   const applyAgentBackground = isAgentMessage && !isInitial && !senderInfo.isUserReply;
 
-  // ✅ Función para renderizar destinatarios de email en TODOS los mensajes
   const renderEmailRecipients = () => {
+    if (content.is_private) return null;
     if (!ticket) return null;
 
     const recipients = [];
@@ -771,7 +771,7 @@ export function TicketConversation({
 
   useEffect(() => {
     let signatureToUse = '';
-    signatureToUse.concat('<br>');
+
     if (globalSignatureData?.content) {
       signatureToUse = globalSignatureData.content
         .replace(/\[Agent Name\]/g, currentAgentData?.name || '')
@@ -800,7 +800,8 @@ export function TicketConversation({
 
     const currentTicketId = ticket.id;
     const prevTicketId = prevTicketIdRef.current;
-    const initialContent = signatureToUse ? `<p><br></p>${signatureToUse}` : ``;
+    const initialContent = signatureToUse ? `${signatureToUse}` : ``;
+
     setReplyContent(initialContent);
     setEditorKey(prevKey => prevKey + 1);
 
@@ -1354,7 +1355,7 @@ export function TicketConversation({
                         />
                       )}
                     {(conversationItems.items as IComment[])
-                      .filter((item: IComment) => item.id !== -1) // Filtrar el mensaje inicial
+                      .filter((item: IComment) => item.id !== -1) 
                       .map((item: IComment) => (
                         <ConversationMessageItem 
                           key={item.id} 

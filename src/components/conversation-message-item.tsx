@@ -529,10 +529,8 @@ export function ConversationMessageItem({ comment, ticket }: Props) {
   const commentRef = useRef<HTMLDivElement>(null);
   
 
-
-  // ✅ Helper function to render email recipients with consistent badge styling  
   const renderEmailRecipients = () => {
-    // TO siempre viene del ticket, CC/BCC del comentario con fallback al ticket
+    if (comment.is_private) return null;
     const toRecipients = ticket?.to_recipients || '';
     const ccRecipients = comment.other_destinaries || ticket?.cc_recipients || '';
     const bccRecipients = comment.bcc_recipients || ticket?.bcc_recipients || '';
@@ -589,10 +587,7 @@ export function ConversationMessageItem({ comment, ticket }: Props) {
     addDarkModeStyles();
   }, []);
 
-  // Detectar si el comentario está migrado a S3
   const isMigratedToS3 = comment.s3_html_url && comment.content?.startsWith('[MIGRATED_TO_S3]');
-
-  // Función estable para cargar contenido desde S3
   const loadS3Content = useCallback(async () => {
     if (!isMigratedToS3 || comment.id === -1 || s3Content || isLoadingS3) {
       return;
@@ -635,18 +630,12 @@ export function ConversationMessageItem({ comment, ticket }: Props) {
   let isUserReply = false;
   const isInitialMessage = comment.id === -1;
   const isAgentMessage = !!comment.agent;
-
-  // Usar contenido S3 si está disponible
   if (isMigratedToS3 && s3Content) {
     fullContent = s3Content;
   }
-
-  // Check for auto-response
   const autoResponseMatch = fullContent.match(/<auto-response>(.*?)<\/auto-response>/);
   const isAutoResponse = !!autoResponseMatch;
   const autoResponseType = autoResponseMatch ? autoResponseMatch[1] : null;
-
-  // Remove auto-response tag from content
   if (isAutoResponse) {
     fullContent = fullContent.replace(/<auto-response>.*?<\/auto-response>/, '').trim();
   }
@@ -664,7 +653,6 @@ export function ConversationMessageItem({ comment, ticket }: Props) {
     if (fullContent.includes('<original-sender>')) {
       fullContent = fullContent.replace(/<original-sender>.*?<\/original-sender>/g, '');
     } else {
-      // Si usa el formato antiguo con <hr>
       const hrIndex = fullContent.indexOf('<hr>');
       fullContent = hrIndex !== -1 ? fullContent.substring(hrIndex + 4).trim() : fullContent;
     }
@@ -675,8 +663,6 @@ export function ConversationMessageItem({ comment, ticket }: Props) {
     senderName = comment.user.name || 'User';
     senderIdentifier = comment.user.email || `user-${comment.user.id}`;
   }
-
-  // Override display for auto-responses
   if (isAutoResponse) {
     senderName = 'System';
     senderIdentifier = 'system@enque.cc';
@@ -1236,5 +1222,3 @@ export function ConversationMessageItem({ comment, ticket }: Props) {
     </>
   );
 }
-
-
