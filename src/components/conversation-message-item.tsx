@@ -90,7 +90,7 @@ function findQuoteStartIndex(html: string): number {
   ];
   
   let earliestIndex = -1;
-  
+
   for (const pattern of patterns) {
     const match = html.match(pattern);
     if (match && match.index !== undefined) {
@@ -332,17 +332,17 @@ function InitialTicketMessage({
     
     const recipients: { label: string; emails: string; show: boolean }[] = [
       { 
-        label: 'TO:', 
+        label: 'To:', 
         emails: ticket.to_recipients || '', 
         show: Boolean(ticket.to_recipients?.trim()) 
       },
       { 
-        label: 'CC:', 
+        label: 'Cc:', 
         emails: ticket.cc_recipients || '', 
         show: Boolean(ticket.cc_recipients?.trim()) 
       },
       { 
-        label: 'BCC:', 
+        label: 'Bcc:', 
         emails: ticket.bcc_recipients || '', 
         show: Boolean(ticket.bcc_recipients?.trim()) 
       }
@@ -529,25 +529,28 @@ export function ConversationMessageItem({ comment, ticket, isFirstMessage }: Pro
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   const commentRef = useRef<HTMLDivElement>(null);
   
-  // Helper function to render email recipients
+  // ✅ Helper function to render email recipients - now uses comment data first, then ticket fallback
   const renderEmailRecipients = () => {
-    if (!ticket) return null;
+    // Priorizar información del comentario, usar ticket como fallback
+    const toRecipients = comment.to_recipients || ticket?.to_recipients || '';
+    const ccRecipients = comment.other_destinaries || ticket?.cc_recipients || '';
+    const bccRecipients = comment.bcc_recipients || ticket?.bcc_recipients || '';
     
     const recipients: { label: string; emails: string; show: boolean }[] = [
       { 
-        label: 'TO:', 
-        emails: ticket.to_recipients || '', 
-        show: Boolean(ticket.to_recipients?.trim()) 
+        label: 'To:', 
+        emails: toRecipients, 
+        show: Boolean(toRecipients.trim()) 
       },
       { 
-        label: 'CC:', 
-        emails: ticket.cc_recipients || '', 
-        show: Boolean(ticket.cc_recipients?.trim()) 
+        label: 'Cc:', 
+        emails: ccRecipients, 
+        show: Boolean(ccRecipients.trim()) 
       },
       { 
-        label: 'BCC:', 
-        emails: ticket.bcc_recipients || '', 
-        show: Boolean(ticket.bcc_recipients?.trim()) 
+        label: 'Bcc:', 
+        emails: bccRecipients, 
+        show: Boolean(bccRecipients.trim()) 
       }
     ];
 
@@ -893,8 +896,8 @@ export function ConversationMessageItem({ comment, ticket, isFirstMessage }: Pro
             <p className="text-xs text-muted-foreground mt-0.5">{formattedDate}</p>
           </div>
 
-          {/* Show email recipients only for first message */}
-          {isFirstMessage && renderEmailRecipients()}
+          {/* ✅ Show email recipients for ALL comments (not just first message) */}
+          {renderEmailRecipients()}
 
           <div className={`max-w-none break-words overflow-x-auto`}>
             {!isOnlyAttachmentPlaceholder && (
