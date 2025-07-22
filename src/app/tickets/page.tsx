@@ -331,9 +331,13 @@ function TicketsClientContent() {
           console.log('🔗 Setting team from URL:', teamIdFromQuery);
           setSelectedTeams([teamIdFromQuery]);
         }
+      } else {
+
+        if (selectedTeams.length > 0) {
+          console.log('🧹 Clearing team filter for "All Tickets"');
+          setSelectedTeams([]);
+        }
       }
-      // REMOVED: Don't clear selectedTeams when no teamId in URL
-      // This was causing the filter to reset when users manually select teams
     }
   }, [searchParams, pathname]);
 
