@@ -883,47 +883,6 @@ export function TicketConversation({
       throw new Error('Invalid email addresses in BCC recipients.');
     }
 
-    // Extract latest message content and prepend it with enque-quote class
-    let finalContent = content;
-    if (conversationItems.items.length > 0 && !isPrivate) {
-      let latestMessage = null;
-      let latestMessageContent = '';
-
-      if (conversationItems.items[0] && !conversationItems.items[0].is_private)
-        latestMessage = conversationItems.items[0];
-      else if (conversationItems.items[1] && !conversationItems.items[1].is_private)
-        latestMessage = conversationItems.items[1];
-      else if (conversationItems.items[2] && !conversationItems.items[2].is_private)
-        latestMessage = conversationItems.items[2];
-      else if (conversationItems.items[3] && !conversationItems.items[3].is_private)
-        latestMessage = conversationItems.items[3];
-
-      if (latestMessage) {
-        if (conversationItems.isOptimized) {
-          const optimizedMessage = latestMessage as TicketHtmlContent;
-          latestMessageContent = optimizedMessage.content || '';
-        } else {
-          const commentMessage = latestMessage as IComment;
-          latestMessageContent = commentMessage.content || '';
-        }
-
-        // Clean and prepare the latest message content
-        if (latestMessageContent.trim()) {
-          // Remove any existing enque-quote divs to avoid nesting
-          const cleanedLatestContent = latestMessageContent.replace(
-            /<div[^>]*class="enque-quote"[^>]*>[\s\S]*?<\/div>/gi,
-            ''
-          );
-
-          // Wrap the latest message in enque-quote div
-          const quotedContent = `<div class="enque-quote" style="border-left: 3px solid #e5e7eb; padding-left: 12px; margin-bottom: 16px; color: #6b7280; font-style: italic;">${cleanedLatestContent}</div>`;
-
-          // Prepend to the current content
-          finalContent = content + quotedContent;
-        }
-      }
-    }
-
     let attachmentIds: number[] = [];
 
     if (selectedAttachments && selectedAttachments.length > 0) {
@@ -940,7 +899,7 @@ export function TicketConversation({
     }
 
     const payload: CreateCommentPayload = {
-      content: finalContent, // Use the modified content with quote
+      content, // Use the modified content with quote
       ticket_id: ticket.id,
       agent_id: currentUser.id,
       workspace_id: currentUser.workspace_id,
