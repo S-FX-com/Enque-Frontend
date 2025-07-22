@@ -1,13 +1,15 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import Calendar from 'react-calendar';
+import 'react-calendar/dist/Calendar.css';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Send, Mail, Clock, MessageSquare, Search } from 'lucide-react';
+import { Send, Mail, Clock, MessageSquare, Search, ChevronDown } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -15,6 +17,12 @@ import type { ITicket } from '@/typescript/ticket';
 import type { IComment } from '@/typescript/comment';
 import type { Agent } from '@/typescript/agent';
 import { getAgentById } from '@/services/agent';
+import {
+  DropdownMenu,
+  DropdownMenuItem,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from '@radix-ui/react-dropdown-menu';
 import {
   getCommentsByTaskId,
   createComment,
@@ -621,7 +629,14 @@ export function TicketConversation({
   const prevTicketIdRef = useRef<number | null>(null);
   const [selectedAttachments, setSelectedAttachments] = useState<File[]>([]);
   const [isSending, setIsSending] = useState(false);
-
+  //Takes care of the send button text, wheter its a Send now or Schedule send situation
+  const [sendButton, setSendButton] = useState<string>('Send now');
+  //Changes the createComment function and when it should sent the reply
+  const [sendNow, setSendNow] = useState<boolean>(true);
+  //Shows up when theres a schedule send to be mandes
+  const [popCalendar, setPopCalendar] = useState<boolean>(false);
+  //Value used only when popCalendar is true
+  const [date, setDate] = useState<Date>(new Date());
   // Canned replies state
   const [cannedRepliesOpen, setCannedRepliesOpen] = useState(false);
   const [cannedSearchTerm, setCannedSearchTerm] = useState('');
@@ -873,7 +888,11 @@ export function TicketConversation({
     return emails.every(email => emailRegex.test(email));
   };
 
-  const sendComment = async (content: string, isPrivate: boolean): Promise<CommentResponseData> => {
+  const sendComment = async (
+    content: string,
+    isPrivate: boolean,
+    sendNow: boolean
+  ): Promise<CommentResponseData> => {
     if (!currentUser) {
       toast.error('Authentication error. User not found.');
       throw new Error('Authentication error. User not found.');
@@ -966,7 +985,7 @@ export function TicketConversation({
   }, [ticket.id]);
 
   const createCommentMutation = useMutation({
-    mutationFn: () => sendComment(replyContent, isPrivateNote),
+    mutationFn: () => sendComment(replyContent, isPrivateNote, sendNow),
     onMutate: async () => {
       setIsSending(true);
       return { replyContent, isPrivateNote };
@@ -1141,20 +1160,75 @@ export function TicketConversation({
                   </PopoverContent>
                 </Popover>
               </div>
-
-              <Button
-                onClick={handleSendReply}
-                disabled={
-                  (!replyContent.trim() ||
-                    !ticket?.id ||
-                    isSending ||
-                    createCommentMutation.isPending ||
-                    (extraRecipients.trim() && !validateEmails(extraRecipients))) as boolean
-                }
-              >
-                <Send className="mr-2 h-4 w-4" />
-                Send
-              </Button>
+              {process.env.NODE_ENV === 'development' && (
+                <div className="flex">
+                  {popCalendar && (
+                    <div className="absolute top-140 left-190">
+                      <Calendar onChange={() => setDate} value={date} />
+                    </div>
+                  )}
+                  <div className="bg-primary border-l rounded-lg">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}>
+                          <ChevronDown color="#ffffff" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        <div className="bg-primary text-center border rounded-lg w-full text-white">
+                          <DropdownMenuItem
+                            onSelect={() => {
+                              setPopCalendar(false);
+                              setSendButton('Send now');
+                              setSendNow(true);
+                            }}
+                          >
+                            Send now
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onSelect={() => {
+                              setPopCalendar(true);
+                              setSendButton('Schedule send');
+                              setSendNow(false);
+                            }}
+                          >
+                            Schedule send
+                          </DropdownMenuItem>
+                        </div>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                  <Button
+                    style={{ borderTopLeftRadius: 0, borderBottomLeftRadius: 0 }}
+                    onClick={handleSendReply}
+                    disabled={
+                      (!replyContent.trim() ||
+                        !ticket?.id ||
+                        isSending ||
+                        createCommentMutation.isPending ||
+                        (extraRecipients.trim() && !validateEmails(extraRecipients))) as boolean
+                    }
+                  >
+                    {sendButton}
+                    <Send className="mr-2 h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+              {process.env.NODE_ENV === 'production' && (
+                <Button
+                  onClick={handleSendReply}
+                  disabled={
+                    (!replyContent.trim() ||
+                      !ticket?.id ||
+                      isSending ||
+                      createCommentMutation.isPending ||
+                      (extraRecipients.trim() && !validateEmails(extraRecipients))) as boolean
+                  }
+                >
+                  <Send className="mr-2 h-4 w-4" />
+                  Send
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -1275,9 +1349,9 @@ export function TicketConversation({
                     .slice(1)
                     .filter((item: IComment) => item.id !== -1) // Filtrar mensaje inicial de la lista expandida
                     .map((item: IComment) => (
-                      <ConversationMessageItem 
-                        key={item.id} 
-                        comment={item} 
+                      <ConversationMessageItem
+                        key={item.id}
+                        comment={item}
                         ticket={{
                           to_recipients: ticket.to_recipients,
                           cc_recipients: ticket.cc_recipients,
@@ -1356,9 +1430,9 @@ export function TicketConversation({
                     {(conversationItems.items as IComment[])
                       .filter((item: IComment) => item.id !== -1) // Filtrar el mensaje inicial
                       .map((item: IComment) => (
-                        <ConversationMessageItem 
-                          key={item.id} 
-                          comment={item} 
+                        <ConversationMessageItem
+                          key={item.id}
+                          comment={item}
                           ticket={{
                             to_recipients: ticket.to_recipients,
                             cc_recipients: ticket.cc_recipients,
