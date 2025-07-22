@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import Image from 'next/image';
 import BoringAvatar from 'boring-avatars';
 import { Agent } from '@/typescript/agent';
@@ -17,9 +17,25 @@ export function useAgentAvatar({
   className = '',
 }: UseAgentAvatarProps) {
   const fallbackName = agent?.email || agent?.name || 'default-avatar';
+  //const urlLoginM365: string = 'https://graph.microsoft.com/v1.0/me/';
+  const urlLoginM365: string = 'https://graph.microsoft.com/v1.0/users/john.doe@contoso.com';
+  const loggedInM365: boolean = true;
+
+  const fetchMe = async () => {
+    const response = await fetch(urlLoginM365);
+    const data = await response.json();
+    console.log(data);
+  };
+
+  useEffect(() => {
+    if (loggedInM365) {
+      fetchMe();
+    }
+  });
 
   const AvatarComponent = React.useMemo(() => {
     const avatarColors = ['#1D73F4', '#D4E4FA'];
+    console.log(agent?.avatar);
 
     if (agent?.avatar) {
       return (

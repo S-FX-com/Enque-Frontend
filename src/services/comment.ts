@@ -75,9 +75,17 @@ export interface CommentResponseData {
   assignee_changed: boolean;
 }
 
+export interface TaskUpdate {
+  task_id: number;
+  task_in: {
+    status: string;
+  };
+}
+
 export const createComment = async (
   taskId: number,
   payload: CreateCommentPayload
+  //ticketStatus: string
 ): Promise<CommentResponseData> => {
   // Return the created IComment and task data on success
   try {
@@ -93,7 +101,6 @@ export const createComment = async (
       console.error('Failed to create comment:', errorMessage);
       throw new Error(errorMessage);
     }
-
     // Return the response data containing both comment and updated task
     return response.data;
   } catch (error) {

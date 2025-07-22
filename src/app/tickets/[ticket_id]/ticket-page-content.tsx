@@ -92,6 +92,9 @@ function DynamicCCInput({
 
   const handlePaste = (e: React.ClipboardEvent) => {
     const pastedText = e.clipboardData.getData('text');
+    //<<<<<<< HEAD
+    const emails = pastedText.split(/[,;\s]+/).filter(email => email.trim());
+    /* =======
 
     // Verificar si el texto pegado contiene emails válidos separados por delimitadores
     const potentialEmails = pastedText.split(/[,;\s\n\t]+/).filter(email => email.trim());
@@ -105,12 +108,15 @@ function DynamicCCInput({
       const validNewEmails = potentialEmails
         .map(email => email.trim())
         .filter(email => validateEmail(email) && !existingEmails.includes(email));
+>>>>>>> 0f9f96ac424022068b1e8061722a3aa053ece17f*/
 
-      if (validNewEmails.length > 0) {
-        onEmailsChange([...existingEmails, ...validNewEmails]);
-        setInputValue('');
+    emails.forEach(email => {
+      const trimmedEmail = email.trim();
+      if (validateEmail(trimmedEmail) && !existingEmails.includes(trimmedEmail)) {
+        // @ts-expect-error none
+        onEmailsChange(prev => [...prev, trimmedEmail]);
       }
-    }
+    });
     // Si no hay múltiples emails, dejar que el navegador maneje el pegado normalmente
     // El usuario podrá pegar texto simple en el input y editarlo
   };
@@ -173,6 +179,7 @@ export function TicketPageContent({ ticketId }: Props) {
   const { socket } = useSocketContext();
   const { user } = useAuth();
   const [ticket, setTicket] = useState<ITicket | null>(null);
+  const [titleEditing, setTitleEditing] = useState<boolean>(false);
   const [isClosing, setIsClosing] = useState(false);
   const [isReopening, setIsReopening] = useState(false);
   const [existingToEmails, setExistingToEmails] = useState<string[]>([]);
@@ -182,14 +189,12 @@ export function TicketPageContent({ ticketId }: Props) {
   const [extraBccEmails, setExtraBccEmails] = useState<string[]>([]);
   const [contactSearchQuery, setContactSearchQuery] = useState('');
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
-  
+
   // States for title editing
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editedTitle, setEditedTitle] = useState('');
 
   // New state variables for modals
-  // const [isCcModalOpen, setIsCcModalOpen] = useState(false);
-  // const [isBccModalOpen, setIsBccModalOpen] = useState(false);
 
   // Fetch ticket data
   const {
@@ -210,11 +215,9 @@ export function TicketPageContent({ ticketId }: Props) {
 
   const currentTicket = ticketData?.[0] || null;
 
-  
   useEffect(() => {
     if (currentTicket) {
       setTicket(currentTicket as unknown as ITicket);
-
       // Initialize TO emails if they exist in the ticket data
       if (currentTicket?.to_recipients) {
         const toEmails = currentTicket.to_recipients
@@ -248,6 +251,7 @@ export function TicketPageContent({ ticketId }: Props) {
       }
     }
   }, [currentTicket]);
+  //  const memoizedTitle = useMemo(() => ticketTitle, [ticketTitle]);
 
   // Socket listener for real-time updates
   useEffect(() => {
@@ -318,7 +322,7 @@ export function TicketPageContent({ ticketId }: Props) {
     ITicket,
     Error,
     {
-      field: 'priority' | 'assignee_id' | 'team_id' | 'category_id' | 'user_id';
+      field: 'priority' | 'assignee_id' | 'team_id' | 'category_id' | 'user_id' | 'title';
       value: string | null;
       originalFieldValue: string | number | null;
     },
@@ -397,7 +401,7 @@ export function TicketPageContent({ ticketId }: Props) {
   });
 
   const handleUpdateField = (
-    field: 'priority' | 'assignee_id' | 'team_id' | 'category_id' | 'user_id',
+    field: 'priority' | 'assignee_id' | 'team_id' | 'category_id' | 'user_id' | 'title',
     value: string | null
   ) => {
     if (!ticket) return;
@@ -488,75 +492,79 @@ export function TicketPageContent({ ticketId }: Props) {
   );
 
   // Reopen ticket mutation
-  const reopenTicketMutation = useMutation<ITicket, Error, void, { previousTicket: ITicket | null }>(
-    {
-      mutationFn: async () => {
-        if (!ticket) throw new Error('No ticket selected');
-        return updateTicket(ticket.id, { status: 'Open' });
-      },
-      onMutate: async () => {
-        if (!ticket) return { previousTicket: null };
+  const reopenTicketMutation = useMutation<
+    ITicket,
+    Error,
+    void,
+    { previousTicket: ITicket | null }
+  >({
+    mutationFn: async () => {
+      if (!ticket) throw new Error('No ticket selected');
+      return updateTicket(ticket.id, { status: 'Open' });
+    },
+    onMutate: async () => {
+      if (!ticket) return { previousTicket: null };
 
-        setIsReopening(true);
-        const previousTicket = ticket;
+      setIsReopening(true);
+      const previousTicket = ticket;
 
-        // Cancel any outgoing refetches for counter queries
-        await queryClient.cancelQueries({ queryKey: ['ticketsCount'] });
-        await queryClient.cancelQueries({ queryKey: ['agentTeams'] });
+      // Cancel any outgoing refetches for counter queries
+      await queryClient.cancelQueries({ queryKey: ['ticketsCount'] });
+      await queryClient.cancelQueries({ queryKey: ['agentTeams'] });
 
-        const optimisticTicket: ITicket = {
-          ...previousTicket,
-          status: 'Open' as TicketStatus,
-        };
+      const optimisticTicket: ITicket = {
+        ...previousTicket,
+        status: 'Open' as TicketStatus,
+      };
 
-        setTicket(optimisticTicket);
-        queryClient.setQueryData(['ticket', ticket.id], [optimisticTicket]);
+      setTicket(optimisticTicket);
+      queryClient.setQueryData(['ticket', ticket.id], [optimisticTicket]);
 
-        // Optimistically update counter queries
-        queryClient.setQueryData<number>(['ticketsCount', 'all'], old =>
-          (old || 0) + 1
-        );
+      // Optimistically update counter queries
+      queryClient.setQueryData<number>(['ticketsCount', 'all'], old => (old || 0) + 1);
 
-        if (ticket.assignee_id === user?.id) {
-          queryClient.setQueryData<number>(['ticketsCount', 'my', user?.id], old =>
-            (old || 0) + 1
-          );
-        }
+      if (ticket.assignee_id === user?.id) {
+        queryClient.setQueryData<number>(['ticketsCount', 'my', user?.id], old => (old || 0) + 1);
+      }
 
-        return { previousTicket };
-      },
-      onSuccess: updatedTicketData => {
-        toast.success(`Ticket #${updatedTicketData.id} reopened successfully.`);
-        invalidateCounterQueries();
-      },
-      onError: (error, _variables, context) => {
-        toast.error(
-          `Error reopening ticket #${ticket?.id}: ${error instanceof Error ? error.message : 'Unknown error'}`
-        );
-        if (context?.previousTicket) {
-          setTicket(context.previousTicket);
-          queryClient.setQueryData(['ticket', ticketId], [context.previousTicket]);
-        }
-        // Revert optimistic updates on error
-        invalidateCounterQueries();
-      },
-      onSettled: () => {
-        setIsReopening(false);
-      },
-    }
-  );
+      return { previousTicket };
+    },
+    onSuccess: updatedTicketData => {
+      toast.success(`Ticket #${updatedTicketData.id} reopened successfully.`);
+      invalidateCounterQueries();
+    },
+    onError: (error, _variables, context) => {
+      toast.error(
+        `Error reopening ticket #${ticket?.id}: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+      if (context?.previousTicket) {
+        setTicket(context.previousTicket);
+        queryClient.setQueryData(['ticket', ticketId], [context.previousTicket]);
+      }
+      // Revert optimistic updates on error
+      invalidateCounterQueries();
+    },
+    onSettled: () => {
+      setIsReopening(false);
+    },
+  });
 
   // Update title mutation
-  const updateTitleMutation = useMutation<ITicket, Error, string, { previousTicket: ITicket | null }>({
+  const updateTitleMutation = useMutation<
+    ITicket,
+    Error,
+    string,
+    { previousTicket: ITicket | null }
+  >({
     mutationFn: async (newTitle: string) => {
       if (!ticket) throw new Error('No ticket selected');
       return updateTicket(ticket.id, { title: newTitle });
     },
     onMutate: async (newTitle: string) => {
       if (!ticket) return { previousTicket: null };
-      
+
       const previousTicket = ticket;
-      
+
       // Optimistically update the title
       const optimisticTicket: ITicket = {
         ...previousTicket,
@@ -574,7 +582,9 @@ export function TicketPageContent({ ticketId }: Props) {
       setEditedTitle('');
     },
     onError: (error, _variables, context) => {
-      toast.error(`Error updating title: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      toast.error(
+        `Error updating title: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
       if (context?.previousTicket) {
         setTicket(context.previousTicket);
         queryClient.setQueryData(['ticket', ticketId], [context.previousTicket]);
@@ -604,39 +614,23 @@ export function TicketPageContent({ ticketId }: Props) {
   };
 
   // Function to handle primary contact change
-  const handlePrimaryContactChange = async (userId: string) => {
-    try {
-      // Prevent multiple rapid clicks
-      if (updateFieldMutation.isPending) {
-        return;
-      }
+  const handlePrimaryContactChange = (userId: string) => {
+    handleUpdateField('user_id', userId);
 
-      // Update local ticket state immediately for UI feedback
-      if (ticket) {
-        const selectedUser = users.find(u => u.id.toString() === userId) || null;
-        const updatedTicket = {
-          ...ticket,
-          user_id: userId === 'null' ? null : Number.parseInt(userId, 10),
-          user: selectedUser,
-        };
-        setTicket(updatedTicket);
-        queryClient.setQueryData(['ticket', ticketId], [updatedTicket]);
-      }
-
-      // Close modal immediately for better UX
-      setIsContactModalOpen(false);
-      setContactSearchQuery('');
-
-      // Make the API call
-      handleUpdateField('user_id', userId);
-    } catch (error) {
-      console.error('Error changing primary contact:', error);
-      // Revert local state if there's an error
-      if (ticket) {
-        setTicket(ticket);
-        queryClient.setQueryData(['ticket', ticketId], [ticket]);
-      }
+    // Update local ticket state immediately for UI feedback
+    if (ticket) {
+      const selectedUser = users.find(u => u.id.toString() === userId) || null;
+      const updatedTicket = {
+        ...ticket,
+        user_id: userId === 'null' ? null : Number.parseInt(userId, 10),
+        user: selectedUser,
+      };
+      setTicket(updatedTicket);
+      queryClient.setQueryData(['ticket', ticketId], [updatedTicket]);
     }
+
+    setIsContactModalOpen(false);
+    setContactSearchQuery('');
   };
 
   // Functions for title editing
@@ -655,7 +649,7 @@ export function TicketPageContent({ ticketId }: Props) {
       toast.error('Title cannot be empty');
       return;
     }
-    
+
     if (editedTitle.trim() === ticket?.title) {
       setIsEditingTitle(false);
       setEditedTitle('');
@@ -744,7 +738,12 @@ export function TicketPageContent({ ticketId }: Props) {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div
+        className="flex items-center justify-between"
+        onDoubleClick={() => {
+          setTitleEditing(!titleEditing);
+        }}
+      >
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">#{ticket?.id}</span>
@@ -752,7 +751,7 @@ export function TicketPageContent({ ticketId }: Props) {
               <div className="flex items-center gap-2 flex-1">
                 <Input
                   value={editedTitle}
-                  onChange={(e) => setEditedTitle(e.target.value)}
+                  onChange={e => setEditedTitle(e.target.value)}
                   onKeyDown={handleTitleKeyDown}
                   className="text-xl font-semibold h-auto border-none shadow-none p-0 focus-visible:ring-0"
                   autoFocus

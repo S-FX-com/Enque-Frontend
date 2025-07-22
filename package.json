@@ -41,7 +41,7 @@
     "@tanstack/react-query": "^5.74.4",
     "@tanstack/react-query-persist-client": "^5.74.4",
     "@tiptap/extension-image": "^2.11.7",
-    "@tiptap/extension-link": "^2.11.7",
+    "@tiptap/extension-link": "^2.26.1",
     "@tiptap/extension-mention": "^2.26.1",
     "@tiptap/extension-placeholder": "^2.11.7",
     "@tiptap/extension-underline": "^2.12.0",

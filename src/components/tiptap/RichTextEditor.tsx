@@ -121,6 +121,7 @@ const ResizableImage = Image.extend({
 
       // Establecer dimensiones iniciales si no existen
       const initialWidth = node.attrs.width || 300;
+      //const initialHeight = node.attrs.height || 200;
 
       img.style.cssText = `
         max-width: 100%;
@@ -297,6 +298,8 @@ export function RichTextEditor({
           .setImage({
             src: result.url,
             alt: 'Pasted Image',
+            //width: 300,
+            //height: 200,
           })
           .run();
 
