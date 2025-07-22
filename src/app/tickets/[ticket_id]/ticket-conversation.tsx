@@ -921,7 +921,7 @@ export function TicketConversation({
         const quotedContent = `<div class="enque-quote" style="border-left: 3px solid #e5e7eb; padding-left: 12px; margin-bottom: 16px; color: #6b7280; font-style: italic;">${cleanedLatestContent}</div>`;
 
         // Prepend to the current content
-        finalContent = quotedContent + content;
+        finalContent = content + quotedContent;
       }
     }
 
