@@ -771,7 +771,7 @@ export function TicketConversation({
 
   useEffect(() => {
     let signatureToUse = '';
-
+    signatureToUse.concat('<br>');
     if (globalSignatureData?.content) {
       signatureToUse = globalSignatureData.content
         .replace(/\[Agent Name\]/g, currentAgentData?.name || '')
@@ -800,8 +800,7 @@ export function TicketConversation({
 
     const currentTicketId = ticket.id;
     const prevTicketId = prevTicketIdRef.current;
-    const initialContent = signatureToUse ? `${signatureToUse}` : ``;
-
+    const initialContent = signatureToUse ? `<p><br></p>${signatureToUse}` : ``;
     setReplyContent(initialContent);
     setEditorKey(prevKey => prevKey + 1);
 
