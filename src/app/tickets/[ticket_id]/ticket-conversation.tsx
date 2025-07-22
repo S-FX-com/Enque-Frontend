@@ -157,23 +157,6 @@ const editorStyles = `
     min-height: 120px;
     overflow-y: visible;
   }
-
-  .enque-quote {
-    border-left: 3px solid #e5e7eb;
-    padding-left: 12px;
-    margin-bottom: 16px;
-    color: #6b7280;
-    font-style: italic;
-    background-color: #f9fafb;
-    padding: 8px 12px;
-    border-radius: 4px;
-  }
-
-  .dark .enque-quote {
-    border-left-color: #374151;
-    color: #9ca3af;
-    background-color: #1f2937;
-  }
 `;
 
 interface Props {
