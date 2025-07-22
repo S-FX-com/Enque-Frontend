@@ -779,7 +779,7 @@ export function TicketPageContent({ ticketId }: Props) {
               </div>
             ) : (
               <div className="flex items-center gap-2 group">
-                <h1 className="text-xl font-semibold">{ticket?.title}</h1>
+            <h1 className="text-xl font-semibold">{ticket?.title}</h1>
                 <Button
                   size="sm"
                   variant="ghost"

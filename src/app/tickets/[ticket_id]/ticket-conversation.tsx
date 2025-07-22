@@ -366,9 +366,9 @@ function OptimizedMessageItem({ content, isInitial = false, ticket }: OptimizedM
   const isAgentMessage = senderInfo.type === 'agent';
   const applyAgentBackground = isAgentMessage && !isInitial && !senderInfo.isUserReply;
 
-  // Función para renderizar destinatarios de email en el mensaje inicial
+  // ✅ Función para renderizar destinatarios de email en TODOS los mensajes
   const renderEmailRecipients = () => {
-    if (!isInitial || !ticket) return null;
+    if (!ticket) return null;
 
     const recipients = [];
 
@@ -455,7 +455,7 @@ function OptimizedMessageItem({ content, isInitial = false, ticket }: OptimizedM
           </p>
         </div>
 
-        {/* Renderizar destinatarios si es el mensaje inicial */}
+        {/* ✅ Renderizar destinatarios para TODOS los mensajes */}
         {renderEmailRecipients()}
 
         <div className="max-w-none break-words overflow-x-auto">
@@ -1229,7 +1229,6 @@ export function TicketConversation({
                             cc_recipients: ticket.cc_recipients,
                             bcc_recipients: ticket.bcc_recipients,
                           }}
-                          isFirstMessage={true}
                         />
                       )
                     )}
@@ -1276,7 +1275,15 @@ export function TicketConversation({
                     .slice(1)
                     .filter((item: IComment) => item.id !== -1) // Filtrar mensaje inicial de la lista expandida
                     .map((item: IComment) => (
-                      <ConversationMessageItem key={item.id} comment={item} />
+                      <ConversationMessageItem 
+                        key={item.id} 
+                        comment={item} 
+                        ticket={{
+                          to_recipients: ticket.to_recipients,
+                          cc_recipients: ticket.cc_recipients,
+                          bcc_recipients: ticket.bcc_recipients,
+                        }}
+                      />
                     ))}
             </div>
           )}
@@ -1349,7 +1356,15 @@ export function TicketConversation({
                     {(conversationItems.items as IComment[])
                       .filter((item: IComment) => item.id !== -1) // Filtrar el mensaje inicial
                       .map((item: IComment) => (
-                        <ConversationMessageItem key={item.id} comment={item} />
+                        <ConversationMessageItem 
+                          key={item.id} 
+                          comment={item} 
+                          ticket={{
+                            to_recipients: ticket.to_recipients,
+                            cc_recipients: ticket.cc_recipients,
+                            bcc_recipients: ticket.bcc_recipients,
+                          }}
+                        />
                       ))}
                   </>
                 )}

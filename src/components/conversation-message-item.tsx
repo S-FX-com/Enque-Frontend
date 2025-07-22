@@ -48,7 +48,6 @@ interface Props {
     cc_recipients?: string;
     bcc_recipients?: string;
   };
-  isFirstMessage?: boolean;
 }
 
 const parseSenderFromContent = (content: string): { name: string; email: string } | null => {
@@ -90,7 +89,7 @@ function findQuoteStartIndex(html: string): number {
   ];
   
   let earliestIndex = -1;
-  
+
   for (const pattern of patterns) {
     const match = html.match(pattern);
     if (match && match.index !== undefined) {
@@ -332,17 +331,17 @@ function InitialTicketMessage({
     
     const recipients: { label: string; emails: string; show: boolean }[] = [
       { 
-        label: 'TO:', 
+        label: 'To:', 
         emails: ticket.to_recipients || '', 
         show: Boolean(ticket.to_recipients?.trim()) 
       },
       { 
-        label: 'CC:', 
+        label: 'Cc:', 
         emails: ticket.cc_recipients || '', 
         show: Boolean(ticket.cc_recipients?.trim()) 
       },
       { 
-        label: 'BCC:', 
+        label: 'Bcc:', 
         emails: ticket.bcc_recipients || '', 
         show: Boolean(ticket.bcc_recipients?.trim()) 
       }
@@ -519,7 +518,7 @@ const addDarkModeStyles = () => {
   }
 };
 
-export function ConversationMessageItem({ comment, ticket, isFirstMessage }: Props) {
+export function ConversationMessageItem({ comment, ticket }: Props) {
   const [s3Content, setS3Content] = useState<string | null>(null);
   const [isLoadingS3, setIsLoadingS3] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -529,25 +528,30 @@ export function ConversationMessageItem({ comment, ticket, isFirstMessage }: Pro
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   const commentRef = useRef<HTMLDivElement>(null);
   
-  // Helper function to render email recipients
+
+
+  // ✅ Helper function to render email recipients with consistent badge styling  
   const renderEmailRecipients = () => {
-    if (!ticket) return null;
+    // TO siempre viene del ticket, CC/BCC del comentario con fallback al ticket
+    const toRecipients = ticket?.to_recipients || '';
+    const ccRecipients = comment.other_destinaries || ticket?.cc_recipients || '';
+    const bccRecipients = comment.bcc_recipients || ticket?.bcc_recipients || '';
     
     const recipients: { label: string; emails: string; show: boolean }[] = [
       { 
-        label: 'TO:', 
-        emails: ticket.to_recipients || '', 
-        show: Boolean(ticket.to_recipients?.trim()) 
+        label: 'To:', 
+        emails: toRecipients, 
+        show: Boolean(toRecipients.trim()) 
       },
       { 
-        label: 'CC:', 
-        emails: ticket.cc_recipients || '', 
-        show: Boolean(ticket.cc_recipients?.trim()) 
+        label: 'Cc:', 
+        emails: ccRecipients, 
+        show: Boolean(ccRecipients.trim()) 
       },
       { 
-        label: 'BCC:', 
-        emails: ticket.bcc_recipients || '', 
-        show: Boolean(ticket.bcc_recipients?.trim()) 
+        label: 'Bcc:', 
+        emails: bccRecipients, 
+        show: Boolean(bccRecipients.trim()) 
       }
     ];
 
@@ -555,24 +559,32 @@ export function ConversationMessageItem({ comment, ticket, isFirstMessage }: Pro
     if (!hasAnyRecipients) return null;
 
     return (
-      <div className="mb-3 text-xs text-muted-foreground space-y-1 border-l-2 border-muted pl-2">
-        {recipients.map(recipient => {
-          if (!recipient.show) return null;
-          
-          return (
-            <div key={recipient.label} className="flex items-start gap-2">
-              <span className="font-medium min-w-[30px] text-slate-600 dark:text-slate-400">
-                {recipient.label}
-              </span>
-              <span className="text-xs text-slate-700 dark:text-slate-300">
-                {recipient.emails}
-              </span>
-            </div>
-          );
-        })}
+      <div className="mb-3 p-2 border-l-2 border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/50 rounded-r-md">
+        <div className="space-y-1">
+          {recipients.map(recipient => {
+            if (!recipient.show) return null;
+            
+            return (
+              <div key={recipient.label} className="flex items-center gap-1 flex-wrap">
+                <span className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                  {recipient.label}
+                </span>
+                {recipient.emails.split(',').map((email, index) => (
+                  <span
+                    key={index}
+                    className="inline-flex items-center rounded-full bg-slate-100 dark:bg-slate-700 px-2 py-0.5 text-xs font-medium text-slate-700 dark:text-slate-300"
+                  >
+                    {email.trim()}
+                  </span>
+                ))}
+              </div>
+            );
+          })}
+        </div>
       </div>
     );
   };
+
   useEffect(() => {
     addDarkModeStyles();
   }, []);
@@ -893,8 +905,8 @@ export function ConversationMessageItem({ comment, ticket, isFirstMessage }: Pro
             <p className="text-xs text-muted-foreground mt-0.5">{formattedDate}</p>
           </div>
 
-          {/* Show email recipients only for first message */}
-          {isFirstMessage && renderEmailRecipients()}
+          {/* ✅ Show email recipients for ALL comments (not just first message) */}
+          {renderEmailRecipients()}
 
           <div className={`max-w-none break-words overflow-x-auto`}>
             {!isOnlyAttachmentPlaceholder && (
