@@ -168,8 +168,6 @@ html {
   color: #ffffff !important;
 }
 
-/*.dark h2,
-.dark h3,*/
 .dark p:not(.text-slate-500),
 .dark .text-slate-900 {
   color: #ffffff !important;
@@ -246,7 +244,6 @@ nav a,
   color: inherit !important;
 }
 
-/* Específicamente para el sidebar */
 .flex-1.overflow-y-auto a:link,
 .flex-1.overflow-y-auto a,
 .space-y-1 a:link,
@@ -255,14 +252,12 @@ nav a,
   color: inherit !important;
 }
 
-/* Para breadcrumbs */
 .flex.items-center.text-sm a:link,
 .flex.items-center.text-sm a {
   text-decoration: none !important;
   color: inherit !important;
 }
 
-/* MÁXIMA ESPECIFICIDAD PARA CONVERSACIONES */
 html body div.message-content-container a:link,
 html body div.message-content-container a[href],
 html body div.message-content-container a,
@@ -284,10 +279,10 @@ html body [class*="quoted-content"] a,
 html body .message-content-container span.x_MsoHyperlink,
 html body .quoted-content span.x_MsoHyperlink,
 html body .ProseMirror span.x_MsoHyperlink,
-/* Anular directamente la regla problemática */
+
 html body .message-content-container *[href]:link,
 html body .quoted-content *[href]:link,
-/* Para elementos dinámicos */
+
 body .message-content-container a:link,
 body .message-content-container a[href],
 body .message-content-container a,
@@ -301,7 +296,6 @@ body .quoted-content span.x_MsoHyperlink {
   cursor: pointer !important;
 }
 
-/* Anular específicamente la regla MSO problemática */
 .message-content-container a:link,
 .message-content-container span.x_MsoHyperlink,
 .quoted-content a:link,
@@ -310,7 +304,6 @@ body .quoted-content span.x_MsoHyperlink {
   color: #2563eb !important;
 }
 
-/* REGLAS DE EMERGENCIA - MÁXIMA PRIORIDAD */
 .message-content-container a:link,
 .message-content-container a[href],
 .quoted-content a:link,
@@ -323,7 +316,6 @@ body .quoted-content span.x_MsoHyperlink {
   background: none !important;
 }
 
-/* Anular cualquier regla de MSO/Outlook directamente */
 .message-content-container *[class*='MsoHyperlink'],
 .quoted-content *[class*='MsoHyperlink'],
 .user-message-content *[class*='MsoHyperlink'] {
@@ -331,7 +323,6 @@ body .quoted-content span.x_MsoHyperlink {
   color: #2563eb !important;
 }
 
-/* Sobrescribir reglas a:link globales en contexto de mensajes */
 body .message-content-container a:link,
 body .quoted-content a:link,
 body .user-message-content a:link {
@@ -339,7 +330,6 @@ body .user-message-content a:link {
   color: #2563eb !important;
 }
 
-/* Regla nuclear para combatir estilos inline */
 .message-content-container a[style*='text-decoration'],
 .quoted-content a[style*='text-decoration'],
 .user-message-content a[style*='text-decoration'] {
@@ -352,15 +342,13 @@ body .user-message-content a:link {
   color: #2563eb !important;
 }
 
-/* CONTRARRESTA DIRECTAMENTE LA REGLA PROBLEMÁTICA */
-/* Esta regla específicamente anula a:link, span.x_MsoHyperlink dentro de contenedores de mensajes */
 html body .message-content-container a:link,
 html body .message-content-container span.x_MsoHyperlink,
 html body .quoted-content a:link,
 html body .quoted-content span.x_MsoHyperlink,
 html body .user-message-content a:link,
 html body .user-message-content span.x_MsoHyperlink,
-/* Con IDs para máxima especificidad */
+
 #root .message-content-container a:link,
 #root .message-content-container span.x_MsoHyperlink,
 #root .quoted-content a:link,
@@ -371,7 +359,6 @@ html body .user-message-content span.x_MsoHyperlink,
   color: #2563eb !important;
 }
 
-/* Modo oscuro para conversaciones */
 .dark div.message-content-container a:link,
 .dark div.message-content-container a[href],
 .dark div.message-content-container a,
@@ -393,7 +380,6 @@ html body .user-message-content span.x_MsoHyperlink,
 .dark .message-content-container span.x_MsoHyperlink,
 .dark .quoted-content span.x_MsoHyperlink,
 .dark .ProseMirror span.x_MsoHyperlink,
-/* REGLAS DE EMERGENCIA PARA MODO OSCURO */
 .dark .message-content-container a:link,
 .dark .message-content-container a[href],
 .dark .quoted-content a:link,
@@ -403,7 +389,6 @@ html body .user-message-content span.x_MsoHyperlink,
 .dark .message-content-container *[class*="MsoHyperlink"],
 .dark .quoted-content *[class*="MsoHyperlink"],
 .dark .user-message-content *[class*="MsoHyperlink"],
-/* CONTRARRESTA DIRECTAMENTE LA REGLA PROBLEMÁTICA EN MODO OSCURO */
 html body .dark .message-content-container a:link,
 html body .dark .message-content-container span.x_MsoHyperlink,
 html body .dark .quoted-content a:link,

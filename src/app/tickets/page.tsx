@@ -44,7 +44,7 @@ import {
 import { useDebounce } from '@/hooks/use-debounce';
 import { motion } from 'framer-motion';
 import { getAgents } from '@/services/agent';
-import { getTeams } from '@/services/team';
+import { getTeams, getAgentTeams } from '@/services/team';
 import { getUsers } from '@/services/user';
 import { getCompanies } from '@/services/company';
 import { getCategories } from '@/services/category';
@@ -134,8 +134,16 @@ function TicketsClientContent() {
   }, [agentsData]);
 
   const { data: teamsData = [] } = useQuery<Team[]>({
-    queryKey: ['teams'],
-    queryFn: getTeams,
+    queryKey: user?.role === 'admin' ? ['teams'] : ['agentTeams', user?.id],
+    queryFn: () => {
+      if (user?.role === 'admin') {
+        return getTeams();
+      } else if (user?.id) {
+        return getAgentTeams(user.id);
+      }
+      return [];
+    },
+    enabled: !!user,
     staleTime: 1000 * 60 * 5,
   });
   const teamOptions: OptionType[] = useMemo(() => {
@@ -410,13 +418,9 @@ function TicketsClientContent() {
 
       const allTickets = previousTicketsData?.pages.flat() || [];
       const deletedTickets = allTickets.filter(ticket => ticketIdsToDelete.includes(ticket.id));
-      const activeDeletedCount = deletedTickets.filter(
-        ticket => ticket.status !== 'Closed'
-      ).length;
+      const activeDeletedCount = deletedTickets.filter(ticket => ticket.status !== 'Closed').length;
       const myActiveDeletedCount = deletedTickets.filter(
-        ticket =>
-          ticket.assignee_id === user?.id &&
-          ticket.status !== 'Closed'
+        ticket => ticket.assignee_id === user?.id && ticket.status !== 'Closed'
       ).length;
 
       queryClient.setQueryData(
@@ -683,9 +687,7 @@ function TicketsClientContent() {
 
       // Optimistically update "my tickets" counter if current user is affected
       if (user?.id) {
-        const activeTicketsToUser = affectedTickets.filter(
-          ticket => ticket.status !== 'Closed'
-        );
+        const activeTicketsToUser = affectedTickets.filter(ticket => ticket.status !== 'Closed');
 
         // Count tickets that were assigned to current user that are now being reassigned
         const ticketsRemovedFromUser = activeTicketsToUser.filter(
@@ -843,9 +845,7 @@ function TicketsClientContent() {
       });
 
       // Update counters - closed tickets reduce active count
-      const activeTicketsToClose = affectedTickets.filter(
-        ticket => ticket.status !== 'Closed'
-      );
+      const activeTicketsToClose = affectedTickets.filter(ticket => ticket.status !== 'Closed');
 
       const currentAllCount = queryClient.getQueryData<number>(['ticketsCount', 'all']) || 0;
       const currentMyCount =
@@ -886,15 +886,11 @@ function TicketsClientContent() {
     },
   });
 
-
-
   const handleCloseTicketsConfirm = () => {
     if (selectedTicketIds.size > 0) {
       bulkCloseTicketsMutation.mutate(Array.from(selectedTicketIds));
     }
   };
-
-
 
   const handleAssignToAgentConfirm = () => {
     if (selectedTicketIds.size > 0) {
@@ -981,13 +977,9 @@ function TicketsClientContent() {
       // Update counters
       const allTickets = previousTicketsData?.pages.flat() || [];
       const mergedTickets = allTickets.filter(ticket => ticketIdsToMerge.includes(ticket.id));
-      const activeMergedCount = mergedTickets.filter(
-        ticket => ticket.status !== 'Closed'
-      ).length;
+      const activeMergedCount = mergedTickets.filter(ticket => ticket.status !== 'Closed').length;
       const myActiveMergedCount = mergedTickets.filter(
-        ticket =>
-          ticket.assignee_id === user?.id &&
-          ticket.status !== 'Closed'
+        ticket => ticket.assignee_id === user?.id && ticket.status !== 'Closed'
       ).length;
 
       const currentAllCount = queryClient.getQueryData<number>(['ticketsCount', 'all']) || 0;
@@ -1185,9 +1177,6 @@ function TicketsClientContent() {
                 <Settings2 className="mr-2 h-4 w-4" />
                 Close ({selectedTicketIds.size})
               </Button>
-
- 
-
               {selectedTicketIds.size > 1 && (
                 <AlertDialog open={isMergeDialogOpen} onOpenChange={setIsMergeDialogOpen}>
                   <AlertDialogTrigger asChild>
