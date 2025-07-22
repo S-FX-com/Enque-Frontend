@@ -1151,20 +1151,38 @@ export function TicketConversation({
                   </PopoverContent>
                 </Popover>
               </div>
-
-              <Button
-                onClick={handleSendReply}
-                disabled={
-                  (!replyContent.trim() ||
-                    !ticket?.id ||
-                    isSending ||
-                    createCommentMutation.isPending ||
-                    (extraRecipients.trim() && !validateEmails(extraRecipients))) as boolean
-                }
-              >
-                <Send className="mr-2 h-4 w-4" />
-                Send
-              </Button>
+              {process.env.NODE_ENV === 'development' && (
+                <div>
+                  <Button
+                    onClick={handleSendReply}
+                    disabled={
+                      (!replyContent.trim() ||
+                        !ticket?.id ||
+                        isSending ||
+                        createCommentMutation.isPending ||
+                        (extraRecipients.trim() && !validateEmails(extraRecipients))) as boolean
+                    }
+                  >
+                    <Send className="mr-2 h-4 w-4" />
+                    Send
+                  </Button>
+                </div>
+              )}
+              {process.env.NODE_ENV === 'production' && (
+                <Button
+                  onClick={handleSendReply}
+                  disabled={
+                    (!replyContent.trim() ||
+                      !ticket?.id ||
+                      isSending ||
+                      createCommentMutation.isPending ||
+                      (extraRecipients.trim() && !validateEmails(extraRecipients))) as boolean
+                  }
+                >
+                  <Send className="mr-2 h-4 w-4" />
+                  Send
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>

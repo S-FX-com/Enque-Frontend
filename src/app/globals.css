@@ -115,7 +115,6 @@
     @apply border-border outline-ring/50;
     outline-color: transparent !important;
     font-family: var(--font-geist-sans) !important;
-    font-size: 10pt !important;
   }
   body {
     @apply bg-background text-foreground font-sans;
