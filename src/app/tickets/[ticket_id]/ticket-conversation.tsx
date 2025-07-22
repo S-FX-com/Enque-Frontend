@@ -1294,7 +1294,7 @@ export function TicketConversation({
             <div className="space-y-5 border-t pt-5">
               {conversationItems.isOptimized
                 ? (conversationItems.items as TicketHtmlContent[])
-                    //.slice(1)
+                    .slice(1)
                     .map((item: TicketHtmlContent) => (
                       <OptimizedMessageItem
                         key={item.id}
@@ -1308,7 +1308,7 @@ export function TicketConversation({
                       />
                     ))
                 : (conversationItems.items as IComment[])
-                    //.slice(1)
+                    .slice(1)
                     .filter((item: IComment) => item.id !== -1) // Filtrar mensaje inicial de la lista expandida
                     .map((item: IComment) => (
                       <ConversationMessageItem key={item.id} comment={item} />
