@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import Calendar from 'react-calendar';
+import { Separator } from '@radix-ui/react-separator';
 import 'react-calendar/dist/Calendar.css';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,7 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Send, Mail, Clock, MessageSquare, Search, ChevronDown } from 'lucide-react';
+import { Send, Mail, Clock, MessageSquare, Search } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -17,12 +17,6 @@ import type { ITicket } from '@/typescript/ticket';
 import type { IComment } from '@/typescript/comment';
 import type { Agent } from '@/typescript/agent';
 import { getAgentById } from '@/services/agent';
-import {
-  DropdownMenu,
-  DropdownMenuItem,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from '@radix-ui/react-dropdown-menu';
 import {
   getCommentsByTaskId,
   createComment,
@@ -40,6 +34,7 @@ import { uploadAttachments } from '@/services/attachmentService';
 import { getEnabledGlobalSignature } from '@/services/global-signature';
 import { getCannedReplies, type CannedReply } from '@/services/canned-replies';
 import { formatRelativeTime } from '@/lib/utils';
+import { ScheduleSendCalendar } from './scheduleSend/scheduleSendCalendar';
 
 // Función helper para agregar estilos CSS de modo oscuro
 const addDarkModeStyles = () => {
@@ -630,7 +625,6 @@ export function TicketConversation({
   const [selectedAttachments, setSelectedAttachments] = useState<File[]>([]);
   const [isSending, setIsSending] = useState(false);
   //Takes care of the send button text, wheter its a Send now or Schedule send situation
-  const [sendButton, setSendButton] = useState<string>('Send now');
   //Changes the createComment function and when it should sent the reply
   const [sendNow, setSendNow] = useState<boolean>(true);
   //Shows up when theres a schedule send to be mandes
@@ -885,12 +879,12 @@ export function TicketConversation({
   const validateEmails = (emailString: string): boolean => {
     if (!emailString.trim()) return true; // Empty is valid
     const emails = emailString.split(',').map(email => email.trim());
-    
+
     return emails.every(email => {
       // ✅ Handle both formats: "email@domain.com" and "Name <email@domain.com>"
       const emailMatch = email.match(/<([^>]+)>/) || [null, email];
       const extractedEmail = emailMatch[1]?.trim() || email.trim();
-      
+
       // Basic email validation regex
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       return emailRegex.test(extractedEmail);
@@ -899,8 +893,9 @@ export function TicketConversation({
 
   const sendComment = async (
     content: string,
-    isPrivate: boolean,
-    sendNow: boolean
+    isPrivate: boolean
+
+    //sendNow: boolean
   ): Promise<CommentResponseData> => {
     if (!currentUser) {
       toast.error('Authentication error. User not found.');
@@ -917,6 +912,10 @@ export function TicketConversation({
     if (extraBccRecipients.trim() && !validateEmails(extraBccRecipients)) {
       toast.error('Please enter valid BCC email addresses separated by commas.');
       throw new Error('Invalid email addresses in BCC recipients.');
+    }
+
+    if (sendNow && process.env.NODE_ENV === 'development') {
+      throw new Error('Still in production');
     }
 
     // Extract latest message content and prepend it with enque-quote class
@@ -994,7 +993,7 @@ export function TicketConversation({
   }, [ticket.id]);
 
   const createCommentMutation = useMutation({
-    mutationFn: () => sendComment(replyContent, isPrivateNote, sendNow),
+    mutationFn: () => sendComment(replyContent, isPrivateNote),
     onMutate: async () => {
       setIsSending(true);
       return { replyContent, isPrivateNote };
@@ -1171,44 +1170,8 @@ export function TicketConversation({
               </div>
               {process.env.NODE_ENV === 'development' && (
                 <div className="flex">
-                  {popCalendar && (
-                    <div className="absolute top-140 left-190">
-                      <Calendar onChange={() => setDate} value={date} />
-                    </div>
-                  )}
-                  <div className="bg-primary border-l rounded-lg">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}>
-                          <ChevronDown color="#ffffff" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent>
-                        <div className="bg-primary text-center border rounded-lg w-full text-white">
-                          <DropdownMenuItem
-                            onSelect={() => {
-                              setPopCalendar(false);
-                              setSendButton('Send now');
-                              setSendNow(true);
-                            }}
-                          >
-                            Send now
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onSelect={() => {
-                              setPopCalendar(true);
-                              setSendButton('Schedule send');
-                              setSendNow(false);
-                            }}
-                          >
-                            Schedule send
-                          </DropdownMenuItem>
-                        </div>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
                   <Button
-                    style={{ borderTopLeftRadius: 0, borderBottomLeftRadius: 0 }}
+                    style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
                     onClick={handleSendReply}
                     disabled={
                       (!replyContent.trim() ||
@@ -1218,9 +1181,17 @@ export function TicketConversation({
                         (extraRecipients.trim() && !validateEmails(extraRecipients))) as boolean
                     }
                   >
-                    {sendButton}
                     <Send className="mr-2 h-4 w-4" />
+                    Send
                   </Button>
+                  <Separator orientation="vertical" className="h-full w-px bg-gray-200 mx-2" />
+                  <ScheduleSendCalendar
+                    date={date}
+                    setDate={setDate}
+                    popCalendar={popCalendar}
+                    setPopCalendar={setPopCalendar}
+                    setSendNow={setSendNow}
+                  />
                 </div>
               )}
               {process.env.NODE_ENV === 'production' && (
@@ -1437,7 +1408,7 @@ export function TicketConversation({
                         />
                       )}
                     {(conversationItems.items as IComment[])
-                      .filter((item: IComment) => item.id !== -1) 
+                      .filter((item: IComment) => item.id !== -1)
                       .map((item: IComment) => (
                         <ConversationMessageItem
                           key={item.id}
