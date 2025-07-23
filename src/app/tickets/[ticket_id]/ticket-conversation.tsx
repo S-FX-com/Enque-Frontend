@@ -263,17 +263,15 @@ function cleanQuotedContent(htmlContent: string): string {
     ''
   );
 
-  // 2. Encontrar y remover contenido detectado por findQuoteStartIndex
   const quoteStartIndex = findQuoteStartIndex(cleanedContent);
   if (quoteStartIndex !== -1) {
     cleanedContent = cleanedContent.substring(0, quoteStartIndex);
   }
 
-  // 3. Limpiar espacios en blanco y elementos vacíos al final
   cleanedContent = cleanedContent
-    .replace(/(?:<br\s*\/?>\s*)+$/i, '') // Remover <br> al final
-    .replace(/<p[^>]*>\s*<\/p>\s*$/gi, '') // Remover <p> vacíos al final
-    .replace(/\s+$/g, ''); // Remover espacios en blanco al final
+    .replace(/(?:<br\s*\/?>\s*)+$/i, '') 
+    .replace(/<p[^>]*>\s*<\/p>\s*$/gi, '') 
+    .replace(/\s+$/g, ''); 
 
   return cleanedContent;
 }
@@ -281,12 +279,23 @@ function cleanQuotedContent(htmlContent: string): string {
 function OptimizedMessageItem({ content, isInitial = false, ticket }: OptimizedMessageItemProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
-  // Aplicar estilos CSS para modo oscuro
+  // Aplicar estilos CSS paa modo oscuro
   useEffect(() => {
     addDarkModeStyles();
   }, []);
 
   const senderInfo = React.useMemo(() => {
+    const isAgentMessage = content.sender.type === 'agent';
+    
+    if (isAgentMessage) {
+      return {
+        name: content.sender.name || 'Agent',
+        email: content.sender.email || 'unknown',
+        isUserReply: false,
+        type: 'agent',
+      };
+    }
+
     const htmlContent = content.content || '';
     const metadataMatch = htmlContent.match(/<original-sender>(.*?)\|(.*?)<\/original-sender>/);
 
@@ -299,12 +308,11 @@ function OptimizedMessageItem({ content, isInitial = false, ticket }: OptimizedM
       };
     }
 
-    const isAgentMessage = content.sender.type === 'agent';
     return {
-      name: content.sender.name || (isAgentMessage ? 'Agent' : 'User'),
+      name: content.sender.name || 'User',
       email: content.sender.email || 'unknown',
-      isUserReply: !isAgentMessage && !isInitial,
-      type: isAgentMessage ? 'agent' : 'user',
+      isUserReply: !isInitial,
+      type: 'user',
     };
   }, [content.content, content.sender, isInitial]);
 

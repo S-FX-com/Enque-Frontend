@@ -640,28 +640,30 @@ export function ConversationMessageItem({ comment, ticket }: Props) {
     fullContent = fullContent.replace(/<auto-response>.*?<\/auto-response>/, '').trim();
   }
 
-  const parsedSender = parseSenderFromContent(fullContent);
-
   if (isInitialMessage && comment.user) {
     senderName = comment.user.name || 'User';
     senderIdentifier = comment.user.email || `user-${comment.user.id}`;
-  } else if (parsedSender) {
-    isUserReply = true;
-    senderName = parsedSender.name;
-    senderIdentifier = parsedSender.email;
-
-    if (fullContent.includes('<original-sender>')) {
-      fullContent = fullContent.replace(/<original-sender>.*?<\/original-sender>/g, '');
-    } else {
-      const hrIndex = fullContent.indexOf('<hr>');
-      fullContent = hrIndex !== -1 ? fullContent.substring(hrIndex + 4).trim() : fullContent;
-    }
   } else if (isAgentMessage) {
     senderName = comment.agent?.name || 'Agent';
     senderIdentifier = comment.agent?.email || `agent-${comment.agent?.id}`;
-  } else if (comment.user) {
-    senderName = comment.user.name || 'User';
-    senderIdentifier = comment.user.email || `user-${comment.user.id}`;
+  } else {
+    const parsedSender = parseSenderFromContent(fullContent);
+    
+    if (parsedSender) {
+      isUserReply = true;
+      senderName = parsedSender.name;
+      senderIdentifier = parsedSender.email;
+
+      if (fullContent.includes('<original-sender>')) {
+        fullContent = fullContent.replace(/<original-sender>.*?<\/original-sender>/g, '');
+      } else {
+        const hrIndex = fullContent.indexOf('<hr>');
+        fullContent = hrIndex !== -1 ? fullContent.substring(hrIndex + 4).trim() : fullContent;
+      }
+    } else if (comment.user) {
+      senderName = comment.user.name || 'User';
+      senderIdentifier = comment.user.email || `user-${comment.user.id}`;
+    }
   }
   if (isAutoResponse) {
     senderName = 'System';
