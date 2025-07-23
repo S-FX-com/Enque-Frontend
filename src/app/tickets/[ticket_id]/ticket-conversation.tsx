@@ -904,6 +904,8 @@ export function TicketConversation({
     isPrivate: boolean,
     sendNow: boolean
   ): Promise<CommentResponseData> => {
+    sendNow = sendNow;
+
     if (!currentUser) {
       toast.error('Authentication error. User not found.');
       throw new Error('Authentication error. User not found.');
