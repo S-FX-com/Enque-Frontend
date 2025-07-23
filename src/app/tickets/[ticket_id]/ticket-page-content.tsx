@@ -182,7 +182,7 @@ export function TicketPageContent({ ticketId }: Props) {
   const [extraBccEmails, setExtraBccEmails] = useState<string[]>([]);
   const [contactSearchQuery, setContactSearchQuery] = useState('');
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
-  
+
   // States for title editing
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editedTitle, setEditedTitle] = useState('');
@@ -210,7 +210,6 @@ export function TicketPageContent({ ticketId }: Props) {
 
   const currentTicket = ticketData?.[0] || null;
 
-  
   useEffect(() => {
     if (currentTicket) {
       setTicket(currentTicket as unknown as ITicket);
@@ -488,75 +487,79 @@ export function TicketPageContent({ ticketId }: Props) {
   );
 
   // Reopen ticket mutation
-  const reopenTicketMutation = useMutation<ITicket, Error, void, { previousTicket: ITicket | null }>(
-    {
-      mutationFn: async () => {
-        if (!ticket) throw new Error('No ticket selected');
-        return updateTicket(ticket.id, { status: 'Open' });
-      },
-      onMutate: async () => {
-        if (!ticket) return { previousTicket: null };
+  const reopenTicketMutation = useMutation<
+    ITicket,
+    Error,
+    void,
+    { previousTicket: ITicket | null }
+  >({
+    mutationFn: async () => {
+      if (!ticket) throw new Error('No ticket selected');
+      return updateTicket(ticket.id, { status: 'Open' });
+    },
+    onMutate: async () => {
+      if (!ticket) return { previousTicket: null };
 
-        setIsReopening(true);
-        const previousTicket = ticket;
+      setIsReopening(true);
+      const previousTicket = ticket;
 
-        // Cancel any outgoing refetches for counter queries
-        await queryClient.cancelQueries({ queryKey: ['ticketsCount'] });
-        await queryClient.cancelQueries({ queryKey: ['agentTeams'] });
+      // Cancel any outgoing refetches for counter queries
+      await queryClient.cancelQueries({ queryKey: ['ticketsCount'] });
+      await queryClient.cancelQueries({ queryKey: ['agentTeams'] });
 
-        const optimisticTicket: ITicket = {
-          ...previousTicket,
-          status: 'Open' as TicketStatus,
-        };
+      const optimisticTicket: ITicket = {
+        ...previousTicket,
+        status: 'Open' as TicketStatus,
+      };
 
-        setTicket(optimisticTicket);
-        queryClient.setQueryData(['ticket', ticket.id], [optimisticTicket]);
+      setTicket(optimisticTicket);
+      queryClient.setQueryData(['ticket', ticket.id], [optimisticTicket]);
 
-        // Optimistically update counter queries
-        queryClient.setQueryData<number>(['ticketsCount', 'all'], old =>
-          (old || 0) + 1
-        );
+      // Optimistically update counter queries
+      queryClient.setQueryData<number>(['ticketsCount', 'all'], old => (old || 0) + 1);
 
-        if (ticket.assignee_id === user?.id) {
-          queryClient.setQueryData<number>(['ticketsCount', 'my', user?.id], old =>
-            (old || 0) + 1
-          );
-        }
+      if (ticket.assignee_id === user?.id) {
+        queryClient.setQueryData<number>(['ticketsCount', 'my', user?.id], old => (old || 0) + 1);
+      }
 
-        return { previousTicket };
-      },
-      onSuccess: updatedTicketData => {
-        toast.success(`Ticket #${updatedTicketData.id} reopened successfully.`);
-        invalidateCounterQueries();
-      },
-      onError: (error, _variables, context) => {
-        toast.error(
-          `Error reopening ticket #${ticket?.id}: ${error instanceof Error ? error.message : 'Unknown error'}`
-        );
-        if (context?.previousTicket) {
-          setTicket(context.previousTicket);
-          queryClient.setQueryData(['ticket', ticketId], [context.previousTicket]);
-        }
-        // Revert optimistic updates on error
-        invalidateCounterQueries();
-      },
-      onSettled: () => {
-        setIsReopening(false);
-      },
-    }
-  );
+      return { previousTicket };
+    },
+    onSuccess: updatedTicketData => {
+      toast.success(`Ticket #${updatedTicketData.id} reopened successfully.`);
+      invalidateCounterQueries();
+    },
+    onError: (error, _variables, context) => {
+      toast.error(
+        `Error reopening ticket #${ticket?.id}: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+      if (context?.previousTicket) {
+        setTicket(context.previousTicket);
+        queryClient.setQueryData(['ticket', ticketId], [context.previousTicket]);
+      }
+      // Revert optimistic updates on error
+      invalidateCounterQueries();
+    },
+    onSettled: () => {
+      setIsReopening(false);
+    },
+  });
 
   // Update title mutation
-  const updateTitleMutation = useMutation<ITicket, Error, string, { previousTicket: ITicket | null }>({
+  const updateTitleMutation = useMutation<
+    ITicket,
+    Error,
+    string,
+    { previousTicket: ITicket | null }
+  >({
     mutationFn: async (newTitle: string) => {
       if (!ticket) throw new Error('No ticket selected');
       return updateTicket(ticket.id, { title: newTitle });
     },
     onMutate: async (newTitle: string) => {
       if (!ticket) return { previousTicket: null };
-      
+
       const previousTicket = ticket;
-      
+
       // Optimistically update the title
       const optimisticTicket: ITicket = {
         ...previousTicket,
@@ -574,7 +577,9 @@ export function TicketPageContent({ ticketId }: Props) {
       setEditedTitle('');
     },
     onError: (error, _variables, context) => {
-      toast.error(`Error updating title: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      toast.error(
+        `Error updating title: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
       if (context?.previousTicket) {
         setTicket(context.previousTicket);
         queryClient.setQueryData(['ticket', ticketId], [context.previousTicket]);
@@ -655,7 +660,7 @@ export function TicketPageContent({ ticketId }: Props) {
       toast.error('Title cannot be empty');
       return;
     }
-    
+
     if (editedTitle.trim() === ticket?.title) {
       setIsEditingTitle(false);
       setEditedTitle('');
@@ -744,17 +749,17 @@ export function TicketPageContent({ ticketId }: Props) {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex flex-col gap-2">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex flex-col gap-2 w-full">
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">#{ticket?.id}</span>
             {isEditingTitle ? (
               <div className="flex items-center gap-2 flex-1">
                 <Input
                   value={editedTitle}
-                  onChange={(e) => setEditedTitle(e.target.value)}
+                  onChange={e => setEditedTitle(e.target.value)}
                   onKeyDown={handleTitleKeyDown}
-                  className="text-xl font-semibold h-auto border-none shadow-none p-0 focus-visible:ring-0"
+                  className="text-lg font-semibold px-2 rounded-full"
                   autoFocus
                   disabled={updateTitleMutation.isPending}
                 />
@@ -779,7 +784,7 @@ export function TicketPageContent({ ticketId }: Props) {
               </div>
             ) : (
               <div className="flex items-center gap-2 group">
-            <h1 className="text-xl font-semibold">{ticket?.title}</h1>
+                <h1 className="text-xl font-semibold">{ticket?.title}</h1>
                 <Button
                   size="sm"
                   variant="ghost"

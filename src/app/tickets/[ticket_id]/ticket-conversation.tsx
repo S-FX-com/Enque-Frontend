@@ -809,7 +809,9 @@ export function TicketConversation({
 
     const currentTicketId = ticket.id;
     const prevTicketId = prevTicketIdRef.current;
-    const initialContent = signatureToUse ? `${signatureToUse}` : ``;
+    const initialContent = signatureToUse
+      ? `<p style="margin-block: 10px !important"><p>${signatureToUse}`
+      : ``;
 
     setReplyContent(initialContent);
     setEditorKey(prevKey => prevKey + 1);
@@ -897,6 +899,8 @@ export function TicketConversation({
 
     //sendNow: boolean
   ): Promise<CommentResponseData> => {
+    if (sendNow) console.log('Send now');
+
     if (!currentUser) {
       toast.error('Authentication error. User not found.');
       throw new Error('Authentication error. User not found.');
