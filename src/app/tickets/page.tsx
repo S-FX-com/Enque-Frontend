@@ -327,19 +327,25 @@ function TicketsClientContent() {
     if (pathname === '/tickets') {
       if (teamIdFromQuery) {
         // Only set if it's different from current selection
-        if (!selectedTeams.includes(teamIdFromQuery)) {
-          console.log('🔗 Setting team from URL:', teamIdFromQuery);
-          setSelectedTeams([teamIdFromQuery]);
-        }
+        setSelectedTeams(current => {
+          if (!current.includes(teamIdFromQuery)) {
+            console.log('🔗 Setting team from URL:', teamIdFromQuery);
+            return [teamIdFromQuery];
+          }
+          return current;
+        });
       } else {
-
-        if (selectedTeams.length > 0) {
-          console.log('🧹 Clearing team filter for "All Tickets"');
-          setSelectedTeams([]);
-        }
+        // Clear team filter for "All Tickets"
+        setSelectedTeams(current => {
+          if (current.length > 0) {
+            console.log('🧹 Clearing team filter for "All Tickets"');
+            return [];
+          }
+          return current;
+        });
       }
     }
-  }, [searchParams, pathname, selectedTeams, setSelectedTeams]);
+  }, [searchParams, pathname]); 
 
   const agentIdToNameMap = React.useMemo(() => {
     return agentsData.reduce(
