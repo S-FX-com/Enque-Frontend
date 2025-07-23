@@ -289,8 +289,16 @@ function OptimizedMessageItem({ content, isInitial = false, ticket }: OptimizedM
   const senderInfo = React.useMemo(() => {
     const htmlContent = content.content || '';
     const metadataMatch = htmlContent.match(/<original-sender>(.*?)\|(.*?)<\/original-sender>/);
+    const isAgentMessage = content.sender.type === 'agent';
 
-    if (metadataMatch && metadataMatch[1] && metadataMatch[2]) {
+    if (isAgentMessage) {
+      return {
+        name: content.sender.name || 'Agent',
+        email: content.sender.email || 'unknown',
+        isUserReply: false,
+        type: 'agent',
+      };
+    } else if (metadataMatch && metadataMatch[1] && metadataMatch[2]) {
       return {
         name: metadataMatch[1].trim(),
         email: metadataMatch[2].trim(),
@@ -299,12 +307,11 @@ function OptimizedMessageItem({ content, isInitial = false, ticket }: OptimizedM
       };
     }
 
-    const isAgentMessage = content.sender.type === 'agent';
     return {
-      name: content.sender.name || (isAgentMessage ? 'Agent' : 'User'),
+      name: content.sender.name || 'User',
       email: content.sender.email || 'unknown',
       isUserReply: !isAgentMessage && !isInitial,
-      type: isAgentMessage ? 'agent' : 'user',
+      type: 'user',
     };
   }, [content.content, content.sender, isInitial]);
 
@@ -329,7 +336,6 @@ function OptimizedMessageItem({ content, isInitial = false, ticket }: OptimizedM
     htmlContent = htmlContent.replace(/^\s*(?:<br\s*\/?>\s*)+/i, '');
     htmlContent = htmlContent.replace(/(?:<br\s*\/?>\s*)+$/i, '');
 
-    // Process links to open in new tab
     htmlContent = processLinksForNewTab(htmlContent);
 
     return htmlContent.trim();
