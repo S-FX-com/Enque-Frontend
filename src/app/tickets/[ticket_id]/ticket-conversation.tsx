@@ -374,8 +374,8 @@ function OptimizedMessageItem({ content, isInitial = false, ticket }: OptimizedM
   const isAgentMessage = senderInfo.type === 'agent';
   const applyAgentBackground = isAgentMessage && !isInitial && !senderInfo.isUserReply;
 
-  // ✅ Función para renderizar destinatarios de email en TODOS los mensajes
   const renderEmailRecipients = () => {
+    if (content.is_private) return null;
     if (!ticket) return null;
 
     const recipients = [];
@@ -786,7 +786,7 @@ export function TicketConversation({
 
   useEffect(() => {
     let signatureToUse = '';
-    signatureToUse.concat('<br>');
+
     if (globalSignatureData?.content) {
       signatureToUse = globalSignatureData.content
         .replace(/\[Agent Name\]/g, currentAgentData?.name || '')
@@ -815,7 +815,8 @@ export function TicketConversation({
 
     const currentTicketId = ticket.id;
     const prevTicketId = prevTicketIdRef.current;
-    const initialContent = signatureToUse ? `<p><br></p>${signatureToUse}` : ``;
+    const initialContent = signatureToUse ? `${signatureToUse}` : ``;
+
     setReplyContent(initialContent);
     setEditorKey(prevKey => prevKey + 1);
 
@@ -884,8 +885,16 @@ export function TicketConversation({
   const validateEmails = (emailString: string): boolean => {
     if (!emailString.trim()) return true; // Empty is valid
     const emails = emailString.split(',').map(email => email.trim());
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emails.every(email => emailRegex.test(email));
+    
+    return emails.every(email => {
+      // ✅ Handle both formats: "email@domain.com" and "Name <email@domain.com>"
+      const emailMatch = email.match(/<([^>]+)>/) || [null, email];
+      const extractedEmail = emailMatch[1]?.trim() || email.trim();
+      
+      // Basic email validation regex
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      return emailRegex.test(extractedEmail);
+    });
   };
 
   const sendComment = async (
@@ -1428,7 +1437,7 @@ export function TicketConversation({
                         />
                       )}
                     {(conversationItems.items as IComment[])
-                      .filter((item: IComment) => item.id !== -1) // Filtrar el mensaje inicial
+                      .filter((item: IComment) => item.id !== -1) 
                       .map((item: IComment) => (
                         <ConversationMessageItem
                           key={item.id}
