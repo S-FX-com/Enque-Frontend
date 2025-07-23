@@ -923,7 +923,8 @@ export function TicketConversation({
     }
 
     // Extract latest message content and prepend it with enque-quote class
-    let finalContent = content;
+    const finalContent = content;
+    // let finalContent = content;
     // if (conversationItems.items.length > 0 && !isPrivate) {
     //   const latestMessage = conversationItems.items[0];
     //   let latestMessageContent = '';
