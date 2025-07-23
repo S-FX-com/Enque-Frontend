@@ -224,6 +224,7 @@ export function useSocket() {
 
           const existingComment = oldComments.find(comment => comment.id === data.id);
           if (!existingComment) {
+            // 🔧 CORREGIDO: Mejorar la lógica para detectar correctamente usuario vs agente
             const isAgentReply = data.agent_id != null;
             const isUserReply = data.user_id != null && !isAgentReply;
 
@@ -292,7 +293,6 @@ export function useSocket() {
         if (!existingContent) {
           // 🔧 CORREGIDO: Mejorar la lógica para detectar correctamente usuario vs agente
           const isAgentReply = data.agent_id != null;
-          const isUserReply = data.user_id != null && !isAgentReply;
 
           const newContent = {
             id: data.id.toString(),

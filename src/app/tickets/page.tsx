@@ -339,7 +339,7 @@ function TicketsClientContent() {
         }
       }
     }
-  }, [searchParams, pathname]);
+  }, [searchParams, pathname, selectedTeams, setSelectedTeams]);
 
   const agentIdToNameMap = React.useMemo(() => {
     return agentsData.reduce(
