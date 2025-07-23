@@ -252,31 +252,31 @@ function findQuoteStartIndex(html: string): number {
 }
 
 // 🔧 NUEVA FUNCIÓN: Limpiar contenido citado del mensaje
-function cleanQuotedContent(htmlContent: string): string {
-  if (!htmlContent || !htmlContent.trim()) {
-    return htmlContent;
-  }
+// function cleanQuotedContent(htmlContent: string): string {
+//   if (!htmlContent || !htmlContent.trim()) {
+//     return htmlContent;
+//   }
 
-  // 1. Remover divs con clase enque-quote existentes
-  let cleanedContent = htmlContent.replace(
-    /<div[^>]*class="enque-quote"[^>]*>[\s\S]*?<\/div>/gi,
-    ''
-  );
+//   // 1. Remover divs con clase enque-quote existentes
+//   let cleanedContent = htmlContent.replace(
+//     /<div[^>]*class="enque-quote"[^>]*>[\s\S]*?<\/div>/gi,
+//     ''
+//   );
 
-  // 2. Encontrar y remover contenido detectado por findQuoteStartIndex
-  const quoteStartIndex = findQuoteStartIndex(cleanedContent);
-  if (quoteStartIndex !== -1) {
-    cleanedContent = cleanedContent.substring(0, quoteStartIndex);
-  }
+//   // 2. Encontrar y remover contenido detectado por findQuoteStartIndex
+//   const quoteStartIndex = findQuoteStartIndex(cleanedContent);
+//   if (quoteStartIndex !== -1) {
+//     cleanedContent = cleanedContent.substring(0, quoteStartIndex);
+//   }
 
-  // 3. Limpiar espacios en blanco y elementos vacíos al final
-  cleanedContent = cleanedContent
-    .replace(/(?:<br\s*\/?>\s*)+$/i, '') // Remover <br> al final
-    .replace(/<p[^>]*>\s*<\/p>\s*$/gi, '') // Remover <p> vacíos al final
-    .replace(/\s+$/g, ''); // Remover espacios en blanco al final
+//   // 3. Limpiar espacios en blanco y elementos vacíos al final
+//   cleanedContent = cleanedContent
+//     .replace(/(?:<br\s*\/?>\s*)+$/i, '') // Remover <br> al final
+//     .replace(/<p[^>]*>\s*<\/p>\s*$/gi, '') // Remover <p> vacíos al final
+//     .replace(/\s+$/g, ''); // Remover espacios en blanco al final
 
-  return cleanedContent;
-}
+//   return cleanedContent;
+// }
 
 function OptimizedMessageItem({ content, isInitial = false, ticket }: OptimizedMessageItemProps) {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -924,32 +924,32 @@ export function TicketConversation({
 
     // Extract latest message content and prepend it with enque-quote class
     let finalContent = content;
-    if (conversationItems.items.length > 0 && !isPrivate) {
-      const latestMessage = conversationItems.items[0];
-      let latestMessageContent = '';
+    // if (conversationItems.items.length > 0 && !isPrivate) {
+    //   const latestMessage = conversationItems.items[0];
+    //   let latestMessageContent = '';
 
-      if (conversationItems.isOptimized) {
-        const optimizedMessage = latestMessage as TicketHtmlContent;
-        latestMessageContent = optimizedMessage.content || '';
-      } else {
-        const commentMessage = latestMessage as IComment;
-        latestMessageContent = commentMessage.content || '';
-      }
+    //   if (conversationItems.isOptimized) {
+    //     const optimizedMessage = latestMessage as TicketHtmlContent;
+    //     latestMessageContent = optimizedMessage.content || '';
+    //   } else {
+    //     const commentMessage = latestMessage as IComment;
+    //     latestMessageContent = commentMessage.content || '';
+    //   }
 
-      // 🔧 MODIFICACIÓN PRINCIPAL: Limpiar contenido citado antes de agregarlo como quote
-      if (latestMessageContent.trim()) {
-        // Usar la nueva función para limpiar el contenido citado
-        const cleanedLatestContent = cleanQuotedContent(latestMessageContent);
+    //   // 🔧 MODIFICACIÓN PRINCIPAL: Limpiar contenido citado antes de agregarlo como quote
+    //   if (latestMessageContent.trim()) {
+    //     // Usar la nueva función para limpiar el contenido citado
+    //     const cleanedLatestContent = cleanQuotedContent(latestMessageContent);
 
-        // Solo agregar como quote si queda contenido después de la limpieza
-        if (cleanedLatestContent.trim()) {
-          // Wrap the cleaned latest message in enque-quote div
-          const quotedContent = `<div class="enque-quote" style="border-left: 3px solid #e5e7eb; padding-left: 12px; margin-top: 16px; color: #6b7280; font-style: italic;">${cleanedLatestContent}</div>`;
-          // Prepend to the current content
-          finalContent = content + quotedContent;
-        }
-      }
-    }
+    //     // Solo agregar como quote si queda contenido después de la limpieza
+    //     if (cleanedLatestContent.trim()) {
+    //       // Wrap the cleaned latest message in enque-quote div
+    //       const quotedContent = `<div class="enque-quote" style="border-left: 3px solid #e5e7eb; padding-left: 12px; margin-top: 16px; color: #6b7280; font-style: italic;">${cleanedLatestContent}</div>`;
+    //       // Prepend to the current content
+    //       finalContent = content + quotedContent;
+    //     }
+    //   }
+    // }
 
     let attachmentIds: number[] = [];
     if (selectedAttachments && selectedAttachments.length > 0) {
