@@ -815,7 +815,9 @@ export function TicketConversation({
 
     const currentTicketId = ticket.id;
     const prevTicketId = prevTicketIdRef.current;
-    const initialContent = signatureToUse ? `${signatureToUse}` : ``;
+    const initialContent = signatureToUse
+      ? `<p style="margin-block: 10px !important"><p>${signatureToUse}`
+      : ``;
 
     setReplyContent(initialContent);
     setEditorKey(prevKey => prevKey + 1);
@@ -885,12 +887,12 @@ export function TicketConversation({
   const validateEmails = (emailString: string): boolean => {
     if (!emailString.trim()) return true; // Empty is valid
     const emails = emailString.split(',').map(email => email.trim());
-    
+
     return emails.every(email => {
       // ✅ Handle both formats: "email@domain.com" and "Name <email@domain.com>"
       const emailMatch = email.match(/<([^>]+)>/) || [null, email];
       const extractedEmail = emailMatch[1]?.trim() || email.trim();
-      
+
       // Basic email validation regex
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       return emailRegex.test(extractedEmail);
@@ -1437,7 +1439,7 @@ export function TicketConversation({
                         />
                       )}
                     {(conversationItems.items as IComment[])
-                      .filter((item: IComment) => item.id !== -1) 
+                      .filter((item: IComment) => item.id !== -1)
                       .map((item: IComment) => (
                         <ConversationMessageItem
                           key={item.id}
