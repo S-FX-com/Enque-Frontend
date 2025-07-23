@@ -16,7 +16,8 @@ export const getTeamTasks = async (teamId: number): Promise<Task[]> => {
     return []; // Return empty array if teamId is invalid
   }
   try {
-    const url = `${API_BASE_URL}/v1/tasks/team/${teamId}`;
+    // Using optimized team endpoint for better performance
+    const url = `${API_BASE_URL}/v1/tasks-optimized/team/${teamId}`;
     const response = await fetchAPI.GET<Task[]>(url);
 
     if (!response || !response.data) {
@@ -43,7 +44,8 @@ export const getAssignedTasks = async (agentId: number): Promise<Task[]> => {
     return [];
   }
   try {
-    const url = `${API_BASE_URL}/v1/tasks/assignee/${agentId}`;
+    // Using optimized assignee endpoint for better performance
+    const url = `${API_BASE_URL}/v1/tasks-optimized/assignee/${agentId}`;
     const response = await fetchAPI.GET<Task[]>(url);
 
     if (!response || !response.data) {
