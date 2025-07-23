@@ -208,6 +208,14 @@ export function useSocket() {
 
     socket.on('comment_updated', data => {
       console.log('💬 Comment updated/added:', data);
+      console.log('🔍 Sender type detection:', {
+        agent_id: data.agent_id,
+        user_id: data.user_id,
+        agent_name: data.agent_name,
+        user_name: data.user_name,
+        isAgentReply: data.agent_id != null,
+        isUserReply: data.user_id != null && !data.agent_id
+      });
 
       queryClient.setQueryData(
         ['comments', data.ticket_id],
@@ -216,7 +224,8 @@ export function useSocket() {
 
           const existingComment = oldComments.find(comment => comment.id === data.id);
           if (!existingComment) {
-            const isUserReply = data.user_name && !data.agent_id;
+            const isAgentReply = data.agent_id != null;
+            const isUserReply = data.user_id != null && !isAgentReply;
 
             const newComment: IComment = {
               id: data.id,
@@ -234,7 +243,7 @@ export function useSocket() {
                     updated_at: '',
                   }
                 : null,
-              agent: data.agent_id
+              agent: isAgentReply
                 ? {
                     id: data.agent_id,
                     name: data.agent_name || 'Agent',
@@ -281,17 +290,18 @@ export function useSocket() {
         );
 
         if (!existingContent) {
-          // 🔧 CORREGIDO: Detectar correctamente si es usuario o agente
-          const isUserReply = data.user_name && !data.agent_id;
+          // 🔧 CORREGIDO: Mejorar la lógica para detectar correctamente usuario vs agente
+          const isAgentReply = data.agent_id != null;
+          const isUserReply = data.user_id != null && !isAgentReply;
 
           const newContent = {
             id: data.id.toString(),
             content: data.content,
             created_at: data.created_at || new Date().toISOString(),
             sender: {
-              name: isUserReply ? data.user_name : data.agent_name || 'Agent',
-              email: isUserReply ? data.user_email || '' : data.agent_email || '',
-              type: isUserReply ? 'user' : 'agent',
+              name: isAgentReply ? data.agent_name || 'Agent' : data.user_name || 'User',
+              email: isAgentReply ? data.agent_email || '' : data.user_email || '',
+              type: isAgentReply ? 'agent' : 'user',
             },
             attachments: data.attachments || [],
             is_private: data.is_private,
