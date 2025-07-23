@@ -645,6 +645,9 @@ export function ConversationMessageItem({ comment, ticket }: Props) {
   if (isInitialMessage && comment.user) {
     senderName = comment.user.name || 'User';
     senderIdentifier = comment.user.email || `user-${comment.user.id}`;
+  } else if (isAgentMessage) {
+    senderName = comment.agent?.name || 'Agent';
+    senderIdentifier = comment.agent?.email || `agent-${comment.agent?.id}`;
   } else if (parsedSender) {
     isUserReply = true;
     senderName = parsedSender.name;
@@ -656,9 +659,6 @@ export function ConversationMessageItem({ comment, ticket }: Props) {
       const hrIndex = fullContent.indexOf('<hr>');
       fullContent = hrIndex !== -1 ? fullContent.substring(hrIndex + 4).trim() : fullContent;
     }
-  } else if (isAgentMessage) {
-    senderName = comment.agent?.name || 'Agent';
-    senderIdentifier = comment.agent?.email || `agent-${comment.agent?.id}`;
   } else if (comment.user) {
     senderName = comment.user.name || 'User';
     senderIdentifier = comment.user.email || `user-${comment.user.id}`;
