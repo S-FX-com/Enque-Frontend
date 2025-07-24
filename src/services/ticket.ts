@@ -5,7 +5,7 @@ import type { IComment } from '@/typescript/comment';
 /**
  * Fetches a list of tickets (tasks) from the backend.
  * @param filters - Optional filters including skip, limit, status, etc.
- * @param endpointPath - Optional endpoint path (defaults to /v1/tasks/)
+ * @param endpointPath - Optional endpoint path (defaults to /v1/tasks-optimized/ for better performance)
  * @returns A promise that resolves to an array of ITicket objects.
  */
 const API_BASE_URL =
@@ -13,7 +13,7 @@ const API_BASE_URL =
 
 export async function getTickets(
   filters: IGetTicket = {},
-  endpointPath = '/v1/tasks/'
+  endpointPath = '/v1/tasks-optimized/'
 ): Promise<ITicket[]> {
   const { skip = 0, limit = 100, status, priority, type, user_id, team_id } = filters;
 
@@ -92,7 +92,12 @@ export async function updateTicket(
   >
 ): Promise<ITicket> {
   try {
-    const url = `${API_BASE_URL}/v1/tasks/${ticketId}`;
+    // 🔧 VALIDACIÓN: Verificar que ticketId sea válido
+    if (!ticketId || typeof ticketId !== 'number' || isNaN(ticketId)) {
+      throw new Error(`Invalid ticket ID: ${ticketId}. Cannot update ticket.`);
+    }
+    
+    const url = `${API_BASE_URL}/v1/tasks-optimized/${ticketId}/refresh`;
 
     const payload: TicketUpdatePayload = {};
     if (updates.status !== undefined) payload.status = updates.status;
@@ -134,7 +139,7 @@ export async function updateTicket(
       }
     }
 
-    console.log('Sending update payload:', payload);
+    console.log('Sending OPTIMIZED update payload:', payload);
     const response = await fetchAPI.PUT<ITicket>(url, payload);
 
     if (response && response.success && response.data) {
@@ -305,7 +310,8 @@ export async function searchTickets(
       skip: skip.toString(),
       limit: limit.toString(),
     });
-    const url = `${API_BASE_URL}/v1/tasks/search?${queryParams.toString()}`;
+    // Using optimized search endpoint for better performance
+    const url = `${API_BASE_URL}/v1/tasks-optimized/search?${queryParams.toString()}`;
     const response = await fetchAPI.GET<ITicket[]>(url);
     if (response && response.success && response.data) {
       return response.data;
