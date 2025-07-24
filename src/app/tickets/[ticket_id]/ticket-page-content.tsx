@@ -891,12 +891,12 @@ export function TicketPageContent({ ticketId }: Props) {
 
         {/* Sidebar */}
         <div className="space-y-6">
-          {/* Contact Information */}
+          {/* Primary Contact Card */}
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">Contact Information</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent>
               {/* Primary Contact */}
               <div>
                 <label className="text-sm font-medium text-muted-foreground mb-2 block">
@@ -993,9 +993,17 @@ export function TicketPageContent({ ticketId }: Props) {
                   </Dialog>
                 </div>
               </div>
+            </CardContent>
+          </Card>
 
+          {/* Recipients Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Copied on Replies</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
               {/* TO Recipients - Display only */}
-              {existingToEmails.length > 0 && (
+              {/* {existingToEmails.length > 0 && (
                 <div>
                   <label className="text-sm font-medium text-muted-foreground mb-2 block">
                     To:
@@ -1010,7 +1018,7 @@ export function TicketPageContent({ ticketId }: Props) {
                     </div>
                   </div>
                 </div>
-              )}
+              )} */}
 
               {/* CC Recipients */}
               <div>
