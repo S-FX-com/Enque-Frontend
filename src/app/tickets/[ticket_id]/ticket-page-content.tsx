@@ -186,10 +186,6 @@ export function TicketPageContent({ ticketId }: Props) {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editedTitle, setEditedTitle] = useState('');
 
-  // New state variables for modals
-  // const [isCcModalOpen, setIsCcModalOpen] = useState(false);
-  // const [isBccModalOpen, setIsBccModalOpen] = useState(false);
-
   // Fetch ticket data
   const {
     data: ticketData,
@@ -596,6 +592,26 @@ export function TicketPageContent({ ticketId }: Props) {
     return uniqueEmails.join(', ');
   };
 
+  // ✅ FIXED: Modified callback functions to NOT reset extra emails
+  // This prevents the RichTextEditor from being reset when CC/BCC changes
+  const handleExtraCcRecipientsChange = useCallback((recipients: string) => {
+    // Only update if there's an actual change and it's not just clearing
+    if (recipients === '') {
+      // Only clear extra CC emails, don't reset the editor
+      setExtraCcEmails([]);
+    }
+    // Don't do anything else - let the CC input component handle the state
+  }, []);
+
+  const handleExtraBccRecipientsChange = useCallback((recipients: string) => {
+    // Only update if there's an actual change and it's not just clearing
+    if (recipients === '') {
+      // Only clear extra BCC emails, don't reset the editor
+      setExtraBccEmails([]);
+    }
+    // Don't do anything else - let the BCC input component handle the state
+  }, []);
+
   // Function to handle primary contact change
   const handlePrimaryContactChange = async (userId: string) => {
     try {
@@ -845,13 +861,9 @@ export function TicketPageContent({ ticketId }: Props) {
                 onTicketUpdate={handleTicketUpdate}
                 latestOnly={true}
                 extraRecipients={getCombinedCcRecipients()}
-                onExtraRecipientsChange={() => {
-                  setExtraCcEmails([]);
-                }}
+                onExtraRecipientsChange={handleExtraCcRecipientsChange}
                 extraBccRecipients={getCombinedBccRecipients()}
-                onExtraBccRecipientsChange={() => {
-                  setExtraBccEmails([]);
-                }}
+                onExtraBccRecipientsChange={handleExtraBccRecipientsChange}
               />
             </CardContent>
           </Card>
@@ -865,13 +877,9 @@ export function TicketPageContent({ ticketId }: Props) {
                 onTicketUpdate={handleTicketUpdate}
                 replyOnly={true}
                 extraRecipients={getCombinedCcRecipients()}
-                onExtraRecipientsChange={() => {
-                  setExtraCcEmails([]);
-                }}
+                onExtraRecipientsChange={handleExtraCcRecipientsChange}
                 extraBccRecipients={getCombinedBccRecipients()}
-                onExtraBccRecipientsChange={() => {
-                  setExtraBccEmails([]);
-                }}
+                onExtraBccRecipientsChange={handleExtraBccRecipientsChange}
               />
             </CardContent>
           </Card>
