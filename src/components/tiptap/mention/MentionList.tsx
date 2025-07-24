@@ -1,5 +1,5 @@
 import './MentionList.css';
-import React, { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
+import React, { useState, useEffect, useImperativeHandle, forwardRef } from 'react';
 import { SuggestionProps } from '@tiptap/suggestion';
 
 interface MentionListHandle {
