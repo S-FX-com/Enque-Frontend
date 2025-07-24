@@ -29,17 +29,23 @@ export default function suggestion() {
         if (searchTimeout) {
           clearTimeout(searchTimeout);
         }
-        if (!query.trim()) {
-          resolve([]);
-          return;
-        }
         searchTimeout = setTimeout(async () => {
           try {
             const agents = await getAgentsWithCache();
-            const filtered = agents
-              .filter(agent => agent.name.toLowerCase().includes(query.toLowerCase()))
-              .map(agent => agent.name)
-              .slice(0, 8); 
+            let filtered;
+            
+            // Si query está vacío (solo @), mostrar los primeros agentes
+            if (!query.trim()) {
+              filtered = agents
+                .map(agent => agent.name)
+                .slice(0, 8);
+            } else {
+              // Si hay query, filtrar por coincidencias
+              filtered = agents
+                .filter(agent => agent.name.toLowerCase().includes(query.toLowerCase()))
+                .map(agent => agent.name)
+                .slice(0, 8);
+            }
             
             resolve(filtered);
           } catch (error) {
