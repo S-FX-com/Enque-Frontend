@@ -385,6 +385,14 @@ export function TicketPageContent({ ticketId }: Props) {
       }
     },
     onSuccess: (data, variables) => {
+      console.log('🔍 UPDATE FIELD - Response from backend:', data);
+      console.log('🔍 UPDATE FIELD - User data in response:', data.user);
+      console.log('🔍 UPDATE FIELD - Field updated:', variables.field);
+      
+      // CRÍTICO: Actualizar estado local con la respuesta completa del backend
+      setTicket(data);
+      queryClient.setQueryData(['ticket', ticketId], [data]);
+      
       invalidateCounterQueries();
 
       // Si se cambió el user_id (contacto principal), invalidar queries relacionadas
@@ -466,6 +474,13 @@ export function TicketPageContent({ ticketId }: Props) {
         return { previousTicket };
       },
       onSuccess: updatedTicketData => {
+        console.log('🔍 CLOSE TICKET - Response from backend:', updatedTicketData);
+        console.log('🔍 CLOSE TICKET - User data in response:', updatedTicketData.user);
+        
+        // Ensure we update with complete data including user relation
+        setTicket(updatedTicketData);
+        queryClient.setQueryData(['ticket', ticketId], [updatedTicketData]);
+        
         toast.success(`Ticket #${updatedTicketData.id} closed successfully.`);
         invalidateCounterQueries();
         router.back();
@@ -526,6 +541,13 @@ export function TicketPageContent({ ticketId }: Props) {
       return { previousTicket };
     },
     onSuccess: updatedTicketData => {
+      console.log('🔍 REOPEN TICKET - Response from backend:', updatedTicketData);
+      console.log('🔍 REOPEN TICKET - User data in response:', updatedTicketData.user);
+      
+      // Ensure we update with complete data including user relation
+      setTicket(updatedTicketData);
+      queryClient.setQueryData(['ticket', ticketId], [updatedTicketData]);
+      
       toast.success(`Ticket #${updatedTicketData.id} reopened successfully.`);
       invalidateCounterQueries();
     },
@@ -572,7 +594,14 @@ export function TicketPageContent({ ticketId }: Props) {
 
       return { previousTicket };
     },
-    onSuccess: () => {
+    onSuccess: (updatedTicketData) => {
+      console.log('🔍 UPDATE TITLE - Response from backend:', updatedTicketData);
+      console.log('🔍 UPDATE TITLE - User data in response:', updatedTicketData.user);
+      
+      // Ensure we update with complete data including user relation
+      setTicket(updatedTicketData);
+      queryClient.setQueryData(['ticket', ticketId], [updatedTicketData]);
+      
       toast.success('Title updated successfully');
       setIsEditingTitle(false);
       setEditedTitle('');
@@ -594,6 +623,25 @@ export function TicketPageContent({ ticketId }: Props) {
     setTicket(updatedTicket);
     queryClient.setQueryData(['ticket', ticketId], [updatedTicket]);
   };
+
+  // 🔍 DEBUG FUNCTION - Test endpoint directly
+  const testRefreshEndpoint = async () => {
+    try {
+      console.log('🧪 TESTING ENDPOINT: /v1/tasks-optimized/' + ticketId + '/refresh');
+      const response = await updateTicket(ticketId, { status: ticket?.status || 'Open' });
+      console.log('🧪 ENDPOINT TEST RESULT:', response);
+      console.log('🧪 USER IN RESPONSE:', response.user);
+      console.log('🧪 FULL USER OBJECT:', JSON.stringify(response.user, null, 2));
+    } catch (error) {
+      console.error('🧪 ENDPOINT TEST ERROR:', error);
+    }
+  };
+
+  // 🔍 DEBUG: Add test button (remove after debugging)
+  if (process.env.NODE_ENV === 'development') {
+    (window as any).testRefreshEndpoint = testRefreshEndpoint;
+    console.log('🧪 DEBUG: Run window.testRefreshEndpoint() to test the endpoint');
+  }
 
   // Function to get combined CC recipients in comma-separated format
   const getCombinedCcRecipients = (): string => {
@@ -688,6 +736,9 @@ export function TicketPageContent({ ticketId }: Props) {
       // Update ticket status to 'Open' when viewed
       updateTicket(ticket.id, { status: 'Open' })
         .then(updatedTicket => {
+          console.log('🔍 MARK AS READ - Response from backend:', updatedTicket);
+          console.log('🔍 MARK AS READ - User data in response:', updatedTicket.user);
+          
           setTicket(updatedTicket);
           queryClient.setQueryData(['ticket', ticketId], [updatedTicket]);
           invalidateCounterQueries();
