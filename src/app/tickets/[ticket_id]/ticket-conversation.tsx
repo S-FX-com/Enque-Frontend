@@ -918,10 +918,6 @@ export function TicketConversation({
       throw new Error('Invalid email addresses in BCC recipients.');
     }
 
-    if (sendNow && process.env.NODE_ENV === 'development') {
-      throw new Error('Still in production');
-    }
-
     // Extract latest message content and prepend it with enque-quote class
     const finalContent = content;
     // let finalContent = content;
