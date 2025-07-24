@@ -639,7 +639,7 @@ export function TicketPageContent({ ticketId }: Props) {
 
   // 🔍 DEBUG: Add test button (remove after debugging)
   if (process.env.NODE_ENV === 'development') {
-    (window as any).testRefreshEndpoint = testRefreshEndpoint;
+    (window as Window & { testRefreshEndpoint?: () => Promise<void> }).testRefreshEndpoint = testRefreshEndpoint;
     console.log('🧪 DEBUG: Run window.testRefreshEndpoint() to test the endpoint');
   }
 
