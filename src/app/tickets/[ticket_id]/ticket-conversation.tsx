@@ -192,6 +192,14 @@ interface OptimizedMessageItemProps {
   };
 }
 
+export interface DateScheduleSend {
+  hours: number;
+  minutes: number;
+  day: number;
+  month: number;
+  year: number;
+}
+
 function findQuoteStartIndex(html: string): number {
   const patterns = [
     // From patterns - más específicos para evitar falsos positivos
@@ -630,7 +638,19 @@ export function TicketConversation({
   //Shows up when theres a schedule send to be mandes
   const [popCalendar, setPopCalendar] = useState<boolean>(false);
   //Value used only when popCalendar is true
+  //Used to set the actual hours and minutes
+  //const now: Date = new Date();
+  //Used to send the date to the Calendar
   const [date, setDate] = useState<Date>(new Date());
+  //console.log(date.getMonth());
+  /*
+  const [date, setDate] = useState<DateScheduleSend>({
+    hours: now.getHours(),
+    minutes: now.getMinutes(),
+    day: now.getDay(),
+    month: now.getMonth(),
+    year: now.getFullYear(),
+  });*/
   // Canned replies state
   const [cannedRepliesOpen, setCannedRepliesOpen] = useState(false);
   const [cannedSearchTerm, setCannedSearchTerm] = useState('');
@@ -1034,6 +1054,10 @@ export function TicketConversation({
   const handleSendReply = () => {
     if (!replyContent.trim() || !ticket?.id || isSending) return;
     createCommentMutation.mutate();
+
+    if (popCalendar) {
+      setPopCalendar(false);
+    }
   };
 
   const handlePrivateNoteChange = (checked: boolean) => {
@@ -1188,13 +1212,15 @@ export function TicketConversation({
                     <Send className="mr-2 h-4 w-4" />
                     Send
                   </Button>
-                  <Separator orientation="vertical" className="h-full w-px bg-gray-200 mx-2" />
+                  <Separator orientation="vertical" className="h-full  bg-gray-200 mx-2" />
                   <ScheduleSendCalendar
-                    date={date}
-                    setDate={setDate}
+                    day={date.getDate()}
+                    month={date.getMonth()}
+                    year={date.getFullYear()}
                     popCalendar={popCalendar}
                     setPopCalendar={setPopCalendar}
                     setSendNow={setSendNow}
+                    handleSendReply={handleSendReply}
                   />
                 </div>
               )}
