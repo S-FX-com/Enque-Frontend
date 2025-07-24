@@ -92,6 +92,11 @@ export async function updateTicket(
   >
 ): Promise<ITicket> {
   try {
+    // 🔧 VALIDACIÓN: Verificar que ticketId sea válido
+    if (!ticketId || typeof ticketId !== 'number' || isNaN(ticketId)) {
+      throw new Error(`Invalid ticket ID: ${ticketId}. Cannot update ticket.`);
+    }
+    
     const url = `${API_BASE_URL}/v1/tasks-optimized/${ticketId}/refresh`;
 
     const payload: TicketUpdatePayload = {};

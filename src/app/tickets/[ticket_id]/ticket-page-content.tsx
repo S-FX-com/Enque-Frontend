@@ -325,7 +325,10 @@ export function TicketPageContent({ ticketId }: Props) {
     { previousTicket: ITicket | null }
   >({
     mutationFn: async ({ field, value }) => {
-      if (!ticket) throw new Error('No ticket selected');
+      // 🔧 VALIDACIÓN ROBUSTA: Verificar ticket y ticket.id
+      if (!ticket || !ticket.id || typeof ticket.id !== 'number') {
+        throw new Error(`Invalid ticket data: ticket=${!!ticket}, ticketId=${ticket?.id}, ticketIdType=${typeof ticket?.id}`);
+      }
       let updateValue: TicketStatus | TicketPriority | number | null;
 
       if (
@@ -408,7 +411,11 @@ export function TicketPageContent({ ticketId }: Props) {
     field: 'priority' | 'assignee_id' | 'team_id' | 'category_id' | 'user_id',
     value: string | null
   ) => {
-    if (!ticket) return;
+    // 🔧 VALIDACIÓN ROBUSTA: Verificar ticket y ticket.id
+    if (!ticket || !ticket.id || typeof ticket.id !== 'number') {
+      console.error('Cannot update field: ticket or ticket.id is invalid', { ticket, ticketId });
+      return;
+    }
 
     let optimisticUpdateValue: TicketStatus | TicketPriority | number | null;
     if (
