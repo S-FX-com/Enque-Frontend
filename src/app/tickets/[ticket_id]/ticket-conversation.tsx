@@ -36,7 +36,6 @@ import { getCannedReplies, type CannedReply } from '@/services/canned-replies';
 import { formatRelativeTime } from '@/lib/utils';
 import { ScheduleSendCalendar } from './scheduleSend/scheduleSendCalendar';
 
-// Función helper para agregar estilos CSS de modo oscuro
 const addDarkModeStyles = () => {
   if (typeof document !== 'undefined') {
     const existingStyle = document.getElementById('dark-mode-message-styles');
@@ -66,7 +65,6 @@ const addDarkModeStyles = () => {
 
 import BoringAvatar from 'boring-avatars';
 
-// Function to process links to open in new tab and ensure underline
 function processLinksForNewTab(htmlContent: string): string {
   return htmlContent.replace(
     /<a\s+([^>]*?)href\s*=\s*["']([^"']+)["']([^>]*?)>/gi,
@@ -74,14 +72,12 @@ function processLinksForNewTab(htmlContent: string): string {
       let attributes = beforeHref + afterHref;
       let processedUrl = url;
 
-      // 🔧 NUEVA FUNCIONALIDAD: Decodificar URLs complejas de Outlook SafeLinks
       try {
-        // Decodificar URL si está codificada
+
         if (processedUrl.includes('%')) {
           processedUrl = decodeURIComponent(processedUrl);
         }
 
-        // Extraer URL real de Outlook SafeLinks
         if (processedUrl.includes('safelinks.protection.outlook.com')) {
           const urlMatch = processedUrl.match(/url=([^&]+)/);
           if (urlMatch) {
@@ -89,48 +85,37 @@ function processLinksForNewTab(htmlContent: string): string {
           }
         }
 
-        // Extraer URL de otros servicios de protección
         if (processedUrl.includes('streaklinks.com') || processedUrl.includes('gourl.es')) {
-          // Buscar parámetros url= en la cadena
           const urlParams = processedUrl.match(/url=([^&]+)/g);
           if (urlParams && urlParams.length > 0) {
-            // Tomar el último parámetro url= que suele ser el destino final
             const lastUrlParam = urlParams[urlParams.length - 1];
             const finalUrl = lastUrlParam.replace('url=', '');
             processedUrl = decodeURIComponent(finalUrl);
           }
         }
 
-        // Limpiar encoding adicional
         processedUrl = processedUrl.replace(/&amp;/g, '&');
       } catch (e) {
-        // Si hay error decodificando, usar URL original
         console.warn('Error procesando URL:', e);
         processedUrl = url;
       }
 
-      // Check if target attribute already exists
       const hasTarget = /target\s*=/i.test(attributes);
       const targetAttr = hasTarget ? '' : ' target="_blank" rel="noopener noreferrer"';
 
-      // Check if style attribute exists
       const hasStyle = /style\s*=/i.test(attributes);
       if (hasStyle) {
-        // Update existing style attribute to include link styling
         attributes = attributes.replace(
           /style\s*=\s*["']([^"']*?)["']/gi,
           (styleMatch: string, styleContent: string) => {
             let newStyle = styleContent;
-            // Remove text-decoration:none if present
             newStyle = newStyle.replace(/text-decoration\s*:\s*none\s*;?\s*/gi, '');
-            // Add link styling - CORREGIDO: Usar clases CSS en lugar de estilos inline con !important
             newStyle = newStyle.trim();
             if (newStyle && !newStyle.endsWith(';')) newStyle += ';';
             return `style="${newStyle}" class="message-link"`;
           }
         );
       } else {
-        // Add style attribute with link styling - CORREGIDO: Usar clase CSS
         attributes += ' class="message-link"';
       }
 
@@ -181,7 +166,6 @@ interface Props {
   onExtraBccRecipientsChange?: (recipients: string) => void;
 }
 
-// Optimized message component for HTML content
 interface OptimizedMessageItemProps {
   content: TicketHtmlContent;
   isInitial?: boolean;
@@ -189,16 +173,19 @@ interface OptimizedMessageItemProps {
     to_recipients?: string | null;
     cc_recipients?: string | null;
     bcc_recipients?: string | null;
+    user?: {
+      name?: string;
+      email?: string;
+    } | null;
   };
 }
 
 function findQuoteStartIndex(html: string): number {
   const patterns = [
-    // From patterns - más específicos para evitar falsos positivos
-    /<p[^>]*><strong>From:<\/strong>/i, // HTML From header
-    /<div[^>]*>From:\s+[^<]+<[^@]+@[^>]+>/i, // From with email format
-    /^From:\s+[^<]+<[^@]+@[^>]+>/m, // From at line start with email
-    /Sent from my \w+/i, // e.g., Sent from my iPhone
+    /<p[^>]*><strong>From:<\/strong>/i, 
+    /<div[^>]*>From:\s+[^<]+<[^@]+@[^>]+>/i, 
+    /^From:\s+[^<]+<[^@]+@[^>]+>/m, 
+    /Sent from my \w+/i, 
 
     // HTML quote elements
     /<div[^>]*class="gmail_quote/i,
@@ -206,17 +193,13 @@ function findQuoteStartIndex(html: string): number {
     /<blockquote[^>]*type="cite"/i,
     /<div[^>]*class="gmail_attr"/i,
 
-    // Outlook separators
     /<hr\s*style=["'][^"']*border-top:\s*1px\s*solid\s*[^;]+;["']/i,
 
-    // Forwarded message indicators
     /---------- Forwarded message ---------/i,
     /Begin forwarded message:/i,
 
-    // Outlook quote indicators
     /<div[^>]*style=["'][^"']*border:none;\s*border-top:solid\s+#E1E1E1/i,
 
-    // Gmail-style reply line (e.g., "On Tue, Jun 10, 2025 at 9:27 AM Name <email> wrote:")
     /^On\s+\w{3},\s+\w{3,9}\s+\d{1,2},\s+\d{4}\s+at\s+\d{1,2}:\d{2}\s*(AM|PM|am|pm)?\s+.+<[^@]+@[^>]+>\s+wrote:/m,
   ];
 
@@ -225,14 +208,11 @@ function findQuoteStartIndex(html: string): number {
   for (const pattern of patterns) {
     const match = html.match(pattern);
     if (match && match.index !== undefined) {
-      // Para HR, asegurarse que no esté al principio del mensaje
       if (pattern.source.includes('<hr') && match.index < 50) {
         continue;
       }
 
-      // Para patrones From, asegurarse que esté en un contexto apropiado
       if (pattern.source.includes('From:')) {
-        // Verificar que hay suficiente contenido antes para justificar un corte
         const textBeforeMatch = html
           .substring(0, match.index)
           .replace(/<[^>]*>/g, '')
@@ -251,25 +231,21 @@ function findQuoteStartIndex(html: string): number {
   return earliestIndex;
 }
 
-// 🔧 NUEVA FUNCIÓN: Limpiar contenido citado del mensaje
 // function cleanQuotedContent(htmlContent: string): string {
 //   if (!htmlContent || !htmlContent.trim()) {
 //     return htmlContent;
 //   }
 
-//   // 1. Remover divs con clase enque-quote existentes
 //   let cleanedContent = htmlContent.replace(
 //     /<div[^>]*class="enque-quote"[^>]*>[\s\S]*?<\/div>/gi,
 //     ''
 //   );
 
-//   // 2. Encontrar y remover contenido detectado por findQuoteStartIndex
 //   const quoteStartIndex = findQuoteStartIndex(cleanedContent);
 //   if (quoteStartIndex !== -1) {
 //     cleanedContent = cleanedContent.substring(0, quoteStartIndex);
 //   }
 
-//   // 3. Limpiar espacios en blanco y elementos vacíos al final
 //   cleanedContent = cleanedContent
 //     .replace(/(?:<br\s*\/?>\s*)+$/i, '') // Remover <br> al final
 //     .replace(/<p[^>]*>\s*<\/p>\s*$/gi, '') // Remover <p> vacíos al final
@@ -329,7 +305,6 @@ function OptimizedMessageItem({ content, isInitial = false, ticket }: OptimizedM
     htmlContent = htmlContent.replace(/^\s*(?:<br\s*\/?>\s*)+/i, '');
     htmlContent = htmlContent.replace(/(?:<br\s*\/?>\s*)+$/i, '');
 
-    // Process links to open in new tab
     htmlContent = processLinksForNewTab(htmlContent);
 
     return htmlContent.trim();
@@ -373,13 +348,23 @@ function OptimizedMessageItem({ content, isInitial = false, ticket }: OptimizedM
     if (content.is_private) return null;
     if (!ticket) return null;
 
+    const isAgentMessage = senderInfo.type === 'agent';
+    
+    let toRecipients = '';
+    if (isAgentMessage && ticket.user?.email) {
+      const userName = ticket.user.name ? `${ticket.user.name} <${ticket.user.email}>` : ticket.user.email;
+      toRecipients = userName;
+    } else {
+      toRecipients = ticket.to_recipients || '';
+    }
+
     const recipients = [];
 
-    if (ticket.to_recipients) {
+    if (toRecipients) {
       recipients.push(
         <div key="to" className="flex items-center gap-1 flex-wrap">
           <span className="text-xs font-medium text-slate-600 dark:text-slate-400">To:</span>
-          {ticket.to_recipients.split(',').map((email, index) => (
+          {toRecipients.split(',').map((email, index) => (
             <span
               key={index}
               className="inline-flex items-center rounded-full bg-slate-100 dark:bg-slate-700 px-2 py-0.5 text-xs font-medium text-slate-700 dark:text-slate-300"
@@ -458,7 +443,6 @@ function OptimizedMessageItem({ content, isInitial = false, ticket }: OptimizedM
           </p>
         </div>
 
-        {/* ✅ Renderizar destinatarios para TODOS los mensajes */}
         {renderEmailRecipients()}
 
         <div className="max-w-none break-words overflow-x-auto">
@@ -624,14 +608,9 @@ export function TicketConversation({
   const prevTicketIdRef = useRef<number | null>(null);
   const [selectedAttachments, setSelectedAttachments] = useState<File[]>([]);
   const [isSending, setIsSending] = useState(false);
-  //Takes care of the send button text, wheter its a Send now or Schedule send situation
-  //Changes the createComment function and when it should sent the reply
   const [sendNow, setSendNow] = useState<boolean>(true);
-  //Shows up when theres a schedule send to be mandes
   const [popCalendar, setPopCalendar] = useState<boolean>(false);
-  //Value used only when popCalendar is true
   const [date, setDate] = useState<Date>(new Date());
-  // Canned replies state
   const [cannedRepliesOpen, setCannedRepliesOpen] = useState(false);
   const [cannedSearchTerm, setCannedSearchTerm] = useState('');
 
@@ -905,14 +884,10 @@ export function TicketConversation({
       toast.error('Authentication error. User not found.');
       throw new Error('Authentication error. User not found.');
     }
-
-    // Validate extra recipients if provided
     if (extraRecipients.trim() && !validateEmails(extraRecipients)) {
       toast.error('Please enter valid email addresses separated by commas.');
       throw new Error('Invalid email addresses in extra recipients.');
     }
-
-    // Validate BCC recipients if provided
     if (extraBccRecipients.trim() && !validateEmails(extraBccRecipients)) {
       toast.error('Please enter valid BCC email addresses separated by commas.');
       throw new Error('Invalid email addresses in BCC recipients.');
@@ -963,7 +938,7 @@ export function TicketConversation({
     }
 
     const payload: CreateCommentPayload = {
-      content: finalContent, // Use the modified content with quote
+      content: finalContent, 
       ticket_id: ticket.id,
       agent_id: currentUser.id,
       workspace_id: currentUser.workspace_id,
@@ -1252,12 +1227,13 @@ export function TicketConversation({
                         to_recipients: ticket.to_recipients,
                         cc_recipients: ticket.cc_recipients,
                         bcc_recipients: ticket.bcc_recipients,
+                        user: ticket.user,
                       }}
                     />
                   )
                 ) : (
                   <>
-                    {/* Always show initial message first if it exists and is the latest */}
+
                     {conversationItems.hasInitialMessage &&
                     conversationItems.initialMessageContent &&
                     conversationItems.items.length > 0 &&
@@ -1272,6 +1248,7 @@ export function TicketConversation({
                           to_recipients: ticket.to_recipients,
                           cc_recipients: ticket.cc_recipients,
                           bcc_recipients: ticket.bcc_recipients,
+                          user: ticket.user,
                         }}
                       />
                     ) : (
@@ -1283,6 +1260,7 @@ export function TicketConversation({
                             to_recipients: ticket.to_recipients,
                             cc_recipients: ticket.cc_recipients,
                             bcc_recipients: ticket.bcc_recipients,
+                            user: ticket.user,
                           }}
                         />
                       )
@@ -1293,7 +1271,6 @@ export function TicketConversation({
             )}
           </div>
 
-          {/* View Previous Correspondence Button */}
           {conversationItems.totalItems > 1 && (
             <div className="flex justify-center pt-4">
               <Button
@@ -1308,7 +1285,6 @@ export function TicketConversation({
             </div>
           )}
 
-          {/* Show all messages when expanded */}
           {showAllMessages && (
             <div className="space-y-4 border-t pt-4">
               {conversationItems.isOptimized
@@ -1323,12 +1299,13 @@ export function TicketConversation({
                           to_recipients: ticket.to_recipients,
                           cc_recipients: ticket.cc_recipients,
                           bcc_recipients: ticket.bcc_recipients,
+                          user: ticket.user,
                         }}
                       />
                     ))
                 : (conversationItems.items as IComment[])
                     .slice(1)
-                    .filter((item: IComment) => item.id !== -1) // Filtrar mensaje inicial de la lista expandida
+                    .filter((item: IComment) => item.id !== -1) 
                     .map((item: IComment) => (
                       <ConversationMessageItem
                         key={item.id}
@@ -1337,6 +1314,7 @@ export function TicketConversation({
                           to_recipients: ticket.to_recipients,
                           cc_recipients: ticket.cc_recipients,
                           bcc_recipients: ticket.bcc_recipients,
+                          user: ticket.user,
                         }}
                       />
                     ))}
@@ -1387,6 +1365,7 @@ export function TicketConversation({
                           to_recipients: ticket.to_recipients,
                           cc_recipients: ticket.cc_recipients,
                           bcc_recipients: ticket.bcc_recipients,
+                          user: ticket.user,
                         }}
                       />
                     )
@@ -1405,6 +1384,7 @@ export function TicketConversation({
                             to_recipients: ticket.to_recipients,
                             cc_recipients: ticket.cc_recipients,
                             bcc_recipients: ticket.bcc_recipients,
+                            user: ticket.user,
                           }}
                         />
                       )}
@@ -1418,6 +1398,7 @@ export function TicketConversation({
                             to_recipients: ticket.to_recipients,
                             cc_recipients: ticket.cc_recipients,
                             bcc_recipients: ticket.bcc_recipients,
+                            user: ticket.user,
                           }}
                         />
                       ))}
