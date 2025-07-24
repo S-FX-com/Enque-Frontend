@@ -92,7 +92,7 @@ export async function updateTicket(
   >
 ): Promise<ITicket> {
   try {
-    const url = `${API_BASE_URL}/v1/tasks/${ticketId}`;
+    const url = `${API_BASE_URL}/v1/tasks-optimized/${ticketId}/refresh`;
 
     const payload: TicketUpdatePayload = {};
     if (updates.status !== undefined) payload.status = updates.status;
@@ -134,7 +134,7 @@ export async function updateTicket(
       }
     }
 
-    console.log('Sending update payload:', payload);
+    console.log('Sending OPTIMIZED update payload:', payload);
     const response = await fetchAPI.PUT<ITicket>(url, payload);
 
     if (response && response.success && response.data) {
