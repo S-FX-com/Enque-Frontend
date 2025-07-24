@@ -175,7 +175,6 @@ export function TicketPageContent({ ticketId }: Props) {
   const [ticket, setTicket] = useState<ITicket | null>(null);
   const [isClosing, setIsClosing] = useState(false);
   const [isReopening, setIsReopening] = useState(false);
-  const [existingToEmails, setExistingToEmails] = useState<string[]>([]);
   const [existingCcEmails, setExistingCcEmails] = useState<string[]>([]);
   const [extraCcEmails, setExtraCcEmails] = useState<string[]>([]);
   const [existingBccEmails, setExistingBccEmails] = useState<string[]>([]);
@@ -213,17 +212,6 @@ export function TicketPageContent({ ticketId }: Props) {
   useEffect(() => {
     if (currentTicket) {
       setTicket(currentTicket as unknown as ITicket);
-
-      // Initialize TO emails if they exist in the ticket data
-      if (currentTicket?.to_recipients) {
-        const toEmails = currentTicket.to_recipients
-          .split(',')
-          .map(email => email.trim())
-          .filter(email => email.length > 0);
-        setExistingToEmails(toEmails);
-      } else {
-        setExistingToEmails([]);
-      }
 
       if (currentTicket?.cc_recipients) {
         const emails = currentTicket.cc_recipients
@@ -1002,24 +990,6 @@ export function TicketPageContent({ ticketId }: Props) {
               <CardTitle className="text-lg">Copied on Replies</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* TO Recipients - Display only */}
-              {/* {existingToEmails.length > 0 && (
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground mb-2 block">
-                    To:
-                  </label>
-                  <div className="space-y-2">
-                    <div className="flex flex-wrap gap-1 p-2 border rounded-md bg-gray-50">
-                      {existingToEmails.map((email, index) => (
-                        <Badge key={index} variant="outline" className="text-xs">
-                          {email}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )} */}
-
               {/* CC Recipients */}
               <div>
                 <label className="text-sm font-medium text-muted-foreground mb-2 block">Cc:</label>
