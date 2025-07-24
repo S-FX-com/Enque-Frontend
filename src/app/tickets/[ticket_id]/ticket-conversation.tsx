@@ -609,6 +609,9 @@ export function TicketConversation({
   onExtraRecipientsChange,
   extraBccRecipients = '',
 }: Props) {
+  type ValuePiece = Date | null;
+  type Value = ValuePiece | [ValuePiece, ValuePiece];
+
   const queryClient = useQueryClient();
   const { user: currentUser } = useAuth();
   const [replyContent, setReplyContent] = useState('');
@@ -619,7 +622,9 @@ export function TicketConversation({
   const [isSending, setIsSending] = useState(false);
   const [sendNow, setSendNow] = useState<boolean>(true);
   const [popCalendar, setPopCalendar] = useState<boolean>(false);
-  const [date, setDate] = useState<Date>(new Date());
+  const now: Date = new Date();
+  const [date, setDate] = useState<Value>(null);
+  const [time, setTime] = useState<string>('');
   const [cannedRepliesOpen, setCannedRepliesOpen] = useState(false);
   const [cannedSearchTerm, setCannedSearchTerm] = useState('');
 
@@ -1173,15 +1178,17 @@ export function TicketConversation({
                     <Send className="mr-2 h-4 w-4" />
                     Send
                   </Button>
-                  <Separator orientation="vertical" className="h-full  bg-gray-200 mx-2" />
+                  <span className="w-1/10 bg-background h-full before: after:"></span>
                   <ScheduleSendCalendar
-                    day={date.getDate()}
-                    month={date.getMonth()}
-                    year={date.getFullYear()}
+                    day={now.getDate()}
+                    month={now.getMonth()}
+                    year={now.getFullYear()}
                     popCalendar={popCalendar}
                     setPopCalendar={setPopCalendar}
                     setSendNow={setSendNow}
                     handleSendReply={handleSendReply}
+                    date={date}
+                    setDate={setDate}
                   />
                 </div>
               )}
