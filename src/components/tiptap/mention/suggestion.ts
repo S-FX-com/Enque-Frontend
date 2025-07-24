@@ -4,21 +4,56 @@ import { SuggestionKeyDownProps, SuggestionProps } from '@tiptap/suggestion';
 import MentionList from './MentionList';
 import { Editor } from '@tiptap/react';
 import { getAgents } from '@/services/agent';
+import { Agent } from '@/typescript/agent';
 import 'tippy.js/dist/tippy.css';
+
+let agentsCache: { data: Agent[]; timestamp: number } | null = null;
+const CACHE_DURATION = 5 * 60 * 1000; 
+let searchTimeout: NodeJS.Timeout | null = null;
+
+async function getAgentsWithCache() {
+  const now = Date.now();
+
+  if (agentsCache && (now - agentsCache.timestamp) < CACHE_DURATION) {
+    return agentsCache.data;
+  }
+  const agents = await getAgents();
+  agentsCache = { data: agents, timestamp: now };
+  return agents;
+}
 
 export default function suggestion() {
   return {
-    items: async ({ query }: { query: string; editor: Editor }) => {
-      try {
-        const agents = await getAgents();
-        return agents
-          .filter(agent => agent.name.toLowerCase().startsWith(query.toLowerCase()))
-          .map(agent => agent.name)
-          .slice(0, 5);
-      } catch (error) {
-        console.error('Failed to fetch agents:', error);
-        return [];
-      }
+    items: async ({ query }: { query: string; editor: Editor }): Promise<string[]> => {
+      return new Promise<string[]>((resolve) => {
+        if (searchTimeout) {
+          clearTimeout(searchTimeout);
+        }
+        searchTimeout = setTimeout(async () => {
+          try {
+            const agents = await getAgentsWithCache();
+            let filtered;
+            
+            // Si query está vacío (solo @), mostrar los primeros agentes
+            if (!query.trim()) {
+              filtered = agents
+                .map(agent => agent.name)
+                .slice(0, 8);
+            } else {
+              // Si hay query, filtrar por coincidencias
+              filtered = agents
+                .filter(agent => agent.name.toLowerCase().includes(query.toLowerCase()))
+                .map(agent => agent.name)
+                .slice(0, 8);
+            }
+            
+            resolve(filtered);
+          } catch (error) {
+            console.error('Failed to fetch agents:', error);
+            resolve([]);
+          }
+        }, 200); 
+      });
     },
 
     render: () => {

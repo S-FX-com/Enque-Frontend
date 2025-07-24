@@ -97,9 +97,10 @@ function MyTicketsClientContent() {
     queryKey: ['tickets', 'my', currentUser?.id || 0],
     queryFn: async ({ pageParam = 0 }) => {
       if (!currentUser?.id) return [];
+      // Using optimized assignee endpoint for better performance
       const tickets = await getTickets(
         { skip: pageParam, limit: 50 },
-        `/v1/tasks/assignee/${currentUser.id}`
+        `/v1/tasks-optimized/assignee/${currentUser.id}`
       );
       return tickets;
     },

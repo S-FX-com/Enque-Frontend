@@ -128,7 +128,8 @@ function SidebarContent() {
     queryFn: async () => {
       if (!user?.id) return 0;
       // Usar un límite muy alto para obtener todos los tickets
-      const tickets = await getTickets({ limit: 10000 }, `/v1/tasks/assignee/${user.id}`);
+      // Using optimized assignee endpoint for better performance
+      const tickets = await getTickets({ limit: 10000 }, `/v1/tasks-optimized/assignee/${user.id}`);
       // Filter out closed tickets to match My Teams behavior
       const activeTickets = tickets.filter(
         ticket => ticket.status !== 'Closed'

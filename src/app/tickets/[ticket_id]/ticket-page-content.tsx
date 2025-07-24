@@ -5,7 +5,7 @@ import type React from 'react';
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
-import { ArrowLeft, X, Plus, Search, User, Edit2, Check, X as XIcon } from 'lucide-react';
+import { ArrowLeft, X, Plus, Search, User, Edit2, Check, XIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -175,7 +175,6 @@ export function TicketPageContent({ ticketId }: Props) {
   const [ticket, setTicket] = useState<ITicket | null>(null);
   const [isClosing, setIsClosing] = useState(false);
   const [isReopening, setIsReopening] = useState(false);
-  const [existingToEmails, setExistingToEmails] = useState<string[]>([]);
   const [existingCcEmails, setExistingCcEmails] = useState<string[]>([]);
   const [extraCcEmails, setExtraCcEmails] = useState<string[]>([]);
   const [existingBccEmails, setExistingBccEmails] = useState<string[]>([]);
@@ -186,10 +185,6 @@ export function TicketPageContent({ ticketId }: Props) {
   // States for title editing
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editedTitle, setEditedTitle] = useState('');
-
-  // New state variables for modals
-  // const [isCcModalOpen, setIsCcModalOpen] = useState(false);
-  // const [isBccModalOpen, setIsBccModalOpen] = useState(false);
 
   // Fetch ticket data
   const {
@@ -213,17 +208,6 @@ export function TicketPageContent({ ticketId }: Props) {
   useEffect(() => {
     if (currentTicket) {
       setTicket(currentTicket as unknown as ITicket);
-
-      // Initialize TO emails if they exist in the ticket data
-      if (currentTicket?.to_recipients) {
-        const toEmails = currentTicket.to_recipients
-          .split(',')
-          .map(email => email.trim())
-          .filter(email => email.length > 0);
-        setExistingToEmails(toEmails);
-      } else {
-        setExistingToEmails([]);
-      }
 
       if (currentTicket?.cc_recipients) {
         const emails = currentTicket.cc_recipients
@@ -608,6 +592,26 @@ export function TicketPageContent({ ticketId }: Props) {
     return uniqueEmails.join(', ');
   };
 
+  // ✅ FIXED: Modified callback functions to NOT reset extra emails
+  // This prevents the RichTextEditor from being reset when CC/BCC changes
+  const handleExtraCcRecipientsChange = useCallback((recipients: string) => {
+    // Only update if there's an actual change and it's not just clearing
+    if (recipients === '') {
+      // Only clear extra CC emails, don't reset the editor
+      setExtraCcEmails([]);
+    }
+    // Don't do anything else - let the CC input component handle the state
+  }, []);
+
+  const handleExtraBccRecipientsChange = useCallback((recipients: string) => {
+    // Only update if there's an actual change and it's not just clearing
+    if (recipients === '') {
+      // Only clear extra BCC emails, don't reset the editor
+      setExtraBccEmails([]);
+    }
+    // Don't do anything else - let the BCC input component handle the state
+  }, []);
+
   // Function to handle primary contact change
   const handlePrimaryContactChange = async (userId: string) => {
     try {
@@ -803,7 +807,7 @@ export function TicketPageContent({ ticketId }: Props) {
             <Button
               size="sm"
               variant="outline"
-              className="border-green-600 text-green-600 hover:bg-green-600 hover:text-white"
+              className="border-green-600 text-green-600 hover:bg-green-600 hover:text-white bg-transparent"
               onClick={() => reopenTicketMutation.mutate()}
               disabled={isReopening}
             >
@@ -857,9 +861,9 @@ export function TicketPageContent({ ticketId }: Props) {
                 onTicketUpdate={handleTicketUpdate}
                 latestOnly={true}
                 extraRecipients={getCombinedCcRecipients()}
-                onExtraRecipientsChange={() => {}} // Not needed for display only
+                onExtraRecipientsChange={handleExtraCcRecipientsChange}
                 extraBccRecipients={getCombinedBccRecipients()}
-                onExtraBccRecipientsChange={() => {}} // Not needed for display only
+                onExtraBccRecipientsChange={handleExtraBccRecipientsChange}
               />
             </CardContent>
           </Card>
@@ -873,9 +877,9 @@ export function TicketPageContent({ ticketId }: Props) {
                 onTicketUpdate={handleTicketUpdate}
                 replyOnly={true}
                 extraRecipients={getCombinedCcRecipients()}
-                onExtraRecipientsChange={() => {}} // CC is managed above
+                onExtraRecipientsChange={handleExtraCcRecipientsChange}
                 extraBccRecipients={getCombinedBccRecipients()}
-                onExtraBccRecipientsChange={() => {}} // BCC is managed above
+                onExtraBccRecipientsChange={handleExtraBccRecipientsChange}
               />
             </CardContent>
           </Card>
@@ -883,12 +887,12 @@ export function TicketPageContent({ ticketId }: Props) {
 
         {/* Sidebar */}
         <div className="space-y-6">
-          {/* Contact Information */}
+          {/* Primary Contact Card */}
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">Contact Information</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent>
               {/* Primary Contact */}
               <div>
                 <label className="text-sm font-medium text-muted-foreground mb-2 block">
@@ -985,25 +989,15 @@ export function TicketPageContent({ ticketId }: Props) {
                   </Dialog>
                 </div>
               </div>
+            </CardContent>
+          </Card>
 
-              {/* TO Recipients - Display only */}
-              {existingToEmails.length > 0 && (
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground mb-2 block">
-                    To:
-                  </label>
-                  <div className="space-y-2">
-                    <div className="flex flex-wrap gap-1 p-2 border rounded-md bg-gray-50">
-                      {existingToEmails.map((email, index) => (
-                        <Badge key={index} variant="outline" className="text-xs">
-                          {email}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
-
+          {/* Recipients Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Copied on Replies</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
               {/* CC Recipients */}
               <div>
                 <label className="text-sm font-medium text-muted-foreground mb-2 block">Cc:</label>

@@ -47,6 +47,10 @@ interface Props {
     to_recipients?: string;
     cc_recipients?: string;
     bcc_recipients?: string;
+    user?: {
+      name?: string;
+      email?: string;
+    } | null;
   };
 }
 
@@ -311,6 +315,10 @@ interface InitialTicketMessageProps {
     to_recipients?: string;
     cc_recipients?: string;
     bcc_recipients?: string;
+    user?: {
+      name?: string;
+      email?: string;
+    } | null;
   };
 }
 
@@ -531,7 +539,22 @@ export function ConversationMessageItem({ comment, ticket }: Props) {
 
   const renderEmailRecipients = () => {
     if (comment.is_private) return null;
-    const toRecipients = ticket?.to_recipients || '';
+    
+    // Determinar si es un mensaje de agente
+    const isAgentMessage = !!comment.agent;
+    
+    // Para mensajes de agente, el "To:" debe ser el primary contact (usuario del ticket)
+    // Para mensajes de usuario, usar los destinatarios originales del ticket
+    let toRecipients = '';
+    if (isAgentMessage && ticket?.user?.email) {
+      // Si es mensaje de agente, el "To:" es el primary contact
+      const userName = ticket.user.name ? `${ticket.user.name} <${ticket.user.email}>` : ticket.user.email;
+      toRecipients = userName;
+    } else {
+      // Si es mensaje de usuario, usar los destinatarios originales
+      toRecipients = ticket?.to_recipients || '';
+    }
+    
     const ccRecipients = comment.other_destinaries || ticket?.cc_recipients || '';
     const bccRecipients = comment.bcc_recipients || ticket?.bcc_recipients || '';
     
