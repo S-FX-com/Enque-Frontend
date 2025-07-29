@@ -47,7 +47,6 @@ export default function AutomationsPage() {
     },
     onSuccess: () => {
       setUpdatingSettingId(null);
-      toast.success('Automation setting updated successfully');
     },
     onError: error => {
       console.error('Failed to toggle automation setting:', error);
@@ -65,7 +64,6 @@ export default function AutomationsPage() {
     },
     onSuccess: () => {
       setUpdatingWeeklySummary(false);
-      toast.success('Weekly agent summary setting updated successfully');
       queryClient.invalidateQueries({ queryKey: ['automationSettings', workspaceId] });
     },
     onError: error => {
@@ -85,7 +83,6 @@ export default function AutomationsPage() {
     },
     onSuccess: () => {
       setUpdatingDailyOutstanding(false);
-      toast.success('Daily outstanding tasks setting updated successfully');
       queryClient.invalidateQueries({ queryKey: ['automationSettings', workspaceId] });
     },
     onError: error => {
@@ -135,15 +132,12 @@ export default function AutomationsPage() {
     });
   };
 
-  // 🔧 ADDED: Handler for daily outstanding tasks
   const handleToggleDailyOutstanding = (currentValue: boolean | undefined) => {
     if (updatingDailyOutstanding) {
       return;
     }
 
     const newValue = !(currentValue || false);
-
-    // Optimistic update
     const optimisticSettings = JSON.parse(JSON.stringify(automationSettings));
     if (optimisticSettings && optimisticSettings.daily_outstanding_tasks && optimisticSettings.daily_outstanding_tasks.id) {
       optimisticSettings.daily_outstanding_tasks.is_enabled = newValue;
@@ -267,7 +261,6 @@ export default function AutomationsPage() {
                 </CardContent>
               </Card>
               )}
-
               {/* Weekly Agent Summary Card */}
               {automationSettings.weekly_agent_summary && (
                 <Card className="border">
