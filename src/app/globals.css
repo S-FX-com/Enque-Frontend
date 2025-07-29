@@ -416,3 +416,17 @@ nav span.x_MsoHyperlink,
   text-decoration: none !important;
   color: inherit !important;
 }
+
+.ticket-conversation ul {
+  list-style-type: disc;
+  padding-left: 1.5em;
+  margin: 0.5em 0;
+  color: inherit;
+}
+ 
+.ticket-conversation ol {
+  list-style-type: decimal;
+  padding-left: 1.5em;
+  margin: 0.5em 0;
+  color: inherit;
+}

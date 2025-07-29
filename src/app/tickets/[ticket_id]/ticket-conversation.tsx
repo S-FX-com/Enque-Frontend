@@ -1030,6 +1030,42 @@ export function TicketConversation({
     setIsPrivateNote(checked);
     if (checked) {
       setReplyContent('');
+    } else {
+      // Restore signature when switching back from private note
+      let signatureToUse = '';
+ 
+      if (globalSignatureData?.content) {
+        signatureToUse = globalSignatureData.content
+          .replace(/\[Agent Name\]/g, currentAgentData?.name || '')
+          .replace(/\[Agent Role\]/g, currentAgentData?.job_title || '-');
+      } else if (currentAgentData?.email_signature) {
+        signatureToUse = currentAgentData.email_signature;
+      }
+ 
+      if (signatureToUse) {
+        signatureToUse = signatureToUse
+          .replace(/<\/strong><\/p>\s*<p>\s*<em>/g, '</strong><br><em>')
+          .replace(/<\/em><\/p>\s*<p>\s*<em>/g, '</em><br><em>')
+          .replace(/<\/strong><\/p>\s*<p>/g, '</strong><br>')
+          .replace(/<\/em><\/p>\s*<p>/g, '</em><br>')
+          .replace(/<\/p>\s*<p>\s*<strong>/g, '<br><strong>')
+          .replace(/<\/p>\s*<p>\s*<em>/g, '<br><em>')
+          .replace(/<\/p>\s*<p>/g, '<br>');
+ 
+        signatureToUse = signatureToUse.replace(
+          /<img([^>]*?)width="300"([^>]*?)height="200"([^>]*?)>/g,
+          '<img$1width="120"$2height="75"$3style="width: 120px; height: 75px; max-width: 120px; max-height: 75px; object-fit: scale-down; border-radius: 4px;">'
+        );
+ 
+        signatureToUse = `<div class="email-signature text-gray-500" style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #e5e7eb; clear: both;">${signatureToUse}</div>`;
+      }
+ 
+      const initialContent = signatureToUse
+        ? `<p style="margin-block: 10px !important"><p>${signatureToUse}`
+        : ``;
+ 
+      setReplyContent(initialContent);
+      setEditorKey(prev => prev + 1);
     }
   };
 
@@ -1212,7 +1248,7 @@ export function TicketConversation({
           </CardContent>
         </Card>
       ) : latestOnly ? (
-        <div className="space-y-4">
+        <div className="ticket-conversation space-y-4">
           <div className="space-y-4">
             {isHtmlContentError &&
               isCommentsError &&
