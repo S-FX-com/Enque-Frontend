@@ -922,7 +922,7 @@ export function ConversationMessageItem({ comment, ticket }: Props) {
               <div
                 className={`text-sm text-black dark:text-white prose dark:prose-invert max-w-none whitespace-pre-line prose-a:text-blue-600 dark:prose-a:text-blue-400 prose-a:underline ${
                   isAgentMessage && !isUserReply && !isInitialMessage && !isAutoResponse
-                    ? '[&_*]:!text-black dark:[&_*]:!text-white'
+                    ? '[&_*:not(.mention)]:!text-black dark:[&_*:not(.mention)]:!text-white'
                     : 'user-message-content'
                 }`}
                 dangerouslySetInnerHTML={{ __html: currentDisplayReplyPart }}
