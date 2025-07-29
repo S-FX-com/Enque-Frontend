@@ -58,6 +58,46 @@ const addDarkModeStyles = () => {
       .dark .user-message-content [style*="color:black"] {
         color: white !important;
       }
+      
+      /* Mention highlighting styles */
+      .mention {
+        background-color: #e0ecff !important;
+        color: #1d73f4 !important;
+        border-radius: 0.375rem !important;
+        padding: 0.125rem 0.375rem !important;
+        font-weight: 500 !important;
+        border: 1px solid #a7c9ff !important;
+        display: inline-block !important;
+        text-decoration: none !important;
+      }
+      
+      .dark .mention {
+        background-color: #312e81 !important;
+        color: #c7d2fe !important;
+        border-color: #4338ca !important;
+      }
+      
+      /* Ensure mentions are visible in message content */
+      .message-content-container .mention,
+      .user-message-content .mention,
+      .prose .mention {
+        background-color: #e0ecff !important;
+        color: #1d73f4 !important;
+        border-radius: 0.375rem !important;
+        padding: 0.125rem 0.375rem !important;
+        font-weight: 500 !important;
+        border: 1px solid #a7c9ff !important;
+        display: inline-block !important;
+        text-decoration: none !important;
+      }
+      
+      .dark .message-content-container .mention,
+      .dark .user-message-content .mention,
+      .dark .prose .mention {
+        background-color: #312e81 !important;
+        color: #c7d2fe !important;
+        border-color: #4338ca !important;
+      }
     `;
     document.head.appendChild(style);
   }
@@ -458,7 +498,7 @@ function OptimizedMessageItem({ content, isInitial = false, ticket }: OptimizedM
           <div
             className={`text-sm text-black dark:text-white prose dark:prose-invert max-w-none whitespace-pre-line prose-a:text-blue-600 dark:prose-a:text-blue-400 prose-a:underline message-content-container ${
               isAgentMessage && !isInitial && !senderInfo.isUserReply
-                ? '[&_*]:!text-black dark:[&_*]:!text-white'
+                ? '[&_*:not(.mention)]:!text-black dark:[&_*:not(.mention)]:!text-white'
                 : 'user-message-content'
             }`}
             dangerouslySetInnerHTML={{
