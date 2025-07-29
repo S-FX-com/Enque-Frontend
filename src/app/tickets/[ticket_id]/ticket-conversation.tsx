@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Separator } from '@radix-ui/react-separator';
+//import { Separator } from '@radix-ui/react-separator';
 import 'react-calendar/dist/Calendar.css';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -73,7 +73,6 @@ function processLinksForNewTab(htmlContent: string): string {
       let processedUrl = url;
 
       try {
-
         if (processedUrl.includes('%')) {
           processedUrl = decodeURIComponent(processedUrl);
         }
@@ -180,12 +179,20 @@ interface OptimizedMessageItemProps {
   };
 }
 
+export interface DateScheduleSend {
+  hours: number;
+  minutes: number;
+  day: number;
+  month: number;
+  year: number;
+}
+
 function findQuoteStartIndex(html: string): number {
   const patterns = [
-    /<p[^>]*><strong>From:<\/strong>/i, 
-    /<div[^>]*>From:\s+[^<]+<[^@]+@[^>]+>/i, 
-    /^From:\s+[^<]+<[^@]+@[^>]+>/m, 
-    /Sent from my \w+/i, 
+    /<p[^>]*><strong>From:<\/strong>/i,
+    /<div[^>]*>From:\s+[^<]+<[^@]+@[^>]+>/i,
+    /^From:\s+[^<]+<[^@]+@[^>]+>/m,
+    /Sent from my \w+/i,
 
     // HTML quote elements
     /<div[^>]*class="gmail_quote/i,
@@ -349,10 +356,12 @@ function OptimizedMessageItem({ content, isInitial = false, ticket }: OptimizedM
     if (!ticket) return null;
 
     const isAgentMessage = senderInfo.type === 'agent';
-    
+
     let toRecipients = '';
     if (isAgentMessage && ticket.user?.email) {
-      const userName = ticket.user.name ? `${ticket.user.name} <${ticket.user.email}>` : ticket.user.email;
+      const userName = ticket.user.name
+        ? `${ticket.user.name} <${ticket.user.email}>`
+        : ticket.user.email;
       toRecipients = userName;
     } else {
       toRecipients = ticket.to_recipients || '';
@@ -600,6 +609,9 @@ export function TicketConversation({
   onExtraRecipientsChange,
   extraBccRecipients = '',
 }: Props) {
+  type ValuePiece = Date | null;
+  type Value = ValuePiece | [ValuePiece, ValuePiece];
+
   const queryClient = useQueryClient();
   const { user: currentUser } = useAuth();
   const [replyContent, setReplyContent] = useState('');
@@ -610,7 +622,9 @@ export function TicketConversation({
   const [isSending, setIsSending] = useState(false);
   const [sendNow, setSendNow] = useState<boolean>(true);
   const [popCalendar, setPopCalendar] = useState<boolean>(false);
-  const [date, setDate] = useState<Date>(new Date());
+  const now: Date = new Date();
+  const [date, setDate] = useState<Value>(null);
+  const [time, setTime] = useState<string>('');
   const [cannedRepliesOpen, setCannedRepliesOpen] = useState(false);
   const [cannedSearchTerm, setCannedSearchTerm] = useState('');
 
@@ -879,7 +893,7 @@ export function TicketConversation({
     //sendNow: boolean
   ): Promise<CommentResponseData> => {
     if (sendNow) console.log('Send now');
-
+    console.log(time);
     if (!currentUser) {
       toast.error('Authentication error. User not found.');
       throw new Error('Authentication error. User not found.');
@@ -938,7 +952,7 @@ export function TicketConversation({
     }
 
     const payload: CreateCommentPayload = {
-      content: finalContent, 
+      content: finalContent,
       ticket_id: ticket.id,
       agent_id: currentUser.id,
       workspace_id: currentUser.workspace_id,
@@ -1006,12 +1020,52 @@ export function TicketConversation({
   const handleSendReply = () => {
     if (!replyContent.trim() || !ticket?.id || isSending) return;
     createCommentMutation.mutate();
+
+    if (popCalendar) {
+      setPopCalendar(false);
+    }
   };
 
   const handlePrivateNoteChange = (checked: boolean) => {
     setIsPrivateNote(checked);
     if (checked) {
       setReplyContent('');
+    } else {
+      // Restore signature when switching back from private note
+      let signatureToUse = '';
+ 
+      if (globalSignatureData?.content) {
+        signatureToUse = globalSignatureData.content
+          .replace(/\[Agent Name\]/g, currentAgentData?.name || '')
+          .replace(/\[Agent Role\]/g, currentAgentData?.job_title || '-');
+      } else if (currentAgentData?.email_signature) {
+        signatureToUse = currentAgentData.email_signature;
+      }
+ 
+      if (signatureToUse) {
+        signatureToUse = signatureToUse
+          .replace(/<\/strong><\/p>\s*<p>\s*<em>/g, '</strong><br><em>')
+          .replace(/<\/em><\/p>\s*<p>\s*<em>/g, '</em><br><em>')
+          .replace(/<\/strong><\/p>\s*<p>/g, '</strong><br>')
+          .replace(/<\/em><\/p>\s*<p>/g, '</em><br>')
+          .replace(/<\/p>\s*<p>\s*<strong>/g, '<br><strong>')
+          .replace(/<\/p>\s*<p>\s*<em>/g, '<br><em>')
+          .replace(/<\/p>\s*<p>/g, '<br>');
+ 
+        signatureToUse = signatureToUse.replace(
+          /<img([^>]*?)width="300"([^>]*?)height="200"([^>]*?)>/g,
+          '<img$1width="120"$2height="75"$3style="width: 120px; height: 75px; max-width: 120px; max-height: 75px; object-fit: scale-down; border-radius: 4px;">'
+        );
+ 
+        signatureToUse = `<div class="email-signature text-gray-500" style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #e5e7eb; clear: both;">${signatureToUse}</div>`;
+      }
+ 
+      const initialContent = signatureToUse
+        ? `<p style="margin-block: 10px !important"><p>${signatureToUse}`
+        : ``;
+ 
+      setReplyContent(initialContent);
+      setEditorKey(prev => prev + 1);
     }
   };
 
@@ -1160,13 +1214,18 @@ export function TicketConversation({
                     <Send className="mr-2 h-4 w-4" />
                     Send
                   </Button>
-                  <Separator orientation="vertical" className="h-full w-px bg-gray-200 mx-2" />
+                  <span className="w-1/10 bg-background h-full before: after:"></span>
                   <ScheduleSendCalendar
-                    date={date}
-                    setDate={setDate}
+                    day={now.getDate()}
+                    month={now.getMonth()}
+                    year={now.getFullYear()}
                     popCalendar={popCalendar}
                     setPopCalendar={setPopCalendar}
                     setSendNow={setSendNow}
+                    handleSendReply={handleSendReply}
+                    date={date}
+                    setDate={setDate}
+                    setTime={setTime}
                   />
                 </div>
               )}
@@ -1189,7 +1248,7 @@ export function TicketConversation({
           </CardContent>
         </Card>
       ) : latestOnly ? (
-        <div className="space-y-4">
+        <div className="ticket-conversation space-y-4">
           <div className="space-y-4">
             {isHtmlContentError &&
               isCommentsError &&
@@ -1233,7 +1292,6 @@ export function TicketConversation({
                   )
                 ) : (
                   <>
-
                     {conversationItems.hasInitialMessage &&
                     conversationItems.initialMessageContent &&
                     conversationItems.items.length > 0 &&
@@ -1305,7 +1363,7 @@ export function TicketConversation({
                     ))
                 : (conversationItems.items as IComment[])
                     .slice(1)
-                    .filter((item: IComment) => item.id !== -1) 
+                    .filter((item: IComment) => item.id !== -1)
                     .map((item: IComment) => (
                       <ConversationMessageItem
                         key={item.id}
