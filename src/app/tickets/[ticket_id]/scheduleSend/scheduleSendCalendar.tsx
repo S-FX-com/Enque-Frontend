@@ -25,10 +25,11 @@ interface Props {
   handleSendReply: MouseEventHandler<HTMLButtonElement>;
   date: Value;
   setDate: Dispatch<SetStateAction<Value>>;
+  setTime: Dispatch<SetStateAction<string>>;
 }
 //These types were taken fron the react-calendar official documentation:https://www.npmjs.com/package/react-calendar
 
-function TimePickingDropdown({}) {
+function TimePickingDropdown({ setTime }: { setTime: Dispatch<SetStateAction<string>> }) {
   const options: Array<string> = ['12:00 AM', '12:30 AM'];
   let hour: number = 1;
   let amPm: string = 'AM';
@@ -45,7 +46,7 @@ function TimePickingDropdown({}) {
       <h3 className="mb-1">Time Selected:</h3>
       <select className="border-1 p-1 w-9/10 h-8 border-b-2 border-stone-400 rounded-sm">
         {options.map(time => (
-          <option key={time} value={time}>
+          <option key={time} value={time} onClick={() => setTime(time)}>
             {time}
           </option>
         ))}
@@ -64,6 +65,7 @@ export function ScheduleSendCalendar({
   handleSendReply,
   date,
   setDate,
+  setTime,
 }: Props) {
   const maxDate: Date = new Date(year, month, day + 30);
   const minDate: Date = new Date(year, month, day);
@@ -83,7 +85,7 @@ export function ScheduleSendCalendar({
                     <h3 className="border-1 w-9/10 h-8 border-b-2 border-stone-400 rounded-sm p-1">
                       {`${(date as Date).getMonth() + 1}/${(date as Date).getDate()}/${(date as Date).getFullYear()}`}
                     </h3>
-                    <TimePickingDropdown />
+                    <TimePickingDropdown setTime={setTime} />
                   </div>
                   <div className="ml-5 flex flex-row justify-between w-4/5">
                     <Button

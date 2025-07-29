@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Separator } from '@radix-ui/react-separator';
+//import { Separator } from '@radix-ui/react-separator';
 import 'react-calendar/dist/Calendar.css';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -893,7 +893,7 @@ export function TicketConversation({
     //sendNow: boolean
   ): Promise<CommentResponseData> => {
     if (sendNow) console.log('Send now');
-
+    console.log(time);
     if (!currentUser) {
       toast.error('Authentication error. User not found.');
       throw new Error('Authentication error. User not found.');
@@ -1189,6 +1189,7 @@ export function TicketConversation({
                     handleSendReply={handleSendReply}
                     date={date}
                     setDate={setDate}
+                    setTime={setTime}
                   />
                 </div>
               )}
