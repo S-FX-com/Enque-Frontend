@@ -668,7 +668,6 @@ export function TicketConversation({
   const [cannedRepliesOpen, setCannedRepliesOpen] = useState(false);
   const [cannedSearchTerm, setCannedSearchTerm] = useState('');
 
-  // Fetch ticket HTML content
   const {
     data: htmlContent,
     isLoading: isLoadingHtmlContent,
@@ -678,16 +677,14 @@ export function TicketConversation({
     queryKey: ['ticketHtml', ticket.id],
     queryFn: () => getTicketHtmlContent(ticket.id),
     enabled: !!ticket?.id,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 2 * 60 * 1000, 
     refetchInterval: false,
     refetchIntervalInBackground: false,
-    refetchOnWindowFocus: false,
-    refetchOnMount: false,
+    refetchOnWindowFocus: true, 
+    refetchOnMount: true, 
     placeholderData: previousData => previousData,
     notifyOnChangeProps: ['data', 'error', 'isError'],
   });
-
-  // Fallback to comments if HTML content fails
   const {
     data: comments = [],
     isLoading: isLoadingComments,
@@ -697,11 +694,11 @@ export function TicketConversation({
     queryKey: ['comments', ticket.id],
     queryFn: () => getCommentsByTaskId(ticket.id),
     enabled: !!ticket?.id && isHtmlContentError,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 5 * 60 * 1000, 
     refetchInterval: false,
     refetchIntervalInBackground: false,
-    refetchOnWindowFocus: false,
-    refetchOnMount: false,
+    refetchOnWindowFocus: true, 
+    refetchOnMount: true, 
   });
 
   const currentAgentId = currentUser?.id;

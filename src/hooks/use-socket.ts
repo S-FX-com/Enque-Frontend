@@ -212,7 +212,12 @@ export function useSocket() {
       queryClient.setQueryData(
         ['comments', data.ticket_id],
         (oldComments: IComment[] | undefined) => {
-          if (!oldComments) return oldComments;
+          if (!oldComments) {
+            console.log(`🔄 No cached comments for ticket ${data.ticket_id}, invalidating queries`);
+            queryClient.invalidateQueries({ queryKey: ['comments', data.ticket_id] });
+            queryClient.invalidateQueries({ queryKey: ['ticketHtml', data.ticket_id] });
+            return [];
+          }
 
           const existingComment = oldComments.find(comment => comment.id === data.id);
           if (!existingComment) {
@@ -355,6 +360,11 @@ export function useSocket() {
         const senderName = data.agent_name || data.user_name || 'Someone';
         toast.info(`${senderName} added a comment to ticket #${data.ticket_id}`);
       }
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['comments', data.ticket_id] });
+        queryClient.invalidateQueries({ queryKey: ['ticketHtml', data.ticket_id] });
+        console.log(`🔄 Backup invalidation triggered for ticket ${data.ticket_id}`);
+      }, 500);
 
       // ✅ RÁPIDO: Resetear botón inmediatamente cuando llega nuestro comentario
       if (data.agent_id === user?.id) {
