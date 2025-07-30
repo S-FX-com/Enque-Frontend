@@ -13,6 +13,7 @@ export interface AutomationsResponse {
   team_notifications: AutomationSetting;
   weekly_agent_summary: AutomationSetting;
   daily_outstanding_tasks: AutomationSetting;
+  weekly_manager_summary: AutomationSetting;
 }
 
 interface ApiSuccessResponse {
@@ -69,6 +70,19 @@ export const toggleDailyOutstandingTasksSetting = async (
 ): Promise<ApiSuccessResponse> => {
   const response = await apiClient.post<ApiSuccessResponse>(
     `/automation-settings/${workspaceId}/daily-outstanding`,
+    {
+      is_enabled: enabled,
+    }
+  );
+  return response.data;
+};
+
+export const toggleWeeklyManagerSummarySetting = async (
+  workspaceId: number,
+  enabled: boolean
+): Promise<ApiSuccessResponse> => {
+  const response = await apiClient.post<ApiSuccessResponse>(
+    `/automation-settings/${workspaceId}/weekly-manager-summary`,
     {
       is_enabled: enabled,
     }

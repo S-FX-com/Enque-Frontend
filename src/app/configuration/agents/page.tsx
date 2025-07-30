@@ -18,7 +18,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { UserCheck, Clock, Mail, Send, Trash2 } from 'lucide-react';
+import { UserCheck, Clock, Mail, Send } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { NewAgentModal } from '@/components/modals/new-agent-modal'; // Import the new modal
@@ -237,15 +237,6 @@ export default function AgentsPage() {
                 Resend Invites ({selectedAgentIds.size})
               </Button>
             )}
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={() => setIsDeleteDialogOpen(true)}
-              disabled={deleteAgentsMutation.isPending}
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Delete ({selectedAgentIds.size})
-            </Button>
             <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
               <AlertDialogContent>
                 <AlertDialogHeader>
@@ -262,7 +253,7 @@ export default function AgentsPage() {
                   <AlertDialogAction
                     onClick={handleDeleteConfirm}
                     disabled={deleteAgentsMutation.isPending}
-                    className="bg-destructive !text-white text-destructive-foreground hover:bg-destructive/90"
+                    className="bg-destructive text-white text-destructive-foreground hover:bg-destructive/90"
                   >
                     {deleteAgentsMutation.isPending ? 'Deleting...' : 'Delete'}
                   </AlertDialogAction>
