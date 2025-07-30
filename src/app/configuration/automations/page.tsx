@@ -73,8 +73,6 @@ export default function AutomationsPage() {
       queryClient.invalidateQueries({ queryKey: ['automationSettings', workspaceId] });
     },
   });
-
-  // 🔧 ADDED: Daily Outstanding Tasks mutation
   const toggleDailyOutstandingMutation = useMutation({
     mutationFn: async ({ enabled }: { enabled: boolean }) => {
       if (!workspaceId) throw new Error('Workspace ID is missing');
