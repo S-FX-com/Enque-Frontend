@@ -14,7 +14,8 @@ import {
   getAutomationSettings, 
   toggleAutomationSetting,
   toggleWeeklySummarySetting,
-  toggleDailyOutstandingTasksSetting
+  toggleDailyOutstandingTasksSetting,
+  toggleWeeklyManagerSummarySetting
 } from '@/services/automations';
 
 export default function AutomationsPage() {
@@ -23,6 +24,7 @@ export default function AutomationsPage() {
   const [updatingSettingId, setUpdatingSettingId] = useState<number | null>(null);
   const [updatingWeeklySummary, setUpdatingWeeklySummary] = useState<boolean>(false);
   const [updatingDailyOutstanding, setUpdatingDailyOutstanding] = useState<boolean>(false);
+  const [updatingWeeklyManagerSummary, setUpdatingWeeklyManagerSummary] = useState<boolean>(false);
 
   const currentUserRole = user?.role;
   const workspaceId = user?.workspace_id;
@@ -91,6 +93,24 @@ export default function AutomationsPage() {
     },
   });
 
+  const toggleWeeklyManagerSummaryMutation = useMutation({
+    mutationFn: async ({ enabled }: { enabled: boolean }) => {
+      if (!workspaceId) throw new Error('Workspace ID is missing');
+      setUpdatingWeeklyManagerSummary(true);
+      return toggleWeeklyManagerSummarySetting(workspaceId, enabled);
+    },
+    onSuccess: () => {
+      setUpdatingWeeklyManagerSummary(false);
+      queryClient.invalidateQueries({ queryKey: ['automationSettings', workspaceId] });
+    },
+    onError: error => {
+      console.error('Failed to toggle weekly manager summary setting:', error);
+      toast.error(`Failed to update weekly manager summary setting: ${error.message}`);
+      setUpdatingWeeklyManagerSummary(false);
+      queryClient.invalidateQueries({ queryKey: ['automationSettings', workspaceId] });
+    },
+  });
+
   const handleToggleSetting = (settingId: number, currentValue: boolean | undefined) => {
     if (updatingSettingId === settingId) {
       return;
@@ -143,6 +163,23 @@ export default function AutomationsPage() {
     }
 
     toggleDailyOutstandingMutation.mutate({
+      enabled: newValue,
+    });
+  };
+
+  const handleToggleWeeklyManagerSummary = (currentValue: boolean | undefined) => {
+    if (updatingWeeklyManagerSummary) {
+      return;
+    }
+
+    const newValue = !(currentValue || false);
+    const optimisticSettings = JSON.parse(JSON.stringify(automationSettings));
+    if (optimisticSettings && optimisticSettings.weekly_manager_summary && optimisticSettings.weekly_manager_summary.id) {
+      optimisticSettings.weekly_manager_summary.is_enabled = newValue;
+      queryClient.setQueryData(['automationSettings', workspaceId], optimisticSettings);
+    }
+
+    toggleWeeklyManagerSummaryMutation.mutate({
       enabled: newValue,
     });
   };
@@ -305,8 +342,6 @@ export default function AutomationsPage() {
                 </CardContent>
               </Card>
               )}
-
-              {/* 🔧 ADDED: Daily Outstanding Tasks Card */}
               {automationSettings.daily_outstanding_tasks && (
                 <Card className="border">
                 <CardHeader>
@@ -344,6 +379,51 @@ export default function AutomationsPage() {
                           />
                           <Label htmlFor="daily-outstanding-tasks" className="font-medium">
                             {automationSettings.daily_outstanding_tasks.is_enabled ? 'Enabled' : 'Disabled'}
+                          </Label>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              )}
+              {automationSettings.weekly_manager_summary && (
+                <Card className="border">
+                <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <Users className="h-4 w-4" />
+                    <CardTitle className="text-lg">Weekly Manager Summary</CardTitle>
+                  </div>
+                  <CardDescription>
+                    Automated weekly summary of team performance sent to team managers on Fridays at 4pm ET
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between py-3 border-b">
+                      <div className="flex items-start gap-3">
+                        <Calendar className="h-5 w-5 mt-0.5 text-muted-foreground" />
+                        <div>
+                          <h4 className="font-medium">Weekly Team Summary for Managers</h4>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            Weekly email to team managers with their team&apos;s closed tickets from the past week. Sent Fridays at 4pm ET.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4 ml-4">
+                        <div className="flex items-center space-x-2">
+                          <Switch
+                            id="weekly-manager-summary"
+                            checked={automationSettings.weekly_manager_summary.is_enabled || false}
+                            onCheckedChange={() =>
+                              handleToggleWeeklyManagerSummary(
+                                automationSettings.weekly_manager_summary.is_enabled
+                              )
+                            }
+                            disabled={updatingWeeklyManagerSummary}
+                          />
+                          <Label htmlFor="weekly-manager-summary" className="font-medium">
+                            {automationSettings.weekly_manager_summary.is_enabled ? 'Enabled' : 'Disabled'}
                           </Label>
                         </div>
                       </div>
