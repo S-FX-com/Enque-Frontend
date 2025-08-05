@@ -366,9 +366,7 @@ export function useSocket() {
         console.log(`🔄 Backup invalidation triggered for ticket ${data.ticket_id}`);
       }, 500);
 
-      // ✅ RÁPIDO: Resetear botón inmediatamente cuando llega nuestro comentario
       if (data.agent_id === user?.id) {
-        // Es nuestro propio comentario, disparar evento inmediatamente
         window.dispatchEvent(
           new CustomEvent('commentSyncCompleted', {
             detail: { ticket_id: data.ticket_id, comment_id: data.id },
