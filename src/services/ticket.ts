@@ -88,7 +88,10 @@ type TicketUpdatePayload = {
 export async function updateTicket(
   ticketId: number,
   updates: Partial<
-    Pick<ITicket, 'status' | 'priority' | 'user_id' | 'assignee_id' | 'team_id' | 'category_id' | 'title'>
+    Pick<
+      ITicket,
+      'status' | 'priority' | 'user_id' | 'assignee_id' | 'team_id' | 'category_id' | 'title'
+    >
   >
 ): Promise<ITicket> {
   try {
@@ -96,7 +99,7 @@ export async function updateTicket(
     if (!ticketId || typeof ticketId !== 'number' || isNaN(ticketId)) {
       throw new Error(`Invalid ticket ID: ${ticketId}. Cannot update ticket.`);
     }
-    
+
     const url = `${API_BASE_URL}/v1/tasks-optimized/${ticketId}/refresh`;
 
     const payload: TicketUpdatePayload = {};
@@ -241,6 +244,7 @@ export interface TicketHtmlContent {
     name: string;
     email: string;
     created_at: string;
+    avatar_url: string;
   };
   is_private: boolean;
   attachments: Array<{
