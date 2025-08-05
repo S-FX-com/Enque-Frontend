@@ -23,6 +23,7 @@ export interface IAgent {
   workspace_id: number;
   created_at: string;
   updated_at: string;
+  avatar_url: string;
   // Add other fields if necessary based on AgentSchema from backend
 }
 

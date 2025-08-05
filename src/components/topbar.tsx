@@ -123,7 +123,7 @@ export function Topbar({
         job_title: currentUserData.job_title,
         phone_number: currentUserData.phone_number,
         email_signature: currentUserData.email_signature,
-        avatar: currentUserData.avatar,
+        avatar_url: currentUserData.avatar_url,
         created_at: '',
         updated_at: '',
       }
