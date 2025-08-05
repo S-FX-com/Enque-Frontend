@@ -4,7 +4,7 @@
  */
 
 import { AppConfigs } from '@/configs';
-import { ServiceResponse } from './auth';
+import { ServiceResponse } from '@/typescript';
 import { logger } from '@/lib/logger';
 
 export interface MicrosoftAuthUrlResponse {
@@ -76,7 +76,7 @@ export const microsoftAuthService = {
         };
       }
     } catch (error) {
-      logger.error('Microsoft auth URL generation error:', error);
+      logger.error('Microsoft auth URL generation error:', error instanceof Error ? error.message : 'Network error');
       return {
         success: false,
         message: error instanceof Error ? error.message : 'Network error',
@@ -112,7 +112,7 @@ export const microsoftAuthService = {
         };
       }
     } catch (error) {
-      logger.error('Microsoft auth status error:', error);
+      logger.error('Microsoft auth status error:', error instanceof Error ? error.message : 'Network error');
       return {
         success: false,
         message: error instanceof Error ? error.message : 'Network error',
@@ -150,7 +150,7 @@ export const microsoftAuthService = {
         };
       }
     } catch (error) {
-      logger.error('Microsoft profile fetch error:', error);
+      logger.error('Microsoft profile fetch error:', error instanceof Error ? error.message : 'Network error');
       return {
         success: false,
         message: error instanceof Error ? error.message : 'Network error',
@@ -196,7 +196,7 @@ export const microsoftAuthService = {
         };
       }
     } catch (error) {
-      logger.error('Microsoft agent link error:', error);
+      logger.error('Microsoft agent link error:', error instanceof Error ? error.message : 'Network error');
       return {
         success: false,
         message: error instanceof Error ? error.message : 'Network error',
@@ -236,7 +236,7 @@ export const microsoftAuthService = {
         };
       }
     } catch (error) {
-      logger.error('Microsoft agent unlink error:', error);
+      logger.error('Microsoft agent unlink error:', error instanceof Error ? error.message : 'Network error');
       return {
         success: false,
         message: error instanceof Error ? error.message : 'Network error',
@@ -304,7 +304,7 @@ export const microsoftAuthService = {
           return workspace.id;
         }
       } catch (error) {
-        logger.error('Failed to get workspace ID from subdomain:', error);
+        logger.error('Failed to get workspace ID from subdomain:', error instanceof Error ? error.message : 'Network error');
       }
     }
     
@@ -325,7 +325,7 @@ export const microsoftAuthService = {
         throw new Error(authUrlResponse.message || 'Failed to get auth URL');
       }
     } catch (error) {
-      logger.error('Microsoft login initiation error:', error);
+      logger.error('Microsoft login initiation error:', error instanceof Error ? error.message : 'Network error');
       throw error;
     }
   },
