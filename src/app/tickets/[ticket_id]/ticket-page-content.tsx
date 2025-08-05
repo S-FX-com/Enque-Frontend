@@ -1,7 +1,5 @@
 'use client';
-
 import type React from 'react';
-
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
@@ -16,7 +14,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-
 import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
@@ -41,7 +38,9 @@ import { TicketConversation } from './ticket-conversation';
 import BoringAvatar from 'boring-avatars';
 import { useAuth } from '@/hooks/use-auth';
 import { getUsers } from '@/services/user';
+import { getCompanyById } from '@/services/company';
 import type { IUser } from '@/typescript/user';
+import type { ICompany } from '@/typescript/company';
 
 interface Props {
   ticketId: number;
@@ -92,27 +91,20 @@ function DynamicCCInput({
 
   const handlePaste = (e: React.ClipboardEvent) => {
     const pastedText = e.clipboardData.getData('text');
-
-    // Verificar si el texto pegado contiene emails válidos separados por delimitadores
     const potentialEmails = pastedText.split(/[,;\s\n\t]+/).filter(email => email.trim());
     const hasMultipleEmails = potentialEmails.length > 1;
     const hasValidEmails = potentialEmails.some(email => validateEmail(email.trim()));
 
-    // Solo interceptar el pegado si hay múltiples emails o emails válidos separados
     if (hasMultipleEmails && hasValidEmails) {
       e.preventDefault();
-
       const validNewEmails = potentialEmails
         .map(email => email.trim())
         .filter(email => validateEmail(email) && !existingEmails.includes(email));
-
       if (validNewEmails.length > 0) {
         onEmailsChange([...existingEmails, ...validNewEmails]);
         setInputValue('');
       }
     }
-    // Si no hay múltiples emails, dejar que el navegador maneje el pegado normalmente
-    // El usuario podrá pegar texto simple en el input y editarlo
   };
 
   return (
@@ -172,6 +164,7 @@ export function TicketPageContent({ ticketId }: Props) {
   const queryClient = useQueryClient();
   const { socket } = useSocketContext();
   const { user } = useAuth();
+
   const [ticket, setTicket] = useState<ITicket | null>(null);
   const [isClosing, setIsClosing] = useState(false);
   const [isReopening, setIsReopening] = useState(false);
@@ -205,10 +198,17 @@ export function TicketPageContent({ ticketId }: Props) {
 
   const currentTicket = ticketData?.[0] || null;
 
+  // Fetch company data if user has a company_id
+  const { data: companyData } = useQuery<ICompany | null>({
+    queryKey: ['company', currentTicket?.user?.company_id],
+    queryFn: () => getCompanyById(currentTicket?.user?.company_id!),
+    enabled: !!currentTicket?.user?.company_id,
+    staleTime: 1000 * 60 * 5,
+  });
+
   useEffect(() => {
     if (currentTicket) {
       setTicket(currentTicket as unknown as ITicket);
-
       if (currentTicket?.cc_recipients) {
         const emails = currentTicket.cc_recipients
           .split(',')
@@ -218,8 +218,6 @@ export function TicketPageContent({ ticketId }: Props) {
       } else {
         setExistingCcEmails([]);
       }
-
-      // Initialize BCC emails if they exist in the ticket data
       if (currentTicket?.bcc_recipients) {
         const bccEmails = currentTicket.bcc_recipients
           .split(',')
@@ -235,16 +233,13 @@ export function TicketPageContent({ ticketId }: Props) {
   // Socket listener for real-time updates
   useEffect(() => {
     if (!socket || !ticket) return;
-
     const handleTicketUpdated = (data: ITicket) => {
       if (data.id === ticket.id) {
         console.log('🚀 Ticket updated via socket:', data);
         setTicket(prev => (prev ? { ...prev, ...data } : data));
       }
     };
-
     socket.on('ticket_updated', handleTicketUpdated);
-
     return () => {
       socket.off('ticket_updated', handleTicketUpdated);
     };
@@ -256,19 +251,16 @@ export function TicketPageContent({ ticketId }: Props) {
     queryFn: getAgents,
     staleTime: 1000 * 60 * 5,
   });
-
   const { data: teams = [], isLoading: isLoadingTeams } = useQuery<Team[]>({
     queryKey: ['teams'],
     queryFn: getTeams,
     staleTime: 1000 * 60 * 5,
   });
-
   const { data: categories = [], isLoading: isLoadingCategories } = useQuery<ICategory[]>({
     queryKey: ['categories'],
     queryFn: () => getCategories(),
     staleTime: 1000 * 60 * 5,
   });
-
   const { data: users = [] } = useQuery<IUser[]>({
     queryKey: ['users'],
     queryFn: getUsers,
@@ -284,14 +276,9 @@ export function TicketPageContent({ ticketId }: Props) {
 
   // Helper function to invalidate all counter queries
   const invalidateCounterQueries = useCallback(() => {
-    // Invalidate all tickets queries
     queryClient.invalidateQueries({ queryKey: ['tickets'] });
-
-    // Invalidate counter queries
     queryClient.invalidateQueries({ queryKey: ['ticketsCount', 'all'] });
     queryClient.invalidateQueries({ queryKey: ['ticketsCount', 'my', user?.id] });
-
-    // Invalidate team queries (they contain ticket counts)
     queryClient.invalidateQueries({ queryKey: ['agentTeams', user?.id, user?.role] });
     queryClient.invalidateQueries({ queryKey: ['teams'] });
   }, [queryClient, user?.id, user?.role]);
@@ -310,7 +297,6 @@ export function TicketPageContent({ ticketId }: Props) {
     mutationFn: async ({ field, value }) => {
       if (!ticket) throw new Error('No ticket selected');
       let updateValue: TicketStatus | TicketPriority | number | null;
-
       if (
         field === 'assignee_id' ||
         field === 'team_id' ||
@@ -324,15 +310,12 @@ export function TicketPageContent({ ticketId }: Props) {
       } else {
         updateValue = value as TicketPriority;
       }
-
       return updateTicket(ticket.id, { [field]: updateValue });
     },
     onMutate: async ({ field, value }) => {
       if (!ticket) return { previousTicket: null };
-
       const previousTicket = ticket;
       let optimisticUpdateValue: TicketStatus | TicketPriority | number | null;
-
       if (
         field === 'assignee_id' ||
         field === 'team_id' ||
@@ -347,15 +330,12 @@ export function TicketPageContent({ ticketId }: Props) {
       } else {
         optimisticUpdateValue = value as TicketPriority;
       }
-
       const optimisticTicket: ITicket = {
         ...previousTicket,
         [field]: optimisticUpdateValue,
       };
-
       setTicket(optimisticTicket);
       queryClient.setQueryData(['ticket', ticket.id], [optimisticTicket]);
-
       return { previousTicket };
     },
     onError: (error, { field }, context) => {
@@ -369,8 +349,6 @@ export function TicketPageContent({ ticketId }: Props) {
     },
     onSuccess: (data, variables) => {
       invalidateCounterQueries();
-
-      // Si se cambió el user_id (contacto principal), invalidar queries relacionadas
       if (variables.field === 'user_id') {
         queryClient.invalidateQueries({ queryKey: ['ticket', ticketId] });
         queryClient.invalidateQueries({ queryKey: ['tickets'] });
@@ -384,7 +362,6 @@ export function TicketPageContent({ ticketId }: Props) {
     value: string | null
   ) => {
     if (!ticket) return;
-
     let optimisticUpdateValue: TicketStatus | TicketPriority | number | null;
     if (
       field === 'assignee_id' ||
@@ -401,11 +378,9 @@ export function TicketPageContent({ ticketId }: Props) {
     } else {
       optimisticUpdateValue = value as TicketPriority;
     }
-
     if (ticket[field as keyof ITicket] === optimisticUpdateValue) {
       return;
     }
-
     const currentFieldValue = ticket[field] ?? null;
     updateFieldMutation.mutate({ field, value, originalFieldValue: currentFieldValue });
   };
@@ -419,33 +394,24 @@ export function TicketPageContent({ ticketId }: Props) {
       },
       onMutate: async () => {
         if (!ticket) return { previousTicket: null };
-
         setIsClosing(true);
         const previousTicket = ticket;
-
-        // Cancel any outgoing refetches for counter queries
         await queryClient.cancelQueries({ queryKey: ['ticketsCount'] });
         await queryClient.cancelQueries({ queryKey: ['agentTeams'] });
-
         const optimisticTicket: ITicket = {
           ...previousTicket,
           status: 'Closed' as TicketStatus,
         };
-
         setTicket(optimisticTicket);
         queryClient.setQueryData(['ticket', ticket.id], [optimisticTicket]);
-
-        // Optimistically update counter queries
         queryClient.setQueryData<number>(['ticketsCount', 'all'], old =>
           Math.max(0, (old || 1) - 1)
         );
-
         if (ticket.assignee_id === user?.id) {
           queryClient.setQueryData<number>(['ticketsCount', 'my', user?.id], old =>
             Math.max(0, (old || 1) - 1)
           );
         }
-
         return { previousTicket };
       },
       onSuccess: updatedTicketData => {
@@ -461,7 +427,6 @@ export function TicketPageContent({ ticketId }: Props) {
           setTicket(context.previousTicket);
           queryClient.setQueryData(['ticket', ticketId], [context.previousTicket]);
         }
-        // Revert optimistic updates on error
         invalidateCounterQueries();
       },
       onSettled: () => {
@@ -483,29 +448,20 @@ export function TicketPageContent({ ticketId }: Props) {
     },
     onMutate: async () => {
       if (!ticket) return { previousTicket: null };
-
       setIsReopening(true);
       const previousTicket = ticket;
-
-      // Cancel any outgoing refetches for counter queries
       await queryClient.cancelQueries({ queryKey: ['ticketsCount'] });
       await queryClient.cancelQueries({ queryKey: ['agentTeams'] });
-
       const optimisticTicket: ITicket = {
         ...previousTicket,
         status: 'Open' as TicketStatus,
       };
-
       setTicket(optimisticTicket);
       queryClient.setQueryData(['ticket', ticket.id], [optimisticTicket]);
-
-      // Optimistically update counter queries
       queryClient.setQueryData<number>(['ticketsCount', 'all'], old => (old || 0) + 1);
-
       if (ticket.assignee_id === user?.id) {
         queryClient.setQueryData<number>(['ticketsCount', 'my', user?.id], old => (old || 0) + 1);
       }
-
       return { previousTicket };
     },
     onSuccess: updatedTicketData => {
@@ -520,7 +476,6 @@ export function TicketPageContent({ ticketId }: Props) {
         setTicket(context.previousTicket);
         queryClient.setQueryData(['ticket', ticketId], [context.previousTicket]);
       }
-      // Revert optimistic updates on error
       invalidateCounterQueries();
     },
     onSettled: () => {
@@ -541,18 +496,13 @@ export function TicketPageContent({ ticketId }: Props) {
     },
     onMutate: async (newTitle: string) => {
       if (!ticket) return { previousTicket: null };
-
       const previousTicket = ticket;
-
-      // Optimistically update the title
       const optimisticTicket: ITicket = {
         ...previousTicket,
         title: newTitle,
       };
-
       setTicket(optimisticTicket);
       queryClient.setQueryData(['ticket', ticket.id], [optimisticTicket]);
-
       return { previousTicket };
     },
     onSuccess: () => {
@@ -592,35 +542,24 @@ export function TicketPageContent({ ticketId }: Props) {
     return uniqueEmails.join(', ');
   };
 
-  // ✅ FIXED: Modified callback functions to NOT reset extra emails
-  // This prevents the RichTextEditor from being reset when CC/BCC changes
   const handleExtraCcRecipientsChange = useCallback((recipients: string) => {
-    // Only update if there's an actual change and it's not just clearing
     if (recipients === '') {
-      // Only clear extra CC emails, don't reset the editor
       setExtraCcEmails([]);
     }
-    // Don't do anything else - let the CC input component handle the state
   }, []);
 
   const handleExtraBccRecipientsChange = useCallback((recipients: string) => {
-    // Only update if there's an actual change and it's not just clearing
     if (recipients === '') {
-      // Only clear extra BCC emails, don't reset the editor
       setExtraBccEmails([]);
     }
-    // Don't do anything else - let the BCC input component handle the state
   }, []);
 
   // Function to handle primary contact change
   const handlePrimaryContactChange = async (userId: string) => {
     try {
-      // Prevent multiple rapid clicks
       if (updateFieldMutation.isPending) {
         return;
       }
-
-      // Update local ticket state immediately for UI feedback
       if (ticket) {
         const selectedUser = users.find(u => u.id.toString() === userId) || null;
         const updatedTicket = {
@@ -631,16 +570,11 @@ export function TicketPageContent({ ticketId }: Props) {
         setTicket(updatedTicket);
         queryClient.setQueryData(['ticket', ticketId], [updatedTicket]);
       }
-
-      // Close modal immediately for better UX
       setIsContactModalOpen(false);
       setContactSearchQuery('');
-
-      // Make the API call
       handleUpdateField('user_id', userId);
     } catch (error) {
       console.error('Error changing primary contact:', error);
-      // Revert local state if there's an error
       if (ticket) {
         setTicket(ticket);
         queryClient.setQueryData(['ticket', ticketId], [ticket]);
@@ -653,27 +587,22 @@ export function TicketPageContent({ ticketId }: Props) {
     setEditedTitle(ticket?.title || '');
     setIsEditingTitle(true);
   };
-
   const handleCancelTitleEdit = () => {
     setEditedTitle('');
     setIsEditingTitle(false);
   };
-
   const handleSaveTitle = () => {
     if (!editedTitle.trim()) {
       toast.error('Title cannot be empty');
       return;
     }
-
     if (editedTitle.trim() === ticket?.title) {
       setIsEditingTitle(false);
       setEditedTitle('');
       return;
     }
-
     updateTitleMutation.mutate(editedTitle.trim());
   };
-
   const handleTitleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -688,7 +617,6 @@ export function TicketPageContent({ ticketId }: Props) {
   // Mark ticket as read when viewed
   useEffect(() => {
     if (ticket && ticket.status === 'Unread') {
-      // Update ticket status to 'Open' when viewed
       updateTicket(ticket.id, { status: 'Open' })
         .then(updatedTicket => {
           setTicket(updatedTicket);
@@ -705,8 +633,6 @@ export function TicketPageContent({ ticketId }: Props) {
   useEffect(() => {
     if (ticket?.title) {
       document.title = `Ticket #${ticket.id}: ${ticket.title}`;
-
-      // Cleanup: restore original title when component unmounts
       return () => {
         document.title = 'Support Tickets';
       };
@@ -749,6 +675,18 @@ export function TicketPageContent({ ticketId }: Props) {
   }
 
   const avatarColors = ['#a3a948', '#edb92e', '#f85931', '#ce1836', '#009989'];
+
+  // Determine which avatar to display
+  const userAvatarUrl = ticket?.user?.avatar_url;
+  const companyAvatarUrl = companyData?.logo_url;
+
+  const displayAvatarUrl = userAvatarUrl || companyAvatarUrl;
+  const avatarName =
+    ticket?.user?.name ||
+    ticket?.user?.email ||
+    companyData?.name ||
+    `user-${ticket?.user?.id}` ||
+    'unknown-user';
 
   return (
     <div className="space-y-6">
@@ -801,7 +739,6 @@ export function TicketPageContent({ ticketId }: Props) {
             )}
           </div>
         </div>
-
         <div className="flex items-center gap-2">
           {ticket?.status === 'Closed' ? (
             <Button
@@ -825,7 +762,6 @@ export function TicketPageContent({ ticketId }: Props) {
           )}
         </div>
       </div>
-
       {/* Status Badge */}
       <div className="flex items-center gap-2">
         <div className="relative flex h-2 w-2">
@@ -845,7 +781,6 @@ export function TicketPageContent({ ticketId }: Props) {
         </div>
         <span className="text-sm font-medium capitalize">{ticket?.status}</span>
       </div>
-
       {/* Main Content */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Reply Section - Moved to top */}
@@ -884,7 +819,6 @@ export function TicketPageContent({ ticketId }: Props) {
             </CardContent>
           </Card>
         </div>
-
         {/* Sidebar */}
         <div className="space-y-6">
           {/* Primary Contact Card */}
@@ -900,17 +834,20 @@ export function TicketPageContent({ ticketId }: Props) {
                 </label>
                 <div className="flex items-center justify-between p-2 border rounded-md bg-gray-50">
                   <div className="flex items-center gap-2">
-                    <BoringAvatar
-                      size={24}
-                      name={
-                        ticket?.user?.email ||
-                        ticket?.user?.name ||
-                        `user-${ticket?.user?.id}` ||
-                        'unknown-user'
-                      }
-                      variant="beam"
-                      colors={avatarColors}
-                    />
+                    {displayAvatarUrl ? (
+                      <img
+                        src={displayAvatarUrl || '/placeholder.svg'}
+                        alt={`${avatarName} avatar`}
+                        className="w-6 h-6 rounded-full object-cover"
+                      />
+                    ) : (
+                      <BoringAvatar
+                        size={24}
+                        name={avatarName}
+                        variant="beam"
+                        colors={avatarColors}
+                      />
+                    )}
                     <div className="flex flex-col">
                       <span className="text-sm dark:text-black font-medium">
                         {ticket?.user?.name || 'Unknown User'}
@@ -965,12 +902,20 @@ export function TicketPageContent({ ticketId }: Props) {
                               onClick={() => handlePrimaryContactChange(user.id.toString())}
                             >
                               <div className="flex items-center gap-2">
-                                <BoringAvatar
-                                  size={24}
-                                  name={user.email || user.name || `user-${user.id}`}
-                                  variant="beam"
-                                  colors={avatarColors}
-                                />
+                                {user.avatar_url ? (
+                                  <img
+                                    src={user.avatar_url || '/placeholder.svg'}
+                                    alt={`${user.name} avatar`}
+                                    className="w-6 h-6 rounded-full object-cover"
+                                  />
+                                ) : (
+                                  <BoringAvatar
+                                    size={24}
+                                    name={user.email || user.name || `user-${user.id}`}
+                                    variant="beam"
+                                    colors={avatarColors}
+                                  />
+                                )}
                                 <div className="text-left">
                                   <div className="text-sm font-medium">{user.name}</div>
                                   <div className="text-xs text-muted-foreground">{user.email}</div>
@@ -991,7 +936,6 @@ export function TicketPageContent({ ticketId }: Props) {
               </div>
             </CardContent>
           </Card>
-
           {/* Recipients Card */}
           <Card>
             <CardHeader>
@@ -1006,7 +950,6 @@ export function TicketPageContent({ ticketId }: Props) {
                     id="cc"
                     existingEmails={[...existingCcEmails, ...extraCcEmails]}
                     onEmailsChange={emails => {
-                      // Split between existing and new emails
                       const newExtraEmails = emails.filter(
                         email => !existingCcEmails.includes(email)
                       );
@@ -1023,7 +966,6 @@ export function TicketPageContent({ ticketId }: Props) {
                   </p>
                 </div>
               </div>
-
               {/* BCC Recipients */}
               <div>
                 <label className="text-sm font-medium text-muted-foreground mb-2 block">Bcc:</label>
@@ -1032,7 +974,6 @@ export function TicketPageContent({ ticketId }: Props) {
                     id="bcc"
                     existingEmails={[...existingBccEmails, ...extraBccEmails]}
                     onEmailsChange={emails => {
-                      // Split between existing and new emails
                       const newExtraBccEmails = emails.filter(
                         email => !existingBccEmails.includes(email)
                       );
@@ -1052,7 +993,6 @@ export function TicketPageContent({ ticketId }: Props) {
               </div>
             </CardContent>
           </Card>
-
           {/* Ticket Actions */}
           <Card>
             <CardHeader>
@@ -1114,7 +1054,6 @@ export function TicketPageContent({ ticketId }: Props) {
                   </SelectContent>
                 </Select>
               </div>
-
               {/* Assigned to */}
               <div>
                 <label className="text-sm font-medium text-muted-foreground mb-1 block">
@@ -1138,7 +1077,6 @@ export function TicketPageContent({ ticketId }: Props) {
                   </SelectContent>
                 </Select>
               </div>
-
               {/* Team */}
               <div>
                 <label className="text-sm font-medium text-muted-foreground mb-1 block">Team</label>
@@ -1160,7 +1098,6 @@ export function TicketPageContent({ ticketId }: Props) {
                   </SelectContent>
                 </Select>
               </div>
-
               {/* Category */}
               <div>
                 <label className="text-sm font-medium text-muted-foreground mb-1 block">
@@ -1186,9 +1123,7 @@ export function TicketPageContent({ ticketId }: Props) {
                   </SelectContent>
                 </Select>
               </div>
-
               <Separator />
-
               {/* Timestamps */}
               <div>
                 <label className="text-sm font-medium text-muted-foreground mb-1 block">
@@ -1196,7 +1131,6 @@ export function TicketPageContent({ ticketId }: Props) {
                 </label>
                 <p className="text-sm">{formatRelativeTime(ticket?.last_update)}</p>
               </div>
-
               <div>
                 <label className="text-sm font-medium text-muted-foreground mb-1 block">
                   Created
