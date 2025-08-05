@@ -24,7 +24,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Terminal, Info, Link as LinkIcon, Unlink } from 'lucide-react';
 import { getGlobalSignature } from '@/services/global-signature';
-import { microsoftAuthService, MicrosoftAuthStatus, MicrosoftProfileData } from '@/services/microsoftAuth';
+import {
+  microsoftAuthService,
+  MicrosoftAuthStatus,
+  MicrosoftProfileData,
+} from '@/services/microsoftAuth';
 import Link from 'next/link';
 
 const DetailRow: React.FC<{ label: string; value: React.ReactNode }> = ({ label, value }) => (
@@ -91,7 +95,11 @@ export default function ProfileSettingsPage() {
   });
 
   // Microsoft 365 Auth Status
-  const { data: microsoftAuthStatus, isLoading: isLoadingMicrosoftAuth, refetch: refetchMicrosoftAuth } = useQuery<MicrosoftAuthStatus>({
+  const {
+    data: microsoftAuthStatus,
+    isLoading: isLoadingMicrosoftAuth,
+    refetch: refetchMicrosoftAuth,
+  } = useQuery<MicrosoftAuthStatus>({
     queryKey: ['microsoftAuthStatus', agentId],
     queryFn: async () => {
       const token = localStorage.getItem('authToken');
@@ -105,18 +113,19 @@ export default function ProfileSettingsPage() {
   });
 
   // Microsoft 365 Profile Data (only if linked)
-  const { data: microsoftProfile, isLoading: isLoadingMicrosoftProfile } = useQuery<MicrosoftProfileData>({
-    queryKey: ['microsoftProfile', agentId],
-    queryFn: async () => {
-      const token = localStorage.getItem('authToken');
-      if (!token) throw new Error('No auth token');
-      const response = await microsoftAuthService.getProfile(token);
-      if (!response.success) throw new Error(response.message);
-      return response.data!;
-    },
-    enabled: !!agentId && !!microsoftAuthStatus?.is_linked,
-    staleTime: 5 * 60 * 1000,
-  });
+  const { data: microsoftProfile, isLoading: isLoadingMicrosoftProfile } =
+    useQuery<MicrosoftProfileData>({
+      queryKey: ['microsoftProfile', agentId],
+      queryFn: async () => {
+        const token = localStorage.getItem('authToken');
+        if (!token) throw new Error('No auth token');
+        const response = await microsoftAuthService.getProfile(token);
+        if (!response.success) throw new Error(response.message);
+        return response.data!;
+      },
+      enabled: !!agentId && !!microsoftAuthStatus?.is_linked,
+      staleTime: 5 * 60 * 1000,
+    });
 
   useEffect(() => {
     if (agentProfileData) {
@@ -126,7 +135,7 @@ export default function ProfileSettingsPage() {
       setEditedPhoneNumber(agentProfileData.phone_number || '');
       setEditedRole(agentProfileData.role || 'agent');
       setEditedSignature(agentProfileData.email_signature || '');
-      setAvatarUrl(agentProfileData.avatar);
+      setAvatarUrl(agentProfileData.avatar_url);
     } else {
       setEditedName('');
       setEditedEmail('');
@@ -182,7 +191,7 @@ export default function ProfileSettingsPage() {
       if (!agentId) throw new Error('User ID is missing');
       const token = localStorage.getItem('authToken');
       if (!token) throw new Error('No auth token');
-      
+
       const response = await microsoftAuthService.unlinkAgent(token, agentId);
       if (!response.success) throw new Error(response.message);
       return response.data!;
@@ -223,7 +232,7 @@ export default function ProfileSettingsPage() {
         setEditedPhoneNumber(agentProfileData.phone_number || '');
         setEditedRole(agentProfileData.role || 'agent');
         setEditedSignature(agentProfileData.email_signature || '');
-        setAvatarUrl(agentProfileData.avatar);
+        setAvatarUrl(agentProfileData.avatar_url);
       }
     }
     setIsEditing(!isEditing);
@@ -232,7 +241,7 @@ export default function ProfileSettingsPage() {
   const handleAvatarChange = (newAvatarUrl: string | null) => {
     setAvatarUrl(newAvatarUrl);
     // Immediately update the avatar
-    const payload: AgentUpdate = { avatar: newAvatarUrl };
+    const payload: AgentUpdate = { avatar_url: newAvatarUrl };
     updateProfileMutation.mutate(payload);
   };
 
@@ -574,7 +583,9 @@ export default function ProfileSettingsPage() {
                     variant="outline"
                     size="sm"
                     onClick={() => unlinkMicrosoftMutation.mutate()}
-                    disabled={unlinkMicrosoftMutation.isPending || !microsoftAuthStatus.has_password}
+                    disabled={
+                      unlinkMicrosoftMutation.isPending || !microsoftAuthStatus.has_password
+                    }
                     className="border-red-200 text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/20"
                   >
                     <Unlink className="h-4 w-4 mr-2" />
@@ -587,7 +598,7 @@ export default function ProfileSettingsPage() {
                     <Terminal className="h-4 w-4" />
                     <AlertTitle>Cannot Unlink</AlertTitle>
                     <AlertDescription>
-                      You cannot unlink Microsoft 365 because you don&apos;t have a password set. 
+                      You cannot unlink Microsoft 365 because you don&apos;t have a password set.
                       Please set a password first before unlinking.
                     </AlertDescription>
                   </Alert>
@@ -598,26 +609,36 @@ export default function ProfileSettingsPage() {
                     <Skeleton className="h-4 w-1/2" />
                     <Skeleton className="h-4 w-2/3" />
                   </div>
-                ) : microsoftProfile && (
-                  <div className="p-4 border rounded-lg bg-muted/20">
-                    <h4 className="text-sm font-medium mb-2">Microsoft Profile</h4>
-                    <div className="space-y-1 text-sm text-muted-foreground">
-                      <DetailRow label="Display Name" value={microsoftProfile.displayName} />
-                      <DetailRow label="Email" value={microsoftProfile.mail || microsoftProfile.userPrincipalName} />
-                      <DetailRow label="Job Title" value={microsoftProfile.jobTitle} />
-                      <DetailRow label="Tenant ID" value={microsoftProfile.tenantId} />
+                ) : (
+                  microsoftProfile && (
+                    <div className="p-4 border rounded-lg bg-muted/20">
+                      <h4 className="text-sm font-medium mb-2">Microsoft Profile</h4>
+                      <div className="space-y-1 text-sm text-muted-foreground">
+                        <DetailRow label="Display Name" value={microsoftProfile.displayName} />
+                        <DetailRow
+                          label="Email"
+                          value={microsoftProfile.mail || microsoftProfile.userPrincipalName}
+                        />
+                        <DetailRow label="Job Title" value={microsoftProfile.jobTitle} />
+                        <DetailRow label="Tenant ID" value={microsoftProfile.tenantId} />
+                      </div>
                     </div>
-                  </div>
+                  )
                 )}
 
                 <div className="text-xs text-muted-foreground">
-                  <p>Authentication Method: <span className="font-medium">{microsoftAuthStatus.auth_method}</span></p>
-                  <p>You can sign in using {microsoftAuthStatus.can_use_password && microsoftAuthStatus.can_use_microsoft ? 
-                    'either password or Microsoft 365' : 
-                    microsoftAuthStatus.can_use_microsoft ? 
-                    'Microsoft 365 only' : 
-                    'password only'
-                  }</p>
+                  <p>
+                    Authentication Method:{' '}
+                    <span className="font-medium">{microsoftAuthStatus.auth_method}</span>
+                  </p>
+                  <p>
+                    You can sign in using{' '}
+                    {microsoftAuthStatus.can_use_password && microsoftAuthStatus.can_use_microsoft
+                      ? 'either password or Microsoft 365'
+                      : microsoftAuthStatus.can_use_microsoft
+                        ? 'Microsoft 365 only'
+                        : 'password only'}
+                  </p>
                 </div>
               </div>
             ) : (
@@ -653,9 +674,10 @@ export default function ProfileSettingsPage() {
                   <Info className="h-4 w-4" />
                   <AlertTitle>Benefits of linking Microsoft 365</AlertTitle>
                   <AlertDescription>
-                    • Sign in with your Microsoft 365 account<br />
-                    • Access your work profile information<br />
-                    • Seamless integration with Microsoft services
+                    • Sign in with your Microsoft 365 account
+                    <br />
+                    • Access your work profile information
+                    <br />• Seamless integration with Microsoft services
                   </AlertDescription>
                 </Alert>
               </div>

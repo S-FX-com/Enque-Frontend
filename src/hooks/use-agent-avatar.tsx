@@ -21,7 +21,7 @@ export function useAgentAvatar({
   const AvatarComponent = React.useMemo(() => {
     const avatarColors = ['#1D73F4', '#D4E4FA'];
 
-    if (agent?.avatar) {
+    if (agent?.avatar_url) {
       return (
         <div
           className={`relative rounded-full overflow-hidden ${className}`}
@@ -29,7 +29,7 @@ export function useAgentAvatar({
         >
           <div className="w-full h-full relative p-1">
             <Image
-              src={agent.avatar}
+              src={agent.avatar_url}
               alt={`${agent.name} avatar`}
               fill={true}
               className="object-contain"
@@ -48,11 +48,11 @@ export function useAgentAvatar({
         <BoringAvatar size={size} name={fallbackName} variant={variant} colors={avatarColors} />
       </div>
     );
-  }, [agent?.avatar, agent?.name, size, variant, className, fallbackName]);
+  }, [agent?.avatar_url, agent?.name, size, variant, className, fallbackName]);
 
   return {
     AvatarComponent,
-    hasCustomAvatar: !!agent?.avatar,
+    hasCustomAvatar: !!agent?.avatar_url,
     fallbackName,
   };
 }

@@ -122,11 +122,7 @@ export function useSocket() {
         );
 
         const updateCountersOptimistically = () => {
-          if (
-            oldTicket &&
-            user?.id &&
-            oldTicket.status !== 'Closed'
-          ) {
+          if (oldTicket && user?.id && oldTicket.status !== 'Closed') {
             const currentAllCount = queryClient.getQueryData<number>(['ticketsCount', 'all']) || 0;
             queryClient.setQueryData(['ticketsCount', 'all'], Math.max(0, currentAllCount - 1));
 
@@ -234,6 +230,7 @@ export function useSocket() {
                     id: data.user_id || 0,
                     name: data.user_name || 'User',
                     email: data.user_email || '',
+                    avatar_url: data.user_avatar,
                     workspace_id: 0,
                     created_at: '',
                     updated_at: '',
@@ -244,6 +241,7 @@ export function useSocket() {
                     id: data.agent_id,
                     name: data.agent_name || 'Agent',
                     email: data.agent_email || '',
+                    avatar_url: data.agent_avatar,
                     role: 'agent' as const,
                     is_active: true,
                     workspace_id: 0,

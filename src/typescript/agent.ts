@@ -8,7 +8,7 @@ export interface Agent {
   job_title?: string | null;
   phone_number?: string | null;
   email_signature?: string | null;
-  avatar_url: string;
+  avatar_url?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -22,7 +22,7 @@ export interface AgentCreate {
   job_title?: string | null;
   phone_number?: string | null;
   email_signature?: string | null;
-  avatar?: string | null;
+  avatar_url?: string | null;
 }
 export interface AgentUpdate {
   name?: string | null;
@@ -33,5 +33,5 @@ export interface AgentUpdate {
   job_title?: string | null;
   phone_number?: string | null;
   email_signature?: string | null;
-  avatar?: string | null;
+  avatar_url?: string | null;
 }

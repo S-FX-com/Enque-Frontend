@@ -12,13 +12,13 @@ import { useQuery } from '@tanstack/react-query';
 import { getAgentTeams, getTeams } from '@/services/team';
 import type { Team } from '@/typescript/team';
 import { Badge } from '@/components/ui/badge';
-import type { IUser } from '@/typescript/user';
 import { getTickets } from '@/services/ticket';
+import { Agent } from '@/typescript/agent';
 
 interface MyTeamsListProps {
   agentTeams: Team[] | undefined;
   isLoadingUser: boolean;
-  user: IUser | null;
+  user: Agent | null;
 }
 
 const MyTeamsList: React.FC<MyTeamsListProps> = ({ agentTeams, isLoadingUser, user }) => {
@@ -111,9 +111,7 @@ function SidebarContent() {
       // Usar un límite muy alto para obtener todos los tickets
       const tickets = await getTickets({ limit: 10000 });
       // Filter out closed tickets to match My Teams behavior
-      const activeTickets = tickets.filter(
-        ticket => ticket.status !== 'Closed'
-      );
+      const activeTickets = tickets.filter(ticket => ticket.status !== 'Closed');
       return activeTickets.length || 0;
     },
     staleTime: 1000 * 60 * 10, // ✅ OPTIMIZADO: 10 minutos (era 5)
@@ -131,9 +129,7 @@ function SidebarContent() {
       // Using optimized assignee endpoint for better performance
       const tickets = await getTickets({ limit: 10000 }, `/v1/tasks-optimized/assignee/${user.id}`);
       // Filter out closed tickets to match My Teams behavior
-      const activeTickets = tickets.filter(
-        ticket => ticket.status !== 'Closed'
-      );
+      const activeTickets = tickets.filter(ticket => ticket.status !== 'Closed');
       return activeTickets.length || 0;
     },
     enabled: !!user?.id && !isLoadingUser,
