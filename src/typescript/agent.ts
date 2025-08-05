@@ -8,7 +8,7 @@ export interface Agent {
   job_title?: string | null;
   phone_number?: string | null;
   email_signature?: string | null;
-  avatar?: string | null;
+  avatar_url: string;
   created_at: string;
   updated_at: string;
 }
