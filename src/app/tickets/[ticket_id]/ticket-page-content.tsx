@@ -33,7 +33,7 @@ import { getTickets, updateTicket } from '@/services/ticket';
 import { getAgents } from '@/services/agent';
 import { getTeams } from '@/services/team';
 import { getCategories } from '@/services/category';
-import { getCompanyById } from '@/services/company'; // Import getCompanyById
+import { getCompanies } from '@/services/company'; // Import getCompanies instead of getCompanyById
 import { formatRelativeTime, cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useSocketContext } from '@/providers/socket-provider';
@@ -271,29 +271,23 @@ export function TicketPageContent({ ticketId }: Props) {
     staleTime: 1000 * 60 * 5,
   });
 
-  // Fetch company data for the primary contact
-  const { data: companyData } = useQuery<ICompany | null>({
-    queryKey: ['company', ticket?.user?.company_id],
-    queryFn: () => {
-      if (ticket?.user?.company_id) {
-        return getCompanyById(ticket.user.company_id);
-      }
-      return Promise.resolve(null);
-    },
-    enabled: !!ticket?.user?.company_id,
+  // Fetch all company data
+  const { data: allCompanies = [] } = useQuery<ICompany[]>({
+    queryKey: ['companies'],
+    queryFn: () => getCompanies(),
     staleTime: 1000 * 60 * 5,
   });
 
   // Helper function to get avatar source
-  const getAvatarSource = (
-    user: IUser | undefined | null,
-    company: ICompany | undefined | null
-  ) => {
+  const getAvatarSource = (user: IUser | undefined | null, companies: ICompany[]) => {
     if (user?.avatar_url) {
       return user.avatar_url;
     }
-    if (user?.company_id && company?.logo_url) {
-      return company.logo_url;
+    if (user?.company_id) {
+      const userCompany = companies.find(c => c.id === user.company_id);
+      if (userCompany?.logo_url) {
+        return userCompany.logo_url;
+      }
     }
     return null; // Fallback to BoringAvatar if no specific URL
   };
@@ -364,12 +358,15 @@ export function TicketPageContent({ ticketId }: Props) {
       } else {
         optimisticUpdateValue = value as TicketPriority;
       }
+
       const optimisticTicket: ITicket = {
         ...previousTicket,
         [field]: optimisticUpdateValue,
       };
+
       setTicket(optimisticTicket);
       queryClient.setQueryData(['ticket', ticket.id], [optimisticTicket]);
+
       return { previousTicket };
     },
     onError: (error, { field }, context) => {
@@ -434,6 +431,7 @@ export function TicketPageContent({ ticketId }: Props) {
         if (!ticket) return { previousTicket: null };
         setIsClosing(true);
         const previousTicket = ticket;
+
         // Cancel any outgoing refetches for counter queries
         await queryClient.cancelQueries({ queryKey: ['ticketsCount'] });
         await queryClient.cancelQueries({ queryKey: ['agentTeams'] });
@@ -454,6 +452,7 @@ export function TicketPageContent({ ticketId }: Props) {
             Math.max(0, (old || 1) - 1)
           );
         }
+
         return { previousTicket };
       },
       onSuccess: updatedTicketData => {
@@ -493,6 +492,7 @@ export function TicketPageContent({ ticketId }: Props) {
       if (!ticket) return { previousTicket: null };
       setIsReopening(true);
       const previousTicket = ticket;
+
       // Cancel any outgoing refetches for counter queries
       await queryClient.cancelQueries({ queryKey: ['ticketsCount'] });
       await queryClient.cancelQueries({ queryKey: ['agentTeams'] });
@@ -509,6 +509,7 @@ export function TicketPageContent({ ticketId }: Props) {
       if (ticket.assignee_id === user?.id) {
         queryClient.setQueryData<number>(['ticketsCount', 'my', user?.id], old => (old || 0) + 1);
       }
+
       return { previousTicket };
     },
     onSuccess: updatedTicketData => {
@@ -545,6 +546,7 @@ export function TicketPageContent({ ticketId }: Props) {
     onMutate: async (newTitle: string) => {
       if (!ticket) return { previousTicket: null };
       const previousTicket = ticket;
+
       // Optimistically update the title
       const optimisticTicket: ITicket = {
         ...previousTicket,
@@ -552,6 +554,7 @@ export function TicketPageContent({ ticketId }: Props) {
       };
       setTicket(optimisticTicket);
       queryClient.setQueryData(['ticket', ticket.id], [optimisticTicket]);
+
       return { previousTicket };
     },
     onSuccess: () => {
@@ -820,7 +823,6 @@ export function TicketPageContent({ ticketId }: Props) {
           )}
         </div>
       </div>
-
       {/* Status Badge */}
       <div className="flex items-center gap-2">
         <div className="relative flex h-2 w-2">
@@ -840,7 +842,6 @@ export function TicketPageContent({ ticketId }: Props) {
         </div>
         <span className="text-sm font-medium capitalize">{ticket?.status}</span>
       </div>
-
       {/* Main Content */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Reply Section - Moved to top */}
@@ -879,7 +880,6 @@ export function TicketPageContent({ ticketId }: Props) {
             </CardContent>
           </Card>
         </div>
-
         {/* Sidebar */}
         <div className="space-y-6">
           {/* Primary Contact Card */}
@@ -895,10 +895,10 @@ export function TicketPageContent({ ticketId }: Props) {
                 </label>
                 <div className="flex items-center justify-between p-2 border rounded-md bg-gray-50">
                   <div className="flex items-center gap-2">
-                    {getAvatarSource(ticket?.user, companyData) ? (
+                    {getAvatarSource(ticket?.user, allCompanies) ? (
                       <Avatar className="w-6 h-6">
                         <AvatarImage
-                          src={getAvatarSource(ticket?.user, companyData) || ''}
+                          src={getAvatarSource(ticket?.user, allCompanies) || ''}
                           alt={ticket?.user?.name || 'User Avatar'}
                         />
                         <AvatarFallback>
@@ -965,11 +965,7 @@ export function TicketPageContent({ ticketId }: Props) {
                             </div>
                           </Button>
                           {filteredUsers.map(user => {
-                            const userCompany = users.find(u => u.id === user.id)?.company_id
-                              ? companyData // Assuming companyData might contain the relevant company if already fetched
-                              : null; // Or fetch it if not available
-                            const avatarSrc = getAvatarSource(user, userCompany || null);
-
+                            const avatarSrc = getAvatarSource(user, allCompanies);
                             return (
                               <Button
                                 key={user.id}
@@ -1019,7 +1015,6 @@ export function TicketPageContent({ ticketId }: Props) {
               </div>
             </CardContent>
           </Card>
-
           {/* Recipients Card */}
           <Card>
             <CardHeader>
@@ -1051,7 +1046,6 @@ export function TicketPageContent({ ticketId }: Props) {
                   </p>
                 </div>
               </div>
-
               {/* BCC Recipients */}
               <div>
                 <label className="text-sm font-medium text-muted-foreground mb-2 block">Bcc:</label>
@@ -1080,7 +1074,6 @@ export function TicketPageContent({ ticketId }: Props) {
               </div>
             </CardContent>
           </Card>
-
           {/* Ticket Actions */}
           <Card>
             <CardHeader>
@@ -1142,7 +1135,6 @@ export function TicketPageContent({ ticketId }: Props) {
                   </SelectContent>
                 </Select>
               </div>
-
               {/* Assigned to */}
               <div>
                 <label className="text-sm font-medium text-muted-foreground mb-1 block">
@@ -1166,7 +1158,6 @@ export function TicketPageContent({ ticketId }: Props) {
                   </SelectContent>
                 </Select>
               </div>
-
               {/* Team */}
               <div>
                 <label className="text-sm font-medium text-muted-foreground mb-1 block">Team</label>
@@ -1188,7 +1179,6 @@ export function TicketPageContent({ ticketId }: Props) {
                   </SelectContent>
                 </Select>
               </div>
-
               {/* Category */}
               <div>
                 <label className="text-sm font-medium text-muted-foreground mb-1 block">
@@ -1214,9 +1204,7 @@ export function TicketPageContent({ ticketId }: Props) {
                   </SelectContent>
                 </Select>
               </div>
-
               <Separator />
-
               {/* Timestamps */}
               <div>
                 <label className="text-sm font-medium text-muted-foreground mb-1 block">
