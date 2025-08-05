@@ -10,7 +10,7 @@ export interface IUser {
   created_at: string;
   updated_at: string;
   workspace_id: number;
-  // Add other fields if necessary based on UserSchema from backend
+  avatar_url: string;
 }
 
 // Define the interface for the Agent object based on backend schema
