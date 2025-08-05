@@ -272,7 +272,7 @@ export function TicketPageContent({ ticketId }: Props) {
   });
 
   // Fetch company data for the primary contact
-  const { data: companyData, isLoading: isLoadingCompany } = useQuery<ICompany | null>({
+  const { data: companyData } = useQuery<ICompany | null>({
     queryKey: ['company', ticket?.user?.company_id],
     queryFn: () => {
       if (ticket?.user?.company_id) {
