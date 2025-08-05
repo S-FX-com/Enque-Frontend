@@ -23,14 +23,17 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'; // Added Avatar imports
 import type { ITicket, TicketStatus, TicketPriority } from '@/typescript/ticket';
 import type { Agent } from '@/typescript/agent';
 import type { ICategory } from '@/typescript/category';
 import type { Team } from '@/typescript/team';
+import type { ICompany } from '@/typescript/company'; // Import ICompany
 import { getTickets, updateTicket } from '@/services/ticket';
 import { getAgents } from '@/services/agent';
 import { getTeams } from '@/services/team';
 import { getCategories } from '@/services/category';
+import { getCompanyById } from '@/services/company'; // Import getCompanyById
 import { formatRelativeTime, cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useSocketContext } from '@/providers/socket-provider';
@@ -38,9 +41,7 @@ import { TicketConversation } from './ticket-conversation';
 import BoringAvatar from 'boring-avatars';
 import { useAuth } from '@/hooks/use-auth';
 import { getUsers } from '@/services/user';
-import { getCompanyById } from '@/services/company';
 import type { IUser } from '@/typescript/user';
-import type { ICompany } from '@/typescript/company';
 
 interface Props {
   ticketId: number;
@@ -91,10 +92,12 @@ function DynamicCCInput({
 
   const handlePaste = (e: React.ClipboardEvent) => {
     const pastedText = e.clipboardData.getData('text');
+    // Verificar si el texto pegado contiene emails válidos separados por delimitadores
     const potentialEmails = pastedText.split(/[,;\s\n\t]+/).filter(email => email.trim());
     const hasMultipleEmails = potentialEmails.length > 1;
     const hasValidEmails = potentialEmails.some(email => validateEmail(email.trim()));
 
+    // Solo interceptar el pegado si hay múltiples emails o emails válidos separados
     if (hasMultipleEmails && hasValidEmails) {
       e.preventDefault();
       const validNewEmails = potentialEmails
@@ -105,6 +108,8 @@ function DynamicCCInput({
         setInputValue('');
       }
     }
+    // Si no hay múltiples emails, dejar que el navegador maneje el pegado normalmente
+    // El usuario podrá pegar texto simple en el input y editarlo
   };
 
   return (
@@ -198,14 +203,6 @@ export function TicketPageContent({ ticketId }: Props) {
 
   const currentTicket = ticketData?.[0] || null;
 
-  // Fetch company data if user has a company_id
-  const { data: companyData } = useQuery<ICompany | null>({
-    queryKey: ['company', currentTicket?.user?.company_id],
-    queryFn: () => getCompanyById(currentTicket?.user?.company_id!),
-    enabled: !!currentTicket?.user?.company_id,
-    staleTime: 1000 * 60 * 5,
-  });
-
   useEffect(() => {
     if (currentTicket) {
       setTicket(currentTicket as unknown as ITicket);
@@ -218,6 +215,7 @@ export function TicketPageContent({ ticketId }: Props) {
       } else {
         setExistingCcEmails([]);
       }
+      // Initialize BCC emails if they exist in the ticket data
       if (currentTicket?.bcc_recipients) {
         const bccEmails = currentTicket.bcc_recipients
           .split(',')
@@ -233,13 +231,16 @@ export function TicketPageContent({ ticketId }: Props) {
   // Socket listener for real-time updates
   useEffect(() => {
     if (!socket || !ticket) return;
+
     const handleTicketUpdated = (data: ITicket) => {
       if (data.id === ticket.id) {
         console.log('🚀 Ticket updated via socket:', data);
         setTicket(prev => (prev ? { ...prev, ...data } : data));
       }
     };
+
     socket.on('ticket_updated', handleTicketUpdated);
+
     return () => {
       socket.off('ticket_updated', handleTicketUpdated);
     };
@@ -251,21 +252,51 @@ export function TicketPageContent({ ticketId }: Props) {
     queryFn: getAgents,
     staleTime: 1000 * 60 * 5,
   });
+
   const { data: teams = [], isLoading: isLoadingTeams } = useQuery<Team[]>({
     queryKey: ['teams'],
     queryFn: getTeams,
     staleTime: 1000 * 60 * 5,
   });
+
   const { data: categories = [], isLoading: isLoadingCategories } = useQuery<ICategory[]>({
     queryKey: ['categories'],
     queryFn: () => getCategories(),
     staleTime: 1000 * 60 * 5,
   });
+
   const { data: users = [] } = useQuery<IUser[]>({
     queryKey: ['users'],
     queryFn: getUsers,
     staleTime: 1000 * 60 * 5,
   });
+
+  // Fetch company data for the primary contact
+  const { data: companyData, isLoading: isLoadingCompany } = useQuery<ICompany | null>({
+    queryKey: ['company', ticket?.user?.company_id],
+    queryFn: () => {
+      if (ticket?.user?.company_id) {
+        return getCompanyById(ticket.user.company_id);
+      }
+      return Promise.resolve(null);
+    },
+    enabled: !!ticket?.user?.company_id,
+    staleTime: 1000 * 60 * 5,
+  });
+
+  // Helper function to get avatar source
+  const getAvatarSource = (
+    user: IUser | undefined | null,
+    company: ICompany | undefined | null
+  ) => {
+    if (user?.avatar_url) {
+      return user.avatar_url;
+    }
+    if (user?.company_id && company?.logo_url) {
+      return company.logo_url;
+    }
+    return null; // Fallback to BoringAvatar if no specific URL
+  };
 
   // Filter users based on search query
   const filteredUsers = users.filter(
@@ -276,9 +307,12 @@ export function TicketPageContent({ ticketId }: Props) {
 
   // Helper function to invalidate all counter queries
   const invalidateCounterQueries = useCallback(() => {
+    // Invalidate all tickets queries
     queryClient.invalidateQueries({ queryKey: ['tickets'] });
+    // Invalidate counter queries
     queryClient.invalidateQueries({ queryKey: ['ticketsCount', 'all'] });
     queryClient.invalidateQueries({ queryKey: ['ticketsCount', 'my', user?.id] });
+    // Invalidate team queries (they contain ticket counts)
     queryClient.invalidateQueries({ queryKey: ['agentTeams', user?.id, user?.role] });
     queryClient.invalidateQueries({ queryKey: ['teams'] });
   }, [queryClient, user?.id, user?.role]);
@@ -349,6 +383,7 @@ export function TicketPageContent({ ticketId }: Props) {
     },
     onSuccess: (data, variables) => {
       invalidateCounterQueries();
+      // Si se cambió el user_id (contacto principal), invalidar queries relacionadas
       if (variables.field === 'user_id') {
         queryClient.invalidateQueries({ queryKey: ['ticket', ticketId] });
         queryClient.invalidateQueries({ queryKey: ['tickets'] });
@@ -362,6 +397,7 @@ export function TicketPageContent({ ticketId }: Props) {
     value: string | null
   ) => {
     if (!ticket) return;
+
     let optimisticUpdateValue: TicketStatus | TicketPriority | number | null;
     if (
       field === 'assignee_id' ||
@@ -378,9 +414,11 @@ export function TicketPageContent({ ticketId }: Props) {
     } else {
       optimisticUpdateValue = value as TicketPriority;
     }
+
     if (ticket[field as keyof ITicket] === optimisticUpdateValue) {
       return;
     }
+
     const currentFieldValue = ticket[field] ?? null;
     updateFieldMutation.mutate({ field, value, originalFieldValue: currentFieldValue });
   };
@@ -396,14 +434,18 @@ export function TicketPageContent({ ticketId }: Props) {
         if (!ticket) return { previousTicket: null };
         setIsClosing(true);
         const previousTicket = ticket;
+        // Cancel any outgoing refetches for counter queries
         await queryClient.cancelQueries({ queryKey: ['ticketsCount'] });
         await queryClient.cancelQueries({ queryKey: ['agentTeams'] });
+
         const optimisticTicket: ITicket = {
           ...previousTicket,
           status: 'Closed' as TicketStatus,
         };
         setTicket(optimisticTicket);
         queryClient.setQueryData(['ticket', ticket.id], [optimisticTicket]);
+
+        // Optimistically update counter queries
         queryClient.setQueryData<number>(['ticketsCount', 'all'], old =>
           Math.max(0, (old || 1) - 1)
         );
@@ -427,6 +469,7 @@ export function TicketPageContent({ ticketId }: Props) {
           setTicket(context.previousTicket);
           queryClient.setQueryData(['ticket', ticketId], [context.previousTicket]);
         }
+        // Revert optimistic updates on error
         invalidateCounterQueries();
       },
       onSettled: () => {
@@ -450,14 +493,18 @@ export function TicketPageContent({ ticketId }: Props) {
       if (!ticket) return { previousTicket: null };
       setIsReopening(true);
       const previousTicket = ticket;
+      // Cancel any outgoing refetches for counter queries
       await queryClient.cancelQueries({ queryKey: ['ticketsCount'] });
       await queryClient.cancelQueries({ queryKey: ['agentTeams'] });
+
       const optimisticTicket: ITicket = {
         ...previousTicket,
         status: 'Open' as TicketStatus,
       };
       setTicket(optimisticTicket);
       queryClient.setQueryData(['ticket', ticket.id], [optimisticTicket]);
+
+      // Optimistically update counter queries
       queryClient.setQueryData<number>(['ticketsCount', 'all'], old => (old || 0) + 1);
       if (ticket.assignee_id === user?.id) {
         queryClient.setQueryData<number>(['ticketsCount', 'my', user?.id], old => (old || 0) + 1);
@@ -476,6 +523,7 @@ export function TicketPageContent({ ticketId }: Props) {
         setTicket(context.previousTicket);
         queryClient.setQueryData(['ticket', ticketId], [context.previousTicket]);
       }
+      // Revert optimistic updates on error
       invalidateCounterQueries();
     },
     onSettled: () => {
@@ -497,6 +545,7 @@ export function TicketPageContent({ ticketId }: Props) {
     onMutate: async (newTitle: string) => {
       if (!ticket) return { previousTicket: null };
       const previousTicket = ticket;
+      // Optimistically update the title
       const optimisticTicket: ITicket = {
         ...previousTicket,
         title: newTitle,
@@ -542,24 +591,35 @@ export function TicketPageContent({ ticketId }: Props) {
     return uniqueEmails.join(', ');
   };
 
+  // ✅ FIXED: Modified callback functions to NOT reset extra emails
+  // This prevents the RichTextEditor from being reset when CC/BCC changes
   const handleExtraCcRecipientsChange = useCallback((recipients: string) => {
+    // Only update if there's an actual change and it's not just clearing
     if (recipients === '') {
+      // Only clear extra CC emails, don't reset the editor
       setExtraCcEmails([]);
     }
+    // Don't do anything else - let the CC input component handle the state
   }, []);
 
   const handleExtraBccRecipientsChange = useCallback((recipients: string) => {
+    // Only update if there's an actual change and it's not just clearing
     if (recipients === '') {
+      // Only clear extra BCC emails, don't reset the editor
       setExtraBccEmails([]);
     }
+    // Don't do anything else - let the BCC input component handle the state
   }, []);
 
   // Function to handle primary contact change
   const handlePrimaryContactChange = async (userId: string) => {
     try {
+      // Prevent multiple rapid clicks
       if (updateFieldMutation.isPending) {
         return;
       }
+
+      // Update local ticket state immediately for UI feedback
       if (ticket) {
         const selectedUser = users.find(u => u.id.toString() === userId) || null;
         const updatedTicket = {
@@ -570,11 +630,16 @@ export function TicketPageContent({ ticketId }: Props) {
         setTicket(updatedTicket);
         queryClient.setQueryData(['ticket', ticketId], [updatedTicket]);
       }
+
+      // Close modal immediately for better UX
       setIsContactModalOpen(false);
       setContactSearchQuery('');
+
+      // Make the API call
       handleUpdateField('user_id', userId);
     } catch (error) {
       console.error('Error changing primary contact:', error);
+      // Revert local state if there's an error
       if (ticket) {
         setTicket(ticket);
         queryClient.setQueryData(['ticket', ticketId], [ticket]);
@@ -587,10 +652,12 @@ export function TicketPageContent({ ticketId }: Props) {
     setEditedTitle(ticket?.title || '');
     setIsEditingTitle(true);
   };
+
   const handleCancelTitleEdit = () => {
     setEditedTitle('');
     setIsEditingTitle(false);
   };
+
   const handleSaveTitle = () => {
     if (!editedTitle.trim()) {
       toast.error('Title cannot be empty');
@@ -603,6 +670,7 @@ export function TicketPageContent({ ticketId }: Props) {
     }
     updateTitleMutation.mutate(editedTitle.trim());
   };
+
   const handleTitleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -617,6 +685,7 @@ export function TicketPageContent({ ticketId }: Props) {
   // Mark ticket as read when viewed
   useEffect(() => {
     if (ticket && ticket.status === 'Unread') {
+      // Update ticket status to 'Open' when viewed
       updateTicket(ticket.id, { status: 'Open' })
         .then(updatedTicket => {
           setTicket(updatedTicket);
@@ -633,6 +702,7 @@ export function TicketPageContent({ ticketId }: Props) {
   useEffect(() => {
     if (ticket?.title) {
       document.title = `Ticket #${ticket.id}: ${ticket.title}`;
+      // Cleanup: restore original title when component unmounts
       return () => {
         document.title = 'Support Tickets';
       };
@@ -675,18 +745,6 @@ export function TicketPageContent({ ticketId }: Props) {
   }
 
   const avatarColors = ['#a3a948', '#edb92e', '#f85931', '#ce1836', '#009989'];
-
-  // Determine which avatar to display
-  const userAvatarUrl = ticket?.user?.avatar_url;
-  const companyAvatarUrl = companyData?.logo_url;
-
-  const displayAvatarUrl = userAvatarUrl || companyAvatarUrl;
-  const avatarName =
-    ticket?.user?.name ||
-    ticket?.user?.email ||
-    companyData?.name ||
-    `user-${ticket?.user?.id}` ||
-    'unknown-user';
 
   return (
     <div className="space-y-6">
@@ -762,6 +820,7 @@ export function TicketPageContent({ ticketId }: Props) {
           )}
         </div>
       </div>
+
       {/* Status Badge */}
       <div className="flex items-center gap-2">
         <div className="relative flex h-2 w-2">
@@ -781,6 +840,7 @@ export function TicketPageContent({ ticketId }: Props) {
         </div>
         <span className="text-sm font-medium capitalize">{ticket?.status}</span>
       </div>
+
       {/* Main Content */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Reply Section - Moved to top */}
@@ -819,6 +879,7 @@ export function TicketPageContent({ ticketId }: Props) {
             </CardContent>
           </Card>
         </div>
+
         {/* Sidebar */}
         <div className="space-y-6">
           {/* Primary Contact Card */}
@@ -834,16 +895,25 @@ export function TicketPageContent({ ticketId }: Props) {
                 </label>
                 <div className="flex items-center justify-between p-2 border rounded-md bg-gray-50">
                   <div className="flex items-center gap-2">
-                    {displayAvatarUrl ? (
-                      <img
-                        src={displayAvatarUrl || '/placeholder.svg'}
-                        alt={`${avatarName} avatar`}
-                        className="w-6 h-6 rounded-full object-cover"
-                      />
+                    {getAvatarSource(ticket?.user, companyData) ? (
+                      <Avatar className="w-6 h-6">
+                        <AvatarImage
+                          src={getAvatarSource(ticket?.user, companyData) || ''}
+                          alt={ticket?.user?.name || 'User Avatar'}
+                        />
+                        <AvatarFallback>
+                          {ticket?.user?.name ? ticket.user.name.charAt(0) : 'U'}
+                        </AvatarFallback>
+                      </Avatar>
                     ) : (
                       <BoringAvatar
                         size={24}
-                        name={avatarName}
+                        name={
+                          ticket?.user?.email ||
+                          ticket?.user?.name ||
+                          `user-${ticket?.user?.id}` ||
+                          'unknown-user'
+                        }
                         variant="beam"
                         colors={avatarColors}
                       />
@@ -894,35 +964,48 @@ export function TicketPageContent({ ticketId }: Props) {
                               </div>
                             </div>
                           </Button>
-                          {filteredUsers.map(user => (
-                            <Button
-                              key={user.id}
-                              variant="ghost"
-                              className="w-full justify-start h-auto p-2"
-                              onClick={() => handlePrimaryContactChange(user.id.toString())}
-                            >
-                              <div className="flex items-center gap-2">
-                                {user.avatar_url ? (
-                                  <img
-                                    src={user.avatar_url || '/placeholder.svg'}
-                                    alt={`${user.name} avatar`}
-                                    className="w-6 h-6 rounded-full object-cover"
-                                  />
-                                ) : (
-                                  <BoringAvatar
-                                    size={24}
-                                    name={user.email || user.name || `user-${user.id}`}
-                                    variant="beam"
-                                    colors={avatarColors}
-                                  />
-                                )}
-                                <div className="text-left">
-                                  <div className="text-sm font-medium">{user.name}</div>
-                                  <div className="text-xs text-muted-foreground">{user.email}</div>
+                          {filteredUsers.map(user => {
+                            const userCompany = users.find(u => u.id === user.id)?.company_id
+                              ? companyData // Assuming companyData might contain the relevant company if already fetched
+                              : null; // Or fetch it if not available
+                            const avatarSrc = getAvatarSource(user, userCompany || null);
+
+                            return (
+                              <Button
+                                key={user.id}
+                                variant="ghost"
+                                className="w-full justify-start h-auto p-2"
+                                onClick={() => handlePrimaryContactChange(user.id.toString())}
+                              >
+                                <div className="flex items-center gap-2">
+                                  {avatarSrc ? (
+                                    <Avatar className="w-6 h-6">
+                                      <AvatarImage
+                                        src={avatarSrc || '/placeholder.svg'}
+                                        alt={user.name || 'User Avatar'}
+                                      />
+                                      <AvatarFallback>
+                                        {user.name ? user.name.charAt(0) : 'U'}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                  ) : (
+                                    <BoringAvatar
+                                      size={24}
+                                      name={user.email || user.name || `user-${user.id}`}
+                                      variant="beam"
+                                      colors={avatarColors}
+                                    />
+                                  )}
+                                  <div className="text-left">
+                                    <div className="text-sm font-medium">{user.name}</div>
+                                    <div className="text-xs text-muted-foreground">
+                                      {user.email}
+                                    </div>
+                                  </div>
                                 </div>
-                              </div>
-                            </Button>
-                          ))}
+                              </Button>
+                            );
+                          })}
                           {filteredUsers.length === 0 && contactSearchQuery && (
                             <div className="p-2 text-center text-sm text-muted-foreground">
                               No contacts found matching &quot;{contactSearchQuery}&quot;
@@ -936,6 +1019,7 @@ export function TicketPageContent({ ticketId }: Props) {
               </div>
             </CardContent>
           </Card>
+
           {/* Recipients Card */}
           <Card>
             <CardHeader>
@@ -950,6 +1034,7 @@ export function TicketPageContent({ ticketId }: Props) {
                     id="cc"
                     existingEmails={[...existingCcEmails, ...extraCcEmails]}
                     onEmailsChange={emails => {
+                      // Split between existing and new emails
                       const newExtraEmails = emails.filter(
                         email => !existingCcEmails.includes(email)
                       );
@@ -966,6 +1051,7 @@ export function TicketPageContent({ ticketId }: Props) {
                   </p>
                 </div>
               </div>
+
               {/* BCC Recipients */}
               <div>
                 <label className="text-sm font-medium text-muted-foreground mb-2 block">Bcc:</label>
@@ -974,6 +1060,7 @@ export function TicketPageContent({ ticketId }: Props) {
                     id="bcc"
                     existingEmails={[...existingBccEmails, ...extraBccEmails]}
                     onEmailsChange={emails => {
+                      // Split between existing and new emails
                       const newExtraBccEmails = emails.filter(
                         email => !existingBccEmails.includes(email)
                       );
@@ -993,6 +1080,7 @@ export function TicketPageContent({ ticketId }: Props) {
               </div>
             </CardContent>
           </Card>
+
           {/* Ticket Actions */}
           <Card>
             <CardHeader>
@@ -1054,6 +1142,7 @@ export function TicketPageContent({ ticketId }: Props) {
                   </SelectContent>
                 </Select>
               </div>
+
               {/* Assigned to */}
               <div>
                 <label className="text-sm font-medium text-muted-foreground mb-1 block">
@@ -1077,6 +1166,7 @@ export function TicketPageContent({ ticketId }: Props) {
                   </SelectContent>
                 </Select>
               </div>
+
               {/* Team */}
               <div>
                 <label className="text-sm font-medium text-muted-foreground mb-1 block">Team</label>
@@ -1098,6 +1188,7 @@ export function TicketPageContent({ ticketId }: Props) {
                   </SelectContent>
                 </Select>
               </div>
+
               {/* Category */}
               <div>
                 <label className="text-sm font-medium text-muted-foreground mb-1 block">
@@ -1123,7 +1214,9 @@ export function TicketPageContent({ ticketId }: Props) {
                   </SelectContent>
                 </Select>
               </div>
+
               <Separator />
+
               {/* Timestamps */}
               <div>
                 <label className="text-sm font-medium text-muted-foreground mb-1 block">
