@@ -1,4 +1,3 @@
-// frontend/src/services/company.ts
 import { fetchAPI } from '@/lib/fetch-api';
 import type { BaseResponse } from '@/lib/fetch-api';
 // Import all needed types from company typescript file
@@ -50,6 +49,28 @@ export async function getCompanies(params?: {
   } catch (error) {
     console.error('Error fetching companies (catch block):', error);
     return [];
+  }
+}
+
+/**
+ * Fetches a single company by its ID.
+ */
+export async function getCompanyById(companyId: number | string): Promise<ICompany | null> {
+  try {
+    const url = `${API_BASE_URL}/v1/companies/${companyId}`;
+    const response = await fetchAPI.GET<ICompany>(url);
+    if (response.success && response.data) {
+      return response.data;
+    } else {
+      console.error(
+        `Error fetching company ${companyId}:`,
+        response?.message || 'Unknown API error'
+      );
+      return null;
+    }
+  } catch (error) {
+    console.error(`Error fetching company ${companyId} (catch block):`, error);
+    return null;
   }
 }
 
@@ -123,5 +144,3 @@ export async function updateCompany(
     };
   }
 }
-
-// TODO: Add getCompanyById if needed
