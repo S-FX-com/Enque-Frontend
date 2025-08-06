@@ -44,9 +44,14 @@ function TimePickingDropdown({ setTime }: { setTime: Dispatch<SetStateAction<str
   return (
     <div className="mt-5">
       <h3 className="mb-1">Time Selected:</h3>
-      <select className="border-1 p-1 w-9/10 h-8 border-b-2 border-stone-400 rounded-sm">
+      <select 
+        className="border-1 p-1 w-9/10 h-8 border-b-2 border-stone-400 rounded-sm"
+        onChange={(e) => setTime(e.target.value)}
+        defaultValue=""
+      >
+        <option value="" disabled>Select time</option>
         {options.map(time => (
-          <option key={time} value={time} onClick={() => setTime(time)}>
+          <option key={time} value={time}>
             {time}
           </option>
         ))}
