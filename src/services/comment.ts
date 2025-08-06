@@ -59,6 +59,8 @@ export interface CreateCommentPayload {
   is_private: boolean;
   attachment_ids?: number[]; // Nuevo: IDs de los archivos adjuntos
   other_destinaries?: string;
+  bcc_recipients?: string;
+  scheduled_send_at?: string; // ✅ NEW: ISO datetime string for scheduled sending
   // Index signature for compatibility with fetchAPI.POST's Record<string, unknown> type
   [key: string]: unknown;
 }
@@ -70,9 +72,20 @@ export interface CreateCommentPayload {
  * @returns A promise that resolves to the newly created comment and updated task data.
  */
 export interface CommentResponseData {
-  comment: IComment;
+  comment?: IComment;
   task: ITicket; // Using proper ITicket type instead of any
   assignee_changed: boolean;
+  is_scheduled?: boolean; 
+  scheduled_comment?: {
+    id: number;
+    ticket_id: number;
+    agent_id: number;
+    workspace_id: number;
+    content: string;
+    scheduled_send_at: string;
+    status: string;
+    created_at: string;
+  }; 
 }
 
 export const createComment = async (
