@@ -992,9 +992,29 @@ export function TicketConversation({
     let scheduledSendAt: string | undefined = undefined;
     if (!sendNow && date && time) {
       try {
+        console.log('🕐 Parsing scheduled time:', { sendNow, date, time });
+        
         // Parse the date and time to create ISO string
         const selectedDate = date as Date;
-        const [hours, minutes] = time.split(':').map(Number);
+        
+        // Convert "12:00 AM" format to 24-hour format
+        const timeMatch = time.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+        if (!timeMatch) {
+          throw new Error('Invalid time format');
+        }
+        
+        let hours = parseInt(timeMatch[1], 10);
+        const minutes = parseInt(timeMatch[2], 10);
+        const period = timeMatch[3].toUpperCase();
+        
+        // Convert to 24-hour format
+        if (period === 'AM' && hours === 12) {
+          hours = 0;
+        } else if (period === 'PM' && hours !== 12) {
+          hours += 12;
+        }
+        
+        console.log('🕐 Converted time:', { hours, minutes, period });
         
         const scheduledDateTime = new Date(selectedDate);
         scheduledDateTime.setHours(hours, minutes, 0, 0);
