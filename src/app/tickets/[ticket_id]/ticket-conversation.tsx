@@ -1014,23 +1014,23 @@ export function TicketConversation({
           hours += 12;
         }
         
-        console.log('🕐 Converted time:', { hours, minutes, period });
-
+                console.log('🕐 Converted time:', { hours, minutes, period });
+        
+        // Create the scheduled date and time
         const scheduledDateTime = new Date(selectedDate);
         scheduledDateTime.setHours(hours, minutes, 0, 0);
-
-        const nowET = new Date();
-        if (scheduledDateTime <= nowET) {
+        
+        // Validate that the scheduled time is in the future (local time)
+        const now = new Date();
+        if (scheduledDateTime <= now) {
           toast.error('Scheduled time must be in the future');
           throw new Error('Scheduled time must be in the future');
         }
-
-        const timezoneOffset = scheduledDateTime.getTimezoneOffset(); 
-        const utcDateTime = new Date(scheduledDateTime.getTime() - (timezoneOffset * 60000));
         
-        scheduledSendAt = utcDateTime.toISOString();
-        console.log('📅 Scheduling comment for ET:', scheduledDateTime.toLocaleString('en-US', { timeZone: 'America/New_York' }));
-        console.log('📅 Converted to UTC for storage:', scheduledSendAt);
+        // Send the local time as ISO string - backend will handle timezone conversion
+        scheduledSendAt = scheduledDateTime.toISOString();
+        console.log('📅 Local scheduled time:', scheduledDateTime.toString());
+        console.log('📅 Sending to backend:', scheduledSendAt);
       } catch (error) {
         console.error('Error parsing scheduled time:', error);
         toast.error('Invalid scheduled time');
