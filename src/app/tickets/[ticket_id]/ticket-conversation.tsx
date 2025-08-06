@@ -1027,10 +1027,16 @@ export function TicketConversation({
           throw new Error('Scheduled time must be in the future');
         }
         
-        // Send the local time as ISO string - backend will handle timezone conversion
-        scheduledSendAt = scheduledDateTime.toISOString();
+        const year = selectedDate.getFullYear();
+        const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+        const day = String(selectedDate.getDate()).padStart(2, '0');
+        const hoursStr = String(hours).padStart(2, '0');
+        const minutesStr = String(minutes).padStart(2, '0');
+        
+        scheduledSendAt = `${year}-${month}-${day}T${hoursStr}:${minutesStr}:00.000Z`;
+        
         console.log('📅 Local scheduled time:', scheduledDateTime.toString());
-        console.log('📅 Sending to backend:', scheduledSendAt);
+        console.log('📅 Sending to backend (as ET):', scheduledSendAt);
       } catch (error) {
         console.error('Error parsing scheduled time:', error);
         toast.error('Invalid scheduled time');
