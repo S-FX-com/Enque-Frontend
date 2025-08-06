@@ -69,7 +69,10 @@ export function ScheduleSendCalendar({
 }: Props) {
   const maxDate: Date = new Date(year, month, day + 30);
   const minDate: Date = new Date(year, month, day);
-  setDate(minDate);
+
+  if (!date) {
+    setDate(minDate);
+  }
   return (
     <>
       {popCalendar && (
