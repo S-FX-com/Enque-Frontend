@@ -1015,18 +1015,22 @@ export function TicketConversation({
         }
         
         console.log('🕐 Converted time:', { hours, minutes, period });
-        
+
         const scheduledDateTime = new Date(selectedDate);
         scheduledDateTime.setHours(hours, minutes, 0, 0);
-        
-        // Validate that the scheduled time is in the future
-        if (scheduledDateTime <= new Date()) {
+
+        const nowET = new Date();
+        if (scheduledDateTime <= nowET) {
           toast.error('Scheduled time must be in the future');
           throw new Error('Scheduled time must be in the future');
         }
+
+        const timezoneOffset = scheduledDateTime.getTimezoneOffset(); 
+        const utcDateTime = new Date(scheduledDateTime.getTime() - (timezoneOffset * 60000));
         
-        scheduledSendAt = scheduledDateTime.toISOString();
-        console.log('📅 Scheduling comment for:', scheduledSendAt);
+        scheduledSendAt = utcDateTime.toISOString();
+        console.log('📅 Scheduling comment for ET:', scheduledDateTime.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+        console.log('📅 Converted to UTC for storage:', scheduledSendAt);
       } catch (error) {
         console.error('Error parsing scheduled time:', error);
         toast.error('Invalid scheduled time');
