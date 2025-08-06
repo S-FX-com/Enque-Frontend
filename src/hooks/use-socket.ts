@@ -295,7 +295,6 @@ export function useSocket() {
               name: isUserReply ? data.user_name : data.agent_name || 'Agent',
               email: isUserReply ? data.user_email || '' : data.agent_email || '',
               type: isUserReply ? 'user' : 'agent',
-              avatar_url: isUserReply ? data.user_avatar : data.agent_avatar, // ✅ Avatar dinámico
             },
             attachments: data.attachments || [],
             is_private: data.is_private,
