@@ -2,7 +2,7 @@
 
 import React, { MouseEventHandler, Dispatch, SetStateAction } from 'react';
 import { format } from 'date-fns';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Send } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
@@ -101,7 +101,15 @@ export function ScheduleSendCalendar({
             >
               Cancel
             </Button>
-            <Button onClick={handleSendReply}>Send</Button>
+            <Button
+              onClick={() => {
+                setPopCalendar(false);
+                handleSendReply;
+              }}
+            >
+              <Send className="mr-2 h-4 w-4" />
+              Send
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

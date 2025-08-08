@@ -46,61 +46,61 @@ const addDarkModeStyles = () => {
     const style = document.createElement('style');
     style.id = 'dark-mode-message-styles';
     style.textContent = `
-    @media (prefers-color-scheme: dark) {
-      .dark .user-message-content [style*="color:rgb(0,0,0)"],
-      .dark .user-message-content [style*="color:#000000"],
-      .dark .user-message-content [style*="color:#000"],
-      .dark .user-message-content [style*="color:black"] {
-        color: white !important;
-      }
-    }
+  @media (prefers-color-scheme: dark) {
     .dark .user-message-content [style*="color:rgb(0,0,0)"],
     .dark .user-message-content [style*="color:#000000"],
     .dark .user-message-content [style*="color:#000"],
     .dark .user-message-content [style*="color:black"] {
       color: white !important;
     }
-    
-    /* Mention highlighting styles */
-    .mention {
-      background-color: #e0ecff !important;
-      color: #1d73f4 !important;
-      border-radius: 0.375rem !important;
-      padding: 0.125rem 0.375rem !important;
-      font-weight: 500 !important;
-      border: 1px solid #a7c9ff !important;
-      display: inline-block !important;
-      text-decoration: none !important;
-    }
-    
-    .dark .mention {
-      background-color: #312e81 !important;
-      color: #c7d2fe !important;
-      border-color: #4338ca !important;
-    }
-    
-    /* Ensure mentions are visible in message content */
-    .message-content-container .mention,
-    .user-message-content .mention,
-    .prose .mention {
-      background-color: #e0ecff !important;
-      color: #1d73f4 !important;
-      border-radius: 0.375rem !important;
-      padding: 0.125rem 0.375rem !important;
-      font-weight: 500 !important;
-      border: 1px solid #a7c9ff !important;
-      display: inline-block !important;
-      text-decoration: none !important;
-    }
-    
-    .dark .message-content-container .mention,
-    .dark .user-message-content .mention,
-    .dark .prose .mention {
-      background-color: #312e81 !important;
-      color: #c7d2fe !important;
-      border-color: #4338ca !important;
-    }
-  `;
+  }
+  .dark .user-message-content [style*="color:rgb(0,0,0)"],
+  .dark .user-message-content [style*="color:#000000"],
+  .dark .user-message-content [style*="color:#000"],
+  .dark .user-message-content [style*="color:black"] {
+    color: white !important;
+  }
+  
+  /* Mention highlighting styles */
+  .mention {
+    background-color: #e0ecff !important;
+    color: #1d73f4 !important;
+    border-radius: 0.375rem !important;
+    padding: 0.125rem 0.375rem !important;
+    font-weight: 500 !important;
+    border: 1px solid #a7c9ff !important;
+    display: inline-block !important;
+    text-decoration: none !important;
+  }
+  
+  .dark .mention {
+    background-color: #312e81 !important;
+    color: #c7d2fe !important;
+    border-color: #4338ca !important;
+  }
+  
+  /* Ensure mentions are visible in message content */
+  .message-content-container .mention,
+  .user-message-content .mention,
+  .prose .mention {
+    background-color: #e0ecff !important;
+    color: #1d73f4 !important;
+    border-radius: 0.375rem !important;
+    padding: 0.125rem 0.375rem !important;
+    font-weight: 500 !important;
+    border: 1px solid #a7c9ff !important;
+    display: inline-block !important;
+    text-decoration: none !important;
+  }
+  
+  .dark .message-content-container .mention,
+  .dark .user-message-content .mention,
+  .dark .prose .mention {
+    background-color: #312e81 !important;
+    color: #c7d2fe !important;
+    border-color: #4338ca !important;
+  }
+`;
     document.head.appendChild(style);
   }
 };
@@ -165,32 +165,32 @@ function processLinksForNewTab(htmlContent: string): string {
 
 const editorStyles = `
 .auto-expand-editor .ProseMirror {
-  min-height: 120px;
-  max-height: 1200px;
-  overflow-y: auto;
-  resize: none;
+min-height: 120px;
+max-height: 1200px;
+overflow-y: auto;
+resize: none;
 }
 
 .auto-expand-editor .tiptap {
-  min-height: 120px;
-  overflow-y: visible;
+min-height: 120px;
+overflow-y: visible;
 }
 
 .enque-quote {
-  border-left: 3px solid #e5e7eb;
-  padding-left: 12px;
-  margin-bottom: 16px;
-  color: #6b7280;
-  font-style: italic;
-  background-color: #f9fafb;
-  padding: 8px 12px;
-  border-radius: 4px;
+border-left: 3px solid #e5e7eb;
+padding-left: 12px;
+margin-bottom: 16px;
+color: #6b7280;
+font-style: italic;
+background-color: #f9fafb;
+padding: 8px 12px;
+border-radius: 4px;
 }
 
 .dark .enque-quote {
-  border-left-color: #374151;
-  color: #9ca3af;
-  background-color: #1f2937;
+border-left-color: #374151;
+color: #9ca3af;
+background-color: #1f2937;
 }
 `;
 
@@ -1103,10 +1103,6 @@ export function TicketConversation({
   const handleSendReply = () => {
     if (!replyContent.trim() || !ticket?.id || isSending) return;
     createCommentMutation.mutate();
-
-    if (popCalendar) {
-      setPopCalendar(false);
-    }
   };
 
   const handlePrivateNoteChange = (checked: boolean) => {
