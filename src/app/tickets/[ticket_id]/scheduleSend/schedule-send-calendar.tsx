@@ -1,5 +1,4 @@
 'use client';
-
 import React, { MouseEventHandler, Dispatch, SetStateAction } from 'react';
 import { format } from 'date-fns';
 import { ChevronDown, Send } from 'lucide-react';
@@ -50,7 +49,9 @@ export function ScheduleSendCalendar({
   setTime,
 }: Props) {
   const maxDate: Date = new Date(year, month, day + 30);
-  const minDate: Date = new Date(year, month, day);
+  const minDate: Date = React.useMemo(() => {
+    return new Date(year, month, day);
+  }, [day, month, year]); //new Date(year, month, day);
 
   // Ensure date is initialized if null
   React.useEffect(() => {
@@ -102,10 +103,10 @@ export function ScheduleSendCalendar({
               Cancel
             </Button>
             <Button
-              onClick={() => {
-                setPopCalendar(false);
-                handleSendReply;
-              }}
+              onClick={() =>
+                //setPopCalendar(false);
+                handleSendReply
+              }
             >
               <Send className="mr-2 h-4 w-4" />
               Send

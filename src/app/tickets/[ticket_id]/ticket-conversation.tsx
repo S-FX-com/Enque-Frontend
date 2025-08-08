@@ -60,7 +60,7 @@ const addDarkModeStyles = () => {
   .dark .user-message-content [style*="color:black"] {
     color: white !important;
   }
-  
+
   /* Mention highlighting styles */
   .mention {
     background-color: #e0ecff !important;
@@ -72,13 +72,13 @@ const addDarkModeStyles = () => {
     display: inline-block !important;
     text-decoration: none !important;
   }
-  
+
   .dark .mention {
     background-color: #312e81 !important;
     color: #c7d2fe !important;
     border-color: #4338ca !important;
   }
-  
+
   /* Ensure mentions are visible in message content */
   .message-content-container .mention,
   .user-message-content .mention,
@@ -92,7 +92,7 @@ const addDarkModeStyles = () => {
     display: inline-block !important;
     text-decoration: none !important;
   }
-  
+
   .dark .message-content-container .mention,
   .dark .user-message-content .mention,
   .dark .prose .mention {
@@ -1102,6 +1102,9 @@ export function TicketConversation({
 
   const handleSendReply = () => {
     if (!replyContent.trim() || !ticket?.id || isSending) return;
+    if (popCalendar) {
+      setPopCalendar(false);
+    }
     createCommentMutation.mutate();
   };
 
