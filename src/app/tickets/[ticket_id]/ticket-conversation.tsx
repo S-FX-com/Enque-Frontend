@@ -232,6 +232,7 @@ function findQuoteStartIndex(html: string): number {
     /<p[^>]*><strong>From:<\/strong>/i,
     /<div[^>]*>From:\s+[^<]+@[^>]+>/i,
     /^From:\s+[^<]+@[^>]+>/m,
+    /<[^>]*>\s*<b>From:<\/b>/i,
     /Sent from my \w+/i,
 
     // HTML quote elements
