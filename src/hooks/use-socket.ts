@@ -284,7 +284,7 @@ export function useSocket() {
         );
 
         if (!existingContent) {
-
+          // 🔧 CORREGIDO: Detectar correctamente si es usuario o agente
           const isUserReply = data.user_name && !data.agent_id;
 
           const newContent = {

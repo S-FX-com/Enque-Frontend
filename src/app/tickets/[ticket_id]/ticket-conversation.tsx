@@ -35,6 +35,8 @@ import { getEnabledGlobalSignature } from '@/services/global-signature';
 import { getCannedReplies, type CannedReply } from '@/services/canned-replies';
 import { formatRelativeTime } from '@/lib/utils';
 import { ScheduleSendCalendar } from './scheduleSend/scheduleSendCalendar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import BoringAvatar from 'boring-avatars';
 
 const addDarkModeStyles = () => {
   if (typeof document !== 'undefined') {
@@ -44,66 +46,64 @@ const addDarkModeStyles = () => {
     const style = document.createElement('style');
     style.id = 'dark-mode-message-styles';
     style.textContent = `
-      @media (prefers-color-scheme: dark) {
-        .dark .user-message-content [style*="color:rgb(0,0,0)"],
-        .dark .user-message-content [style*="color:#000000"],
-        .dark .user-message-content [style*="color:#000"],
-        .dark .user-message-content [style*="color:black"] {
-          color: white !important;
-        }
-      }
+    @media (prefers-color-scheme: dark) {
       .dark .user-message-content [style*="color:rgb(0,0,0)"],
       .dark .user-message-content [style*="color:#000000"],
       .dark .user-message-content [style*="color:#000"],
       .dark .user-message-content [style*="color:black"] {
         color: white !important;
       }
-      
-      /* Mention highlighting styles */
-      .mention {
-        background-color: #e0ecff !important;
-        color: #1d73f4 !important;
-        border-radius: 0.375rem !important;
-        padding: 0.125rem 0.375rem !important;
-        font-weight: 500 !important;
-        border: 1px solid #a7c9ff !important;
-        display: inline-block !important;
-        text-decoration: none !important;
-      }
-      
-      .dark .mention {
-        background-color: #312e81 !important;
-        color: #c7d2fe !important;
-        border-color: #4338ca !important;
-      }
-      
-      /* Ensure mentions are visible in message content */
-      .message-content-container .mention,
-      .user-message-content .mention,
-      .prose .mention {
-        background-color: #e0ecff !important;
-        color: #1d73f4 !important;
-        border-radius: 0.375rem !important;
-        padding: 0.125rem 0.375rem !important;
-        font-weight: 500 !important;
-        border: 1px solid #a7c9ff !important;
-        display: inline-block !important;
-        text-decoration: none !important;
-      }
-      
-      .dark .message-content-container .mention,
-      .dark .user-message-content .mention,
-      .dark .prose .mention {
-        background-color: #312e81 !important;
-        color: #c7d2fe !important;
-        border-color: #4338ca !important;
-      }
-    `;
+    }
+    .dark .user-message-content [style*="color:rgb(0,0,0)"],
+    .dark .user-message-content [style*="color:#000000"],
+    .dark .user-message-content [style*="color:#000"],
+    .dark .user-message-content [style*="color:black"] {
+      color: white !important;
+    }
+    
+    /* Mention highlighting styles */
+    .mention {
+      background-color: #e0ecff !important;
+      color: #1d73f4 !important;
+      border-radius: 0.375rem !important;
+      padding: 0.125rem 0.375rem !important;
+      font-weight: 500 !important;
+      border: 1px solid #a7c9ff !important;
+      display: inline-block !important;
+      text-decoration: none !important;
+    }
+    
+    .dark .mention {
+      background-color: #312e81 !important;
+      color: #c7d2fe !important;
+      border-color: #4338ca !important;
+    }
+    
+    /* Ensure mentions are visible in message content */
+    .message-content-container .mention,
+    .user-message-content .mention,
+    .prose .mention {
+      background-color: #e0ecff !important;
+      color: #1d73f4 !important;
+      border-radius: 0.375rem !important;
+      padding: 0.125rem 0.375rem !important;
+      font-weight: 500 !important;
+      border: 1px solid #a7c9ff !important;
+      display: inline-block !important;
+      text-decoration: none !important;
+    }
+    
+    .dark .message-content-container .mention,
+    .dark .user-message-content .mention,
+    .dark .prose .mention {
+      background-color: #312e81 !important;
+      color: #c7d2fe !important;
+      border-color: #4338ca !important;
+    }
+  `;
     document.head.appendChild(style);
   }
 };
-
-import BoringAvatar from 'boring-avatars';
 
 function processLinksForNewTab(htmlContent: string): string {
   return htmlContent.replace(
@@ -164,34 +164,34 @@ function processLinksForNewTab(htmlContent: string): string {
 }
 
 const editorStyles = `
-  .auto-expand-editor .ProseMirror {
-    min-height: 120px;
-    max-height: 1200px;
-    overflow-y: auto;
-    resize: none;
-  }
+.auto-expand-editor .ProseMirror {
+  min-height: 120px;
+  max-height: 1200px;
+  overflow-y: auto;
+  resize: none;
+}
 
-  .auto-expand-editor .tiptap {
-    min-height: 120px;
-    overflow-y: visible;
-  }
+.auto-expand-editor .tiptap {
+  min-height: 120px;
+  overflow-y: visible;
+}
 
-  .enque-quote {
-    border-left: 3px solid #e5e7eb;
-    padding-left: 12px;
-    margin-bottom: 16px;
-    color: #6b7280;
-    font-style: italic;
-    background-color: #f9fafb;
-    padding: 8px 12px;
-    border-radius: 4px;
-  }
+.enque-quote {
+  border-left: 3px solid #e5e7eb;
+  padding-left: 12px;
+  margin-bottom: 16px;
+  color: #6b7280;
+  font-style: italic;
+  background-color: #f9fafb;
+  padding: 8px 12px;
+  border-radius: 4px;
+}
 
-  .dark .enque-quote {
-    border-left-color: #374151;
-    color: #9ca3af;
-    background-color: #1f2937;
-  }
+.dark .enque-quote {
+  border-left-color: #374151;
+  color: #9ca3af;
+  background-color: #1f2937;
+}
 `;
 
 interface Props {
@@ -230,8 +230,8 @@ export interface DateScheduleSend {
 function findQuoteStartIndex(html: string): number {
   const patterns = [
     /<p[^>]*><strong>From:<\/strong>/i,
-    /<div[^>]*>From:\s+[^<]+<[^@]+@[^>]+>/i,
-    /^From:\s+[^<]+<[^@]+@[^>]+>/m,
+    /<div[^>]*>From:\s+[^<]+@[^>]+>/i,
+    /^From:\s+[^<]+@[^>]+>/m,
     /Sent from my \w+/i,
 
     // HTML quote elements
@@ -247,7 +247,7 @@ function findQuoteStartIndex(html: string): number {
 
     /<div[^>]*style=["'][^"']*border:none;\s*border-top:solid\s+#E1E1E1/i,
 
-    /^On\s+\w{3},\s+\w{3,9}\s+\d{1,2},\s+\d{4}\s+at\s+\d{1,2}:\d{2}\s*(AM|PM|am|pm)?\s+.+<[^@]+@[^>]+>\s+wrote:/m,
+    /^On\s+\w{3},\s+\w{3,9}\s+\d{1,2},\s+\d{4}\s+at\s+\d{1,2}:\d{2}\s*(AM|PM|am|pm)?\s+.+@[^>]+>\s+wrote:/m,
   ];
 
   let earliestIndex = -1;
@@ -278,29 +278,6 @@ function findQuoteStartIndex(html: string): number {
   return earliestIndex;
 }
 
-// function cleanQuotedContent(htmlContent: string): string {
-//   if (!htmlContent || !htmlContent.trim()) {
-//     return htmlContent;
-//   }
-
-//   let cleanedContent = htmlContent.replace(
-//     /<div[^>]*class="enque-quote"[^>]*>[\s\S]*?<\/div>/gi,
-//     ''
-//   );
-
-//   const quoteStartIndex = findQuoteStartIndex(cleanedContent);
-//   if (quoteStartIndex !== -1) {
-//     cleanedContent = cleanedContent.substring(0, quoteStartIndex);
-//   }
-
-//   cleanedContent = cleanedContent
-//     .replace(/(?:<br\s*\/?>\s*)+$/i, '') // Remover <br> al final
-//     .replace(/<p[^>]*>\s*<\/p>\s*$/gi, '') // Remover <p> vacíos al final
-//     .replace(/\s+$/g, ''); // Remover espacios en blanco al final
-
-//   return cleanedContent;
-// }
-
 function OptimizedMessageItem({ content, isInitial = false, ticket }: OptimizedMessageItemProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -319,6 +296,7 @@ function OptimizedMessageItem({ content, isInitial = false, ticket }: OptimizedM
         email: metadataMatch[2].trim(),
         isUserReply: true,
         type: 'user',
+        avatar_url: content.sender.avatar_url,
       };
     }
 
@@ -328,6 +306,7 @@ function OptimizedMessageItem({ content, isInitial = false, ticket }: OptimizedM
       email: content.sender.email || 'unknown',
       isUserReply: !isAgentMessage && !isInitial,
       type: isAgentMessage ? 'agent' : 'user',
+      avatar_url: content.sender.avatar_url,
     };
   }, [content.content, content.sender, isInitial]);
 
@@ -475,7 +454,19 @@ function OptimizedMessageItem({ content, isInitial = false, ticket }: OptimizedM
   return (
     <div className={containerClasses}>
       <div className="flex-shrink-0">
-        <BoringAvatar size={40} name={senderInfo.email} variant="beam" colors={avatarColors} />
+        {senderInfo.avatar_url ? (
+          <Avatar className="w-10 h-10">
+            <AvatarImage
+              src={senderInfo.avatar_url || '/placeholder.svg'}
+              alt={senderInfo.name || 'Avatar'}
+            />
+            <AvatarFallback>
+              {senderInfo.name ? senderInfo.name.charAt(0).toUpperCase() : 'U'}
+            </AvatarFallback>
+          </Avatar>
+        ) : (
+          <BoringAvatar size={40} name={senderInfo.email} variant="beam" colors={avatarColors} />
+        )}
       </div>
       <div className="flex-1 min-w-0">
         <div className="mb-1">
@@ -677,11 +668,11 @@ export function TicketConversation({
     queryKey: ['ticketHtml', ticket.id],
     queryFn: () => getTicketHtmlContent(ticket.id),
     enabled: !!ticket?.id,
-    staleTime: 2 * 60 * 1000, 
+    staleTime: 2 * 60 * 1000,
     refetchInterval: false,
     refetchIntervalInBackground: false,
-    refetchOnWindowFocus: true, 
-    refetchOnMount: true, 
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
     placeholderData: previousData => previousData,
     notifyOnChangeProps: ['data', 'error', 'isError'],
   });
@@ -694,11 +685,11 @@ export function TicketConversation({
     queryKey: ['comments', ticket.id],
     queryFn: () => getCommentsByTaskId(ticket.id),
     enabled: !!ticket?.id && isHtmlContentError,
-    staleTime: 5 * 60 * 1000, 
+    staleTime: 5 * 60 * 1000,
     refetchInterval: false,
     refetchIntervalInBackground: false,
-    refetchOnWindowFocus: true, 
-    refetchOnMount: true, 
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
   });
 
   const currentAgentId = currentUser?.id;
@@ -848,6 +839,10 @@ export function TicketConversation({
 
     if (currentTicketId !== prevTicketId) {
       setIsPrivateNote(false);
+      setSendNow(true);
+      setPopCalendar(false);
+      setDate(null);
+      setTime('');
       if (onExtraRecipientsChange) {
         onExtraRecipientsChange('');
       }
@@ -987,17 +982,11 @@ export function TicketConversation({
         throw new Error('Failed to upload attachments');
       }
     }
-
-    // ✅ SCHEDULED SEND LOGIC
     let scheduledSendAt: string | undefined = undefined;
     if (!sendNow && date && time) {
       try {
-        console.log('🕐 Parsing scheduled time:', { sendNow, date, time });
-        
         // Parse the date and time to create ISO string
         const selectedDate = date as Date;
-        
-        // Convert "12:00 AM" format to 24-hour format
         const timeMatch = time.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
         if (!timeMatch) {
           throw new Error('Invalid time format');
@@ -1006,27 +995,23 @@ export function TicketConversation({
         let hours = parseInt(timeMatch[1], 10);
         const minutes = parseInt(timeMatch[2], 10);
         const period = timeMatch[3].toUpperCase();
-        
-        // Convert to 24-hour format
+
         if (period === 'AM' && hours === 12) {
           hours = 0;
         } else if (period === 'PM' && hours !== 12) {
           hours += 12;
         }
         
-                console.log('🕐 Converted time:', { hours, minutes, period });
+        console.log('🕐 Converted time:', { hours, minutes, period });
         
-        // Create the scheduled date and time
+        
         const scheduledDateTime = new Date(selectedDate);
         scheduledDateTime.setHours(hours, minutes, 0, 0);
-        
-        // Validate that the scheduled time is in the future (local time)
         const now = new Date();
         if (scheduledDateTime <= now) {
           toast.error('Scheduled time must be in the future');
           throw new Error('Scheduled time must be in the future');
         }
-        
         const year = selectedDate.getFullYear();
         const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
         const day = String(selectedDate.getDate()).padStart(2, '0');
@@ -1043,7 +1028,6 @@ export function TicketConversation({
         throw error;
       }
     }
-
     const payload: CreateCommentPayload = {
       content: finalContent,
       ticket_id: ticket.id,
@@ -1053,7 +1037,7 @@ export function TicketConversation({
       attachment_ids: attachmentIds.length > 0 ? attachmentIds : undefined,
       other_destinaries: extraRecipients.trim() || undefined,
       bcc_recipients: extraBccRecipients.trim() || undefined,
-      scheduled_send_at: scheduledSendAt, // ✅ NEW: Include scheduled send time
+      scheduled_send_at: scheduledSendAt,
     };
 
     return createComment(ticket.id, payload);
@@ -1087,19 +1071,11 @@ export function TicketConversation({
       setReplyContent('');
       setSelectedAttachments([]);
       setIsPrivateNote(false);
-      
-      // Reset scheduling state
-      setSendNow(true);
-      setPopCalendar(false);
-      setDate(null);
-      setTime('');
-      
       if (onExtraRecipientsChange) {
         onExtraRecipientsChange('');
       }
       setEditorKey(prev => prev + 1);
 
-      // Different messages for scheduled vs immediate comments
       if (data.is_scheduled) {
         toast.success('Comment scheduled successfully! It will be sent at the specified time.');
         console.log('📅 Comment scheduled:', data.scheduled_comment);
@@ -1140,7 +1116,7 @@ export function TicketConversation({
     } else {
       // Restore signature when switching back from private note
       let signatureToUse = '';
- 
+
       if (globalSignatureData?.content) {
         signatureToUse = globalSignatureData.content
           .replace(/\[Agent Name\]/g, currentAgentData?.name || '')
@@ -1148,7 +1124,7 @@ export function TicketConversation({
       } else if (currentAgentData?.email_signature) {
         signatureToUse = currentAgentData.email_signature;
       }
- 
+
       if (signatureToUse) {
         signatureToUse = signatureToUse
           .replace(/<\/strong><\/p>\s*<p>\s*<em>/g, '</strong><br><em>')
@@ -1158,19 +1134,19 @@ export function TicketConversation({
           .replace(/<\/p>\s*<p>\s*<strong>/g, '<br><strong>')
           .replace(/<\/p>\s*<p>\s*<em>/g, '<br><em>')
           .replace(/<\/p>\s*<p>/g, '<br>');
- 
+
         signatureToUse = signatureToUse.replace(
           /<img([^>]*?)width="300"([^>]*?)height="200"([^>]*?)>/g,
           '<img$1width="120"$2height="75"$3style="width: 120px; height: 75px; max-width: 120px; max-height: 75px; object-fit: scale-down; border-radius: 4px;">'
         );
- 
+
         signatureToUse = `<div class="email-signature text-gray-500" style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #e5e7eb; clear: both;">${signatureToUse}</div>`;
       }
- 
+
       const initialContent = signatureToUse
         ? `<p style="margin-block: 10px !important"><p>${signatureToUse}`
         : ``;
- 
+
       setReplyContent(initialContent);
       setEditorKey(prev => prev + 1);
     }
@@ -1334,6 +1310,7 @@ export function TicketConversation({
                   setTime={setTime}
                 />
               </div>
+          
             </div>
           </CardContent>
         </Card>
