@@ -34,7 +34,7 @@ import { uploadAttachments } from '@/services/attachmentService';
 import { getEnabledGlobalSignature } from '@/services/global-signature';
 import { getCannedReplies, type CannedReply } from '@/services/canned-replies';
 import { formatRelativeTime } from '@/lib/utils';
-import { ScheduleSendCalendar } from './scheduleSend/scheduleSendCalendar';
+import { ScheduleSendCalendar } from './scheduleSend/schedule-send-calendar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import BoringAvatar from 'boring-avatars';
 
@@ -992,7 +992,7 @@ export function TicketConversation({
         if (!timeMatch) {
           throw new Error('Invalid time format');
         }
-        
+
         let hours = parseInt(timeMatch[1], 10);
         const minutes = parseInt(timeMatch[2], 10);
         const period = timeMatch[3].toUpperCase();
@@ -1002,10 +1002,9 @@ export function TicketConversation({
         } else if (period === 'PM' && hours !== 12) {
           hours += 12;
         }
-        
+
         console.log('🕐 Converted time:', { hours, minutes, period });
-        
-        
+
         const scheduledDateTime = new Date(selectedDate);
         scheduledDateTime.setHours(hours, minutes, 0, 0);
         const now = new Date();
@@ -1018,9 +1017,9 @@ export function TicketConversation({
         const day = String(selectedDate.getDate()).padStart(2, '0');
         const hoursStr = String(hours).padStart(2, '0');
         const minutesStr = String(minutes).padStart(2, '0');
-        
+
         scheduledSendAt = `${year}-${month}-${day}T${hoursStr}:${minutesStr}:00.000Z`;
-        
+
         console.log('📅 Local scheduled time:', scheduledDateTime.toString());
         console.log('📅 Sending to backend (as ET):', scheduledSendAt);
       } catch (error) {
@@ -1311,7 +1310,6 @@ export function TicketConversation({
                   setTime={setTime}
                 />
               </div>
-          
             </div>
           </CardContent>
         </Card>
