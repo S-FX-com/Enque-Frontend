@@ -51,6 +51,7 @@ export const microsoftAuthService = {
     workspaceId: number,
     redirectPath: string = '/dashboard'
   ): Promise<ServiceResponse<MicrosoftAuthUrlResponse>> {
+    console.log(redirectPath);
     try {
       const stateObject = {
         workspace_id: workspaceId.toString(),
