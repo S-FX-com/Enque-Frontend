@@ -186,7 +186,6 @@ export function TicketPageContent({ ticketId }: Props) {
   const [popCalendar, setPopCalendar] = useState(false);
   const [date, setDate] = useState<Date | null>(null);
   const [time, setTime] = useState<string>('');
-  const [sendNow, setSendNow] = useState(false); // This state is passed to ScheduleSendCalendar
 
   // Get current date for scheduler min/max dates
   const today = new Date();
@@ -862,7 +861,6 @@ export function TicketPageContent({ ticketId }: Props) {
                   year={currentYear}
                   popCalendar={popCalendar}
                   setPopCalendar={setPopCalendar}
-                  setSendNow={setSendNow}
                   handleSendReply={handleScheduleSendReply}
                   date={date}
                   // @ts-expect-error none
