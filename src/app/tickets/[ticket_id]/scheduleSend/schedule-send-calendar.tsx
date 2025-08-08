@@ -2,7 +2,6 @@
 
 import React, { MouseEventHandler, Dispatch, SetStateAction } from 'react';
 import { format } from 'date-fns';
-import { ChevronDown, Send } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
@@ -20,6 +19,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { TimePickingSelect } from './time-picking-select';
+import { Send } from 'lucide-react';
 
 type ValuePiece = Date | null;
 type Value = ValuePiece | [ValuePiece, ValuePiece];
@@ -35,6 +35,7 @@ interface Props {
   date: Value;
   setDate: Dispatch<SetStateAction<Value>>;
   setTime: Dispatch<SetStateAction<string>>;
+  children: React.ReactNode; // Added to accept the trigger button from parent
 }
 
 export function ScheduleSendCalendar({
@@ -48,6 +49,7 @@ export function ScheduleSendCalendar({
   date,
   setDate,
   setTime,
+  children, // Destructure children prop
 }: Props) {
   const maxDate: Date = new Date(year, month, day + 30);
   const minDate: Date = new Date(year, month, day);
@@ -102,9 +104,9 @@ export function ScheduleSendCalendar({
               Cancel
             </Button>
             <Button
-              onClick={() => {
+              onClick={event => {
                 setPopCalendar(false);
-                handleSendReply;
+                handleSendReply(event);
               }}
             >
               <Send className="mr-2 h-4 w-4" />
@@ -114,25 +116,22 @@ export function ScheduleSendCalendar({
         </DialogContent>
       </Dialog>
 
-      <div className="rounded-r-md border-r border-y border-l-0">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="rounded-l-none h-10 px-3">
-              <ChevronDown className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuItem
-              onSelect={() => {
-                setPopCalendar(true);
-                setSendNow(false);
-              }}
-            >
-              Schedule send
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
+      {/* Removed the outer div with border/rounding */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          {children} {/* Render the children passed from the parent */}
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-48">
+          <DropdownMenuItem
+            onSelect={() => {
+              setPopCalendar(true);
+              setSendNow(false);
+            }}
+          >
+            Schedule send
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </>
   );
 }
