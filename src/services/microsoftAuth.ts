@@ -41,18 +41,30 @@ export interface MicrosoftLinkResponse {
   auth_method: string;
 }
 
-const SERVICE_ENDPOINT = `${AppConfigs.api}/auth/microsoft`;
+const SERVICE_ENDPOINT = `${AppConfigs.api}/microsoft/auth`;
 
 export const microsoftAuthService = {
   /**
    * Get Microsoft OAuth authorization URL
    */
-  async getAuthUrl(workspaceId: number, redirectPath: string = '/dashboard'): Promise<ServiceResponse<MicrosoftAuthUrlResponse>> {
+  async getAuthUrl(
+    workspaceId: number,
+    redirectPath: string = '/dashboard'
+  ): Promise<ServiceResponse<MicrosoftAuthUrlResponse>> {
     try {
-      const params = new URLSearchParams({
+      const stateObject = {
         workspace_id: workspaceId.toString(),
-        redirect_path: redirectPath,
+        original_hostname: window.location.hostname,
+      };
+      const stateJsonString = JSON.stringify(stateObject);
+      let base64State = Buffer.from(stateJsonString).toString('base64');
+      base64State = base64State.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+
+      const params = new URLSearchParams({
+        state: base64State,
       });
+
+      console.log('Ok');
 
       const response = await fetch(`${SERVICE_ENDPOINT}/authorize?${params}`, {
         method: 'GET',
@@ -76,7 +88,10 @@ export const microsoftAuthService = {
         };
       }
     } catch (error) {
-      logger.error('Microsoft auth URL generation error:', error instanceof Error ? error.message : 'Network error');
+      logger.error(
+        'Microsoft auth URL generation error:',
+        error instanceof Error ? error.message : 'Network error'
+      );
       return {
         success: false,
         message: error instanceof Error ? error.message : 'Network error',
@@ -93,7 +108,7 @@ export const microsoftAuthService = {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
         },
       });
 
@@ -112,7 +127,10 @@ export const microsoftAuthService = {
         };
       }
     } catch (error) {
-      logger.error('Microsoft auth status error:', error instanceof Error ? error.message : 'Network error');
+      logger.error(
+        'Microsoft auth status error:',
+        error instanceof Error ? error.message : 'Network error'
+      );
       return {
         success: false,
         message: error instanceof Error ? error.message : 'Network error',
@@ -123,15 +141,18 @@ export const microsoftAuthService = {
   /**
    * Get Microsoft profile for current user
    */
-  async getProfile(token: string, agentId?: number): Promise<ServiceResponse<MicrosoftProfileData>> {
+  async getProfile(
+    token: string,
+    agentId?: number
+  ): Promise<ServiceResponse<MicrosoftProfileData>> {
     try {
       const params = agentId ? `?agent_id=${agentId}` : '';
-      
+
       const response = await fetch(`${SERVICE_ENDPOINT}/profile${params}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
         },
       });
 
@@ -150,7 +171,10 @@ export const microsoftAuthService = {
         };
       }
     } catch (error) {
-      logger.error('Microsoft profile fetch error:', error instanceof Error ? error.message : 'Network error');
+      logger.error(
+        'Microsoft profile fetch error:',
+        error instanceof Error ? error.message : 'Network error'
+      );
       return {
         success: false,
         message: error instanceof Error ? error.message : 'Network error',
@@ -172,7 +196,7 @@ export const microsoftAuthService = {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           agent_id: agentId,
@@ -196,7 +220,10 @@ export const microsoftAuthService = {
         };
       }
     } catch (error) {
-      logger.error('Microsoft agent link error:', error instanceof Error ? error.message : 'Network error');
+      logger.error(
+        'Microsoft agent link error:',
+        error instanceof Error ? error.message : 'Network error'
+      );
       return {
         success: false,
         message: error instanceof Error ? error.message : 'Network error',
@@ -207,13 +234,16 @@ export const microsoftAuthService = {
   /**
    * Unlink agent from Microsoft 365
    */
-  async unlinkAgent(token: string, agentId: number): Promise<ServiceResponse<MicrosoftLinkResponse>> {
+  async unlinkAgent(
+    token: string,
+    agentId: number
+  ): Promise<ServiceResponse<MicrosoftLinkResponse>> {
     try {
       const response = await fetch(`${SERVICE_ENDPOINT}/unlink`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           agent_id: agentId,
@@ -236,7 +266,10 @@ export const microsoftAuthService = {
         };
       }
     } catch (error) {
-      logger.error('Microsoft agent unlink error:', error instanceof Error ? error.message : 'Network error');
+      logger.error(
+        'Microsoft agent unlink error:',
+        error instanceof Error ? error.message : 'Network error'
+      );
       return {
         success: false,
         message: error instanceof Error ? error.message : 'Network error',
@@ -253,31 +286,31 @@ export const microsoftAuthService = {
     }
 
     const urlParams = new URLSearchParams(window.location.search);
-    
+
     // Check for success parameters
     const token = urlParams.get('token');
     const isNew = urlParams.get('is_new') === 'true';
     const m365Auth = urlParams.get('m365_auth');
-    
+
     // Check for error parameters
     const error = urlParams.get('error');
-    
+
     if (m365Auth === 'success' && token) {
       // Clean URL
       const newUrl = window.location.pathname;
       window.history.replaceState({}, document.title, newUrl);
-      
+
       return { token, isNew };
     }
-    
+
     if (error) {
       // Clean URL
       const newUrl = window.location.pathname;
       window.history.replaceState({}, document.title, newUrl);
-      
+
       return { error: decodeURIComponent(error) };
     }
-    
+
     return {};
   },
 
@@ -291,23 +324,26 @@ export const microsoftAuthService = {
 
     const hostname = window.location.hostname;
     const isSubdomain = hostname !== 'app.enque.cc' && hostname.endsWith('.enque.cc');
-    
+
     if (isSubdomain) {
       const subdomain = hostname.replace('.enque.cc', '');
-      
+
       try {
         // Call workspace service to get workspace ID
         const response = await fetch(`${AppConfigs.api}/workspaces/by-subdomain/${subdomain}`);
-        
+
         if (response.ok) {
           const workspace = await response.json();
           return workspace.id;
         }
       } catch (error) {
-        logger.error('Failed to get workspace ID from subdomain:', error instanceof Error ? error.message : 'Network error');
+        logger.error(
+          'Failed to get workspace ID from subdomain:',
+          error instanceof Error ? error.message : 'Network error'
+        );
       }
     }
-    
+
     return 1; // Default workspace
   },
 
@@ -318,14 +354,17 @@ export const microsoftAuthService = {
     try {
       const workspaceId = await this.getWorkspaceIdFromSubdomain();
       const authUrlResponse = await this.getAuthUrl(workspaceId, redirectPath);
-      
+
       if (authUrlResponse.success && authUrlResponse.data?.auth_url) {
         window.location.href = authUrlResponse.data.auth_url;
       } else {
         throw new Error(authUrlResponse.message || 'Failed to get auth URL');
       }
     } catch (error) {
-      logger.error('Microsoft login initiation error:', error instanceof Error ? error.message : 'Network error');
+      logger.error(
+        'Microsoft login initiation error:',
+        error instanceof Error ? error.message : 'Network error'
+      );
       throw error;
     }
   },
