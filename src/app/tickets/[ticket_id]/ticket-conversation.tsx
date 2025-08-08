@@ -235,6 +235,8 @@ function findQuoteStartIndex(html: string): number {
     /<[^>]*>\s*<b>From:<\/b>/i,
     /Sent from my \w+/i,
 
+    /<div id="appendonsend"><\/div>/i,
+
     // HTML quote elements
     /<div[^>]*class="gmail_quote/i,
     /<blockquote[^>]*class="gmail_quote/i,
