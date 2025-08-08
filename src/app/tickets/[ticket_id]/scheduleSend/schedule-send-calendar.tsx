@@ -35,7 +35,7 @@ interface Props {
   date: Value;
   setDate: Dispatch<SetStateAction<Value>>;
   setTime: Dispatch<SetStateAction<string>>;
-  children: React.ReactNode; // Added to accept the trigger button from parent
+  children: React.ReactElement;
 }
 
 export function ScheduleSendCalendar({
@@ -49,7 +49,7 @@ export function ScheduleSendCalendar({
   date,
   setDate,
   setTime,
-  children, // Destructure children prop
+  children,
 }: Props) {
   const maxDate: Date = new Date(year, month, day + 30);
   const minDate: Date = new Date(year, month, day);
@@ -116,11 +116,8 @@ export function ScheduleSendCalendar({
         </DialogContent>
       </Dialog>
 
-      {/* Removed the outer div with border/rounding */}
       <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          {children} {/* Render the children passed from the parent */}
-        </DropdownMenuTrigger>
+        <DropdownMenuTrigger asChild>{children}</DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-48">
           <DropdownMenuItem
             onSelect={() => {
