@@ -9,7 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Send, Mail, Clock, MessageSquare, Search } from 'lucide-react';
+import { Send, Mail, Clock, MessageSquare, Search, ChevronDown } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -46,60 +46,60 @@ const addDarkModeStyles = () => {
     const style = document.createElement('style');
     style.id = 'dark-mode-message-styles';
     style.textContent = `
-  @media (prefers-color-scheme: dark) {
-    .dark .user-message-content [style*="color:rgb(0,0,0)"],
-    .dark .user-message-content [style*="color:#000000"],
-    .dark .user-message-content [style*="color:#000"],
-    .dark .user-message-content [style*="color:black"] {
-      color: white !important;
-    }
-  }
+@media (prefers-color-scheme: dark) {
   .dark .user-message-content [style*="color:rgb(0,0,0)"],
   .dark .user-message-content [style*="color:#000000"],
   .dark .user-message-content [style*="color:#000"],
   .dark .user-message-content [style*="color:black"] {
     color: white !important;
   }
+}
+.dark .user-message-content [style*="color:rgb(0,0,0)"],
+.dark .user-message-content [style*="color:#000000"],
+.dark .user-message-content [style*="color:#000"],
+.dark .user-message-content [style*="color:black"] {
+  color: white !important;
+}
 
-  /* Mention highlighting styles */
-  .mention {
-    background-color: #e0ecff !important;
-    color: #1d73f4 !important;
-    border-radius: 0.375rem !important;
-    padding: 0.125rem 0.375rem !important;
-    font-weight: 500 !important;
-    border: 1px solid #a7c9ff !important;
-    display: inline-block !important;
-    text-decoration: none !important;
-  }
+/* Mention highlighting styles */
+.mention {
+  background-color: #e0ecff !important;
+  color: #1d73f4 !important;
+  border-radius: 0.375rem !important;
+  padding: 0.125rem 0.375rem !important;
+  font-weight: 500 !important;
+  border: 1px solid #a7c9ff !important;
+  display: inline-block !important;
+  text-decoration: none !important;
+}
 
-  .dark .mention {
-    background-color: #312e81 !important;
-    color: #c7d2fe !important;
-    border-color: #4338ca !important;
-  }
+.dark .mention {
+  background-color: #312e81 !important;
+  color: #c7d2fe !important;
+  border-color: #4338ca !important;
+}
 
-  /* Ensure mentions are visible in message content */
-  .message-content-container .mention,
-  .user-message-content .mention,
-  .prose .mention {
-    background-color: #e0ecff !important;
-    color: #1d73f4 !important;
-    border-radius: 0.375rem !important;
-    padding: 0.125rem 0.375rem !important;
-    font-weight: 500 !important;
-    border: 1px solid #a7c9ff !important;
-    display: inline-block !important;
-    text-decoration: none !important;
-  }
+/* Ensure mentions are visible in message content */
+.message-content-container .mention,
+.user-message-content .mention,
+.prose .mention {
+  background-color: #e0ecff !important;
+  color: #1d73f4 !important;
+  border-radius: 0.375rem !important;
+  padding: 0.125rem 0.375rem !important;
+  font-weight: 500 !important;
+  border: 1px solid #a7c9ff !important;
+  display: inline-block !important;
+  text-decoration: none !important;
+}
 
-  .dark .message-content-container .mention,
-  .dark .user-message-content .mention,
-  .dark .prose .mention {
-    background-color: #312e81 !important;
-    color: #c7d2fe !important;
-    border-color: #4338ca !important;
-  }
+.dark .message-content-container .mention,
+.dark .user-message-content .mention,
+.dark .prose .mention {
+  background-color: #312e81 !important;
+  color: #c7d2fe !important;
+  border-color: #4338ca !important;
+}
 `;
     document.head.appendChild(style);
   }
@@ -234,6 +234,8 @@ function findQuoteStartIndex(html: string): number {
     /^From:\s+[^<]+@[^>]+>/m,
     /<[^>]*>\s*<b>From:<\/b>/i,
     /Sent from my \w+/i,
+
+    /<div id="appendonsend"><\/div>/i,
 
     // HTML quote elements
     /<div[^>]*class="gmail_quote/i,
@@ -1282,7 +1284,7 @@ export function TicketConversation({
               </div>
               <div className="flex">
                 <Button
-                  style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
+                  className="rounded-r-none px-4" // Added px-4 for consistent padding
                   onClick={handleSendReply}
                   disabled={
                     (!replyContent.trim() ||
@@ -1295,7 +1297,6 @@ export function TicketConversation({
                   <Send className="mr-2 h-4 w-4" />
                   Send
                 </Button>
-                <span className="w-1/10 bg-background h-full before: after:"></span>
                 <ScheduleSendCalendar
                   day={now.getDate()}
                   month={now.getMonth()}
@@ -1307,7 +1308,22 @@ export function TicketConversation({
                   date={date}
                   setDate={setDate}
                   setTime={setTime}
-                />
+                >
+                  {/* This button will be the trigger for the dropdown */}
+                  <Button
+                    variant="default" // Changed to default variant for consistent color
+                    className="rounded-l-none px-3" // Adjusted padding to match the Send button's visual size
+                    disabled={
+                      (!replyContent.trim() ||
+                        !ticket?.id ||
+                        isSending ||
+                        createCommentMutation.isPending ||
+                        (extraRecipients.trim() && !validateEmails(extraRecipients))) as boolean
+                    }
+                  >
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
+                </ScheduleSendCalendar>
               </div>
             </div>
           </CardContent>
