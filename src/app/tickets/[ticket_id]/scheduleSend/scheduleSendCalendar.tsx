@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import 'react-time-picker/dist/TimePicker.css';
 import 'react-clock/dist/Clock.css';
 import { MouseEventHandler, Dispatch, SetStateAction } from 'react';
+import './scheduleSendCalendar.css';
 
 type ValuePiece = Date | null;
 type Value = ValuePiece | [ValuePiece, ValuePiece];
@@ -44,9 +45,16 @@ function TimePickingDropdown({ setTime }: { setTime: Dispatch<SetStateAction<str
   return (
     <div className="mt-5">
       <h3 className="mb-1">Time Selected:</h3>
-      <select className="border-1 p-1 w-9/10 h-8 border-b-2 border-stone-400 rounded-sm">
+      <select 
+        className="border-1 p-1 w-9/10 h-8 border-b-2 border-stone-400 rounded-sm"
+        onChange={e => setTime(e.target.value)}
+        defaultValue=""
+      >
+        <option value="" disabled>
+          Select time
+        </option>
         {options.map(time => (
-          <option key={time} value={time} onClick={() => setTime(time)}>
+          <option key={time} value={time}>
             {time}
           </option>
         ))}
@@ -69,7 +77,9 @@ export function ScheduleSendCalendar({
 }: Props) {
   const maxDate: Date = new Date(year, month, day + 30);
   const minDate: Date = new Date(year, month, day);
-  setDate(minDate);
+  if (!date) {
+    setDate(minDate);
+  }
   return (
     <>
       {popCalendar && (
@@ -112,9 +122,10 @@ export function ScheduleSendCalendar({
               <ChevronDown color="#ffffff" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent>
+          <DropdownMenuContent className="DropdownMenuContent">
             <div className="w-full bg-background border-stone-950">
               <DropdownMenuItem
+                className="DropdownMenuItem"
                 onSelect={() => {
                   setPopCalendar(true);
                   setSendNow(false);

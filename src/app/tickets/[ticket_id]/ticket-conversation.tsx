@@ -840,6 +840,10 @@ export function TicketConversation({
 
     if (currentTicketId !== prevTicketId) {
       setIsPrivateNote(false);
+      setSendNow(true);
+      setPopCalendar(false);
+      setDate(null);
+      setTime('');
       if (onExtraRecipientsChange) {
         onExtraRecipientsChange('');
       }
@@ -979,7 +983,52 @@ export function TicketConversation({
         throw new Error('Failed to upload attachments');
       }
     }
+    let scheduledSendAt: string | undefined = undefined;
+    if (!sendNow && date && time) {
+      try {
+        // Parse the date and time to create ISO string
+        const selectedDate = date as Date;
+        const timeMatch = time.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+        if (!timeMatch) {
+          throw new Error('Invalid time format');
+        }
+        
+        let hours = parseInt(timeMatch[1], 10);
+        const minutes = parseInt(timeMatch[2], 10);
+        const period = timeMatch[3].toUpperCase();
 
+        if (period === 'AM' && hours === 12) {
+          hours = 0;
+        } else if (period === 'PM' && hours !== 12) {
+          hours += 12;
+        }
+        
+        console.log('🕐 Converted time:', { hours, minutes, period });
+        
+        
+        const scheduledDateTime = new Date(selectedDate);
+        scheduledDateTime.setHours(hours, minutes, 0, 0);
+        const now = new Date();
+        if (scheduledDateTime <= now) {
+          toast.error('Scheduled time must be in the future');
+          throw new Error('Scheduled time must be in the future');
+        }
+        const year = selectedDate.getFullYear();
+        const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+        const day = String(selectedDate.getDate()).padStart(2, '0');
+        const hoursStr = String(hours).padStart(2, '0');
+        const minutesStr = String(minutes).padStart(2, '0');
+        
+        scheduledSendAt = `${year}-${month}-${day}T${hoursStr}:${minutesStr}:00.000Z`;
+        
+        console.log('📅 Local scheduled time:', scheduledDateTime.toString());
+        console.log('📅 Sending to backend (as ET):', scheduledSendAt);
+      } catch (error) {
+        console.error('Error parsing scheduled time:', error);
+        toast.error('Invalid scheduled time');
+        throw error;
+      }
+    }
     const payload: CreateCommentPayload = {
       content: finalContent,
       ticket_id: ticket.id,
@@ -988,7 +1037,8 @@ export function TicketConversation({
       is_private: isPrivate,
       attachment_ids: attachmentIds.length > 0 ? attachmentIds : undefined,
       other_destinaries: extraRecipients.trim() || undefined,
-      other_unknown_destinaries: extraBccRecipients.trim() || undefined,
+      bcc_recipients: extraBccRecipients.trim() || undefined,
+      scheduled_send_at: scheduledSendAt,
     };
 
     return createComment(ticket.id, payload);
@@ -1027,7 +1077,12 @@ export function TicketConversation({
       }
       setEditorKey(prev => prev + 1);
 
-      toast.success('Reply sent successfully.');
+      if (data.is_scheduled) {
+        toast.success('Comment scheduled successfully! It will be sent at the specified time.');
+        console.log('📅 Comment scheduled:', data.scheduled_comment);
+      } else {
+        toast.success('Reply sent successfully.');
+      }
 
       if (data.task && onTicketUpdate) {
         onTicketUpdate(data.task);
@@ -1227,39 +1282,9 @@ export function TicketConversation({
                   </PopoverContent>
                 </Popover>
               </div>
-              {process.env.NODE_ENV === 'development' && (
-                <div className="flex">
-                  <Button
-                    style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
-                    onClick={handleSendReply}
-                    disabled={
-                      (!replyContent.trim() ||
-                        !ticket?.id ||
-                        isSending ||
-                        createCommentMutation.isPending ||
-                        (extraRecipients.trim() && !validateEmails(extraRecipients))) as boolean
-                    }
-                  >
-                    <Send className="mr-2 h-4 w-4" />
-                    Send
-                  </Button>
-                  <span className="w-1/10 bg-background h-full before: after:"></span>
-                  <ScheduleSendCalendar
-                    day={now.getDate()}
-                    month={now.getMonth()}
-                    year={now.getFullYear()}
-                    popCalendar={popCalendar}
-                    setPopCalendar={setPopCalendar}
-                    setSendNow={setSendNow}
-                    handleSendReply={handleSendReply}
-                    date={date}
-                    setDate={setDate}
-                    setTime={setTime}
-                  />
-                </div>
-              )}
-              {process.env.NODE_ENV === 'production' && (
+              <div className="flex">
                 <Button
+                  style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
                   onClick={handleSendReply}
                   disabled={
                     (!replyContent.trim() ||
@@ -1272,7 +1297,21 @@ export function TicketConversation({
                   <Send className="mr-2 h-4 w-4" />
                   Send
                 </Button>
-              )}
+                <span className="w-1/10 bg-background h-full before: after:"></span>
+                <ScheduleSendCalendar
+                  day={now.getDate()}
+                  month={now.getMonth()}
+                  year={now.getFullYear()}
+                  popCalendar={popCalendar}
+                  setPopCalendar={setPopCalendar}
+                  setSendNow={setSendNow}
+                  handleSendReply={handleSendReply}
+                  date={date}
+                  setDate={setDate}
+                  setTime={setTime}
+                />
+              </div>
+          
             </div>
           </CardContent>
         </Card>
