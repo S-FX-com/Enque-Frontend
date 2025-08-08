@@ -17,13 +17,10 @@ export const getCommentsByTaskId = async (
   skip: number = 0,
   limit: number = 100
 ): Promise<IComment[]> => {
-  // Return IComment[] directly or throw error
   try {
-    // Construct the full URL
-    const url = `${AppConfigs.api}/tasks/${taskId}/comments?skip=${skip}&limit=${limit}`;
 
-    // Use fetchAPI.GET and expect BaseResponse<IComment[]>
-    const response = await fetchAPI.GET<IComment[]>(url); // Use GET method, no token needed
+    const url = `${AppConfigs.api}/tasks/${taskId}/comments?skip=${skip}&limit=${limit}`;
+    const response = await fetchAPI.GET<IComment[]>(url); 
 
     if (!response.success || !response.data) {
       // Handle API error response based on BaseResponse structure
@@ -32,48 +29,39 @@ export const getCommentsByTaskId = async (
       throw new Error(errorMessage);
       // Or return [];
     }
-
-    // Return the data array directly from BaseResponse
     return response.data;
   } catch (error) {
     console.error('Error fetching comments:', error);
-    // Re-throw the error or return an empty array
-    // Ensure the error is an instance of Error for consistent handling upstream
     if (error instanceof Error) {
       throw error;
     } else {
-      // Wrap non-Error exceptions if necessary
+
       throw new Error('An unknown error occurred while fetching comments.');
     }
     // Or return [];
   }
 };
 
-// Interface for the data needed to create a comment
-// Backend validation schema (CommentCreate) expects all these fields, even if logic uses token/path params.
 export interface CreateCommentPayload {
   content: string;
   ticket_id: number;
   agent_id: number;
   workspace_id: number;
   is_private: boolean;
-  attachment_ids?: number[]; // Nuevo: IDs de los archivos adjuntos
+  attachment_ids?: number[]; 
   other_destinaries?: string;
   bcc_recipients?: string;
-  scheduled_send_at?: string; // ✅ NEW: ISO datetime string for scheduled sending
-  // Index signature for compatibility with fetchAPI.POST's Record<string, unknown> type
+  scheduled_send_at?: string;
   [key: string]: unknown;
 }
-
 /**
- * Creates a new comment for a specific task.
- * @param taskId - The ID of the task.
- * @param payload - The comment data (content, is_private).
- * @returns A promise that resolves to the newly created comment and updated task data.
+ * @param taskId 
+ * @param payload 
+ * @returns
  */
 export interface CommentResponseData {
   comment?: IComment;
-  task: ITicket; // Using proper ITicket type instead of any
+  task: ITicket; 
   assignee_changed: boolean;
   is_scheduled?: boolean; 
   scheduled_comment?: {
@@ -85,19 +73,15 @@ export interface CommentResponseData {
     scheduled_send_at: string;
     status: string;
     created_at: string;
-  }; 
+  };
 }
 
 export const createComment = async (
   taskId: number,
   payload: CreateCommentPayload
 ): Promise<CommentResponseData> => {
-  // Return the created IComment and task data on success
   try {
-    // Construct the full URL
     const url = `${AppConfigs.api}/tasks/${taskId}/comments`;
-
-    // Use fetchAPI.POST and expect BaseResponse<CommentResponseData>
     const response = await fetchAPI.POST<CommentResponseData>(url, payload);
 
     if (!response.success || !response.data) {
@@ -126,13 +110,8 @@ export interface S3ContentResponse {
   s3_url?: string;
   message: string;
 }
-
-// Cache en memoria para contenido S3
 const s3ContentCache = new Map<number, S3ContentResponse>();
-
 /**
- * Get comment content from S3 when it's stored there
- * Includes intelligent caching to avoid repeated calls
  * @param commentId
  * @returns
  */
