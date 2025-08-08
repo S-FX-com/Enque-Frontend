@@ -102,9 +102,9 @@ export function ScheduleSendCalendar({
               Cancel
             </Button>
             <Button
-              onClick={() => {
+              onClick={event => {
                 setPopCalendar(false);
-                handleSendReply;
+                handleSendReply(event);
               }}
             >
               <Send className="mr-2 h-4 w-4" />
