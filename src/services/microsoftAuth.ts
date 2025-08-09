@@ -42,6 +42,7 @@ export interface MicrosoftLinkResponse {
 }
 
 const SERVICE_ENDPOINT = `${AppConfigs.api}/microsoft/auth`;
+const AUTH_ENDPOINT = `${AppConfigs.api}/auth`;
 
 export const microsoftAuthService = {
   /**
@@ -351,21 +352,228 @@ export const microsoftAuthService = {
   /**
    * Initiate Microsoft 365 login flow
    */
-  async initiateLogin(redirectPath: string = '/dashboard'): Promise<void> {
+  async initiateLogin(): Promise<void> {
     try {
       const workspaceId = await this.getWorkspaceIdFromSubdomain();
-      const authUrlResponse = await this.getAuthUrl(workspaceId, redirectPath);
+      
+      // Usar el nuevo endpoint de autenticación para signin
+      const response = await fetch(`${AUTH_ENDPOINT}/microsoft/auth/url?workspace_id=${workspaceId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
 
-      if (authUrlResponse.success && authUrlResponse.data?.auth_url) {
-        window.location.href = authUrlResponse.data.auth_url;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to get auth URL');
+      }
+
+      const data = await response.json();
+      
+      if (data.auth_url) {
+        window.location.href = data.auth_url;
       } else {
-        throw new Error(authUrlResponse.message || 'Failed to get auth URL');
+        throw new Error('No auth URL received');
       }
     } catch (error) {
       logger.error(
         'Microsoft login initiation error:',
         error instanceof Error ? error.message : 'Network error'
       );
+      throw error;
+    }
+  },
+
+  /**
+   * Login with Microsoft 365 (handles both new users and existing account linking)
+   */
+  async loginWithMicrosoft(microsoftData: {
+    microsoft_id: string;
+    microsoft_email: string;
+    microsoft_tenant_id: string;
+    microsoft_profile_data?: string;
+    access_token: string;
+    expires_in: number;
+    workspace_id?: number;
+  }): Promise<ServiceResponse<{ access_token: string; token_type: string }>> {
+    try {
+      const response = await fetch(`${AUTH_ENDPOINT}/microsoft/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(microsoftData),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return {
+          success: false,
+          message: data.detail || 'Microsoft login failed',
+          data: undefined,
+        };
+      }
+
+      return {
+        success: true,
+        message: 'Successfully signed in with Microsoft 365',
+        data: data,
+      };
+    } catch (error) {
+      logger.error('Microsoft login error:', error instanceof Error ? error.message : 'Unknown error');
+      return {
+        success: false,
+        message: 'Network error during Microsoft login',
+        data: undefined,
+      };
+    }
+  },
+
+  /**
+   * Link Microsoft 365 account to existing authenticated agent
+   */
+  async linkMicrosoftAccount(
+    microsoftData: {
+      microsoft_id: string;
+      microsoft_email: string;
+      microsoft_tenant_id: string;
+      microsoft_profile_data?: string;
+    },
+    authToken: string
+  ): Promise<ServiceResponse<{ message: string; auth_method: string; microsoft_email: string }>> {
+    try {
+      const response = await fetch(`${AUTH_ENDPOINT}/microsoft/link`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+        },
+        body: JSON.stringify(microsoftData),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return {
+          success: false,
+          message: data.detail || 'Failed to link Microsoft account',
+          data: undefined,
+        };
+      }
+
+      return {
+        success: true,
+        message: data.message || 'Microsoft account linked successfully',
+        data: data,
+      };
+    } catch (error) {
+      logger.error('Microsoft account linking error:', error instanceof Error ? error.message : 'Unknown error');
+      return {
+        success: false,
+        message: 'Network error during Microsoft account linking',
+        data: undefined,
+      };
+    }
+  },
+
+  /**
+   * Get Microsoft user profile from Graph API
+   */
+  async getMicrosoftUserProfile(accessToken: string): Promise<ServiceResponse<MicrosoftProfileData>> {
+    try {
+      const response = await fetch('https://graph.microsoft.com/v1.0/me', {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+        },
+      });
+
+      if (!response.ok) {
+        return {
+          success: false,
+          message: 'Failed to get Microsoft user profile',
+          data: undefined,
+        };
+      }
+
+      const profileData = await response.json();
+      
+      return {
+        success: true,
+        message: 'Profile retrieved successfully',
+        data: {
+          id: profileData.id,
+          displayName: profileData.displayName,
+          givenName: profileData.givenName,
+          surname: profileData.surname,
+          mail: profileData.mail,
+          userPrincipalName: profileData.userPrincipalName,
+          jobTitle: profileData.jobTitle,
+          mobilePhone: profileData.mobilePhone,
+        },
+      };
+    } catch (error) {
+      logger.error('Error getting Microsoft profile:', error instanceof Error ? error.message : 'Unknown error');
+      return {
+        success: false,
+        message: 'Network error getting Microsoft profile',
+        data: undefined,
+      };
+    }
+  },
+
+  /**
+   * Initiate Microsoft 365 account linking for existing authenticated users
+   */
+  async initiateLinking(): Promise<void> {
+    try {
+      const workspaceId = await this.getWorkspaceIdFromSubdomain();
+      
+      // Get current user info
+      const authToken = localStorage.getItem('authToken');
+      if (!authToken) {
+        throw new Error('User must be authenticated to link Microsoft account');
+      }
+
+      // Decode JWT to get user info (basic decode, no verification needed here)
+      const payload = JSON.parse(atob(authToken.split('.')[1]));
+      const userId = payload.sub;
+
+      if (!userId) {
+        throw new Error('Could not determine user ID from auth token');
+      }
+
+      // Generate state with profile linking flag
+      const stateObject = {
+        workspace_id: workspaceId.toString(),
+        agent_id: userId.toString(),
+        original_hostname: window.location.hostname,
+        flow: 'profile_link'
+      };
+      const stateJsonString = JSON.stringify(stateObject);
+      let base64State = Buffer.from(stateJsonString).toString('base64');
+      base64State = base64State.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+
+      // Use the mailbox configuration endpoint with special state
+      const apiUrlBase = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://enque-backend-production.up.railway.app';
+      const fullApiUrl = `${apiUrlBase}/v1/microsoft/auth/authorize?state=${base64State}`;
+
+      const response = await fetch(fullApiUrl, {
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+        },
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.auth_url) {
+        window.location.href = data.auth_url;
+      } else {
+        throw new Error((data as { detail?: string }).detail || 'Failed to get authorization URL for linking');
+      }
+    } catch (error) {
+      logger.error('Microsoft account linking initiation error:', error instanceof Error ? error.message : 'Unknown error');
       throw error;
     }
   },

@@ -19,15 +19,47 @@ export default function SignInPage() {
   const [microsoftLoading, setMicrosoftLoading] = useState(false);
 
   useEffect(() => {
-    const fromError = new URLSearchParams(window.location.search).get('auth_error');
+    const searchParams = new URLSearchParams(window.location.search);
+    const fromError = searchParams.get('auth_error');
+    const microsoftToken = searchParams.get('microsoft_token');
+    const success = searchParams.get('success');
+    const error = searchParams.get('error');
+    const errorDescription = searchParams.get('error_description');
     
-    // Handle Microsoft 365 auth callback
+    // Handle Microsoft 365 auth callback from new endpoint
+    if (microsoftToken && success === 'true') {
+      // Store token and redirect to dashboard
+      localStorage.setItem('authToken', microsoftToken);
+      logger.info('Microsoft 365 authentication successful');
+      toast.success('Successfully signed in with Microsoft 365.');
+      window.location.replace(AppConfigs.routes.dashboard);
+      return;
+    }
+    
+    // Handle Microsoft auth errors
+    if (error) {
+      let errorMessage = 'Microsoft authentication failed';
+      if (error === 'missing_code') {
+        errorMessage = 'Authorization code was missing. Please try again.';
+      } else if (error === 'processing_failed') {
+        errorMessage = `Authentication failed: ${errorDescription || 'Unknown error'}`;
+      } else {
+        errorMessage = `Microsoft authentication error: ${error}`;
+      }
+      toast.error(errorMessage);
+      
+      // Clean up URL parameters
+      window.history.replaceState({}, document.title, window.location.pathname);
+      return;
+    }
+    
+    // Handle legacy Microsoft 365 auth callback (for mailbox configuration)
     const microsoftCallback = microsoftAuthService.handleAuthCallback();
     
     if (microsoftCallback.token) {
       // Store token and redirect to dashboard
       localStorage.setItem('authToken', microsoftCallback.token);
-      logger.info('Microsoft 365 authentication successful');
+      logger.info('Microsoft 365 authentication successful (legacy)');
       
       if (microsoftCallback.isNew) {
         toast.success('Welcome! Your Microsoft 365 account has been linked.');
@@ -104,7 +136,8 @@ export default function SignInPage() {
     setMicrosoftLoading(true);
     
     try {
-      await microsoftAuthService.initiateLogin('/dashboard');
+      // Start the Microsoft OAuth flow using the new authentication endpoint
+      await microsoftAuthService.initiateLogin();
       // If we reach here, redirect is happening, so don't reset loading state
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Microsoft authentication failed';

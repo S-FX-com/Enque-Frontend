@@ -147,6 +147,30 @@ export default function ProfileSettingsPage() {
     }
   }, [agentProfileData]);
 
+  // Handle Microsoft linking callback
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const microsoftLink = searchParams.get('microsoft_link');
+    const status = searchParams.get('status');
+    
+    if (microsoftLink === 'true') {
+      if (status === 'success') {
+        toast.success('Microsoft 365 account linked successfully!');
+        // Refresh auth status and profile data
+        refetchMicrosoftAuth();
+        if (agentId) {
+          queryClient.invalidateQueries({ queryKey: ['agent', agentId] });
+        }
+      } else if (status === 'error') {
+        const message = searchParams.get('message');
+        toast.error(`Failed to link Microsoft 365: ${message || 'Unknown error'}`);
+      }
+      
+      // Clean up URL parameters
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, [agentId, refetchMicrosoftAuth, queryClient]);
+
   const updateProfileMutation = useMutation({
     mutationFn: (payload: AgentUpdate) => {
       if (!agentId) throw new Error('User ID is missing');
@@ -177,7 +201,9 @@ export default function ProfileSettingsPage() {
   const linkMicrosoftMutation = useMutation({
     mutationFn: async () => {
       if (!agentId) throw new Error('User ID is missing');
-      await microsoftAuthService.initiateLogin('/settings/profile');
+      
+      // Use the specific linking method for authenticated users
+      await microsoftAuthService.initiateLinking();
     },
     onError: error => {
       console.error('Failed to initiate Microsoft link:', error);
