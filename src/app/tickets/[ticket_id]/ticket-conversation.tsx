@@ -1104,6 +1104,9 @@ export function TicketConversation({
 
   const handleSendReply = () => {
     if (!replyContent.trim() || !ticket?.id || isSending) return;
+    if (popCalendar) {
+      setPopCalendar(false);
+    }
     createCommentMutation.mutate();
   };
 

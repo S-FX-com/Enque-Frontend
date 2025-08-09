@@ -67,7 +67,7 @@ export function formatRelativeTime(dateString: string | Date | null | undefined)
       // If parsing failed, return the original string or a default message
       return typeof dateString === 'string' ? dateString : 'Invalid date';
     }
-    // Use formatDistanceToNow without includeSeconds
+    console.log(dateToParse);
     return formatDistanceToNow(dateToParse, { addSuffix: true });
   } catch (error) {
     console.error('Error formatting relative time:', dateString, error);

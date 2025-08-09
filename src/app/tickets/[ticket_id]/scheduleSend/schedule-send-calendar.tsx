@@ -1,5 +1,4 @@
 'use client';
-
 import React, { MouseEventHandler, Dispatch, SetStateAction } from 'react';
 import { format } from 'date-fns';
 
@@ -52,7 +51,9 @@ export function ScheduleSendCalendar({
   children,
 }: Props) {
   const maxDate: Date = new Date(year, month, day + 30);
-  const minDate: Date = new Date(year, month, day);
+  const minDate: Date = React.useMemo(() => {
+    return new Date(year, month, day);
+  }, [day, month, year]); //new Date(year, month, day);
 
   // Ensure date is initialized if null
   React.useEffect(() => {
@@ -116,7 +117,7 @@ export function ScheduleSendCalendar({
         </DialogContent>
       </Dialog>
 
-      <DropdownMenu>
+      <DropdownMenu modal={false}>
         <DropdownMenuTrigger asChild>{children}</DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-48">
           <DropdownMenuItem
