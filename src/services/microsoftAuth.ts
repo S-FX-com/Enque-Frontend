@@ -528,32 +528,11 @@ export const microsoftAuthService = {
    */
   async initiateLinking(): Promise<void> {
     try {
-      const workspaceId = await this.getWorkspaceIdFromSubdomain();
-      
       // Get current user info
       const authToken = localStorage.getItem('authToken');
       if (!authToken) {
         throw new Error('User must be authenticated to link Microsoft account');
       }
-
-      // Decode JWT to get user info (basic decode, no verification needed here)
-      const payload = JSON.parse(atob(authToken.split('.')[1]));
-      const userId = payload.sub;
-
-      if (!userId) {
-        throw new Error('Could not determine user ID from auth token');
-      }
-
-      // Generate state with profile linking flag
-      const stateObject = {
-        workspace_id: workspaceId.toString(),
-        agent_id: userId.toString(),
-        original_hostname: window.location.hostname,
-        flow: 'profile_link'
-      };
-      const stateJsonString = JSON.stringify(stateObject);
-      let base64State = Buffer.from(stateJsonString).toString('base64');
-      base64State = base64State.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 
       // Use the specific profile linking endpoint with minimal permissions
       const apiUrlBase = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://enque-backend-production.up.railway.app';
