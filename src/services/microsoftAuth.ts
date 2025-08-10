@@ -555,9 +555,9 @@ export const microsoftAuthService = {
       let base64State = Buffer.from(stateJsonString).toString('base64');
       base64State = base64State.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 
-      // Use the mailbox configuration endpoint with special state
+      // Use the specific profile linking endpoint with minimal permissions
       const apiUrlBase = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://enque-backend-production.up.railway.app';
-      const fullApiUrl = `${apiUrlBase}/v1/microsoft/auth/authorize?state=${base64State}`;
+      const fullApiUrl = `${apiUrlBase}/v1/auth/microsoft/profile/auth/url`;
 
       const response = await fetch(fullApiUrl, {
         headers: {
