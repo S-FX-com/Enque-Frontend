@@ -534,9 +534,10 @@ export const microsoftAuthService = {
         throw new Error('User must be authenticated to link Microsoft account');
       }
 
-      // Use the specific profile linking endpoint with minimal permissions
-      const apiUrlBase = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://enque-backend-production.up.railway.app';
-      const fullApiUrl = `${apiUrlBase}/v1/auth/microsoft/profile/auth/url`;
+          // Use the specific profile linking endpoint with minimal permissions
+    const apiUrlBase = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://enque-backend-production.up.railway.app';
+    const originUrl = window.location.origin; // e.g., https://users.enque.cc
+    const fullApiUrl = `${apiUrlBase}/v1/auth/microsoft/profile/auth/url?origin_url=${encodeURIComponent(originUrl)}`;
 
       const response = await fetch(fullApiUrl, {
         headers: {
