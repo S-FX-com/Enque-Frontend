@@ -6,7 +6,6 @@ import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { authService } from '@/services/auth';
-import { microsoftAuthService } from '@/services/microsoftAuth';
 import { AppConfigs } from '@/configs';
 import { logger } from '@/lib/logger';
 import { removeAuthToken, isAuthenticated, setupHistoryProtection } from '@/lib/auth';
@@ -16,65 +15,10 @@ export default function SignInPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [microsoftLoading, setMicrosoftLoading] = useState(false);
 
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
     const fromError = searchParams.get('auth_error');
-    const microsoftToken = searchParams.get('microsoft_token');
-    const success = searchParams.get('success');
-    const error = searchParams.get('error');
-    const errorDescription = searchParams.get('error_description');
-    
-    // Handle Microsoft 365 auth callback from new endpoint
-    if (microsoftToken && success === 'true') {
-      // Store token and redirect to dashboard
-      localStorage.setItem('authToken', microsoftToken);
-      logger.info('Microsoft 365 authentication successful');
-      toast.success('Successfully signed in with Microsoft 365.');
-      window.location.replace(AppConfigs.routes.dashboard);
-      return;
-    }
-    
-    // Handle Microsoft auth errors
-    if (error) {
-      let errorMessage = 'Microsoft authentication failed';
-      if (error === 'missing_code') {
-        errorMessage = 'Authorization code was missing. Please try again.';
-      } else if (error === 'processing_failed') {
-        errorMessage = `Authentication failed: ${errorDescription || 'Unknown error'}`;
-      } else {
-        errorMessage = `Microsoft authentication error: ${error}`;
-      }
-      toast.error(errorMessage);
-      
-      // Clean up URL parameters
-      window.history.replaceState({}, document.title, window.location.pathname);
-      return;
-    }
-    
-    // Handle legacy Microsoft 365 auth callback (for mailbox configuration)
-    const microsoftCallback = microsoftAuthService.handleAuthCallback();
-    
-    if (microsoftCallback.token) {
-      // Store token and redirect to dashboard
-      localStorage.setItem('authToken', microsoftCallback.token);
-      logger.info('Microsoft 365 authentication successful (legacy)');
-      
-      if (microsoftCallback.isNew) {
-        toast.success('Welcome! Your Microsoft 365 account has been linked.');
-      } else {
-        toast.success('Successfully signed in with Microsoft 365.');
-      }
-      
-      window.location.replace(AppConfigs.routes.dashboard);
-      return;
-    }
-    
-    if (microsoftCallback.error) {
-      toast.error(`Microsoft 365 authentication failed: ${microsoftCallback.error}`);
-      return;
-    }
 
     if (fromError) {
       toast.error('Your session has expired. Please sign in again.');
@@ -132,20 +76,7 @@ export default function SignInPage() {
     }
   };
 
-  const handleMicrosoftSignIn = async () => {
-    setMicrosoftLoading(true);
-    
-    try {
-      // Start the Microsoft OAuth flow using the new authentication endpoint
-      await microsoftAuthService.initiateLogin();
-      // If we reach here, redirect is happening, so don't reset loading state
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Microsoft authentication failed';
-      logger.error(`Microsoft auth error`, errorMessage);
-      toast.error('Microsoft authentication failed. Please try again.');
-      setMicrosoftLoading(false);
-    }
-  };
+
 
   return (
     <main className="flex flex-col items-center justify-center min-h-screen p-4 bg-[#F4F7FE]">
@@ -212,59 +143,6 @@ export default function SignInPage() {
               )}
             </Button>
           </form>
-
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-white px-2 text-muted-foreground">Or continue with</span>
-            </div>
-          </div>
-
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full"
-            onClick={handleMicrosoftSignIn}
-            disabled={loading || microsoftLoading}
-          >
-            {microsoftLoading ? (
-              <span className="flex items-center justify-center gap-2">
-                <svg
-                  className="animate-spin -ml-1 mr-2 h-4 w-4"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  ></circle>
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  ></path>
-                </svg>
-                Connecting to Microsoft...
-              </span>
-            ) : (
-              <>
-                <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
-                  <path
-                    fill="currentColor"
-                    d="M11.4 24H0V12.6h11.4V24zM24 24H12.6V12.6H24V24zM11.4 11.4H0V0h11.4v11.4zM24 11.4H12.6V0H24v11.4z"
-                  />
-                </svg>
-                Continue with Microsoft 365
-              </>
-            )}
-          </Button>
 
           <div className="text-center pt-4">
             <p className="text-sm text-slate-500">
