@@ -158,6 +158,9 @@ export default function ProfileSettingsPage() {
         toast.success('Microsoft 365 account linked successfully!');
         // Refresh auth status and profile data
         refetchMicrosoftAuth();
+        // Invalidar todas las queries relacionadas con Microsoft auth
+        queryClient.invalidateQueries({ queryKey: ['microsoftAuthStatus'] });
+        queryClient.invalidateQueries({ queryKey: ['microsoftProfile'] });
         if (agentId) {
           queryClient.invalidateQueries({ queryKey: ['agent', agentId] });
         }
