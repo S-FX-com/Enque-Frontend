@@ -29,6 +29,7 @@ import {
   MicrosoftAuthStatus,
   MicrosoftProfileData,
 } from '@/services/microsoftAuth';
+import { getAuthToken } from '@/lib/auth';
 import Link from 'next/link';
 
 const DetailRow: React.FC<{ label: string; value: React.ReactNode }> = ({ label, value }) => (
@@ -102,7 +103,7 @@ export default function ProfileSettingsPage() {
   } = useQuery<MicrosoftAuthStatus>({
     queryKey: ['microsoftAuthStatus', agentId],
     queryFn: async () => {
-      const token = localStorage.getItem('authToken');
+      const token = getAuthToken();
       if (!token) throw new Error('No auth token');
       const response = await microsoftAuthService.getAuthStatus(token);
       if (!response.success) throw new Error(response.message);
@@ -117,7 +118,7 @@ export default function ProfileSettingsPage() {
     useQuery<MicrosoftProfileData>({
       queryKey: ['microsoftProfile', agentId],
       queryFn: async () => {
-        const token = localStorage.getItem('authToken');
+        const token = getAuthToken();
         if (!token) throw new Error('No auth token');
         const response = await microsoftAuthService.getProfile(token);
         if (!response.success) throw new Error(response.message);
@@ -218,7 +219,7 @@ export default function ProfileSettingsPage() {
   const unlinkMicrosoftMutation = useMutation({
     mutationFn: async () => {
       if (!agentId) throw new Error('User ID is missing');
-      const token = localStorage.getItem('authToken');
+      const token = getAuthToken();
       if (!token) throw new Error('No auth token');
 
       const response = await microsoftAuthService.unlinkAgent(token, agentId);
