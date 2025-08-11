@@ -1,8 +1,3 @@
-/**
- * Microsoft 365 Authentication Service
- * Handles OAuth flow and agent linking
- */
-
 import { AppConfigs } from '@/configs';
 import { ServiceResponse } from '@/typescript';
 import { logger } from '@/lib/logger';
@@ -46,9 +41,6 @@ const SERVICE_ENDPOINT = `${AppConfigs.api}/microsoft/auth`;
 const AUTH_ENDPOINT = `${AppConfigs.api}/auth`;
 
 export const microsoftAuthService = {
-  /**
-   * Get Microsoft OAuth authorization URL
-   */
   async getAuthUrl(
     workspaceId: number,
     redirectPath: string = '/dashboard'
@@ -101,10 +93,6 @@ export const microsoftAuthService = {
       };
     }
   },
-
-  /**
-   * Get Microsoft authentication status for current user
-   */
   async getAuthStatus(token: string): Promise<ServiceResponse<MicrosoftAuthStatus>> {
     try {
       const response = await fetch(`${SERVICE_ENDPOINT}/status`, {
@@ -140,10 +128,6 @@ export const microsoftAuthService = {
       };
     }
   },
-
-  /**
-   * Get Microsoft profile for current user
-   */
   async getProfile(
     token: string,
     agentId?: number
@@ -185,9 +169,6 @@ export const microsoftAuthService = {
     }
   },
 
-  /**
-   * Link existing agent to Microsoft 365
-   */
   async linkAgent(
     token: string,
     agentId: number,
@@ -233,10 +214,6 @@ export const microsoftAuthService = {
       };
     }
   },
-
-  /**
-   * Unlink agent from Microsoft 365
-   */
   async unlinkAgent(
     token: string,
     agentId: number
@@ -280,26 +257,18 @@ export const microsoftAuthService = {
     }
   },
 
-  /**
-   * Handle Microsoft auth callback (for frontend processing)
-   */
   handleAuthCallback(): { token?: string; error?: string; isNew?: boolean } {
     if (typeof window === 'undefined') {
       return {};
     }
 
     const urlParams = new URLSearchParams(window.location.search);
-
-    // Check for success parameters
     const token = urlParams.get('token');
     const isNew = urlParams.get('is_new') === 'true';
     const m365Auth = urlParams.get('m365_auth');
-
-    // Check for error parameters
     const error = urlParams.get('error');
 
     if (m365Auth === 'success' && token) {
-      // Clean URL
       const newUrl = window.location.pathname;
       window.history.replaceState({}, document.title, newUrl);
 
@@ -307,7 +276,6 @@ export const microsoftAuthService = {
     }
 
     if (error) {
-      // Clean URL
       const newUrl = window.location.pathname;
       window.history.replaceState({}, document.title, newUrl);
 
@@ -317,12 +285,9 @@ export const microsoftAuthService = {
     return {};
   },
 
-  /**
-   * Get workspace ID from current subdomain
-   */
   async getWorkspaceIdFromSubdomain(): Promise<number> {
     if (typeof window === 'undefined') {
-      return 1; // Default workspace
+      return 1; 
     }
 
     const hostname = window.location.hostname;
@@ -332,7 +297,6 @@ export const microsoftAuthService = {
       const subdomain = hostname.replace('.enque.cc', '');
 
       try {
-        // Call workspace service to get workspace ID
         const response = await fetch(`${AppConfigs.api}/workspaces/by-subdomain/${subdomain}`);
 
         if (response.ok) {
@@ -347,17 +311,13 @@ export const microsoftAuthService = {
       }
     }
 
-    return 1; // Default workspace
+    return 1; 
   },
 
-  /**
-   * Initiate Microsoft 365 login flow
-   */
   async initiateLogin(): Promise<void> {
     try {
       const workspaceId = await this.getWorkspaceIdFromSubdomain();
-      
-      // Usar el nuevo endpoint de autenticación para signin
+
       const response = await fetch(`${AUTH_ENDPOINT}/microsoft/auth/url?workspace_id=${workspaceId}`, {
         method: 'GET',
         headers: {
@@ -385,10 +345,6 @@ export const microsoftAuthService = {
       throw error;
     }
   },
-
-  /**
-   * Login with Microsoft 365 (handles both new users and existing account linking)
-   */
   async loginWithMicrosoft(microsoftData: {
     microsoft_id: string;
     microsoft_email: string;
@@ -524,9 +480,6 @@ export const microsoftAuthService = {
     }
   },
 
-  /**
-   * Initiate Microsoft 365 account linking for existing authenticated users
-   */
   async initiateLinking(): Promise<void> {
     try {
       // Get current user info
@@ -535,9 +488,8 @@ export const microsoftAuthService = {
         throw new Error('User must be authenticated to link Microsoft account');
       }
 
-          // Use the specific profile linking endpoint with minimal permissions
     const apiUrlBase = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://enque-backend-production.up.railway.app';
-    const originUrl = window.location.origin; // e.g., https://users.enque.cc
+    const originUrl = window.location.origin; 
     const fullApiUrl = `${apiUrlBase}/v1/microsoft/profile/auth/url?origin_url=${encodeURIComponent(originUrl)}`;
 
       const response = await fetch(fullApiUrl, {
