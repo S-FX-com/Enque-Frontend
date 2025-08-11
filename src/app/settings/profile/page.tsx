@@ -1,5 +1,4 @@
 'use client';
-
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -94,8 +93,6 @@ export default function ProfileSettingsPage() {
     enabled: !!user?.workspace_id,
     staleTime: 5 * 60 * 1000,
   });
-
-  // Microsoft 365 Auth Status
   const {
     data: microsoftAuthStatus,
     isLoading: isLoadingMicrosoftAuth,
@@ -113,7 +110,6 @@ export default function ProfileSettingsPage() {
     staleTime: 5 * 60 * 1000,
   });
 
-  // Microsoft 365 Profile Data (only if linked)
   const { data: microsoftProfile, isLoading: isLoadingMicrosoftProfile } =
     useQuery<MicrosoftProfileData>({
       queryKey: ['microsoftProfile', agentId],
@@ -147,8 +143,6 @@ export default function ProfileSettingsPage() {
       setAvatarUrl(undefined);
     }
   }, [agentProfileData]);
-
-  // Handle Microsoft linking callback
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
     const microsoftLink = searchParams.get('microsoft_link');
@@ -157,9 +151,7 @@ export default function ProfileSettingsPage() {
     if (microsoftLink === 'true') {
       if (status === 'success') {
         toast.success('Microsoft 365 account linked successfully!');
-        // Refresh auth status and profile data
         refetchMicrosoftAuth();
-        // Invalidar todas las queries relacionadas con Microsoft auth
         queryClient.invalidateQueries({ queryKey: ['microsoftAuthStatus'] });
         queryClient.invalidateQueries({ queryKey: ['microsoftProfile'] });
         if (agentId) {
@@ -169,8 +161,7 @@ export default function ProfileSettingsPage() {
         const message = searchParams.get('message');
         toast.error(`Failed to link Microsoft 365: ${message || 'Unknown error'}`);
       }
-      
-      // Clean up URL parameters
+
       window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, [agentId, refetchMicrosoftAuth, queryClient]);
@@ -200,13 +191,10 @@ export default function ProfileSettingsPage() {
       toast.error(`Failed to update profile: ${error.message}`);
     },
   });
-
-  // Microsoft 365 Link Mutation
   const linkMicrosoftMutation = useMutation({
     mutationFn: async () => {
       if (!agentId) throw new Error('User ID is missing');
-      
-      // Use the specific linking method for authenticated users
+ 
       await microsoftAuthService.initiateLinking();
     },
     onError: error => {
@@ -215,7 +203,6 @@ export default function ProfileSettingsPage() {
     },
   });
 
-  // Microsoft 365 Unlink Mutation
   const unlinkMicrosoftMutation = useMutation({
     mutationFn: async () => {
       if (!agentId) throw new Error('User ID is missing');
@@ -640,7 +627,7 @@ export default function ProfileSettingsPage() {
                     <Skeleton className="h-4 w-2/3" />
                   </div>
                 ) : (
-                  microsoftProfile && (
+                  microsoftProfile && microsoftAuthStatus?.is_linked && (
                     <div className="p-4 border rounded-lg bg-muted/20">
                       <h4 className="text-sm font-medium mb-2">Microsoft Profile</h4>
                       <div className="space-y-1 text-sm text-muted-foreground">
