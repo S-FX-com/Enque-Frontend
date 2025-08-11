@@ -6,6 +6,7 @@
 import { AppConfigs } from '@/configs';
 import { ServiceResponse } from '@/typescript';
 import { logger } from '@/lib/logger';
+import { getAuthToken } from '@/lib/auth';
 
 export interface MicrosoftAuthUrlResponse {
   auth_url: string;
@@ -529,7 +530,7 @@ export const microsoftAuthService = {
   async initiateLinking(): Promise<void> {
     try {
       // Get current user info
-      const authToken = localStorage.getItem('authToken');
+      const authToken = getAuthToken();
       if (!authToken) {
         throw new Error('User must be authenticated to link Microsoft account');
       }
