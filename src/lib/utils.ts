@@ -1,6 +1,6 @@
 import { ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow, format } from 'date-fns';
 import { TicketPriority, TicketStatus } from '@/typescript/ticket'; // Import ticket types
 
 /**
@@ -54,6 +54,7 @@ export function formatRelativeTime(dateString: string | Date | null | undefined)
     }
 
     let dateToParse: Date;
+    const dateToday: Date = new Date();
     if (typeof dateString === 'string') {
       // Ensure the date string is treated as UTC by appending 'Z' if no timezone info exists
       const hasTimezone = /Z|([+-]\d{2}:\d{2})$/.test(dateString);
@@ -67,8 +68,14 @@ export function formatRelativeTime(dateString: string | Date | null | undefined)
       // If parsing failed, return the original string or a default message
       return typeof dateString === 'string' ? dateString : 'Invalid date';
     }
-    console.log(dateToParse);
-    return formatDistanceToNow(dateToParse, { addSuffix: true });
+    //console.log(dateToParse);
+    //console.log(typeof formatDistanceToNow(dateToParse, { addSuffix: true }));
+    //console.log(formatDistanceToNow(dateToParse, { addSuffix: true }));
+    if (dateToday.getDate() === dateToParse.getDate()) {
+      return formatDistanceToNow(dateToParse, { addSuffix: true });
+    }
+    //return formatDistanceToNow(dateToParse, { addSuffix: true });
+    return format(dateToParse, 'ccc MM/dd/yyyy');
   } catch (error) {
     console.error('Error formatting relative time:', dateString, error);
     return typeof dateString === 'string' ? dateString : 'Error formatting date';
