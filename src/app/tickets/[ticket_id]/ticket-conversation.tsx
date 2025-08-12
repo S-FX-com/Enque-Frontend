@@ -965,20 +965,43 @@ export function TicketConversation({
       }
 
       if (latestNonPrivateMessage) {
-        let latestMessageContent = '';
+        let latestMessage = {
+          name: 'Unknown',
+          email: 'Unknown',
+          date: '',
+          content: '',
+        };
         if (conversationItems.isOptimized) {
           const optimizedMessage = latestNonPrivateMessage as TicketHtmlContent;
-          latestMessageContent = optimizedMessage.content || '';
+          latestMessage = {
+            name: optimizedMessage.sender.name,
+            email: optimizedMessage.sender.email,
+            date: optimizedMessage.created_at,
+            content: optimizedMessage.content || '',
+          };
         } else {
           const commentMessage = latestNonPrivateMessage as IComment;
-          latestMessageContent = commentMessage.content || '';
+          if (commentMessage.agent)
+            latestMessage = {
+              name: commentMessage.agent.name,
+              email: commentMessage.agent.email,
+              date: commentMessage.created_at,
+              content: commentMessage.content || '',
+            };
+          else if (commentMessage.user)
+            latestMessage = {
+              name: commentMessage.user.name,
+              email: commentMessage.user.email,
+              date: commentMessage.created_at,
+              content: commentMessage.content || '',
+            };
         }
 
-        if (latestMessageContent.trim()) {
-          const bodyMatch = latestMessageContent.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
-          if (bodyMatch && bodyMatch[1]) latestMessageContent = bodyMatch[1].trim();
+        if (latestMessage.content.trim()) {
+          const bodyMatch = latestMessage.content.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+          if (bodyMatch && bodyMatch[1]) latestMessage.content = bodyMatch[1].trim();
 
-          const reply = `<blockquote type="cite">${createReplyHeader(new Date(), 'Alex Cuevas', 'alex@s-fx.com')}<div style="margin:0 0 0 .8em; border-left:1px solid #ccc; padding-left:1em;">${latestMessageContent}</div></blockquote>`;
+          const reply = `<blockquote type="cite">${createReplyHeader(new Date(latestMessage.date), latestMessage.name, latestMessage.email)}<div style="margin:0 0 0 .8em; border-left:1px solid #ccc; padding-left:1em;">${latestMessage.content}</div></blockquote>`;
           finalContent = `${content}${reply}`;
         }
       }
