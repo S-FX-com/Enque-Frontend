@@ -33,7 +33,7 @@ import { toast } from 'sonner';
 import { uploadAttachments } from '@/services/attachmentService';
 import { getEnabledGlobalSignature } from '@/services/global-signature';
 import { getCannedReplies, type CannedReply } from '@/services/canned-replies';
-import { formatRelativeTime } from '@/lib/utils';
+import { createReplyHeader, formatRelativeTime } from '@/lib/utils';
 import { ScheduleSendCalendar } from './scheduleSend/schedule-send-calendar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import BoringAvatar from 'boring-avatars';
@@ -228,6 +228,7 @@ export interface DateScheduleSend {
 }
 
 function findQuoteStartIndex(html: string): number {
+  console.log(html);
   const patterns = [
     /<p[^>]*><strong>From:<\/strong>/i,
     /<div[^>]*>From:\s+[^<]+@[^>]+>/i,
@@ -251,6 +252,7 @@ function findQuoteStartIndex(html: string): number {
     /<div[^>]*style=["'][^"']*border:none;\s*border-top:solid\s+#E1E1E1/i,
 
     /^On\s+\w{3},\s+\w{3,9}\s+\d{1,2},\s+\d{4}\s+at\s+\d{1,2}:\d{2}\s*(AM|PM|am|pm)?\s+.+@[^>]+>\s+wrote:/m,
+    /^On\s+\w{3},?\s+\w{3,9}\s+\d{1,2},\s+\d{4}\s+at\s+\d{1,2}:\d{2}\s*(AM|PM|am|pm)?\s+&lt;<a\s+href=["']mailto:[^"']+["']>[^<]+<\/a>&gt;\s+wrote:/m,
   ];
 
   let earliestIndex = -1;
@@ -942,35 +944,47 @@ export function TicketConversation({
       throw new Error('Invalid email addresses in BCC recipients.');
     }
 
-    // Extract latest message content and prepend it with enque-quote class
-    const finalContent = content;
-    // let finalContent = content;
-    // if (conversationItems.items.length > 0 && !isPrivate) {
-    //   const latestMessage = conversationItems.items[0];
-    //   let latestMessageContent = '';
+    let finalContent = content;
+    if (conversationItems.items.length > 0 && !isPrivate) {
+      // Find the last message that is not private
+      let latestNonPrivateMessage = null;
+      for (const item of conversationItems.items) {
+        if (conversationItems.isOptimized) {
+          const optimizedMessage = item as TicketHtmlContent;
+          if (!optimizedMessage.is_private) {
+            latestNonPrivateMessage = optimizedMessage;
+            break;
+          }
+        } else {
+          const commentMessage = item as IComment;
+          if (!commentMessage.is_private) {
+            latestNonPrivateMessage = commentMessage;
+            break;
+          }
+        }
+      }
 
-    //   if (conversationItems.isOptimized) {
-    //     const optimizedMessage = latestMessage as TicketHtmlContent;
-    //     latestMessageContent = optimizedMessage.content || '';
-    //   } else {
-    //     const commentMessage = latestMessage as IComment;
-    //     latestMessageContent = commentMessage.content || '';
-    //   }
+      if (latestNonPrivateMessage) {
+        let latestMessageContent = '';
+        if (conversationItems.isOptimized) {
+          const optimizedMessage = latestNonPrivateMessage as TicketHtmlContent;
+          latestMessageContent = optimizedMessage.content || '';
+        } else {
+          const commentMessage = latestNonPrivateMessage as IComment;
+          latestMessageContent = commentMessage.content || '';
+        }
 
-    //   // 🔧 MODIFICACIÓN PRINCIPAL: Limpiar contenido citado antes de agregarlo como quote
-    //   if (latestMessageContent.trim()) {
-    //     // Usar la nueva función para limpiar el contenido citado
-    //     const cleanedLatestContent = cleanQuotedContent(latestMessageContent);
+        if (latestMessageContent.trim()) {
+          const bodyMatch = latestMessageContent.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+          if (bodyMatch && bodyMatch[1]) latestMessageContent = bodyMatch[1].trim();
 
-    //     // Solo agregar como quote si queda contenido después de la limpieza
-    //     if (cleanedLatestContent.trim()) {
-    //       // Wrap the cleaned latest message in enque-quote div
-    //       const quotedContent = `<div class="enque-quote" style="border-left: 3px solid #e5e7eb; padding-left: 12px; margin-top: 16px; color: #6b7280; font-style: italic;">${cleanedLatestContent}</div>`;
-    //       // Prepend to the current content
-    //       finalContent = content + quotedContent;
-    //     }
-    //   }
-    // }
+          const replyHeader = createReplyHeader(new Date(), 'Alex Cuevas', 'alex@s-fx.com');
+          const replyBody = `<blockquote type="cite" style="margin:0 0 0 .8em; border-left:1px solid #ccc; padding-left:1em;">${latestMessageContent}</blockquote>`;
+
+          finalContent = `${content}${replyHeader + replyBody}`;
+        }
+      }
+    }
 
     let attachmentIds: number[] = [];
     if (selectedAttachments && selectedAttachments.length > 0) {
@@ -995,8 +1009,8 @@ export function TicketConversation({
           throw new Error('Invalid time format');
         }
 
-        let hours = parseInt(timeMatch[1], 10);
-        const minutes = parseInt(timeMatch[2], 10);
+        let hours = Number.parseInt(timeMatch[1], 10);
+        const minutes = Number.parseInt(timeMatch[2], 10);
         const period = timeMatch[3].toUpperCase();
 
         if (period === 'AM' && hours === 12) {
