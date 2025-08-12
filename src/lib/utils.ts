@@ -2,6 +2,7 @@ import { ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { formatDistanceToNow, format } from 'date-fns';
 import { TicketPriority, TicketStatus } from '@/typescript/ticket'; // Import ticket types
+import { enUS } from 'date-fns/locale';
 
 /**
  * Combines multiple class names into a single string, properly handles
@@ -121,4 +122,11 @@ export const getStatusVariant = (
     default:
       return 'outline';
   }
+};
+
+export const createReplyHeader = (date: Date, name: string, email: string) => {
+  const formattedDate = format(date, "EEE, dd MMM yyyy 'at' h:mm a", {
+    locale: enUS,
+  });
+  return `On ${formattedDate} ${name} <<a href="mailto:${email}">${email}</a>> wrote:<br>`;
 };
