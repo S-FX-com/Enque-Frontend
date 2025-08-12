@@ -346,7 +346,7 @@ function OptimizedMessageItem({ content, isInitial = false, ticket }: OptimizedM
     let displayQuotedPart: string | null = null;
     let showToggleButton = false;
 
-    if (senderInfo.isUserReply && processedContent) {
+    if (processedContent) {
       const quoteStartIndex = findQuoteStartIndex(processedContent);
       if (quoteStartIndex !== -1) {
         displayReplyPart = processedContent.substring(0, quoteStartIndex);
@@ -362,7 +362,7 @@ function OptimizedMessageItem({ content, isInitial = false, ticket }: OptimizedM
     }
 
     return { displayReplyPart, displayQuotedPart, showToggleButton };
-  }, [processedContent, senderInfo.isUserReply]);
+  }, [processedContent]);
 
   const agentAvatarColors = ['#1D73F4', '#D4E4FA'];
   const userAvatarColors = ['#a3a948', '#edb92e', '#f85931', '#ce1836', '#009989'];
@@ -978,10 +978,8 @@ export function TicketConversation({
           const bodyMatch = latestMessageContent.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
           if (bodyMatch && bodyMatch[1]) latestMessageContent = bodyMatch[1].trim();
 
-          const replyHeader = createReplyHeader(new Date(), 'Alex Cuevas', 'alex@s-fx.com');
-          const replyBody = `<blockquote type="cite" style="margin:0 0 0 .8em; border-left:1px solid #ccc; padding-left:1em;">${latestMessageContent}</blockquote>`;
-
-          finalContent = `${content}${replyHeader + replyBody}`;
+          const reply = `<blockquote type="cite">${createReplyHeader(new Date(), 'Alex Cuevas', 'alex@s-fx.com')}<div style="margin:0 0 0 .8em; border-left:1px solid #ccc; padding-left:1em;">${latestMessageContent}</div></blockquote>`;
+          finalContent = `${content}${reply}`;
         }
       }
     }
