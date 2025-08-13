@@ -395,36 +395,38 @@ export function Topbar({
                           // Determine avatar details and colors based on source type and creator/agent
                           const isTicketCreation = notification.source_type === 'Ticket';
                           const isComment = notification.source_type === 'Comment';
-                          const isUserCreator =
-                            isTicketCreation &&
-                            (notification.creator_user_id || notification.creator_user_email);
+                          // Determine if this is a user activity (either ticket creation or comment from user)
+                          let isUserActivity = false;
+                          let displayName = 'User';
+                          
+                          if (notification.creator_user_name) {
+                            displayName = notification.creator_user_name;
+                            isUserActivity = true;
+                          } else if (notification.action) {
+                            // Extract name from action text and determine if it's a user activity
+                            if (notification.action.includes(' logged a new ticket')) {
+                              displayName = notification.action.replace(' logged a new ticket', '');
+                              isUserActivity = true;
+                            } else if (notification.action.includes(' commented on ticket')) {
+                              displayName = notification.action.replace(' commented on ticket', '');
+                              isUserActivity = true;
+                            } else if (notification.action.includes(' replied via email')) {
+                              displayName = notification.action.replace(' replied via email', '');
+                              isUserActivity = true;
+                            }
+                          }
 
-                          const avatarName = isUserCreator
+                          const avatarName = isUserActivity
                             ? notification.creator_user_email ||
                               `user-${notification.creator_user_id}` ||
+                              displayName.toLowerCase().replace(/\s+/g, '-') ||
                               'unknown-user'
                             : notification.agent?.email ||
                               notification.agent?.name ||
                               `agent-${notification.agent_id}` ||
                               'system';
 
-                          // Determine display name based on creator_user_name or action content
-                          let displayName = 'User';
-                          
-                          if (notification.creator_user_name) {
-                            displayName = notification.creator_user_name;
-                          } else if (notification.action) {
-                            // Extract name from action text
-                            if (notification.action.includes(' logged a new ticket')) {
-                              displayName = notification.action.replace(' logged a new ticket', '');
-                            } else if (notification.action.includes(' commented on ticket')) {
-                              displayName = notification.action.replace(' commented on ticket', '');
-                            } else if (notification.action.includes(' replied via email')) {
-                              displayName = notification.action.replace(' replied via email', '');
-                            }
-                          }
-
-                          const avatarColors = isUserCreator ? userAvatarColors : agentAvatarColors; // Choose palette
+                          const avatarColors = isUserActivity ? userAvatarColors : agentAvatarColors; // Choose palette
 
                           const notificationContent = (
                             <div key={notification.id} className="flex items-start gap-3">
