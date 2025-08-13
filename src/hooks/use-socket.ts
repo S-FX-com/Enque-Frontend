@@ -353,20 +353,16 @@ export function useSocket() {
         }
       );
 
-      // Mostrar notificación si no es del usuario actual
-      if (data.agent_id !== user?.id) {
-        const senderName = data.agent_name || data.user_name || 'Someone';
-        toast.info(`${senderName} added a comment to ticket #${data.ticket_id}`);
+  
+      if (!data.agent_id && data.user_name) {
+        toast.info(`${data.user_name} commented on ticket #${data.ticket_id}`);
       }
       setTimeout(() => {
         queryClient.invalidateQueries({ queryKey: ['comments', data.ticket_id] });
         queryClient.invalidateQueries({ queryKey: ['ticketHtml', data.ticket_id] });
         console.log(`🔄 Backup invalidation triggered for ticket ${data.ticket_id}`);
       }, 500);
-
-      // ✅ RÁPIDO: Resetear botón inmediatamente cuando llega nuestro comentario
       if (data.agent_id === user?.id) {
-        // Es nuestro propio comentario, disparar evento inmediatamente
         window.dispatchEvent(
           new CustomEvent('commentSyncCompleted', {
             detail: { ticket_id: data.ticket_id, comment_id: data.id },
