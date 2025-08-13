@@ -23,7 +23,7 @@ import {
   type CreateCommentPayload,
   type CommentResponseData,
 } from '@/services/comment';
-import { getTicketHtmlContent, type TicketHtmlContent } from '@/services/ticket';
+import { getTicketHtmlContent, updateTicket, type TicketHtmlContent } from '@/services/ticket';
 import { ConversationMessageItem } from '@/components/conversation-message-item';
 import { InitialTicketMessage } from '@/components/conversation-message-item';
 import { useAuth } from '@/hooks/use-auth';
@@ -484,7 +484,7 @@ function OptimizedMessageItem({ content, isInitial = false, ticket }: OptimizedM
             )}
           </p>
           <p className="text-xs text-muted-foreground mt-0.5">
-            {formatRelativeTime(content.created_at)}
+            {formatRelativeTime(content.created_at, true)}
           </p>
         </div>
 
@@ -1103,7 +1103,7 @@ export function TicketConversation({
       setIsSending(true);
       return { replyContent, isPrivateNote };
     },
-    onSuccess: (data: CommentResponseData) => {
+    onSuccess: async (data: CommentResponseData) => {
       setIsSending(false);
       setReplyContent('');
       setSelectedAttachments([]);
@@ -1120,13 +1120,40 @@ export function TicketConversation({
         toast.success('Reply sent successfully.');
       }
 
+      const needsAutoAssignment = currentUser && ticket && ticket.assignee_id !== currentUser.id;
+
       if (data.task && onTicketUpdate) {
-        onTicketUpdate(data.task);
-        queryClient.setQueryData(['ticket', ticket.id], [data.task]);
+        let updatedTask = data.task;
+        if (needsAutoAssignment) {
+          updatedTask = { ...data.task, assignee_id: currentUser.id };
+          try {
+            await updateTicket(ticket.id, { assignee_id: currentUser.id });
+            toast.info(`Ticket automatically assigned to you.`);
+          } catch (error) {
+            console.error('Failed to auto-assign ticket:', error);
+            // Use original task data if assignment fails
+            updatedTask = data.task;
+          }
+        }
+
+        onTicketUpdate(updatedTask);
+        queryClient.setQueryData(['ticket', ticket.id], updatedTask);
         queryClient.invalidateQueries({ queryKey: ['tickets'] });
 
         if (data.assignee_changed && currentUser) {
           toast.info(`You were automatically assigned to this ticket.`);
+        }
+      } else if (needsAutoAssignment) {
+        try {
+          const updatedTicket = await updateTicket(ticket.id, { assignee_id: currentUser.id });
+          if (onTicketUpdate) {
+            onTicketUpdate(updatedTicket);
+          }
+          queryClient.setQueryData(['ticket', ticket.id], updatedTicket);
+          queryClient.invalidateQueries({ queryKey: ['tickets'] });
+          toast.info(`Ticket automatically assigned to you.`);
+        } catch (error) {
+          console.error('Failed to auto-assign ticket:', error);
         }
       }
     },

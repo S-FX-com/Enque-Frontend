@@ -1210,13 +1210,13 @@ export function TicketPageContent({ ticketId }: Props) {
                 <label className="text-sm font-medium text-muted-foreground mb-1 block">
                   Last Update
                 </label>
-                <p className="text-sm">{formatRelativeTime(ticket?.last_update)}</p>
+                <p className="text-sm">{formatRelativeTime(ticket?.last_update, true)}</p>
               </div>
               <div>
                 <label className="text-sm font-medium text-muted-foreground mb-1 block">
                   Created
                 </label>
-                <p className="text-sm">{formatRelativeTime(ticket?.created_at)}</p>
+                <p className="text-sm">{formatRelativeTime(ticket?.created_at, true)}</p>
               </div>
             </CardContent>
           </Card>
