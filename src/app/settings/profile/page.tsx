@@ -147,13 +147,14 @@ export default function ProfileSettingsPage() {
     const searchParams = new URLSearchParams(window.location.search);
     const microsoftLink = searchParams.get('microsoft_link');
     const status = searchParams.get('status');
-    
+
     if (microsoftLink === 'true') {
       if (status === 'success') {
         toast.success('Microsoft 365 account linked successfully!');
         refetchMicrosoftAuth();
         queryClient.invalidateQueries({ queryKey: ['microsoftAuthStatus'] });
         queryClient.invalidateQueries({ queryKey: ['microsoftProfile'] });
+        setAvatarUrl(`https://graph.microsoft.com/v1.0/users/${agentId}/photo/`);
         if (agentId) {
           queryClient.invalidateQueries({ queryKey: ['agent', agentId] });
         }
@@ -194,7 +195,7 @@ export default function ProfileSettingsPage() {
   const linkMicrosoftMutation = useMutation({
     mutationFn: async () => {
       if (!agentId) throw new Error('User ID is missing');
- 
+
       await microsoftAuthService.initiateLinking();
     },
     onError: error => {
@@ -627,7 +628,8 @@ export default function ProfileSettingsPage() {
                     <Skeleton className="h-4 w-2/3" />
                   </div>
                 ) : (
-                  microsoftProfile && microsoftAuthStatus?.is_linked && (
+                  microsoftProfile &&
+                  microsoftAuthStatus?.is_linked && (
                     <div className="p-4 border rounded-lg bg-muted/20">
                       <h4 className="text-sm font-medium mb-2">Microsoft Profile</h4>
                       <div className="space-y-1 text-sm text-muted-foreground">

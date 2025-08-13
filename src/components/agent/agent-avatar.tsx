@@ -14,6 +14,7 @@ interface AgentAvatarProps {
   isUpdating?: boolean;
   size?: number;
   showEditButton?: boolean;
+
   variant?: 'beam' | 'marble' | 'pixel' | 'sunset' | 'ring' | 'bauhaus';
 }
 
