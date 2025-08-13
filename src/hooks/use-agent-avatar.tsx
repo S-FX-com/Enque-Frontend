@@ -32,7 +32,7 @@ export function useAgentAvatar({
               src={agent.avatar_url}
               alt={`${agent.name} avatar`}
               fill={true}
-              className="object-contain"
+              className="object-cover rounded-full"
               sizes={`${size}px`}
               onError={e => {
                 console.error('Avatar image failed to load:', e);
