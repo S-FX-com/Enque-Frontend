@@ -42,8 +42,6 @@ import { searchTickets } from '@/services/ticket';
 import type { ITicket } from '@/typescript/ticket';
 import { formatRelativeTime, cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
-
-// Define avatar color palettes (copied from conversation-message-item)
 const agentAvatarColors = ['#1D73F4', '#D4E4FA'];
 const userAvatarColors = ['#a3a948', '#edb92e', '#f85931', '#ce1836', '#009989'];
 
@@ -83,8 +81,6 @@ export function Topbar({
       setIsSearchOpen(false);
     }
   }, [searchInput]);
-
-  // Fetch tickets for search using the dedicated search endpoint
   const { data: searchTicketsData = [] } = useQuery<ITicket[]>({
     queryKey: ['tickets', 'search', debouncedSearchFilter],
     queryFn: async () => {
@@ -94,8 +90,6 @@ export function Topbar({
     enabled: !!debouncedSearchFilter && debouncedSearchFilter.length >= 2,
     staleTime: 1000 * 30, // Cache for 30 seconds
   });
-
-  // Filter and limit search results
   const filteredSearchResults = useMemo(() => {
     return searchTicketsData.slice(0, 8); // Limit to 8 results
   }, [searchTicketsData]);
@@ -414,9 +408,21 @@ export function Topbar({
                               `agent-${notification.agent_id}` ||
                               'system';
 
-                          const displayName = isUserCreator
-                            ? notification.creator_user_name || 'User'
-                            : notification.agent?.name || 'System';
+                          // Determine display name based on creator_user_name or action content
+                          let displayName = 'User';
+                          
+                          if (notification.creator_user_name) {
+                            displayName = notification.creator_user_name;
+                          } else if (notification.action) {
+                            // Extract name from action text
+                            if (notification.action.includes(' logged a new ticket')) {
+                              displayName = notification.action.replace(' logged a new ticket', '');
+                            } else if (notification.action.includes(' commented on ticket')) {
+                              displayName = notification.action.replace(' commented on ticket', '');
+                            } else if (notification.action.includes(' replied via email')) {
+                              displayName = notification.action.replace(' replied via email', '');
+                            }
+                          }
 
                           const avatarColors = isUserCreator ? userAvatarColors : agentAvatarColors; // Choose palette
 
@@ -474,10 +480,6 @@ export function Topbar({
                       )}
                     </div>
                   </ScrollArea>
-                  {/* Optional Footer */}
-                  {/* <div className="p-2 border-t text-center">
-                                        <Button variant="link" size="sm">View all</Button>
-                                    </div> */}
                 </motion.div>
               )}
             </AnimatePresence>
@@ -505,7 +507,6 @@ export function Topbar({
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              {/* Update onClick to navigate to the new settings page */}
               <DropdownMenuItem onClick={() => router.push('/settings/profile')}>
                 Profile settings
               </DropdownMenuItem>
