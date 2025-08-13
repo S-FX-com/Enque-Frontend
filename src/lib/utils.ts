@@ -3,6 +3,7 @@ import { twMerge } from 'tailwind-merge';
 import { formatDistanceToNow, format } from 'date-fns';
 import { TicketPriority, TicketStatus } from '@/typescript/ticket'; // Import ticket types
 import { enUS } from 'date-fns/locale';
+import { toZonedTime } from 'date-fns-tz';
 
 /**
  * Combines multiple class names into a single string, properly handles
@@ -48,35 +49,34 @@ export function stringToColor(str: string): string {
 }
 
 // Format date relative to now, ensuring UTC interpretation
-export function formatRelativeTime(dateString: string | Date | null | undefined): string {
+export function formatRelativeTime(
+  dateString: string | Date | null | undefined,
+  showTime: boolean = false
+): string {
   try {
-    if (!dateString) {
-      return '-';
-    }
+    if (!dateString) return '-';
 
     let dateToParse: Date;
     const dateToday: Date = new Date();
+
     if (typeof dateString === 'string') {
-      // Ensure the date string is treated as UTC by appending 'Z' if no timezone info exists
       const hasTimezone = /Z|([+-]\d{2}:\d{2})$/.test(dateString);
       const dateStrToParse = hasTimezone ? dateString : `${dateString}Z`;
       dateToParse = new Date(dateStrToParse);
     } else {
-      dateToParse = dateString; // Assume Date object is already correct
+      dateToParse = dateString;
     }
 
-    if (isNaN(dateToParse.getTime())) {
-      // If parsing failed, return the original string or a default message
+    if (isNaN(dateToParse.getTime()))
       return typeof dateString === 'string' ? dateString : 'Invalid date';
-    }
-    //console.log(dateToParse);
-    //console.log(typeof formatDistanceToNow(dateToParse, { addSuffix: true }));
-    //console.log(formatDistanceToNow(dateToParse, { addSuffix: true }));
-    if (dateToday.getDate() === dateToParse.getDate()) {
-      return formatDistanceToNow(dateToParse, { addSuffix: true });
-    }
-    //return formatDistanceToNow(dateToParse, { addSuffix: true });
-    return format(dateToParse, 'ccc MM/dd/yyyy');
+
+    const easternDate = toZonedTime(dateToParse, 'America/New_York');
+
+    if (dateToday.getDate() === easternDate.getDate())
+      return formatDistanceToNow(easternDate, { addSuffix: true });
+
+    if (showTime) return format(easternDate, "MMMM dd, yyyy 'at' hh:mm a");
+    else return format(easternDate, 'MMMM dd, yyyy');
   } catch (error) {
     console.error('Error formatting relative time:', dateString, error);
     return typeof dateString === 'string' ? dateString : 'Error formatting date';

@@ -484,7 +484,7 @@ function OptimizedMessageItem({ content, isInitial = false, ticket }: OptimizedM
             )}
           </p>
           <p className="text-xs text-muted-foreground mt-0.5">
-            {formatRelativeTime(content.created_at)}
+            {formatRelativeTime(content.created_at, true)}
           </p>
         </div>
 
