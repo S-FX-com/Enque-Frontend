@@ -1,25 +1,20 @@
 import { fetchAPI } from '@/lib/fetch-api';
 import { Activity } from '../typescript/activity'; // Use relative path
 import { toast } from 'sonner'; // Importar toast de sonner
-
-// Use the production URL directly. Ensure NEXT_PUBLIC_API_BASE_URL is set in the production environment.
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || 'https://enque-backend-production.up.railway.app';
-
 /**
- * Fetches recent notifications (activities).
  * @param limit Optional limit for the number of notifications to fetch.
  * @returns A promise that resolves to an array of activities.
  */
 export const getNotifications = async (limit: number = 10): Promise<Activity[]> => {
   try {
     const url = `${API_BASE_URL}/v1/notifications?limit=${limit}`;
-    // Assuming the endpoint returns ActivityWithDetails which matches our Activity type
     const response = await fetchAPI.GET<Activity[]>(url);
 
     if (!response || !response.data) {
       console.error('Failed to fetch notifications or data is missing');
-      return []; // Return empty array on failure
+      return []; 
     }
     return response.data;
   } catch (error) {
@@ -53,21 +48,24 @@ export const clearAllNotifications = async (): Promise<{
 };
 
 /**
- * Shows a toast notification when a new activity is received.
  * @param notification The notification to display
  */
 export const showNotificationToast = (notification: Activity): void => {
-  // Determine the content type based on notification type
   const isTicketCreation = notification.source_type === 'Ticket';
   const isComment = notification.source_type === 'Comment';
-  const isUserCreator =
-    isTicketCreation && (notification.creator_user_id || notification.creator_user_email);
 
-  const displayName = isUserCreator
-    ? notification.creator_user_name || 'User'
-    : notification.agent?.name || 'System';
-
-  // Text for toast notification title and description
+  let displayName = 'User';
+  if (notification.creator_user_name) {
+    displayName = notification.creator_user_name;
+  } else if (notification.action) {
+    if (notification.action.includes(' logged a new ticket')) {
+      displayName = notification.action.replace(' logged a new ticket', '');
+    } else if (notification.action.includes(' commented on ticket')) {
+      displayName = notification.action.replace(' commented on ticket', '');
+    } else if (notification.action.includes(' replied via email')) {
+      displayName = notification.action.replace(' replied via email', '');
+    }
+  }
   let title = '';
   let description = '';
 
@@ -76,19 +74,15 @@ export const showNotificationToast = (notification: Activity): void => {
     description = `${displayName} logged a new ticket #${notification.source_id}`;
   } else if (isComment && notification.source_id) {
     title = `New comment from ${displayName}`;
-    description =
-      notification.action || `${displayName} commented on ticket #${notification.source_id}`;
+    description = `${displayName} commented on ticket #${notification.source_id}`;
   } else {
     title = `New notification from ${displayName}`;
     description = notification.action || 'Unspecified action';
   }
-
-  // Determine URL for when notification is clicked - use action button for tickets and comments
   if ((isTicketCreation || isComment) && notification.source_id) {
-    // Para notificaciones de tickets y comentarios, usar estilo default (gris claro tipo iPhone)
     toast(title, {
       description,
-      duration: 5000, // 5 seconds
+      duration: 5000, 
       action: {
         label: 'View',
         onClick: () => {
@@ -97,12 +91,9 @@ export const showNotificationToast = (notification: Activity): void => {
       },
     });
   } else {
-    // For other notifications use normal toast
     toast(title, {
       description,
-      duration: 5000, // 5 seconds
+      duration: 5000, 
     });
   }
 };
-
-// Add other activity-related service functions here later if needed
