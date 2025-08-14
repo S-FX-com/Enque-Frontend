@@ -67,6 +67,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
+import { ChevronUp, ChevronDown } from 'lucide-react';
+
+type SortColumn = 'status' | 'priority' | 'lastUpdate' | 'created';
+type SortDirection = 'asc' | 'desc';
+
 function TicketsClientContent() {
   const { user } = useAuth();
   const {
@@ -105,6 +110,9 @@ function TicketsClientContent() {
   const [selectedTargetTicketId, setSelectedTargetTicketId] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  const [sortColumn, setSortColumn] = useState<SortColumn | null>(null);
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+
   const statusOptions: OptionType[] = [
     { value: 'Unread', label: 'Unread' },
     { value: 'Open', label: 'Open' },
@@ -133,7 +141,11 @@ function TicketsClientContent() {
     }));
   }, [agentsData]);
 
-  const { data: teamsData = [], isLoading: isLoadingTeams, error: teamsError } = useQuery<Team[]>({
+  const {
+    data: teamsData = [],
+    isLoading: isLoadingTeams,
+    error: teamsError,
+  } = useQuery<Team[]>({
     queryKey: user?.role === 'admin' ? ['teams'] : ['agentTeams', user?.id],
     queryFn: async () => {
       console.log('🔍 Loading teams for user:', user?.role, user?.id);
@@ -279,6 +291,58 @@ function TicketsClientContent() {
     selectedCategories,
   ]);
 
+  const handleSort = (column: SortColumn) => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+  };
+
+  const filteredTicketsDataSorted = useMemo(() => {
+    const filtered = [...filteredTicketsData];
+
+    // Apply sorting
+    if (sortColumn) {
+      filtered.sort((a, b) => {
+        let aValue: string | number | Date | undefined;
+        let bValue: string | number | Date | undefined;
+
+        switch (sortColumn) {
+          case 'status':
+            aValue = a.status;
+            bValue = b.status;
+            break;
+          case 'priority':
+            // Sort priority by importance: Critical > High > Medium > Low
+            const priorityOrder = { Critical: 4, High: 3, Medium: 2, Low: 1 };
+            aValue = priorityOrder[a.priority as keyof typeof priorityOrder] || 0;
+            bValue = priorityOrder[b.priority as keyof typeof priorityOrder] || 0;
+            break;
+          case 'lastUpdate':
+            aValue = a.last_update ? new Date(a.last_update) : undefined;
+            bValue = b.last_update ? new Date(b.last_update) : undefined;
+            break;
+          case 'created':
+            aValue = a.created_at ? new Date(a.created_at) : undefined;
+            bValue = b.created_at ? new Date(b.created_at) : undefined;
+            break;
+          default:
+            return 0;
+        }
+
+        if (aValue === undefined || bValue === undefined) return 0;
+
+        if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+        if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+
+    return filtered;
+  }, [filteredTicketsData, sortColumn, sortDirection]);
+
   useEffect(() => {
     const container = scrollContainerRef.current;
 
@@ -332,7 +396,6 @@ function TicketsClientContent() {
           setSelectedTeams([teamIdFromQuery]);
         }
       } else {
-
         if (selectedTeams.length > 0) {
           console.log('🧹 Clearing team filter for "All Tickets"');
           setSelectedTeams([]);
@@ -1080,6 +1143,33 @@ function TicketsClientContent() {
     setIsMergeDialogOpen(true);
   };
 
+  const SortableHeader = ({
+    column,
+    children,
+    className,
+  }: {
+    column: SortColumn;
+    children: React.ReactNode;
+    className?: string;
+  }) => (
+    <TableHead
+      className={`p-2 w-[150px] cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 select-none ${className}`}
+      onClick={() => handleSort(column)}
+    >
+      <div className="flex items-center justify-between">
+        {children}
+        <div className="flex flex-col ml-1">
+          <ChevronUp
+            className={`h-3 w-3 ${sortColumn === column && sortDirection === 'asc' ? 'text-blue-600' : 'text-slate-400'}`}
+          />
+          <ChevronDown
+            className={`h-3 w-3 -mt-1 ${sortColumn === column && sortDirection === 'desc' ? 'text-blue-600' : 'text-slate-400'}`}
+          />
+        </div>
+      </div>
+    </TableHead>
+  );
+
   return (
     <div className="flex h-full gap-6">
       <div className="flex-1 flex flex-col h-full">
@@ -1326,12 +1416,12 @@ function TicketsClientContent() {
                     </TableHead>
                     <TableHead className="w-[100px] p-2">ID</TableHead>
                     <TableHead className="p-2 max-w-xs md:max-w-sm">Subject</TableHead>
-                    <TableHead className="p-2 w-[150px]">Status</TableHead>
-                    <TableHead className="p-2 w-[150px]">Priority</TableHead>
+                    <SortableHeader column="status">Status</SortableHeader>
+                    <SortableHeader column="priority">Priority</SortableHeader>
                     <TableHead className="p-2 w-[150px]">Sent from</TableHead>
                     <TableHead className="p-2 w-[150px]">Assigned to</TableHead>
-                    <TableHead className="p-2 w-[150px]">Last Update</TableHead>
-                    <TableHead className="p-2 w-[150px]">Created</TableHead>
+                    <SortableHeader column="lastUpdate">Last Update</SortableHeader>
+                    <SortableHeader column="created">Created</SortableHeader>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -1347,7 +1437,7 @@ function TicketsClientContent() {
                         Error loading tickets: {ticketsError?.message || 'Unknown error'}
                       </TableCell>
                     </TableRow>
-                  ) : filteredTicketsData.length === 0 ? (
+                  ) : filteredTicketsDataSorted.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={8} className="h-24 text-center">
                         {debouncedSubjectFilter
@@ -1356,7 +1446,7 @@ function TicketsClientContent() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredTicketsData.map(ticket => {
+                    filteredTicketsDataSorted.map(ticket => {
                       return (
                         <motion.tr
                           key={ticket.id}
@@ -1475,7 +1565,7 @@ function TicketsClientContent() {
             <Button
               variant="outline"
               size="sm"
-              className="z-10 -mr-4 mt-6 shadow-md relative cursor-pointer rounded-full px-3"
+              className="z-10 -mr-4 mt-6 shadow-md relative cursor-pointer rounded-full px-3 bg-transparent"
             >
               {filtersExpanded ? (
                 <ChevronRight className="h-4 w-4" />
@@ -1544,7 +1634,7 @@ function TicketsClientContent() {
                   <MultiSelectFilter
                     options={teamOptions}
                     selected={selectedTeams}
-                    onChange={(newSelection) => {
+                    onChange={newSelection => {
                       console.log('🎯 Team filter onChange:', newSelection);
                       setSelectedTeams(newSelection);
                     }}

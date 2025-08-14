@@ -287,7 +287,7 @@ export const microsoftAuthService = {
 
   async getWorkspaceIdFromSubdomain(): Promise<number> {
     if (typeof window === 'undefined') {
-      return 1; 
+      return 1;
     }
 
     const hostname = window.location.hostname;
@@ -311,19 +311,22 @@ export const microsoftAuthService = {
       }
     }
 
-    return 1; 
+    return 1;
   },
 
   async initiateLogin(): Promise<void> {
     try {
       const workspaceId = await this.getWorkspaceIdFromSubdomain();
 
-      const response = await fetch(`${AUTH_ENDPOINT}/microsoft/auth/url?workspace_id=${workspaceId}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+      const response = await fetch(
+        `${AUTH_ENDPOINT}/microsoft/auth/url?workspace_id=${workspaceId}`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -331,7 +334,7 @@ export const microsoftAuthService = {
       }
 
       const data = await response.json();
-      
+
       if (data.auth_url) {
         window.location.href = data.auth_url;
       } else {
@@ -379,7 +382,10 @@ export const microsoftAuthService = {
         data: data,
       };
     } catch (error) {
-      logger.error('Microsoft login error:', error instanceof Error ? error.message : 'Unknown error');
+      logger.error(
+        'Microsoft login error:',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
       return {
         success: false,
         message: 'Network error during Microsoft login',
@@ -387,7 +393,47 @@ export const microsoftAuthService = {
       };
     }
   },
+  async logoutMicrosoft(): Promise<ServiceResponse<{ message: string }>> {
+    try {
+      // 1. Call your backend logout endpoint
+      const response = await fetch(`${AUTH_ENDPOINT}/microsoft/logout`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('access_token')}`,
+        },
+      });
 
+      if (!response.ok) {
+        const data = await response.json();
+        return {
+          success: false,
+          message: data.detail || 'Logout failed',
+          data: undefined,
+        };
+      }
+
+      // 2. Clear frontend tokens
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('token_type');
+
+      // 3. Optionally redirect to Microsoft logout
+      // window.location.href = 'https://login.microsoftonline.com/common/oauth2/v2.0/logout';
+
+      return {
+        success: true,
+        message: 'Successfully logged out',
+        data: { message: 'Logged out successfully' },
+      };
+    } catch (error) {
+      logger.error('Logout error:', error instanceof Error ? error.message : 'Unknown error');
+      return {
+        success: false,
+        message: 'Network error during logout',
+        data: undefined,
+      };
+    }
+  },
   /**
    * Link Microsoft 365 account to existing authenticated agent
    */
@@ -405,7 +451,7 @@ export const microsoftAuthService = {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}`,
+          Authorization: `Bearer ${authToken}`,
         },
         body: JSON.stringify(microsoftData),
       });
@@ -426,7 +472,10 @@ export const microsoftAuthService = {
         data: data,
       };
     } catch (error) {
-      logger.error('Microsoft account linking error:', error instanceof Error ? error.message : 'Unknown error');
+      logger.error(
+        'Microsoft account linking error:',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
       return {
         success: false,
         message: 'Network error during Microsoft account linking',
@@ -438,11 +487,13 @@ export const microsoftAuthService = {
   /**
    * Get Microsoft user profile from Graph API
    */
-  async getMicrosoftUserProfile(accessToken: string): Promise<ServiceResponse<MicrosoftProfileData>> {
+  async getMicrosoftUserProfile(
+    accessToken: string
+  ): Promise<ServiceResponse<MicrosoftProfileData>> {
     try {
       const response = await fetch('https://graph.microsoft.com/v1.0/me', {
         headers: {
-          'Authorization': `Bearer ${accessToken}`,
+          Authorization: `Bearer ${accessToken}`,
         },
       });
 
@@ -455,7 +506,7 @@ export const microsoftAuthService = {
       }
 
       const profileData = await response.json();
-      
+
       return {
         success: true,
         message: 'Profile retrieved successfully',
@@ -471,7 +522,10 @@ export const microsoftAuthService = {
         },
       };
     } catch (error) {
-      logger.error('Error getting Microsoft profile:', error instanceof Error ? error.message : 'Unknown error');
+      logger.error(
+        'Error getting Microsoft profile:',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
       return {
         success: false,
         message: 'Network error getting Microsoft profile',
@@ -488,13 +542,14 @@ export const microsoftAuthService = {
         throw new Error('User must be authenticated to link Microsoft account');
       }
 
-    const apiUrlBase = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://enque-backend-production.up.railway.app';
-    const originUrl = window.location.origin; 
-    const fullApiUrl = `${apiUrlBase}/v1/microsoft/profile/auth/url?origin_url=${encodeURIComponent(originUrl)}`;
+      const apiUrlBase =
+        process.env.NEXT_PUBLIC_API_BASE_URL || 'https://enque-backend-production.up.railway.app';
+      const originUrl = window.location.origin;
+      const fullApiUrl = `${apiUrlBase}/v1/microsoft/profile/auth/url?origin_url=${encodeURIComponent(originUrl)}`;
 
       const response = await fetch(fullApiUrl, {
         headers: {
-          'Authorization': `Bearer ${authToken}`,
+          Authorization: `Bearer ${authToken}`,
         },
       });
 
@@ -503,10 +558,15 @@ export const microsoftAuthService = {
       if (response.ok && data.auth_url) {
         window.location.href = data.auth_url;
       } else {
-        throw new Error((data as { detail?: string }).detail || 'Failed to get authorization URL for linking');
+        throw new Error(
+          (data as { detail?: string }).detail || 'Failed to get authorization URL for linking'
+        );
       }
     } catch (error) {
-      logger.error('Microsoft account linking initiation error:', error instanceof Error ? error.message : 'Unknown error');
+      logger.error(
+        'Microsoft account linking initiation error:',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
       throw error;
     }
   },
