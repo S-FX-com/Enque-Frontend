@@ -154,7 +154,7 @@ export default function ProfileSettingsPage() {
         refetchMicrosoftAuth();
         queryClient.invalidateQueries({ queryKey: ['microsoftAuthStatus'] });
         queryClient.invalidateQueries({ queryKey: ['microsoftProfile'] });
-        setAvatarUrl(`https://graph.microsoft.com/v1.0/users/${agentId}/photo/`);
+        //setAvatarUrl(`https://graph.microsoft.com/v1.0/users/${agentId}/photo/`);
         if (agentId) {
           queryClient.invalidateQueries({ queryKey: ['agent', agentId] });
         }
@@ -195,7 +195,6 @@ export default function ProfileSettingsPage() {
   const linkMicrosoftMutation = useMutation({
     mutationFn: async () => {
       if (!agentId) throw new Error('User ID is missing');
-
       await microsoftAuthService.initiateLinking();
     },
     onError: error => {
