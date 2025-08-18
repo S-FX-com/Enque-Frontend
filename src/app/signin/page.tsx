@@ -6,15 +6,19 @@ import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { authService } from '@/services/auth';
+import { useRouter } from 'next/navigation';
+import { microsoftAuthService } from '@/services/microsoftAuth';
 import { AppConfigs } from '@/configs';
 import { logger } from '@/lib/logger';
 import { removeAuthToken, isAuthenticated, setupHistoryProtection } from '@/lib/auth';
 import { toast } from 'sonner';
+import { Url } from 'next/dist/shared/lib/router/router';
 
 export default function SignInPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
@@ -32,14 +36,23 @@ export default function SignInPage() {
 
     setupHistoryProtection();
   }, []);
-
+  const redirectMS365 = () => {
+    microsoftAuthService.loginWithMicrosoftTest().then(url => {
+      router.push(url);
+    });
+  };
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      logger.info(`Login attempt for ${email}`);
-
+      if (process.env.NODE_ENV === 'development') {
+        const responseM365 = await microsoftAuthService.checkM365Email(email);
+        if (responseM365.success == true) {
+          console.log('Please use your M365 credentials');
+          return;
+        }
+      }
       const response = await authService.login({
         email,
         password,
@@ -75,8 +88,6 @@ export default function SignInPage() {
       setLoading(false);
     }
   };
-
-
 
   return (
     <main className="flex flex-col items-center justify-center min-h-screen p-4 bg-[#F4F7FE]">
@@ -143,6 +154,11 @@ export default function SignInPage() {
               )}
             </Button>
           </form>
+          {process.env.NODE_ENV === 'development' && (
+            <Button type="submit" onClick={redirectMS365}>
+              Login with MS365
+            </Button>
+          )}
 
           <div className="text-center pt-4">
             <p className="text-sm text-slate-500">
