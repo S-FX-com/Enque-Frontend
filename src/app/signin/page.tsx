@@ -51,7 +51,7 @@ export default function SignInPage() {
       if (process.env.NODE_ENV === 'development') {
         const responseM365 = await microsoftAuthService.checkM365Email(email);
         setAuthMethod(responseM365.data!['auth_method']);
-        if (authMethod === 'microsoft') {
+        if (authMethod === 'both') {
           setMicrosoftAuth(responseM365.data);
         }
       }
