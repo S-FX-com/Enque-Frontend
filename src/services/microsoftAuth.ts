@@ -361,7 +361,7 @@ export const microsoftAuthService = {
 
   async checkM365Email(email: string): Promise<ServiceResponse<MicrosoftAuthData>> {
     try {
-      const response = await fetch(`${AUTH_ENDPOINT}/check-user/${email}`, {
+      const response = await fetch(`${AUTH_ENDPOINT}/check-user/${encodeURIComponent(email)}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json', // Recommended if expecting JSON
