@@ -230,7 +230,7 @@ export default function SignInPage() {
               )}
             </Button>
             {/*{ )}}*/}
-            {process.env.NODE_ENV === 'production' && (
+            {/*process.env.NODE_ENV === 'production' && (
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? (
                   <span className="flex items-center justify-center gap-2">
@@ -260,7 +260,7 @@ export default function SignInPage() {
                   'Sign In'
                 )}
               </Button>
-            )}
+            )*/}
           </form>
           {/*{{process.env.NODE_ENV === 'development' && (}*/}
           <form className="space-y-4" onSubmit={e => handleSubmitMS365(e)}>
