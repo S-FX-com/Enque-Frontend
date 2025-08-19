@@ -2,9 +2,6 @@ import { AppConfigs } from '@/configs';
 import { ServiceResponse } from '@/typescript';
 import { logger } from '@/lib/logger';
 import { getAuthToken } from '@/lib/auth';
-//import { ConfidentialClientApplication } from '@azure/msal-node';
-//const { ConfidentialClientApplication } = await import('@azure/msal-browser');
-import { Url } from 'next/dist/shared/lib/router/router';
 
 export interface MicrosoftAuthUrlResponse {
   auth_url: string;
@@ -21,6 +18,17 @@ export interface MicrosoftProfileData {
   jobTitle?: string;
   mobilePhone?: string;
   tenantId?: string;
+}
+
+export interface MicrosoftAuthData {
+  auth_method: string;
+  microsoft_id: string;
+  microsoft_email: string;
+  microsoft_tenant_id: string;
+  microsoft_profile_data?: string;
+  access_token: string;
+  expires_in: number;
+  workspace_id?: number;
 }
 
 export interface MicrosoftAuthStatus {
@@ -335,7 +343,6 @@ export const microsoftAuthService = {
         const errorData = await response.json();
         throw new Error(errorData.detail || 'Failed to get auth URL');
       }
-
       const data = await response.json();
 
       if (data.auth_url) {
@@ -352,16 +359,27 @@ export const microsoftAuthService = {
     }
   },
 
-  async checkM365Email(email: string): Promise<ServiceResponse<undefined>> {
+  async checkM365Email(email: string): Promise<ServiceResponse<MicrosoftAuthData>> {
     try {
       const response = await fetch(`${AUTH_ENDPOINT}/microsoft/check-user/${email}`, {
         method: 'GET',
+        headers: {
+          'Content-Type': 'application/json', // Recommended if expecting JSON
+        },
       });
-
+      const data = await response.json();
       if (response.status === 200) {
-        return { success: true, message: 'User is linked to M365', data: undefined };
+        return {
+          success: true,
+          message: 'User is linked to M365, click in the button bellow',
+          data: data,
+        };
       }
-      return { success: false, message: 'User is not linked to M365', data: undefined };
+      return {
+        success: false,
+        message: 'User is not linked to M365, please insert password',
+        data: undefined,
+      };
     } catch (error: unknown) {
       if (error instanceof Error) {
         console.error('Error checking email:', error.message);
@@ -415,17 +433,6 @@ export const microsoftAuthService = {
         data: undefined,
       };
     }
-  },
-  async loginWithMicrosoftTest(): // Promise<ServiceResponse<{ access_token: string; token_type: string }>>
-  Promise<string> {
-    const tenantId = '76d9eabb-931c-452b-9e08-058b058b6581'; // or "your-tenant-id"
-    const clientId = '6e2e4d52-8f3c-49b2-9495-09845e5090fa';
-    const redirectUri = encodeURIComponent('http://users.localhost:3000/dashboard');
-    const scopes = encodeURIComponent('openid email profile User.Read');
-    const state = Math.random().toString(36).substring(2);
-
-    const authUrl = `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/authorize?client_id=${clientId}&response_type=code&redirect_uri=${redirectUri}&response_mode=query&scope=${scopes}&state=${state}`;
-    return authUrl;
   },
 
   async logoutMicrosoft(): Promise<ServiceResponse<{ message: string }>> {
