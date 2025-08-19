@@ -49,10 +49,17 @@ export default function SignInPage() {
   const handleEnter = async (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       if (process.env.NODE_ENV === 'development') {
-        const responseM365 = await microsoftAuthService.checkM365Email(email);
-        setAuthMethod(responseM365.data!['auth_method']);
-        if (authMethod === 'both') {
-          setMicrosoftAuth(responseM365.data);
+        const ms365Regex = /^[a-zA-Z0-9._%+-]+@s-fx\.com$/;
+        if (ms365Regex.test(email) === true) {
+          console.log(email);
+          const responseM365 = await microsoftAuthService.checkM365Email(email);
+          if (responseM365.success) {
+            setAuthMethod('both');
+            setMicrosoftAuth(responseM365.data);
+            //setMicrosoftAuth((['auth_method'] = 'both'));
+          }
+        } else {
+          setAuthMethod('password');
         }
       }
     }
@@ -70,6 +77,7 @@ export default function SignInPage() {
         expires_in: microsoftAuth!.expires_in,
         workspace_id: microsoftAuth!.workspace_id,
       });
+      //console.log(response);
       if (response.success) {
         logger.info(`Login successful for ${email}`);
         window.location.replace(AppConfigs.routes.dashboard);
@@ -191,7 +199,7 @@ export default function SignInPage() {
               <Button
                 type="submit"
                 className="w-full"
-                disabled={authMethod === 'both' ? false : true}
+                disabled={authMethod === 'password' ? false : true}
               >
                 {loading ? (
                   <span className="flex items-center justify-center gap-2">
@@ -259,11 +267,11 @@ export default function SignInPage() {
               <Button
                 className="w-full"
                 type="submit"
-                disabled={authMethod !== 'microsoft' ? true : false}
+                disabled={authMethod !== 'both' ? true : false}
               >
                 Login with MS365
               </Button>
-              <p hidden={authMethod !== 'microsoft' ? true : false}>
+              <p hidden={authMethod !== 'both' ? true : false}>
                 Your account is linked to MS365, please click here to log in
               </p>
             </form>
