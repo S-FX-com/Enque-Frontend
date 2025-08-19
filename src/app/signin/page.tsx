@@ -59,6 +59,7 @@ export default function SignInPage() {
   };
 
   const handleSubmitMS365 = async (e: React.FormEvent) => {
+    console.log(e.target);
     try {
       const response = await microsoftAuthService.loginWithMicrosoft({
         microsoft_id: microsoftAuth!.microsoft_id,
@@ -153,7 +154,9 @@ export default function SignInPage() {
                 onKeyDown={e => handleEnter(e)}
                 required
               />
-              <p>type your e-mail and press 'Enter' to verify your authentication method</p>
+              <p hidden={authMethod === '' ? false : true}>
+                type your e-mail and press &apos;Enter&apos; to verify your authentication method
+              </p>
             </div>
             <div className="space-y-2">
               <label htmlFor="password" className="text-sm font-medium">
@@ -169,6 +172,11 @@ export default function SignInPage() {
                   required
                 />
               )}
+              {process.env.NODE_ENV === 'development' && (
+                <p hidden={authMethod === '' || authMethod !== 'both' ? true : false}>
+                  Type your password to log in
+                </p>
+              )}
               {process.env.NODE_ENV === 'production' && (
                 <Input
                   id="password"
@@ -183,14 +191,7 @@ export default function SignInPage() {
               <Button
                 type="submit"
                 className="w-full"
-                disabled={
-                  authMethod === '' ||
-                  authMethod === 'both' ||
-                  authMethod === 'password' ||
-                  loading !== false
-                    ? false
-                    : true
-                }
+                disabled={authMethod === 'both' ? false : true}
               >
                 {loading ? (
                   <span className="flex items-center justify-center gap-2">
@@ -255,9 +256,16 @@ export default function SignInPage() {
           </form>
           {process.env.NODE_ENV === 'development' && (
             <form className="space-y-4" onSubmit={e => handleSubmitMS365(e)}>
-              <Button type="submit" disabled={authMethod !== 'microsoft' ? true : false}>
+              <Button
+                className="w-full"
+                type="submit"
+                disabled={authMethod !== 'microsoft' ? true : false}
+              >
                 Login with MS365
               </Button>
+              <p hidden={authMethod !== 'microsoft' ? true : false}>
+                Your account is linked to MS365, please click here to log in
+              </p>
             </form>
           )}
 
