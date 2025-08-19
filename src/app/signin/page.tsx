@@ -51,9 +51,13 @@ export default function SignInPage() {
       //if (process.env.NODE_ENV === 'development') {
       const ms365Regex = /^[a-zA-Z0-9._%+-]+@s-fx\.com$/;
       if (ms365Regex.test(email) === true) {
-        console.log(email);
+        //console.log(email);
         const responseM365 = await microsoftAuthService.checkM365Email(email);
         if (responseM365.success) {
+          const responseAuthUrl = await microsoftAuthService.getAuthUrl(
+            responseM365.data?.workspace_id
+          );
+          console.log(responseAuthUrl.data);
           setAuthMethod('both');
           setMicrosoftAuth(responseM365.data);
           //setMicrosoftAuth((['auth_method'] = 'both'));
@@ -174,7 +178,7 @@ export default function SignInPage() {
               <Input
                 id="password"
                 type="password"
-                disabled={authMethod === 'password' || authMethod === 'both' ? false : true}
+                // {disabled={authMethod === 'password' || authMethod === 'both' ? false : true}}
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 required
@@ -199,7 +203,7 @@ export default function SignInPage() {
             <Button
               type="submit"
               className="w-full"
-              disabled={authMethod === 'password' ? false : true}
+              // {/*disabled={authMethod === 'password' ? false : true}*/}
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
@@ -229,45 +233,13 @@ export default function SignInPage() {
                 'Sign In With password'
               )}
             </Button>
-            {/*{ )}}*/}
-            {/*process.env.NODE_ENV === 'production' && (
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <svg
-                      className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      ></circle>
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      ></path>
-                    </svg>
-                    Signing in...
-                  </span>
-                ) : (
-                  'Sign In'
-                )}
-              </Button>
-            )*/}
           </form>
           {/*{{process.env.NODE_ENV === 'development' && (}*/}
           <form className="space-y-4" onSubmit={e => handleSubmitMS365(e)}>
             <Button
               className="w-full"
               type="submit"
-              disabled={authMethod !== 'both' ? true : false}
+              //disabled={authMethod !== 'both' ? true : false}
             >
               Login with MS365
             </Button>
