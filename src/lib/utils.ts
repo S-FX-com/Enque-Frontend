@@ -4,11 +4,6 @@ import { formatDistanceToNow, format } from 'date-fns';
 import { TicketPriority, TicketStatus } from '@/typescript/ticket'; // Import ticket types
 import { enUS } from 'date-fns/locale';
 import { toZonedTime } from 'date-fns-tz';
-
-/**
- * Combines multiple class names into a single string, properly handles
- * conditional classes and merges Tailwind classes efficiently.
- */
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }

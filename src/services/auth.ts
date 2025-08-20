@@ -32,6 +32,122 @@ interface TokenResponse {
 const SERVICE_ENDPOINT = `${AppConfigs.api}/auth`;
 
 export const authService = {
+  // Check authentication methods for a user
+  async checkAuthMethods(email: string): Promise<ServiceResponse<{
+    email: string;
+    user_exists: boolean;
+    auth_methods: string[];
+    requires_microsoft: boolean;
+    can_use_password: boolean;
+    can_use_microsoft: boolean;
+    workspace_id?: number;
+    message: string;
+  }>> {
+    try {
+      let workspaceId: number | undefined;
+
+      if (typeof window !== 'undefined') {
+        const hostname = window.location.hostname;
+        const isSubdomain = hostname !== AppConfigs.baseUrl && hostname.endsWith(AppConfigs.domain);
+
+        if (isSubdomain) {
+          const subdomain = hostname.replace(AppConfigs.domain, '');
+          try {
+            // Intentar obtener el workspace_id a partir del subdominio
+            const workspaceResponse = await workspaceService.getWorkspaceBySubdomain(subdomain);
+            if (workspaceResponse.success && workspaceResponse.data) {
+              workspaceId = workspaceResponse.data.id;
+              logger.info(`Workspace ID obtenido para ${subdomain}: ${workspaceId}`);
+            }
+          } catch (error) {
+            logger.error(
+              `Error obteniendo workspace_id para ${subdomain}`,
+              error instanceof Error ? error.message : 'Unknown error'
+            );
+          }
+        }
+      }
+
+      const params = new URLSearchParams({ email });
+      const options: RequestInit = {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      };
+
+      // Si tenemos un workspace_id, lo incluimos en el header
+      if (workspaceId) {
+        (options.headers as Record<string, string>)['X-Workspace-Id'] = workspaceId.toString();
+      }
+
+      const response = await fetch(`${SERVICE_ENDPOINT}/check-auth-methods?${params}`, options);
+      const data = await response.json();
+
+      if (!response.ok) {
+        return {
+          success: false,
+          message: data.detail || 'Failed to check authentication methods',
+          data: undefined,
+        };
+      }
+
+      return {
+        success: true,
+        message: 'Authentication methods checked successfully',
+        data: data,
+      };
+    } catch (error) {
+      logger.error(
+        'Check auth methods error:',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Network error',
+        data: undefined,
+      };
+    }
+  },
+
+  // Get Microsoft Auth URL
+  async getMicrosoftAuthUrl(workspaceId: number): Promise<ServiceResponse<{auth_url: string}>> {
+    try {
+      const response = await fetch(`${SERVICE_ENDPOINT}/microsoft/auth/url?workspace_id=${workspaceId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return {
+          success: false,
+          message: data.detail || 'Failed to get Microsoft auth URL',
+          data: undefined,
+        };
+      }
+
+      return {
+        success: true,
+        message: 'Microsoft auth URL generated successfully',
+        data: data,
+      };
+    } catch (error) {
+      logger.error(
+        'Get Microsoft auth URL error:',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Network error',
+        data: undefined,
+      };
+    }
+  },
+
   // Login
   async login(data: LoginData): Promise<ServiceResponse<TokenResponse>> {
     try {

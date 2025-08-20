@@ -20,17 +20,6 @@ export interface MicrosoftProfileData {
   tenantId?: string;
 }
 
-export interface MicrosoftAuthData {
-  auth_method: string;
-  microsoft_id: string;
-  microsoft_email: string;
-  microsoft_tenant_id: string;
-  microsoft_profile_data?: string;
-  access_token: string;
-  expires_in: number;
-  workspace_id?: number;
-}
-
 export interface MicrosoftAuthStatus {
   agent_id: number;
   is_linked: boolean;
@@ -343,6 +332,7 @@ export const microsoftAuthService = {
         const errorData = await response.json();
         throw new Error(errorData.detail || 'Failed to get auth URL');
       }
+
       const data = await response.json();
 
       if (data.auth_url) {
@@ -358,41 +348,6 @@ export const microsoftAuthService = {
       throw error;
     }
   },
-
-  async checkM365Email(email: string): Promise<ServiceResponse<MicrosoftAuthData>> {
-    try {
-      const encoded_email = encodeURIComponent(email);
-      console.log(encoded_email);
-      const response = await fetch(`${SERVICE_ENDPOINT}/checkUser/${encoded_email}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json', // Recommended if expecting JSON
-        },
-      });
-      console.log(response);
-      const data = await response.json();
-      console.log(data);
-      if (response.status === 200) {
-        return {
-          success: true,
-          message: 'User is linked to M365, click in the button bellow',
-          data: data,
-        };
-      }
-      return {
-        success: false,
-        message: 'User is not linked to M365, please insert password',
-        data: undefined,
-      };
-    } catch (error: unknown) {
-      if (error instanceof Error) {
-        console.error('Error checking email:', error.message);
-      }
-
-      return { success: false, message: 'Unexpected error', data: undefined };
-    }
-  },
-
   async loginWithMicrosoft(microsoftData: {
     microsoft_id: string;
     microsoft_email: string;
@@ -410,7 +365,7 @@ export const microsoftAuthService = {
         },
         body: JSON.stringify(microsoftData),
       });
-      console.log(response);
+
       const data = await response.json();
 
       if (!response.ok) {
@@ -438,7 +393,6 @@ export const microsoftAuthService = {
       };
     }
   },
-
   async logoutMicrosoft(): Promise<ServiceResponse<{ message: string }>> {
     try {
       // 1. Call your backend logout endpoint
