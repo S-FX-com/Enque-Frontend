@@ -42,7 +42,7 @@ import { motion } from 'framer-motion';
 import type { ITicket, TicketStatus } from '@/typescript/ticket';
 import type { IUser } from '@/typescript/user';
 import { getUsers } from '@/services/user';
-import { formatRelativeTime, cn } from '@/lib/utils';
+import { formatRelativeTime, cn, formatTicketTime } from '@/lib/utils';
 import { getCurrentUser, type UserSession } from '@/lib/auth';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { Collapsible, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -326,13 +326,9 @@ function MyTicketsClientContent() {
 
       const allTickets = previousTicketsData?.pages.flat() || [];
       const deletedTickets = allTickets.filter(ticket => ticketIdsToDelete.includes(ticket.id));
-      const activeDeletedCount = deletedTickets.filter(
-        ticket => ticket.status !== 'Closed'
-      ).length;
+      const activeDeletedCount = deletedTickets.filter(ticket => ticket.status !== 'Closed').length;
       const myActiveDeletedCount = deletedTickets.filter(
-        ticket =>
-          ticket.assignee_id === currentUser?.id &&
-          ticket.status !== 'Closed'
+        ticket => ticket.assignee_id === currentUser?.id && ticket.status !== 'Closed'
       ).length;
 
       queryClient.setQueryData(
@@ -443,9 +439,7 @@ function MyTicketsClientContent() {
       );
 
       // Update counters - closed tickets reduce active count
-      const activeTicketsToClose = affectedTickets.filter(
-        ticket => ticket.status !== 'Closed'
-      );
+      const activeTicketsToClose = affectedTickets.filter(ticket => ticket.status !== 'Closed');
 
       const currentAllCount = queryClient.getQueryData<number>(['ticketsCount', 'all']) || 0;
       const currentMyCount =
@@ -482,8 +476,6 @@ function MyTicketsClientContent() {
       queryClient.invalidateQueries({ queryKey: ['ticketsCount'] });
     },
   });
-
-
 
   const getUserName = (user_id: number, ticket?: ITicket) => {
     // First try to get user info from the ticket itself (if available)
@@ -545,13 +537,9 @@ function MyTicketsClientContent() {
       // Update counters
       const allTickets = previousTicketsData?.pages.flat() || [];
       const mergedTickets = allTickets.filter(ticket => ticketIdsToMerge.includes(ticket.id));
-      const activeMergedCount = mergedTickets.filter(
-        ticket => ticket.status !== 'Closed'
-      ).length;
+      const activeMergedCount = mergedTickets.filter(ticket => ticket.status !== 'Closed').length;
       const myActiveMergedCount = mergedTickets.filter(
-        ticket =>
-          ticket.assignee_id === currentUser?.id &&
-          ticket.status !== 'Closed'
+        ticket => ticket.assignee_id === currentUser?.id && ticket.status !== 'Closed'
       ).length;
 
       const currentAllCount = queryClient.getQueryData<number>(['ticketsCount', 'all']) || 0;
@@ -596,8 +584,6 @@ function MyTicketsClientContent() {
       bulkCloseTicketsMutation.mutate(Array.from(selectedTicketIds));
     }
   };
-
-
 
   const handleMergeConfirm = () => {
     if (selectedTicketIds.size > 1 && selectedTargetTicketId) {
@@ -695,7 +681,6 @@ function MyTicketsClientContent() {
                 <Settings2 className="mr-2 h-4 w-4" />
                 Close ({selectedTicketIds.size})
               </Button>
-
 
               {selectedTicketIds.size > 1 && (
                 <AlertDialog open={isMergeDialogOpen} onOpenChange={setIsMergeDialogOpen}>
