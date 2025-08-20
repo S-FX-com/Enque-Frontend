@@ -55,7 +55,7 @@ export default function SignInPage() {
         const responseM365 = await microsoftAuthService.checkM365Email(email);
         if (responseM365.success) {
           const responseAuthUrl = await microsoftAuthService.getAuthUrl(
-            responseM365.data?.workspace_id
+            undefined //responseM365.data?.workspace_id
           );
           console.log(responseAuthUrl.data);
           setAuthMethod('both');
