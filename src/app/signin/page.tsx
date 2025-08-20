@@ -286,8 +286,6 @@ export default function SignInPage() {
                   </form>
                 </div>
               )}
-
-              {/* Separator when both methods are available */}
               {authMethods.can_use_password && authMethods.can_use_microsoft && !authMethods.requires_microsoft && (
                 <div className="text-center">
                   <div className="relative">
@@ -300,8 +298,6 @@ export default function SignInPage() {
                   </div>
                 </div>
               )}
-
-              {/* Microsoft login section */}
               {authMethods.can_use_microsoft && (
                 <div className="space-y-4">
                   {!authMethods.requires_microsoft && (
@@ -367,8 +363,6 @@ export default function SignInPage() {
               )}
             </div>
           )}
-
-          {/* Forgot password link - only show if password login is available */}
           {emailChecked && authMethods?.can_use_password && (
             <div className="text-center pt-4">
               <p className="text-sm text-slate-500">
@@ -379,8 +373,6 @@ export default function SignInPage() {
               </p>
             </div>
           )}
-
-          {/* Instructions for new users */}
           {emailChecked && !authMethods && (
             <div className="text-center pt-4">
               <p className="text-sm text-slate-500">
@@ -393,3 +385,4 @@ export default function SignInPage() {
     </main>
   );
 }
+
