@@ -6,7 +6,6 @@ import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { authService } from '@/services/auth';
-import { microsoftAuthService } from '@/services/microsoftAuth';
 import { AppConfigs } from '@/configs';
 import { logger } from '@/lib/logger';
 import { removeAuthToken, isAuthenticated, setupHistoryProtection } from '@/lib/auth';
@@ -41,7 +40,8 @@ export default function SignInPage() {
         window.location.replace(AppConfigs.routes.dashboard);
         return;
       } catch (error) {
-        logger.error('Error processing Microsoft token:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        logger.error('Error processing Microsoft token:', errorMessage);
         toast.error('Error processing Microsoft login. Please try again.');
       }
     }
@@ -79,7 +79,7 @@ export default function SignInPage() {
           workspace_id: response.data.workspace_id
         });
         setEmailChecked(true);
-        logger.info(`Auth methods for ${emailValue}:`, response.data);
+        logger.info(`Auth methods for ${emailValue}:`, JSON.stringify(response.data));
       } else {
         // Default to password-only if check fails
         setAuthMethods({
@@ -90,7 +90,8 @@ export default function SignInPage() {
         setEmailChecked(true);
       }
     } catch (error) {
-      logger.error('Error checking auth methods:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      logger.error('Error checking auth methods:', errorMessage);
       // Default to password-only on error
       setAuthMethods({
         can_use_password: true,
