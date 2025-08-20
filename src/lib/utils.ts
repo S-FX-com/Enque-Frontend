@@ -4,11 +4,7 @@ import { formatDistanceToNow, format } from 'date-fns';
 import { TicketPriority, TicketStatus } from '@/typescript/ticket'; // Import ticket types
 import { enUS } from 'date-fns/locale';
 import { toZonedTime } from 'date-fns-tz';
-
-/**
- * Combines multiple class names into a single string, properly handles
- * conditional classes and merges Tailwind classes efficiently.
- */
+import { EMPTY_PATH } from 'zod';
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
@@ -77,8 +73,10 @@ export function formatRelativeTime(
       return formatDistanceToNow(easternDate, { addSuffix: true });
 
     if (showTime) return format(easternDate, "MMMM dd, yyyy 'at' hh:mm a");
-    else
+    else {
+      console.log(easternDate);
       return formatDistanceToNow(easternDate, { addSuffix: true } /*"MMMM dd, yyyy 'at' hh:mm a"*/);
+    }
   } catch (error) {
     console.error('Error formatting relative time:', dateString, error);
     return typeof dateString === 'string' ? dateString : 'Error formatting date';
