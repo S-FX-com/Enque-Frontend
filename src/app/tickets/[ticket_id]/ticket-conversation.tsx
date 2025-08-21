@@ -1179,17 +1179,30 @@ export function TicketConversation({
     },
   });
 
-  // Reset mutation state when ticket changes (especially after merge)
-  useEffect(() => {
-    if (createCommentMutation.isPending) {
-      console.log('🔄 Resetting pending mutation for ticket:', ticket.id);
-      createCommentMutation.reset();
-      setIsSending(false);
-    }
-  }, [ticket.id, createCommentMutation]);
+
 
   const handleSendReply = () => {
-    if (isHtmlContentEmpty(replyContent) || !ticket?.id || isSending) return;
+    // Validaciones con feedback al usuario
+    if (isHtmlContentEmpty(replyContent)) {
+      toast.error('Please write a message before sending.');
+      return;
+    }
+    
+    if (!ticket?.id) {
+      toast.error('No ticket selected.');
+      return;
+    }
+    
+    if (isSending || createCommentMutation.isPending) {
+      toast.warning('Message is already being sent. Please wait.');
+      return;
+    }
+    
+    if (extraRecipients.trim() && !validateEmails(extraRecipients)) {
+      toast.error('Please enter valid email addresses separated by commas.');
+      return;
+    }
+    
     if (popCalendar) {
       setPopCalendar(false);
     }
@@ -1274,7 +1287,6 @@ export function TicketConversation({
                 content={replyContent}
                 onChange={setReplyContent}
                 placeholder={isPrivateNote ? 'Write a private note...' : 'Type your reply here...'}
-                disabled={createCommentMutation.isPending}
                 onAttachmentsChange={handleAttachmentsChange}
                 ableMentioning={isPrivateNote}
               />
@@ -1293,7 +1305,6 @@ export function TicketConversation({
                     id="private-note"
                     checked={isPrivateNote}
                     onCheckedChange={handlePrivateNoteChange}
-                    disabled={createCommentMutation.isPending}
                   />
                   <Label htmlFor="private-note">Private Note</Label>
                 </div>
@@ -1303,7 +1314,7 @@ export function TicketConversation({
                     <Button
                       variant="outline"
                       size="sm"
-                      disabled={createCommentMutation.isPending || isLoadingCannedReplies}
+                      disabled={isLoadingCannedReplies}
                     >
                       <MessageSquare className="mr-2 h-4 w-4" />
                       Templates
@@ -1372,13 +1383,6 @@ export function TicketConversation({
                 <Button
                   className="rounded-r-none px-4" // Added px-4 for consistent padding
                   onClick={handleSendReply}
-                  disabled={
-                    (isHtmlContentEmpty(replyContent) ||
-                      !ticket?.id ||
-                      isSending ||
-                      createCommentMutation.isPending ||
-                      (extraRecipients.trim() && !validateEmails(extraRecipients))) as boolean
-                  }
                 >
                   <Send className="mr-2 h-4 w-4" />
                   Send
@@ -1399,13 +1403,6 @@ export function TicketConversation({
                   <Button
                     variant="default" // Changed to default variant for consistent color
                     className="rounded-l-none px-3" // Adjusted padding to match the Send button's visual size
-                    disabled={
-                      (isHtmlContentEmpty(replyContent) ||
-                        !ticket?.id ||
-                        isSending ||
-                        createCommentMutation.isPending ||
-                        (extraRecipients.trim() && !validateEmails(extraRecipients))) as boolean
-                    }
                   >
                     <ChevronDown className="h-4 w-4" />
                   </Button>
