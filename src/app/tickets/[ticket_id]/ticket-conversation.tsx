@@ -1186,7 +1186,7 @@ export function TicketConversation({
 
 
   const handleSendReply = () => {
-    // Validaciones con feedback al usuario
+    // Validaciones básicas
     if (isHtmlContentEmpty(replyContent)) {
       toast.error('Please write a message before sending.');
       return;
@@ -1198,8 +1198,7 @@ export function TicketConversation({
     }
     
     if (isSending || createCommentMutation.isPending) {
-      toast.warning('Message is already being sent. Please wait.');
-      return;
+      return; // El botón ya está deshabilitado, no necesitamos toast
     }
     
     if (extraRecipients.trim() && !validateEmails(extraRecipients)) {
@@ -1387,6 +1386,7 @@ export function TicketConversation({
                 <Button
                   className="rounded-r-none px-4" // Added px-4 for consistent padding
                   onClick={handleSendReply}
+                  disabled={isSending || createCommentMutation.isPending}
                 >
                   <Send className="mr-2 h-4 w-4" />
                   Send
@@ -1407,6 +1407,7 @@ export function TicketConversation({
                   <Button
                     variant="default" // Changed to default variant for consistent color
                     className="rounded-l-none px-3" // Adjusted padding to match the Send button's visual size
+                    disabled={isSending || createCommentMutation.isPending}
                   >
                     <ChevronDown className="h-4 w-4" />
                   </Button>
