@@ -42,13 +42,13 @@ const AUTH_ENDPOINT = `${AppConfigs.api}/auth`;
 
 export const microsoftAuthService = {
   async getAuthUrl(
-    workspaceId: number,
+    workspaceId: number | undefined,
     redirectPath: string = '/dashboard'
   ): Promise<ServiceResponse<MicrosoftAuthUrlResponse>> {
     console.log(redirectPath);
     try {
       const stateObject = {
-        workspace_id: workspaceId.toString(),
+        workspace_id: workspaceId!.toString(),
         original_hostname: window.location.hostname,
       };
       const stateJsonString = JSON.stringify(stateObject);

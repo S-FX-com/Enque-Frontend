@@ -41,33 +41,39 @@ export default function SignInPage() {
     if (microsoftToken && success === 'true') {
       // Handle Microsoft login callback
       try {
-        console.log('Processing Microsoft login callback with token:', microsoftToken.substring(0, 20) + '...');
-        
+        console.log(
+          'Processing Microsoft login callback with token:',
+          microsoftToken.substring(0, 20) + '...'
+        );
+
         // Clear any existing token first
         console.log('Clearing existing tokens...');
         removeAuthToken();
-        
+
         // Save the new token
         console.log('Saving Microsoft token...');
         setAuthToken(microsoftToken);
-        
+
         // Verify the token was saved
         const savedToken = localStorage.getItem('auth_token');
-        console.log('Token verification after save:', savedToken ? 'SUCCESS - Token saved' : 'FAILED - Token not saved');
-        
+        console.log(
+          'Token verification after save:',
+          savedToken ? 'SUCCESS - Token saved' : 'FAILED - Token not saved'
+        );
+
         if (!savedToken) {
           console.error('CRITICAL ERROR: Token was not saved to localStorage');
           toast.error('Failed to save authentication. Please try again.');
           return;
         }
-        
+
         // Double check with isAuthenticated
         const isAuth = isAuthenticated();
         console.log('isAuthenticated() check:', isAuth);
-        
+
         toast.success('Successfully signed in with Microsoft 365!');
         console.log('Token saved successfully, redirecting to dashboard in 1 second...');
-        
+
         // Add a small delay to ensure token is fully saved
         setTimeout(() => {
           window.location.replace(AppConfigs.routes.dashboard);
@@ -94,7 +100,7 @@ export default function SignInPage() {
       // Check if user is already authenticated
       const token = localStorage.getItem('auth_token');
       console.log('Checking existing auth token:', token ? 'present' : 'not found');
-      
+
       if (isAuthenticated()) {
         console.log('User already authenticated, redirecting to dashboard');
         toast.success('Welcome back! Redirecting to dashboard...');
@@ -119,13 +125,13 @@ export default function SignInPage() {
     try {
       logger.info(`Checking auth methods for: ${emailValue}`);
       const response = await authService.checkAuthMethods(emailValue);
-      
+
       if (response.success && response.data) {
         setAuthMethods({
           can_use_password: response.data.can_use_password,
           can_use_microsoft: response.data.can_use_microsoft,
           requires_microsoft: response.data.requires_microsoft,
-          workspace_id: response.data.workspace_id
+          workspace_id: response.data.workspace_id,
         });
         setEmailChecked(true);
         logger.info(`Auth methods for ${emailValue}:`, JSON.stringify(response.data));
@@ -134,7 +140,7 @@ export default function SignInPage() {
         setAuthMethods({
           can_use_password: true,
           can_use_microsoft: false,
-          requires_microsoft: false
+          requires_microsoft: false,
         });
         setEmailChecked(true);
       }
@@ -145,7 +151,7 @@ export default function SignInPage() {
       setAuthMethods({
         can_use_password: true,
         can_use_microsoft: false,
-        requires_microsoft: false
+        requires_microsoft: false,
       });
       setEmailChecked(true);
     }
@@ -212,16 +218,16 @@ export default function SignInPage() {
     }
 
     setMicrosoftLoading(true);
-    
+
     try {
       logger.info(`Microsoft login attempt for ${email}`);
-      
+
       // Get the workspace ID (from authMethods if available, or default to 1)
       const workspaceId = authMethods?.workspace_id || 1;
-      
+
       // Get the Microsoft auth URL
       const response = await authService.getMicrosoftAuthUrl(workspaceId);
-      
+
       if (response.success && response.data?.auth_url) {
         logger.info('Redirecting to Microsoft login');
         window.location.href = response.data.auth_url;
@@ -237,8 +243,6 @@ export default function SignInPage() {
       setMicrosoftLoading(false);
     }
   };
-
-
 
   return (
     <main className="flex flex-col items-center justify-center min-h-screen p-4 bg-[#F4F7FE]">
@@ -283,11 +287,13 @@ export default function SignInPage() {
                         <span className="w-full border-t border-gray-200" />
                       </div>
                       <div className="relative flex justify-center text-xs uppercase">
-                        <span className="bg-white px-2 text-gray-500">Login with Username & Password</span>
+                        <span className="bg-white px-2 text-gray-500">
+                          Login with Username & Password
+                        </span>
                       </div>
                     </div>
                   </div>
-                  
+
                   <form className="space-y-4" onSubmit={handleSubmit}>
                     <div className="space-y-2">
                       <label htmlFor="password" className="text-sm font-medium">
@@ -335,18 +341,20 @@ export default function SignInPage() {
                   </form>
                 </div>
               )}
-              {authMethods.can_use_password && authMethods.can_use_microsoft && !authMethods.requires_microsoft && (
-                <div className="text-center">
-                  <div className="relative">
-                    <div className="absolute inset-0 flex items-center">
-                      <span className="w-full border-t border-gray-200" />
-                    </div>
-                    <div className="relative flex justify-center text-xs uppercase">
-                      <span className="bg-white px-2 text-gray-500">or</span>
+              {authMethods.can_use_password &&
+                authMethods.can_use_microsoft &&
+                !authMethods.requires_microsoft && (
+                  <div className="text-center">
+                    <div className="relative">
+                      <div className="absolute inset-0 flex items-center">
+                        <span className="w-full border-t border-gray-200" />
+                      </div>
+                      <div className="relative flex justify-center text-xs uppercase">
+                        <span className="bg-white px-2 text-gray-500">or</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
               {authMethods.can_use_microsoft && (
                 <div className="space-y-4">
                   {!authMethods.requires_microsoft && (
@@ -356,12 +364,14 @@ export default function SignInPage() {
                           <span className="w-full border-t border-gray-200" />
                         </div>
                         <div className="relative flex justify-center text-xs uppercase">
-                          <span className="bg-white px-2 text-gray-500">Login with Microsoft 365</span>
+                          <span className="bg-white px-2 text-gray-500">
+                            Login with Microsoft 365
+                          </span>
                         </div>
                       </div>
                     </div>
                   )}
-                  
+
                   <Button
                     type="button"
                     variant="outline"
@@ -396,7 +406,10 @@ export default function SignInPage() {
                     ) : (
                       <>
                         <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none">
-                          <path d="M11.4 24H0V12.6h11.4V24zM24 24H12.6V12.6H24V24zM11.4 11.4H0V0h11.4v11.4zM24 11.4H12.6V0H24v11.4z" fill="#00BCF2"/>
+                          <path
+                            d="M11.4 24H0V12.6h11.4V24zM24 24H12.6V12.6H24V24zM11.4 11.4H0V0h11.4v11.4zM24 11.4H12.6V0H24v11.4z"
+                            fill="#00BCF2"
+                          />
                         </svg>
                         Sign in with Microsoft 365
                       </>
@@ -434,4 +447,3 @@ export default function SignInPage() {
     </main>
   );
 }
-
