@@ -35,6 +35,21 @@ import { getEnabledGlobalSignature } from '@/services/global-signature';
 import { getCannedReplies, type CannedReply } from '@/services/canned-replies';
 import { createReplyHeader, formatRelativeTime } from '@/lib/utils';
 import { ScheduleSendCalendar } from './scheduleSend/schedule-send-calendar';
+
+// Helper function to check if HTML content is effectively empty
+function isHtmlContentEmpty(htmlContent: string): boolean {
+  if (!htmlContent || htmlContent.trim() === '') return true;
+  
+  // Create a temporary div to parse the HTML
+  const tempDiv = document.createElement('div');
+  tempDiv.innerHTML = htmlContent;
+  
+  // Get the text content without HTML tags
+  const textContent = tempDiv.textContent || tempDiv.innerText || '';
+  
+  // Check if there's any meaningful text content
+  return textContent.trim() === '';
+}
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import BoringAvatar from 'boring-avatars';
 
@@ -1165,7 +1180,7 @@ export function TicketConversation({
   });
 
   const handleSendReply = () => {
-    if (!replyContent.trim() || !ticket?.id || isSending) return;
+    if (isHtmlContentEmpty(replyContent) || !ticket?.id || isSending) return;
     if (popCalendar) {
       setPopCalendar(false);
     }
@@ -1349,7 +1364,7 @@ export function TicketConversation({
                   className="rounded-r-none px-4" // Added px-4 for consistent padding
                   onClick={handleSendReply}
                   disabled={
-                    (!replyContent.trim() ||
+                    (isHtmlContentEmpty(replyContent) ||
                       !ticket?.id ||
                       isSending ||
                       createCommentMutation.isPending ||
@@ -1376,7 +1391,7 @@ export function TicketConversation({
                     variant="default" // Changed to default variant for consistent color
                     className="rounded-l-none px-3" // Adjusted padding to match the Send button's visual size
                     disabled={
-                      (!replyContent.trim() ||
+                      (isHtmlContentEmpty(replyContent) ||
                         !ticket?.id ||
                         isSending ||
                         createCommentMutation.isPending ||

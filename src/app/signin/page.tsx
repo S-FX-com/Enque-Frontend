@@ -30,84 +30,31 @@ export default function SignInPage() {
     const microsoftToken = searchParams.get('microsoft_token');
     const success = searchParams.get('success');
 
-    // Debug logging
-    console.log('=== SIGNIN DEBUG ===');
-    console.log('Full URL:', window.location.href);
-    console.log('Microsoft Token:', microsoftToken);
-    console.log('Success param:', success);
-    console.log('All URL params:', Object.fromEntries(searchParams.entries()));
-    console.log('===================');
+
 
     if (microsoftToken && success === 'true') {
       // Handle Microsoft login callback
       try {
-        console.log(
-          'Processing Microsoft login callback with token:',
-          microsoftToken.substring(0, 20) + '...'
-        );
-
-        // Clear any existing token first
-        console.log('Clearing existing tokens...');
-        removeAuthToken();
-
-        // Save the new token
-        console.log('Saving Microsoft token...');
-        setAuthToken(microsoftToken);
-
-        // Verify the token was saved
-        const savedToken = localStorage.getItem('auth_token');
-        console.log(
-          'Token verification after save:',
-          savedToken ? 'SUCCESS - Token saved' : 'FAILED - Token not saved'
-        );
-
-        if (!savedToken) {
-          console.error('CRITICAL ERROR: Token was not saved to localStorage');
-          toast.error('Failed to save authentication. Please try again.');
-          return;
-        }
-
-        // Double check with isAuthenticated
-        const isAuth = isAuthenticated();
-        console.log('isAuthenticated() check:', isAuth);
-
+        removeAuthToken(); // Clear any existing token first
+        setAuthToken(microsoftToken); // Use the proper auth function
         toast.success('Successfully signed in with Microsoft 365!');
-        console.log('Token saved successfully, redirecting to dashboard in 1 second...');
-
-        // Add a small delay to ensure token is fully saved
-        setTimeout(() => {
-          window.location.replace(AppConfigs.routes.dashboard);
-        }, 1000);
+        window.location.replace(AppConfigs.routes.dashboard);
         return;
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        console.error('Error processing Microsoft token:', errorMessage);
         logger.error('Error processing Microsoft token:', errorMessage);
         toast.error('Error processing Microsoft login. Please try again.');
       }
-    } else if (microsoftToken) {
-      console.warn('Microsoft token found but success parameter is not "true":', success || 'null');
-    } else if (success === 'true') {
-      console.warn('Success parameter is true but no Microsoft token found');
-    } else {
-      console.log('No Microsoft callback detected');
     }
 
     if (fromError) {
       toast.error('Your session has expired. Please sign in again.');
       removeAuthToken();
     } else {
-      // Check if user is already authenticated
-      const token = localStorage.getItem('auth_token');
-      console.log('Checking existing auth token:', token ? 'present' : 'not found');
-
-      if (isAuthenticated()) {
-        console.log('User already authenticated, redirecting to dashboard');
+            if (isAuthenticated()) {
         toast.success('Welcome back! Redirecting to dashboard...');
         window.location.replace(AppConfigs.routes.dashboard);
         return;
-      } else {
-        console.log('User not authenticated, staying on signin page');
       }
     }
 
