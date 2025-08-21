@@ -67,14 +67,16 @@ export function formatRelativeTime(
     if (isNaN(dateToParse.getTime())) {
       return typeof dateString === 'string' ? dateString : 'Invalid date';
     }
-    const easternDate = toZonedTime(dateToParse, 'America/New_York');
-    //console.log(easternDate);
+    const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    //const easternDate = toZonedTime(dateToParse, 'America/New_York');
+    const easternDate = toZonedTime(dateToParse, userTimeZone);
+    console.log(easternDate);
     if (dateToday.getDate() === easternDate.getDate())
       return formatDistanceToNow(easternDate, { addSuffix: true });
 
     if (showTime) return format(easternDate, "MMMM dd, yyyy 'at' hh:mm a");
     else {
-      console.log(easternDate);
+      //console.log(easternDate);
       return formatDistanceToNow(easternDate, { addSuffix: true } /*"MMMM dd, yyyy 'at' hh:mm a"*/);
     }
   } catch (error) {
