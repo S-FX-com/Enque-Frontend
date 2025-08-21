@@ -1132,7 +1132,13 @@ export function TicketConversation({
         toast.success('Comment scheduled successfully! It will be sent at the specified time.');
         console.log('📅 Comment scheduled:', data.scheduled_comment);
       } else {
-        toast.success('Reply sent successfully.');
+        if (isPrivateNote) {
+          toast.success('Private note saved successfully.');
+          // Forzar actualización inmediata para notas privadas
+          queryClient.invalidateQueries({ queryKey: ['comments', ticket.id] });
+        } else {
+          toast.success('Reply sent successfully.');
+        }
       }
 
       const needsAutoAssignment = currentUser && ticket && ticket.assignee_id !== currentUser.id;
@@ -1156,6 +1162,10 @@ export function TicketConversation({
         queryClient.invalidateQueries({ queryKey: ['tickets'] });
         // Refetch el ticket específico para asegurar sincronización
         queryClient.invalidateQueries({ queryKey: ['ticket', ticket.id] });
+        // Invalidar comentarios solo si es nota privada para mostrar inmediatamente
+        if (isPrivateNote) {
+          queryClient.invalidateQueries({ queryKey: ['comments', ticket.id] });
+        }
 
         if (data.assignee_changed && currentUser) {
           toast.info(`You were automatically assigned to this ticket.`);
@@ -1170,6 +1180,10 @@ export function TicketConversation({
           queryClient.invalidateQueries({ queryKey: ['tickets'] });
           // Refetch el ticket específico para asegurar sincronización
           queryClient.invalidateQueries({ queryKey: ['ticket', ticket.id] });
+          // Invalidar comentarios solo si es nota privada para mostrar inmediatamente
+          if (isPrivateNote) {
+            queryClient.invalidateQueries({ queryKey: ['comments', ticket.id] });
+          }
           toast.info(`Ticket automatically assigned to you.`);
         } catch (error) {
           console.error('Failed to auto-assign ticket:', error);
