@@ -198,13 +198,21 @@ export function TicketPageContent({ ticketId }: Props) {
     },
     enabled: !!ticketId,
     staleTime: 1000 * 60 * 5,
-    retry: 1,
+    retry: (failureCount, error: unknown) => {
+      // Si es un 404 (ticket no encontrado), no reintentar
+      const httpError = error as { response?: { status?: number } };
+      if (httpError?.response?.status === 404) return false;
+      // Para otros errores, reintentar hasta 3 veces
+      return failureCount < 3;
+    },
+    retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
 
   const currentTicket = ticketData?.[0] || null;
 
   useEffect(() => {
     if (currentTicket) {
+      console.log('🎫 Ticket loaded successfully:', currentTicket.id);
       setTicket(currentTicket as unknown as ITicket);
       if (currentTicket?.cc_recipients) {
         const emails = currentTicket.cc_recipients
@@ -225,8 +233,10 @@ export function TicketPageContent({ ticketId }: Props) {
       } else {
         setExistingBccEmails([]);
       }
+    } else if (ticketError) {
+      console.error('❌ Error loading ticket:', ticketError);
     }
-  }, [currentTicket]);
+  }, [currentTicket, ticketError]);
 
   // Socket listener for real-time updates
   useEffect(() => {
@@ -739,10 +749,26 @@ export function TicketPageContent({ ticketId }: Props) {
           The ticket you&apos;re looking for doesn&apos;t exist or you don&apos;t have permission to
           view it.
         </p>
-        <Button onClick={() => router.push('/tickets')} variant="outline">
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Tickets
-        </Button>
+        {ticketError && (
+          <p className="text-sm text-red-500 mb-4">
+            Error: {ticketError.message || 'Unknown error occurred'}
+          </p>
+        )}
+        <div className="space-x-2">
+          <Button 
+            onClick={() => {
+              queryClient.invalidateQueries({ queryKey: ['ticket', ticketId] });
+              window.location.reload();
+            }} 
+            variant="default"
+          >
+            Try Again
+          </Button>
+          <Button onClick={() => router.push('/tickets')} variant="outline">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Tickets
+          </Button>
+        </div>
       </div>
     );
   }
