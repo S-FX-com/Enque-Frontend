@@ -1179,6 +1179,15 @@ export function TicketConversation({
     },
   });
 
+  // Reset mutation state when ticket changes (especially after merge)
+  useEffect(() => {
+    if (createCommentMutation.isPending) {
+      console.log('🔄 Resetting pending mutation for ticket:', ticket.id);
+      createCommentMutation.reset();
+      setIsSending(false);
+    }
+  }, [ticket.id, createCommentMutation]);
+
   const handleSendReply = () => {
     if (isHtmlContentEmpty(replyContent) || !ticket?.id || isSending) return;
     if (popCalendar) {
