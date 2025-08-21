@@ -1154,6 +1154,8 @@ export function TicketConversation({
         onTicketUpdate(updatedTask);
         queryClient.setQueryData(['ticket', ticket.id], updatedTask);
         queryClient.invalidateQueries({ queryKey: ['tickets'] });
+        // Refetch el ticket específico para asegurar sincronización
+        queryClient.invalidateQueries({ queryKey: ['ticket', ticket.id] });
 
         if (data.assignee_changed && currentUser) {
           toast.info(`You were automatically assigned to this ticket.`);
@@ -1166,6 +1168,8 @@ export function TicketConversation({
           }
           queryClient.setQueryData(['ticket', ticket.id], updatedTicket);
           queryClient.invalidateQueries({ queryKey: ['tickets'] });
+          // Refetch el ticket específico para asegurar sincronización
+          queryClient.invalidateQueries({ queryKey: ['ticket', ticket.id] });
           toast.info(`Ticket automatically assigned to you.`);
         } catch (error) {
           console.error('Failed to auto-assign ticket:', error);
