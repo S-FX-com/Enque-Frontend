@@ -42,7 +42,7 @@ import { motion } from 'framer-motion';
 import type { ITicket, TicketStatus } from '@/typescript/ticket';
 import type { IUser } from '@/typescript/user';
 import { getUsers } from '@/services/user';
-import { formatRelativeTime, cn, formatTicketTime } from '@/lib/utils';
+import { formatRelativeTime, cn } from '@/lib/utils';
 import { getCurrentUser, type UserSession } from '@/lib/auth';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { Collapsible, CollapsibleTrigger } from '@/components/ui/collapsible';
