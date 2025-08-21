@@ -70,14 +70,17 @@ export function formatRelativeTime(
     const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     //const easternDate = toZonedTime(dateToParse, 'America/New_York');
     const easternDate = toZonedTime(dateToParse, userTimeZone);
-    console.log(easternDate);
     if (dateToday.getDate() === easternDate.getDate())
       return formatDistanceToNow(easternDate, { addSuffix: true });
 
     if (showTime) return format(easternDate, "MMMM dd, yyyy 'at' hh:mm a");
     else {
-      //console.log(easternDate);
-      return formatDistanceToNow(easternDate, { addSuffix: true } /*"MMMM dd, yyyy 'at' hh:mm a"*/);
+      const regexTest = /([0-9]+) day ago ||([0-9]+) days ago /;
+      console.log(formatDistanceToNow(easternDate, { addSuffix: true }));
+      if (regexTest.test(formatDistanceToNow(easternDate, { addSuffix: true }))) {
+        return format(easternDate, 'MMMM dd, yyyyS');
+      }
+      return formatDistanceToNow(easternDate, { addSuffix: true });
     }
   } catch (error) {
     console.error('Error formatting relative time:', dateString, error);
