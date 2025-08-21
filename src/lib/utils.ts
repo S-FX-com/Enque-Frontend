@@ -78,7 +78,7 @@ export function formatRelativeTime(
       const regexTest = /([0-9]+) day ago ||([0-9]+) days ago /;
       console.log(formatDistanceToNow(easternDate, { addSuffix: true }));
       if (regexTest.test(formatDistanceToNow(easternDate, { addSuffix: true }))) {
-        return format(easternDate, 'MMMM dd, yyyyS');
+        return format(easternDate, 'MMMM dd, yyyy');
       }
       return formatDistanceToNow(easternDate, { addSuffix: true });
     }
