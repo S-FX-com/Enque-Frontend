@@ -110,6 +110,8 @@ function TicketsClientContent() {
   const [selectedTargetTicketId, setSelectedTargetTicketId] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  const [displayedTicketsCount, setDisplayedTicketsCount] = useState(10);
+
   const [sortColumn, setSortColumn] = useState<SortColumn | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
 
@@ -342,6 +344,29 @@ function TicketsClientContent() {
 
     return filtered;
   }, [filteredTicketsData, sortColumn, sortDirection]);
+
+  const displayedTickets = useMemo(() => {
+    return filteredTicketsDataSorted.slice(0, displayedTicketsCount);
+  }, [filteredTicketsDataSorted, displayedTicketsCount]);
+
+  useEffect(() => {
+    setDisplayedTicketsCount(10);
+  }, [
+    debouncedSubjectFilter,
+    selectedStatuses,
+    selectedTeams,
+    selectedAgents,
+    selectedPriorities,
+    selectedUsers,
+    selectedCompanies,
+    selectedCategories,
+  ]);
+
+  const handleLoadMore = () => {
+    setDisplayedTicketsCount(prev => prev + 10);
+  };
+
+  const allTicketsDisplayed = displayedTicketsCount >= filteredTicketsDataSorted.length;
 
   useEffect(() => {
     const container = scrollContainerRef.current;
@@ -1446,7 +1471,7 @@ function TicketsClientContent() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredTicketsDataSorted.map(ticket => {
+                    displayedTickets.map(ticket => {
                       return (
                         <motion.tr
                           key={ticket.id}
@@ -1551,6 +1576,23 @@ function TicketsClientContent() {
                   )}
                 </TableBody>
               </Table>
+              {filteredTicketsDataSorted.length > 0 && (
+                <div className="flex justify-center py-6 border-t">
+                  {allTicketsDisplayed ? (
+                    <div className="text-muted-foreground text-sm font-medium">
+                      All Tickets Displayed ({filteredTicketsDataSorted.length} total)
+                    </div>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      onClick={handleLoadMore}
+                      className="px-6 bg-transparent"
+                    >
+                      Load More ({displayedTicketsCount} of {filteredTicketsDataSorted.length})
+                    </Button>
+                  )}
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
