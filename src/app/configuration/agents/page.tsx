@@ -93,9 +93,25 @@ export default function AgentsPage() {
     queryFn: getAgents,
     staleTime: 5 * 60 * 1000,
   });
+
+  // Log React Query state changes
+  useEffect(() => {
+    if (agents.length > 0) {
+      console.log('React Query success - agents loaded:', agents);
+    }
+    if (isError && error) {
+      console.error('React Query error:', error);
+    }
+  }, [agents, isError, error]);
   const [selectedAgentIds, setSelectedAgentIds] = useState<Set<number>>(new Set());
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isNewAgentModalOpen, setIsNewAgentModalOpen] = useState(false); // State for the new agent modal
+
+  // Debug logging
+  console.log('AgentsPage render - Raw agents data:', agents);
+  console.log('AgentsPage render - isLoading:', isLoading);
+  console.log('AgentsPage render - isError:', isError);
+  console.log('AgentsPage render - error:', error);
 
   // Filter agents based on active status
   const activeAgents = agents.filter(agent => agent.is_active);
@@ -128,13 +144,12 @@ export default function AgentsPage() {
 
   // Reset selection when switching tabs
   useEffect(() => {
-    const get_agents = async () => {
-      const response = await getAgents();
-      console.log(response);
-    };
-    get_agents();
+    console.log('Active tab changed:', activeTab);
+    console.log('Current agents array:', agents);
+    console.log('Active agents count:', activeAgents.length);
+    console.log('Pending agents count:', pendingAgents.length);
     setSelectedAgentIds(new Set());
-  }, [activeTab]);
+  }, [activeTab, agents, activeAgents.length, pendingAgents.length]);
 
   const isAllSelected = currentAgents.length > 0 && selectedAgentIds.size === currentAgents.length;
   const isIndeterminate = selectedAgentIds.size > 0 && selectedAgentIds.size < currentAgents.length;
