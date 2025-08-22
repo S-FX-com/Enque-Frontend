@@ -30,8 +30,6 @@ export default function SignInPage() {
     const microsoftToken = searchParams.get('microsoft_token');
     const success = searchParams.get('success');
 
-
-
     if (microsoftToken && success === 'true') {
       // Handle Microsoft login callback
       try {
@@ -51,7 +49,7 @@ export default function SignInPage() {
       toast.error('Your session has expired. Please sign in again.');
       removeAuthToken();
     } else {
-            if (isAuthenticated()) {
+      if (isAuthenticated()) {
         toast.success('Welcome back! Redirecting to dashboard...');
         window.location.replace(AppConfigs.routes.dashboard);
         return;
@@ -72,7 +70,7 @@ export default function SignInPage() {
     try {
       logger.info(`Checking auth methods for: ${emailValue}`);
       const response = await authService.checkAuthMethods(emailValue);
-
+      console.log(response);
       if (response.success && response.data) {
         setAuthMethods({
           can_use_password: response.data.can_use_password,
@@ -304,7 +302,7 @@ export default function SignInPage() {
                 )}
               {authMethods.can_use_microsoft && (
                 <div className="space-y-4">
-                  {!authMethods.requires_microsoft && (
+                  {authMethods.requires_microsoft && (
                     <div className="text-center">
                       <div className="relative">
                         <div className="absolute inset-0 flex items-center">
