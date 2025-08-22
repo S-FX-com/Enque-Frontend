@@ -23,24 +23,24 @@ export async function getAgents(): Promise<Agent[]> {
     // Check if response is wrapped in BaseResponse format
     if (response && typeof response === 'object' && 'success' in response && 'data' in response) {
       // Wrapped response format
-      if (response.success && response.data) {
+      if (response.success && response.data && Array.isArray(response.data)) {
         console.log('Agents data (wrapped):', response.data);
-        return response.data;
+        return response.data.filter(agent => agent && typeof agent === 'object' && agent.id);
       } else {
         console.error('Error fetching agents (wrapped):', response?.message || 'Unknown API error');
-        return [];
+        throw new Error(response?.message || 'Failed to fetch agents');
       }
     } else if (Array.isArray(response)) {
       // Direct array response
       console.log('Agents data (direct array):', response);
-      return response;
+      return response.filter(agent => agent && typeof agent === 'object' && agent.id);
     } else {
       console.error('Unexpected response format:', response);
-      return [];
+      throw new Error('Invalid response format from server');
     }
   } catch (error) {
     console.error('Error fetching agents (catch block):', error);
-    return [];
+    throw error; // Re-throw the error so React Query can handle it
   }
 }
 
