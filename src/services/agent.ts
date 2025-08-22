@@ -1,6 +1,7 @@
 // frontend/src/services/agent.ts
 import { fetchAPI } from '@/lib/fetch-api';
 import { Agent, AgentUpdate } from '@/typescript/agent';
+//import { BaseResponse } from '@/lib/fetch-api';
 import { Team } from '@/typescript/team'; // Import Team type
 // Removed unused BaseResponse import
 
@@ -13,9 +14,12 @@ const API_BASE_URL =
  */
 export async function getAgents(): Promise<Agent[]> {
   try {
-    const url = `${API_BASE_URL}/v1/agents/`;
     // Assuming GET returns BaseResponse<Agent[]>
+    const url = `${API_BASE_URL}/v1/agents/`;
+    console.log(url);
+    //const response = await fetchAPI.GET<Agent[]>(`${url}$${queryParams}`);
     const response = await fetchAPI.GET<Agent[]>(url);
+    console.log(response);
     if (response && response.success && response.data) {
       return response.data;
     } else {

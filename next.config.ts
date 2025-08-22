@@ -13,9 +13,10 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: '*.amazonaws.com',
         pathname: '/**',
-      }
+      },
     ],
   },
+  //Proxy to get other domains, it worked as a bug solving for the /v1/agents/ fetch problem
 };
 
 export default nextConfig;
