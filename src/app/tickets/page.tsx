@@ -1304,7 +1304,19 @@ function TicketsClientContent() {
         );
       })
     );
-  }, []);
+  }, [
+    agentIdToNameMap,
+    allTicketsData.length,
+    debouncedSubjectFilter,
+    displayedTickets,
+    filteredTicketsDataSorted.length,
+    getUserName,
+    isLoadingTickets,
+    isTicketsError,
+    router,
+    selectedTicketIds,
+    ticketsError?.message,
+  ]);
   return (
     <div className="flex h-full gap-6">
       <div className="flex-1 flex flex-col h-full">

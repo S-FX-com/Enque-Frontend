@@ -243,7 +243,7 @@ function SidebarContent() {
         ),
       },
     ],
-    []
+    [allTicketsCount, myTicketsCount] // Dependency array
   );
 
   const bottomItems = useMemo(
