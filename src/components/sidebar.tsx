@@ -1,7 +1,7 @@
 'use client';
 
 import type React from 'react';
-import { Suspense, use } from 'react';
+import { Suspense } from 'react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
