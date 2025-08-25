@@ -1194,7 +1194,117 @@ function TicketsClientContent() {
       </div>
     </TableHead>
   );
-
+  console.log(selectedTicketIds.size > 0);
+  const memoizedLoadTickets = useCallback(() => {
+    return isLoadingTickets && allTicketsData.length === 0 ? (
+      <TableRow>
+        <TableCell colSpan={8} className="h-24 text-center">
+          Loading tickets...
+        </TableCell>
+      </TableRow>
+    ) : isTicketsError ? (
+      <TableRow>
+        <TableCell colSpan={8} className="h-24 text-center text-red-500">
+          Error loading tickets: {ticketsError?.message || 'Unknown error'}
+        </TableCell>
+      </TableRow>
+    ) : filteredTicketsDataSorted.length === 0 ? (
+      <TableRow>
+        <TableCell colSpan={8} className="h-24 text-center">
+          {debouncedSubjectFilter ? 'No tickets match your filter.' : 'No tickets found.'}
+        </TableCell>
+      </TableRow>
+    ) : (
+      displayedTickets.map(ticket => {
+        return (
+          <motion.tr
+            key={ticket.id}
+            layout
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className={cn(
+              'border-0 h-14 cursor-pointer hover:bg-muted/50',
+              ticket.status === 'Unread' && 'font-semibold bg-slate-50 dark:bg-slate-800/50'
+            )}
+            data-state={selectedTicketIds.has(ticket.id) ? 'selected' : ''}
+            onClick={e => {
+              if (e.metaKey || e.ctrlKey) {
+                window.open(`/tickets/${ticket.id}`, '_blank');
+              } else {
+                router.push(`/tickets/${ticket.id}`);
+              }
+            }}
+          >
+            <TableCell className="px-4">
+              <Checkbox
+                checked={selectedTicketIds.has(ticket.id)}
+                onCheckedChange={checked => handleRowSelectChange(ticket.id, checked)}
+                aria-label={`Select ticket ${ticket.id}`}
+                onClick={e => e.stopPropagation()}
+              />
+            </TableCell>
+            <TableCell className="font-medium p-2 py-4">{ticket.id}</TableCell>
+            <TableCell className="max-w-xs md:max-w-sm truncate p-2 py-4">{ticket.title}</TableCell>
+            <TableCell className="p-2 py-4">
+              <div className="flex items-center gap-2">
+                <div className="relative flex h-2 w-2">
+                  <span
+                    className={cn(
+                      'absolute inline-flex h-full w-full rounded-full',
+                      ticket.status === 'Open' && 'bg-green-500',
+                      ticket.status === 'Closed' && 'bg-slate-500',
+                      ticket.status === 'Unread' && 'bg-blue-500',
+                      ticket.status === 'With User' && 'bg-purple-500',
+                      ticket.status === 'In Progress' && 'bg-orange-500'
+                    )}
+                  ></span>
+                  {ticket.status === 'Unread' && (
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                  )}
+                </div>
+                <span
+                  className={cn(
+                    'text-foreground capitalize',
+                    ticket.status === 'Unread' && 'font-semibold'
+                  )}
+                >
+                  {ticket.status}
+                </span>
+              </div>
+            </TableCell>
+            <TableCell className="p-2 py-4">
+              <Badge
+                variant="outline"
+                className={cn(
+                  'whitespace-nowrap capitalize',
+                  ticket.priority === 'Low' &&
+                    'bg-slate-100 text-slate-600 border-slate-300 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700',
+                  ticket.priority === 'Medium' &&
+                    'bg-green-100 text-green-800 border-green-300 dark:bg-green-900/50 dark:text-green-300 dark:border-green-700',
+                  ticket.priority === 'High' &&
+                    'bg-yellow-100 text-yellow-800 border-yellow-300 dark:bg-yellow-900/50 dark:text-yellow-300 dark:border-yellow-700',
+                  ticket.priority === 'Critical' &&
+                    'bg-red-100 text-red-800 border-red-300 dark:bg-red-900/50 dark:text-red-300 dark:border-red-700'
+                )}
+              >
+                {ticket.priority}
+              </Badge>
+            </TableCell>
+            <TableCell className="p-2 py-4">
+              {getUserName(ticket.user_id as number, ticket)}
+            </TableCell>
+            <TableCell className="p-2 py-4">
+              {agentIdToNameMap[ticket.assignee_id as number] || '-'}
+            </TableCell>
+            <TableCell className="p-2 py-4">{formatRelativeTime(ticket.last_update)}</TableCell>
+            <TableCell className="p-2 py-4">{formatRelativeTime(ticket.created_at)}</TableCell>
+          </motion.tr>
+        );
+      })
+    );
+  }, []);
   return (
     <div className="flex h-full gap-6">
       <div className="flex-1 flex flex-col h-full">
@@ -1421,6 +1531,7 @@ function TicketsClientContent() {
               {isRefreshing ? 'Refreshing...' : 'Refresh'}
             </Button>
             <span className="text-sm text-muted-foreground">
+              {/*memoizable */}
               {filteredTicketsData.length} ticket{filteredTicketsData.length !== 1 ? 's' : ''}
             </span>
           </div>
@@ -1450,7 +1561,8 @@ function TicketsClientContent() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {isLoadingTickets && allTicketsData.length === 0 ? (
+                  {
+                    memoizedLoadTickets() /*{isLoadingTickets && allTicketsData.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={8} className="h-24 text-center">
                         Loading tickets...
@@ -1566,7 +1678,8 @@ function TicketsClientContent() {
                         </motion.tr>
                       );
                     })
-                  )}
+                  )}*/
+                  }
                   {isFetchingNextPage && (
                     <TableRow>
                       <TableCell colSpan={8} className="py-4 text-center text-muted-foreground">

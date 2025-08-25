@@ -7,6 +7,7 @@ import { GlobalTicketsProvider } from '@/providers/global-tickets-provider';
 import { TicketPreloaderProvider } from '@/providers/ticket-preloader-provider';
 import { Toaster } from 'sonner';
 import { SocketProvider } from '@/providers/socket-provider';
+//import '../utils/react-scan';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -28,6 +29,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="theme-transition">
+      <head>
+        <script crossOrigin="anonymous" src="//unpkg.com/react-scan/dist/auto.global.js" />
+        {/* rest of your scripts go under */}
+      </head>
       <body className={`${geistSans.variable} antialiased theme-transition`}>
         <ThemeProvider
           attribute="class"

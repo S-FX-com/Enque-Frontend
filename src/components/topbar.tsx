@@ -42,6 +42,7 @@ import { searchTickets } from '@/services/ticket';
 import type { ITicket } from '@/typescript/ticket';
 import { formatRelativeTime, cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
+import { scan } from 'react-scan';
 const agentAvatarColors = ['#1D73F4', '#D4E4FA'];
 const userAvatarColors = ['#a3a948', '#edb92e', '#f85931', '#ce1836', '#009989'];
 
@@ -63,6 +64,29 @@ export function Topbar({
   user,
   onNewTicketClick,
 }: TopbarProps) {
+  if (process.env.NODE_ENV === 'development') {
+    scan({
+      // Habilita o scanner
+      enabled: true,
+
+      // Mostra logs no console
+      log: true,
+
+      // Configurações visuais
+      renderCountThreshold: 0, // Mostra a partir de 0 re-renders
+
+      // Inclui todos os componentes
+      include: [/.*/],
+
+      // Exclui componentes específico
+
+      // Configurações visuais do highlight
+      outline: {
+        color: 'red',
+        size: 2,
+      },
+    });
+  }
   const router = useRouter();
   const queryClient = useQueryClient();
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
@@ -398,7 +422,7 @@ export function Topbar({
                           // Determine if this is a user activity (either ticket creation or comment from user)
                           let isUserActivity = false;
                           let displayName = 'User';
-                          
+
                           if (notification.creator_user_name) {
                             displayName = notification.creator_user_name;
                             isUserActivity = true;
@@ -426,7 +450,9 @@ export function Topbar({
                               `agent-${notification.agent_id}` ||
                               'system';
 
-                          const avatarColors = isUserActivity ? userAvatarColors : agentAvatarColors; // Choose palette
+                          const avatarColors = isUserActivity
+                            ? userAvatarColors
+                            : agentAvatarColors; // Choose palette
 
                           const notificationContent = (
                             <div key={notification.id} className="flex items-start gap-3">
