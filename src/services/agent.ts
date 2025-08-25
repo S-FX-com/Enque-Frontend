@@ -14,21 +14,33 @@ const API_BASE_URL =
  */
 export async function getAgents(): Promise<Agent[]> {
   try {
-    // Assuming GET returns BaseResponse<Agent[]>
     const url = `${API_BASE_URL}/v1/agents/`;
-    console.log(url);
-    //const response = await fetchAPI.GET<Agent[]>(`${url}$${queryParams}`);
+    console.log('Fetching agents from:', url);
+    
     const response = await fetchAPI.GET<Agent[]>(url);
-    console.log(response);
-    if (response && response.success && response.data) {
-      return response.data;
+    console.log('Raw response:', response);
+    
+    // Check if response is wrapped in BaseResponse format
+    if (response && typeof response === 'object' && 'success' in response && 'data' in response) {
+      // Wrapped response format
+      if (response.success && response.data && Array.isArray(response.data)) {
+        console.log('Agents data (wrapped):', response.data);
+        return response.data.filter(agent => agent && typeof agent === 'object' && agent.id);
+      } else {
+        console.error('Error fetching agents (wrapped):', response?.message || 'Unknown API error');
+        throw new Error(response?.message || 'Failed to fetch agents');
+      }
+    } else if (Array.isArray(response)) {
+      // Direct array response
+      console.log('Agents data (direct array):', response);
+      return response.filter(agent => agent && typeof agent === 'object' && agent.id);
     } else {
-      console.error('Error fetching agents:', response?.message || 'Unknown API error');
-      return [];
+      console.error('Unexpected response format:', response);
+      throw new Error('Invalid response format from server');
     }
   } catch (error) {
     console.error('Error fetching agents (catch block):', error);
-    return [];
+    throw error; // Re-throw the error so React Query can handle it
   }
 }
 

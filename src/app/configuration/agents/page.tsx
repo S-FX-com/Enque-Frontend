@@ -83,6 +83,11 @@ export default function AgentsPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState('active');
+  const [selectedAgentIds, setSelectedAgentIds] = useState<Set<number>>(new Set());
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isNewAgentModalOpen, setIsNewAgentModalOpen] = useState(false);
+  
+  // React Query - must be called before any early returns
   const {
     data: agents = [],
     isLoading,
@@ -93,64 +98,41 @@ export default function AgentsPage() {
     queryFn: getAgents,
     staleTime: 5 * 60 * 1000,
   });
-  const [selectedAgentIds, setSelectedAgentIds] = useState<Set<number>>(new Set());
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [isNewAgentModalOpen, setIsNewAgentModalOpen] = useState(false); // State for the new agent modal
 
-  // Filter agents based on active status
-  const activeAgents = agents.filter(agent => agent.is_active);
-  const pendingAgents = agents.filter(agent => !agent.is_active);
+  // Filter agents based on active status - with null checks
+  const activeAgents = (agents || []).filter(agent => agent?.is_active === true);
+  const pendingAgents = (agents || []).filter(agent => agent?.is_active === false);
   const currentAgents = activeTab === 'active' ? activeAgents : pendingAgents;
 
-  const handleRowClick = (agentId: number) => {
-    router.push(`/configuration/agents/${agentId}`);
-  };
-
-  const handleSelectAllChange = (checked: boolean | 'indeterminate') => {
-    if (checked === true) {
-      setSelectedAgentIds(new Set(currentAgents.map(agent => agent.id)));
-    } else {
-      setSelectedAgentIds(new Set());
+  // All hooks must be called before any early returns
+  // Log React Query state changes
+  useEffect(() => {
+    if (agents.length > 0) {
+      console.log('React Query success - agents loaded:', agents);
     }
-  };
-
-  const handleRowSelectChange = (agentId: number, checked: boolean | 'indeterminate') => {
-    setSelectedAgentIds(prev => {
-      const next = new Set(prev);
-      if (checked === true) {
-        next.add(agentId);
-      } else {
-        next.delete(agentId);
-      }
-      return next;
-    });
-  };
+    if (isError && error) {
+      console.error('React Query error:', error);
+    }
+  }, [agents, isError, error]);
 
   // Reset selection when switching tabs
   useEffect(() => {
-    const get_agents = async () => {
-      const response = await getAgents();
-      console.log(response);
-    };
-    get_agents();
+    console.log('Active tab changed:', activeTab);
+    console.log('Current agents array:', agents);
+    console.log('Active agents count:', activeAgents.length);
+    console.log('Pending agents count:', pendingAgents.length);
     setSelectedAgentIds(new Set());
-  }, [activeTab]);
+  }, [activeTab, agents, activeAgents.length, pendingAgents.length]);
 
-  const isAllSelected = currentAgents.length > 0 && selectedAgentIds.size === currentAgents.length;
-  const isIndeterminate = selectedAgentIds.size > 0 && selectedAgentIds.size < currentAgents.length;
-  const headerCheckboxState = isAllSelected ? true : isIndeterminate ? 'indeterminate' : false;
-
-  const formatRelativeTime = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-
-    if (diffInSeconds < 60) return 'Just now';
-    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
-    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
-    if (diffInSeconds < 2592000) return `${Math.floor(diffInSeconds / 86400)}d ago`;
-    return date.toLocaleDateString();
-  };
+  // Connect to the global New button
+  useEffect(() => {
+    (window as Window & typeof globalThis & { openNewAgentModal?: () => void }).openNewAgentModal =
+      () => setIsNewAgentModalOpen(true);
+    return () => {
+      delete (window as Window & typeof globalThis & { openNewAgentModal?: () => void })
+        .openNewAgentModal;
+    };
+  }, []);
 
   const deleteAgentsMutation = useMutation({
     mutationFn: async (agentIds: number[]) => {
@@ -165,15 +147,12 @@ export default function AgentsPage() {
     onMutate: async agentIdsToDelete => {
       await queryClient.cancelQueries({ queryKey: ['agents'] });
       const previousAgents = queryClient.getQueryData<Agent[]>(['agents']);
-      queryClient.setQueryData<Agent[]>(['agents'], old =>
-        old ? old.filter(agent => !agentIdsToDelete.includes(agent.id)) : []
+      queryClient.setQueryData(['agents'], (old: Agent[] = []) =>
+        old.filter(agent => !agentIdsToDelete.includes(agent.id))
       );
-      setSelectedAgentIds(new Set());
-      setIsDeleteDialogOpen(false);
       return { previousAgents };
     },
     onError: (err, agentIdsToDelete, context) => {
-      toast.error(`Error deleting agents: ${err.message}`);
       if (context?.previousAgents) {
         queryClient.setQueryData(['agents'], context.previousAgents);
       }
@@ -204,6 +183,82 @@ export default function AgentsPage() {
     },
   });
 
+  // Debug logging
+  console.log('AgentsPage render - Raw agents data:', agents);
+  console.log('AgentsPage render - isLoading:', isLoading);
+  console.log('AgentsPage render - isError:', isError);
+  console.log('AgentsPage render - error:', error);
+
+  const isAllSelected = currentAgents.length > 0 && selectedAgentIds.size === currentAgents.length;
+  const isIndeterminate = selectedAgentIds.size > 0 && selectedAgentIds.size < currentAgents.length;
+  const headerCheckboxState = isAllSelected ? true : isIndeterminate ? 'indeterminate' : false;
+
+  // Early return for loading state
+  if (isLoading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex justify-center items-center h-64">
+          <div className="text-lg">Loading agents...</div>
+        </div>
+      </div>
+    );
+  }
+
+  // Early return for error state  
+  if (isError) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex justify-center items-center h-64">
+          <div className="text-red-500">
+            Error loading agents: {String((error as Error)?.message || 'Unknown error')}
+            <br />
+            <Button onClick={() => window.location.reload()} className="mt-4">
+              Reload Page
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const handleRowClick = (agentId: number) => {
+    router.push(`/configuration/agents/${agentId}`);
+  };
+
+  const handleSelectAllChange = (checked: boolean | 'indeterminate') => {
+    if (checked === true) {
+      setSelectedAgentIds(new Set(currentAgents.map(agent => agent.id)));
+    } else {
+      setSelectedAgentIds(new Set());
+    }
+  };
+
+  const handleRowSelectChange = (agentId: number, checked: boolean | 'indeterminate') => {
+    setSelectedAgentIds(prev => {
+      const next = new Set(prev);
+      if (checked === true) {
+        next.add(agentId);
+      } else {
+        next.delete(agentId);
+      }
+      return next;
+    });
+  };
+
+  const formatRelativeTime = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+    if (diffInSeconds < 60) return 'Just now';
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+    if (diffInSeconds < 2592000) return `${Math.floor(diffInSeconds / 86400)}d ago`;
+    return date.toLocaleDateString();
+  };
+
+
+
   const handleResendSingleInvite = (agentId: number) => {
     resendInvitesMutation.mutate([agentId]);
   };
@@ -214,21 +269,10 @@ export default function AgentsPage() {
     }
   };
 
-  // Connect to the global New button
-  useEffect(() => {
-    // Expose the function to the window object so AppLayout can access it
-    (window as Window & typeof globalThis & { openNewAgentModal?: () => void }).openNewAgentModal =
-      () => setIsNewAgentModalOpen(true);
-    return () => {
-      // Clean up when the component unmounts
-      delete (window as Window & typeof globalThis & { openNewAgentModal?: () => void })
-        .openNewAgentModal;
-    };
-  }, []);
-
-  return (
-    <>
-      <div className="flex items-center justify-end py-4 flex-shrink-0">
+  try {
+    return (
+      <>
+        <div className="flex items-center justify-end py-4 flex-shrink-0">
         {selectedAgentIds.size > 0 && (
           <div className="flex gap-2">
             {activeTab === 'pending' && (
@@ -355,7 +399,7 @@ export default function AgentsPage() {
                           className="h-24 text-center text-red-500"
                         >
                           Error loading agents:{' '}
-                          {error instanceof Error ? error.message : 'Unknown error'}
+                          {String((error as Error)?.message || 'Unknown error')}
                         </TableCell>
                       </TableRow>
                     ) : activeAgents.length === 0 ? (
@@ -454,7 +498,7 @@ export default function AgentsPage() {
                           className="h-24 text-center text-red-500"
                         >
                           Error loading agents:{' '}
-                          {error instanceof Error ? error.message : 'Unknown error'}
+                          {String((error as Error)?.message || 'Unknown error')}
                         </TableCell>
                       </TableRow>
                     ) : pendingAgents.length === 0 ? (
@@ -523,6 +567,22 @@ export default function AgentsPage() {
         onClose={() => setIsNewAgentModalOpen(false)}
         onInviteSuccess={() => {}}
       />
-    </>
-  );
+      </>
+    );
+  } catch (error) {
+    console.error('Error rendering AgentsPage:', error);
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex justify-center items-center h-64">
+          <div className="text-red-500">
+            Something went wrong loading the agents page.
+            <br />
+            <Button onClick={() => window.location.reload()} className="mt-4">
+              Reload Page
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 }
