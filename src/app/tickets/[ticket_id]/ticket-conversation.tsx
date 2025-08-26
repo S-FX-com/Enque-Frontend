@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 //import { Separator } from '@radix-ui/react-separator';
 import 'react-calendar/dist/Calendar.css';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -39,14 +39,14 @@ import { ScheduleSendCalendar } from './scheduleSend/schedule-send-calendar';
 // Helper function to check if HTML content is effectively empty
 function isHtmlContentEmpty(htmlContent: string): boolean {
   if (!htmlContent || htmlContent.trim() === '') return true;
-  
+
   // Create a temporary div to parse the HTML
   const tempDiv = document.createElement('div');
   tempDiv.innerHTML = htmlContent;
-  
+
   // Get the text content without HTML tags
   const textContent = tempDiv.textContent || tempDiv.innerText || '';
-  
+
   // Check if there's any meaningful text content
   return textContent.trim() === '';
 }
@@ -470,10 +470,113 @@ function OptimizedMessageItem({ content, isInitial = false, ticket }: OptimizedM
     : applyAgentBackground
       ? 'flex items-start space-x-3 py-4 border-b border-slate-200 dark:border-slate-700 last:border-b-0 bg-slate-50 dark:bg-slate-800/50 p-3 rounded-md'
       : 'flex items-start space-x-3 py-4 border-b border-slate-200 dark:border-slate-700 last:border-b-0 p-3 rounded-md';
-
+  /*
+  const getContentTypeColorMemo = useMemo((contentType: string) => {
+    if (contentType === 'application/pdf') return 'text-red-600';
+    if (contentType.includes('word')) return 'text-blue-600';
+    if (contentType.includes('excel')) return 'text-green-600';
+    if (contentType.startsWith('image/')) return 'text-purple-600';
+    if (contentType.startsWith('video/')) return 'text-blue-500';
+    return 'text-gray-600';
+  }, []);
+ */
+  const contentAttachment = useCallback(() => {
+    return content.attachments.map(attachment => {
+      const getFileIcon = (contentType: string) => {
+        if (contentType === 'application/pdf') {
+          return (
+            <svg
+              className="h-5 w-5 flex-shrink-0"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14,2 14,8 20,8" />
+              <line x1="16" y1="13" x2="8" y2="13" />
+              <line x1="16" y1="17" x2="8" y2="17" />
+              <line x1="10" y1="9" x2="8" y2="9" />
+            </svg>
+          );
+        } else if (contentType.startsWith('image/')) {
+          return (
+            <svg
+              className="h-5 w-5 flex-shrink-0"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+              <circle cx="8.5" cy="8.5" r="1.5" />
+              <polyline points="21,15 16,10 5,21" />
+            </svg>
+          );
+        } else {
+          return (
+            <svg
+              className="h-5 w-5 flex-shrink-0"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14,2 14,8 20,8" />
+            </svg>
+          );
+        }
+      };
+      {
+      }
+      const formatFileSize = (bytes: number) => {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return Number.parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+      };
+      const getIconColor = (contentType: string) => {
+        if (contentType === 'application/pdf') return 'text-red-600';
+        if (contentType.includes('word')) return 'text-blue-600';
+        if (contentType.includes('excel')) return 'text-green-600';
+        if (contentType.startsWith('image/')) return 'text-purple-600';
+        if (contentType.startsWith('video/')) return 'text-blue-500';
+        return 'text-gray-600';
+      };
+      const openWindow = () => {
+        window.open(attachment.download_url, '_blank');
+      };
+      return (
+        <div
+          key={attachment.id}
+          className="flex items-center p-2 border border-gray-300 dark:border-gray-600 rounded bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors max-w-xs cursor-pointer"
+          onClick={() => openWindow()}
+          title={`Open ${attachment.file_name}`}
+        >
+          <div className={`${getIconColor(attachment.content_type)} mr-2`}>
+            {getFileIcon(attachment.content_type)}
+          </div>
+          <div className="flex flex-col min-w-0 flex-grow">
+            <span
+              className="text-xs font-medium text-gray-900 dark:text-gray-100 truncate"
+              title={attachment.file_name}
+            >
+              {attachment.file_name}
+            </span>
+            <span className="text-xs text-gray-500 dark:text-gray-400">
+              {formatFileSize(attachment.file_size)}
+            </span>
+          </div>
+        </div>
+      );
+    });
+  }, [content.attachments]);
   return (
     <div className={containerClasses}>
       <div className="flex-shrink-0">
+        {'Memo'}
         {senderInfo.avatar_url ? (
           <Avatar className="w-10 h-10">
             <AvatarImage
@@ -554,7 +657,9 @@ function OptimizedMessageItem({ content, isInitial = false, ticket }: OptimizedM
           <div className="mt-3 space-y-2">
             <p className="text-xs font-medium text-muted-foreground mb-2">Attachments:</p>
             <div className="flex flex-wrap gap-2 items-start">
-              {content.attachments.map(attachment => {
+              {'useCallback'}
+              {contentAttachment()}
+              {/*content.attachments.map(attachment => {
                 const getFileIcon = (contentType: string) => {
                   if (contentType === 'application/pdf') {
                     return (
@@ -601,7 +706,8 @@ function OptimizedMessageItem({ content, isInitial = false, ticket }: OptimizedM
                     );
                   }
                 };
-
+                {
+                }
                 const formatFileSize = (bytes: number) => {
                   if (bytes === 0) return '0 Bytes';
                   const k = 1024;
@@ -609,7 +715,6 @@ function OptimizedMessageItem({ content, isInitial = false, ticket }: OptimizedM
                   const i = Math.floor(Math.log(bytes) / Math.log(k));
                   return Number.parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
                 };
-
                 const getIconColor = (contentType: string) => {
                   if (contentType === 'application/pdf') return 'text-red-600';
                   if (contentType.includes('word')) return 'text-blue-600';
@@ -642,7 +747,7 @@ function OptimizedMessageItem({ content, isInitial = false, ticket }: OptimizedM
                     </div>
                   </div>
                 );
-              })}
+              })*/}
             </div>
           </div>
         )}
@@ -1197,29 +1302,27 @@ export function TicketConversation({
     },
   });
 
-
-
   const handleSendReply = () => {
     // Validaciones básicas
     if (isHtmlContentEmpty(replyContent)) {
       toast.error('Please write a message before sending.');
       return;
     }
-    
+
     if (!ticket?.id) {
       toast.error('No ticket selected.');
       return;
     }
-    
+
     if (isSending || createCommentMutation.isPending) {
       return; // El botón ya está deshabilitado, no necesitamos toast
     }
-    
+
     if (extraRecipients.trim() && !validateEmails(extraRecipients)) {
       toast.error('Please enter valid email addresses separated by commas.');
       return;
     }
-    
+
     if (popCalendar) {
       setPopCalendar(false);
     }
@@ -1328,11 +1431,7 @@ export function TicketConversation({
 
                 <Popover open={cannedRepliesOpen} onOpenChange={setCannedRepliesOpen}>
                   <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={isLoadingCannedReplies}
-                    >
+                    <Button variant="outline" size="sm" disabled={isLoadingCannedReplies}>
                       <MessageSquare className="mr-2 h-4 w-4" />
                       Templates
                     </Button>
@@ -1352,6 +1451,7 @@ export function TicketConversation({
                     </div>
                     <ScrollArea className="h-64">
                       <div className="p-2">
+                        {'useCallback'}
                         {isLoadingCannedReplies ? (
                           <div className="space-y-2">
                             <Skeleton className="h-12 w-full" />
@@ -1459,6 +1559,7 @@ export function TicketConversation({
             ) : (
               <>
                 {/* Show only the latest message */}
+                {'useCallback'}
                 {conversationItems.isOptimized ? (
                   conversationItems.items.length > 0 && (
                     <OptimizedMessageItem
@@ -1511,7 +1612,7 @@ export function TicketConversation({
               </>
             )}
           </div>
-
+          {'useCallback'}
           {conversationItems.totalItems > 1 && (
             <div className="flex justify-center pt-4">
               <Button
@@ -1525,7 +1626,7 @@ export function TicketConversation({
               </Button>
             </div>
           )}
-
+          {'useCallback'}
           {showAllMessages && (
             <div className="space-y-4 border-t pt-4">
               {conversationItems.isOptimized
@@ -1595,6 +1696,8 @@ export function TicketConversation({
               </div>
             ) : (
               <>
+                {'useCallback'}
+
                 {conversationItems.isOptimized ? (
                   (conversationItems.items as TicketHtmlContent[]).map(
                     (item: TicketHtmlContent) => (
