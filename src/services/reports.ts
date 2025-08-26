@@ -40,11 +40,13 @@ const API_BASE_URL =
 export async function getReportSummary(params?: {
   start_date?: string;
   end_date?: string;
+  team_id?: number;
 }): Promise<ReportSummary | null> {
   try {
     const url = new URL(`${API_BASE_URL}/v1/reports/summary`);
     if (params?.start_date) url.searchParams.append('start_date', params.start_date);
     if (params?.end_date) url.searchParams.append('end_date', params.end_date);
+    if (params?.team_id) url.searchParams.append('team_id', params.team_id.toString());
 
     const response = await fetchAPI.GET<ReportSummary>(url.toString());
 
@@ -68,11 +70,13 @@ export async function getReportSummary(params?: {
 export async function getCreatedByHourReport(params?: {
   start_date?: string;
   end_date?: string;
+  team_id?: number;
 }): Promise<TimeSeriesDataPoint[] | null> {
   try {
     const url = new URL(`${API_BASE_URL}/v1/reports/created_by_hour`);
     if (params?.start_date) url.searchParams.append('start_date', params.start_date);
     if (params?.end_date) url.searchParams.append('end_date', params.end_date);
+    if (params?.team_id) url.searchParams.append('team_id', params.team_id.toString());
 
     const response = await fetchAPI.GET<TimeSeriesDataPoint[]>(url.toString());
 
@@ -99,11 +103,13 @@ export async function getCreatedByHourReport(params?: {
 export async function getCreatedByDayReport(params?: {
   start_date?: string;
   end_date?: string;
+  team_id?: number;
 }): Promise<TimeSeriesDataPoint[] | null> {
   try {
     const url = new URL(`${API_BASE_URL}/v1/reports/created_by_day`);
     if (params?.start_date) url.searchParams.append('start_date', params.start_date);
     if (params?.end_date) url.searchParams.append('end_date', params.end_date);
+    if (params?.team_id) url.searchParams.append('team_id', params.team_id.toString());
 
     const response = await fetchAPI.GET<TimeSeriesDataPoint[]>(url.toString());
 
