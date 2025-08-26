@@ -1371,6 +1371,83 @@ export function TicketConversation({
       setEditorKey(prev => prev + 1);
     }
   };
+  const filteredCannedRepliesMemo = useCallback(() => {
+    return filteredCannedReplies.map(reply => (
+      <div
+        key={reply.id}
+        className="p-3 hover:bg-accent rounded-lg cursor-pointer border mb-2"
+        onClick={() => handleCannedReplySelect(reply)}
+      >
+        <div className="flex items-start justify-between mb-1">
+          <h4 className="font-medium text-sm truncate flex-1">{reply.name}</h4>
+          <div className="flex items-center gap-1 ml-2">
+            {reply.usage_count > 0 && (
+              <Badge variant="secondary" className="text-xs">
+                <Clock className="w-3 h-3 mr-1" />
+                {reply.usage_count}
+              </Badge>
+            )}
+          </div>
+        </div>
+        <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
+          {reply.description || reply.content.replace(/<[^>]*>/g, '').substring(0, 100) + '...'}
+        </p>
+      </div>
+    ));
+  }, [filteredCannedReplies, handleCannedReplySelect]);
+
+  const isLoadingHtmlContentHtmlContentConversationItems: boolean =
+    isLoadingHtmlContent && !htmlContent && conversationItems.totalItems === 0;
+  const isConversatioHistoryFound: boolean =
+    conversationItems.totalItems === 0 &&
+    !isLoadingHtmlContent &&
+    !isLoadingComments &&
+    !(isHtmlContentError && isCommentsError);
+  const isFailedToloadConversation: boolean =
+    isHtmlContentError && isCommentsError && !isLoadingHtmlContent && !isLoadingComments;
+  const isInitialMessage =
+    conversationItems.hasInitialMessage &&
+    conversationItems.initialMessageContent &&
+    conversationItems.items.length > 0 &&
+    (conversationItems.items[0] as IComment).id === -1;
+
+  const showConversationUseCallback = useCallback(() => {
+    return conversationItems.isOptimized
+      ? (conversationItems.items as TicketHtmlContent[]).slice(1).map((item: TicketHtmlContent) => (
+          <OptimizedMessageItem
+            key={item.id}
+            content={item}
+            isInitial={item.id === 'initial'}
+            ticket={{
+              to_recipients: ticket.to_recipients,
+              cc_recipients: ticket.cc_recipients,
+              bcc_recipients: ticket.bcc_recipients,
+              user: ticket.user,
+            }}
+          />
+        ))
+      : (conversationItems.items as IComment[])
+          .slice(1)
+          .filter((item: IComment) => item.id !== -1)
+          .map((item: IComment) => (
+            <ConversationMessageItem
+              key={item.id}
+              comment={item}
+              ticket={{
+                to_recipients: ticket.to_recipients,
+                cc_recipients: ticket.cc_recipients,
+                bcc_recipients: ticket.bcc_recipients,
+                user: ticket.user,
+              }}
+            />
+          ));
+  }, [
+    conversationItems,
+    ticket.bcc_recipients,
+    ticket.cc_recipients,
+    ticket.to_recipients,
+    ticket.user,
+  ]);
 
   const [showAllMessages, setShowAllMessages] = useState(false);
 
@@ -1451,7 +1528,6 @@ export function TicketConversation({
                     </div>
                     <ScrollArea className="h-64">
                       <div className="p-2">
-                        {'useCallback'}
                         {isLoadingCannedReplies ? (
                           <div className="space-y-2">
                             <Skeleton className="h-12 w-full" />
@@ -1465,31 +1541,34 @@ export function TicketConversation({
                               : 'No templates available'}
                           </div>
                         ) : (
-                          filteredCannedReplies.map(reply => (
-                            <div
-                              key={reply.id}
-                              className="p-3 hover:bg-accent rounded-lg cursor-pointer border mb-2"
-                              onClick={() => handleCannedReplySelect(reply)}
-                            >
-                              <div className="flex items-start justify-between mb-1">
-                                <h4 className="font-medium text-sm truncate flex-1">
-                                  {reply.name}
-                                </h4>
-                                <div className="flex items-center gap-1 ml-2">
-                                  {reply.usage_count > 0 && (
-                                    <Badge variant="secondary" className="text-xs">
-                                      <Clock className="w-3 h-3 mr-1" />
-                                      {reply.usage_count}
-                                    </Badge>
-                                  )}
-                                </div>
-                              </div>
-                              <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
-                                {reply.description ||
-                                  reply.content.replace(/<[^>]*>/g, '').substring(0, 100) + '...'}
-                              </p>
-                            </div>
-                          ))
+                          //useCallback()
+                          // filteredCannedReplies.map(reply => (
+                          //   <div
+                          //     key={reply.id}
+                          //     className="p-3 hover:bg-accent rounded-lg cursor-pointer border mb-2"
+                          //     onClick={() => handleCannedReplySelect(reply)}
+                          //   >
+                          //     <div className="flex items-start justify-between mb-1">
+                          //       <h4 className="font-medium text-sm truncate flex-1">
+                          //         {reply.name}
+                          //       </h4>
+                          //       <div className="flex items-center gap-1 ml-2">
+                          //         {reply.usage_count > 0 && (
+                          //           <Badge variant="secondary" className="text-xs">
+                          //             <Clock className="w-3 h-3 mr-1" />
+                          //             {reply.usage_count}
+                          //           </Badge>
+                          //         )}
+                          //       </div>
+                          //     </div>
+                          //     <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
+                          //       {reply.description ||
+                          //         reply.content.replace(/<[^>]*>/g, '').substring(0, 100) + '...'}
+                          //     </p>
+                          //   </div>
+                          // ))
+
+                          filteredCannedRepliesMemo()
                         )}
                       </div>
                     </ScrollArea>
@@ -1533,26 +1612,19 @@ export function TicketConversation({
       ) : latestOnly ? (
         <div className="ticket-conversation space-y-4">
           <div className="space-y-4">
-            {isHtmlContentError &&
-              isCommentsError &&
-              !isLoadingHtmlContent &&
-              !isLoadingComments && (
-                <div className="text-center text-red-500 py-4">
-                  Failed to load conversation:{' '}
-                  {htmlContentError?.message || commentsError?.message || 'Unknown error'}
-                </div>
-              )}
-
-            {isLoadingHtmlContent && !htmlContent && conversationItems.totalItems === 0 && (
+            {isFailedToloadConversation && (
+              <div className="text-center text-red-500 py-4">
+                Failed to load conversation:{' '}
+                {htmlContentError?.message || commentsError?.message || 'Unknown error'}
+              </div>
+            )}
+            {/*useMemo */}
+            {isLoadingHtmlContentHtmlContentConversationItems && (
               <div className="space-y-4 animate-pulse">
                 <div className="bg-slate-100 dark:bg-slate-800 rounded-lg p-4 h-20"></div>
               </div>
             )}
-
-            {conversationItems.totalItems === 0 &&
-            !isLoadingHtmlContent &&
-            !isLoadingComments &&
-            !(isHtmlContentError && isCommentsError) ? (
+            {isConversatioHistoryFound ? (
               <div className="text-center text-muted-foreground py-10">
                 No conversation history found.
               </div>
@@ -1576,14 +1648,11 @@ export function TicketConversation({
                   )
                 ) : (
                   <>
-                    {conversationItems.hasInitialMessage &&
-                    conversationItems.initialMessageContent &&
-                    conversationItems.items.length > 0 &&
-                    (conversationItems.items[0] as IComment).id === -1 ? (
+                    {isInitialMessage ? (
                       <InitialTicketMessage
                         key="initial-message-latest"
                         ticketId={ticket.id}
-                        initialContent={conversationItems.initialMessageContent}
+                        initialContent={conversationItems.initialMessageContent!}
                         user={conversationItems.initialMessageSender}
                         createdAt={ticket.created_at}
                         ticket={{
@@ -1612,7 +1681,6 @@ export function TicketConversation({
               </>
             )}
           </div>
-          {'useCallback'}
           {conversationItems.totalItems > 1 && (
             <div className="flex justify-center pt-4">
               <Button
@@ -1629,7 +1697,8 @@ export function TicketConversation({
           {'useCallback'}
           {showAllMessages && (
             <div className="space-y-4 border-t pt-4">
-              {conversationItems.isOptimized
+              {
+                showConversationUseCallback() /*{conversationItems.isOptimized
                 ? (conversationItems.items as TicketHtmlContent[])
                     .slice(1)
                     .map((item: TicketHtmlContent) => (
@@ -1659,7 +1728,8 @@ export function TicketConversation({
                           user: ticket.user,
                         }}
                       />
-                    ))}
+                    ))}*/
+              }
             </div>
           )}
         </div>
@@ -1680,7 +1750,7 @@ export function TicketConversation({
                 </div>
               )}
 
-            {isLoadingHtmlContent && !htmlContent && conversationItems.totalItems === 0 && (
+            {isLoadingHtmlContentHtmlContentConversationItems && (
               <div className="space-y-4 animate-pulse">
                 <div className="bg-slate-100 dark:bg-slate-800 rounded-lg p-4 h-20"></div>
                 <div className="bg-slate-100 dark:bg-slate-800 rounded-lg p-4 h-16"></div>
@@ -1696,8 +1766,6 @@ export function TicketConversation({
               </div>
             ) : (
               <>
-                {'useCallback'}
-
                 {conversationItems.isOptimized ? (
                   (conversationItems.items as TicketHtmlContent[]).map(
                     (item: TicketHtmlContent) => (
