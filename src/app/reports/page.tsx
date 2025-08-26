@@ -18,6 +18,9 @@ import {
 } from '@/services/reports';
 import type { TimeSeriesDataPoint } from '@/services/reports';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { getTeams, getAgentTeams } from '@/services/team';
+import { useAuth } from '@/hooks/use-auth';
+import type { Team } from '@/typescript/team';
 
 type ChartDataPoint = {
   name: string;
@@ -56,7 +59,25 @@ const renderBarChart = (
 );
 
 export default function ReportsPage() {
+  const { user } = useAuth();
   const [timeRange, setTimeRange] = useState('last7days');
+  const [selectedTeamId, setSelectedTeamId] = useState<string>('all');
+
+  // Load teams for the current user
+  const { data: teamsData = [] } = useQuery<Team[]>({
+    queryKey: user?.role === 'admin' ? ['teams'] : ['agentTeams', user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      if (user.role === 'admin') {
+        return getTeams();
+      } else if (user.id) {
+        return getAgentTeams(user.id);
+      }
+      return [];
+    },
+    enabled: !!user,
+    staleTime: 1000 * 60 * 5,
+  });
 
   const { startDate, endDate } = useMemo(() => {
     const end = new Date();
@@ -79,21 +100,33 @@ export default function ReportsPage() {
     return { startDate: start.toISOString(), endDate: end.toISOString() };
   }, [timeRange]);
 
+  // Build report parameters
+  const reportParams = useMemo(() => {
+    const params: { start_date: string; end_date: string; team_id?: number } = {
+      start_date: startDate,
+      end_date: endDate,
+    };
+    if (selectedTeamId !== 'all') {
+      params.team_id = parseInt(selectedTeamId);
+    }
+    return params;
+  }, [startDate, endDate, selectedTeamId]);
+
   const { data: summaryData, isLoading: isLoadingSummary } = useQuery({
-    queryKey: ['reportSummary', startDate, endDate],
-    queryFn: () => getReportSummary({ start_date: startDate, end_date: endDate }),
+    queryKey: ['reportSummary', reportParams],
+    queryFn: () => getReportSummary(reportParams),
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: createdByHourData, isLoading: isLoadingCreatedByHour } = useQuery({
-    queryKey: ['reportCreatedByHour', startDate, endDate],
-    queryFn: () => getCreatedByHourReport({ start_date: startDate, end_date: endDate }),
+    queryKey: ['reportCreatedByHour', reportParams],
+    queryFn: () => getCreatedByHourReport(reportParams),
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: createdByDayData, isLoading: isLoadingCreatedByDay } = useQuery({
-    queryKey: ['reportCreatedByDay', startDate, endDate],
-    queryFn: () => getCreatedByDayReport({ start_date: startDate, end_date: endDate }),
+    queryKey: ['reportCreatedByDay', reportParams],
+    queryFn: () => getCreatedByDayReport(reportParams),
     staleTime: 5 * 60 * 1000,
   });
 
@@ -161,17 +194,32 @@ export default function ReportsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Reporting Dashboard</h1>
-        <Select value={timeRange} onValueChange={setTimeRange}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Select time range" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="last24hours">Last 24 hours</SelectItem>
-            <SelectItem value="last7days">Last 7 days</SelectItem>
-            <SelectItem value="last30days">Last 30 days</SelectItem>
-            <SelectItem value="last90days">Last 90 days</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-4">
+          <Select value={selectedTeamId} onValueChange={setSelectedTeamId}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Select team" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Teams</SelectItem>
+              {teamsData.map((team) => (
+                <SelectItem key={team.id} value={team.id.toString()}>
+                  {team.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={timeRange} onValueChange={setTimeRange}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Select time range" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="last24hours">Last 24 hours</SelectItem>
+              <SelectItem value="last7days">Last 7 days</SelectItem>
+              <SelectItem value="last30days">Last 30 days</SelectItem>
+              <SelectItem value="last90days">Last 90 days</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-5">
