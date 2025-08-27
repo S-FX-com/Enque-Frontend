@@ -576,7 +576,6 @@ function OptimizedMessageItem({ content, isInitial = false, ticket }: OptimizedM
   return (
     <div className={containerClasses}>
       <div className="flex-shrink-0">
-        {'Memo'}
         {senderInfo.avatar_url ? (
           <Avatar className="w-10 h-10">
             <AvatarImage
@@ -1553,7 +1552,6 @@ export function TicketConversation({
                               : 'No templates available'}
                           </div>
                         ) : (
-                          //useCallback()
                           // filteredCannedReplies.map(reply => (
                           //   <div
                           //     key={reply.id}
@@ -1643,7 +1641,6 @@ export function TicketConversation({
             ) : (
               <>
                 {/* Show only the latest message */}
-                {'useCallback'}
                 {conversationItems.isOptimized ? (
                   conversationItems.items.length > 0 && (
                     <OptimizedMessageItem
@@ -1706,7 +1703,7 @@ export function TicketConversation({
               </Button>
             </div>
           )}
-          {'useCallback'}
+
           {showAllMessages && (
             <div className="space-y-4 border-t pt-4">
               {

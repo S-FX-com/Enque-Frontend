@@ -38,7 +38,6 @@ export default function DashboardPage() {
           className="border-b border-slate-100 dark:border-slate-800 last:border-0"
         >
           <td className="py-3 text-sm">
-            {'Memo'}
             {ticket.created_at ? format(parseISO(ticket.created_at), 'MMM dd') : '-'}
           </td>
           <td className="py-3 text-sm truncate max-w-[200px]">{ticket.title}</td>
@@ -161,7 +160,6 @@ export default function DashboardPage() {
               </tr>
             </thead>
             <tbody>
-              {'Memo'}
               {/*{assignedTickets.length === 0 ? (
                 <tr className="border-0">
                   <td colSpan={3} className="text-center py-4 text-muted-foreground">
@@ -175,7 +173,6 @@ export default function DashboardPage() {
                     className="border-b border-slate-100 dark:border-slate-800 last:border-0"
                   >
                     <td className="py-3 text-sm">
-                      {'Memo'}
                       {ticket.created_at ? format(parseISO(ticket.created_at), 'MMM dd') : '-'}
                     </td>
                     <td className="py-3 text-sm truncate max-w-[200px]">{ticket.title}</td>
@@ -207,7 +204,6 @@ export default function DashboardPage() {
       <div className="bg-white dark:bg-black rounded-lg p-6 flex flex-col">
         <h3 className="text-lg font-semibold mb-4 flex-shrink-0">My Teams</h3>
         <div className="space-y-6 overflow-y-auto h-72 flex-grow pr-2">
-          {'Memo'}
           {/*{stats.teamsStats.length === 0 ? (
             <p className="text-sm text-muted-foreground pt-4">You are not assigned to any teams.</p>
           ) : (
