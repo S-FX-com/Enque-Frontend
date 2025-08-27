@@ -236,33 +236,3 @@ export const testConnection = async (
  * Gets active system alerts for the current user.
  * @returns A promise that resolves to an array of active system alerts.
  */
-    const response = await fetchAPI.GET<SystemAlert[]>(url);
-
-    if (!response || !response.data) {
-      console.error('Failed to fetch active system alerts or data is missing');
-      throw new Error('Failed to fetch active system alerts');
-    }
-
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching active system alerts:', error);
-    throw error;
-  }
-};
-
-/**
- * Dismisses a system alert for the current user.
- * @param alertId The ID of the alert to dismiss.
- * @returns A promise that resolves when the dismissal is successful.
- */
-
-
-  try {
-    const url = `${API_BASE_URL}/v1/alerts/${alertId}/dismiss`;
-    await fetchAPI.POST<void>(url, {});
-    console.log(`Alert ${alertId} dismissed successfully.`);
-  } catch (error) {
-    console.error(`Error dismissing alert ${alertId}:`, error);
-    throw error;
-  }
-};

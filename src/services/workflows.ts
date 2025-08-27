@@ -68,23 +68,6 @@ const API_BASE_URL =
  * @returns A promise that resolves to an array of workflows.
  */
 
-
-  try {
-    const url = `${API_BASE_URL}/v1/workspaces/${workspaceId}/workflows`;
-    const response = await fetchAPI.GET<Workflow[]>(url);
-
-    if (!response || !response.data) {
-      console.error('Failed to fetch workflows or data is missing');
-      throw new Error('Failed to fetch workflows');
-    }
-
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching workflows:', error);
-    throw error;
-  }
-};
-
 /**
  * Fetches a specific workflow.
  * @param workspaceId The ID of the workspace.
@@ -120,22 +103,6 @@ export const getWorkflow = async (workspaceId: number, workflowId: number): Prom
  * @returns A promise that resolves to the created workflow.
  */
 
-  try {
-    const url = `${API_BASE_URL}/v1/workspaces/${workspaceId}/workflows`;
-    const response = await fetchAPI.POST<Workflow>(url, workflowData);
-
-    if (!response || !response.data) {
-      console.error('Failed to create workflow or data is missing');
-      throw new Error('Failed to create workflow');
-    }
-
-    return response.data;
-  } catch (error) {
-    console.error('Error creating workflow:', error);
-    throw error;
-  }
-};
-
 /**
  * Updates an existing workflow.
  * @param workspaceId The ID of the workspace.
@@ -143,24 +110,6 @@ export const getWorkflow = async (workspaceId: number, workflowId: number): Prom
  * @param workflowData The data to update.
  * @returns A promise that resolves to the updated workflow.
  */
-  workflowData: Partial<Omit<Workflow, 'id' | 'workspace_id' | 'created_at' | 'updated_at'>>
-
-
-  try {
-    const url = `${API_BASE_URL}/v1/workspaces/${workspaceId}/workflows/${workflowId}`;
-    const response = await fetchAPI.PUT<Workflow>(url, workflowData);
-
-    if (!response || !response.data) {
-      console.error(`Failed to update workflow ${workflowId} or data is missing`);
-      throw new Error('Failed to update workflow');
-    }
-
-    return response.data;
-  } catch (error) {
-    console.error(`Error updating workflow ${workflowId}:`, error);
-    throw error;
-  }
-};
 
 /**
  * Deletes a workflow.
@@ -169,16 +118,6 @@ export const getWorkflow = async (workspaceId: number, workflowId: number): Prom
  * @returns A promise that resolves when the deletion is successful.
  */
 
-  try {
-    const url = `${API_BASE_URL}/v1/workspaces/${workspaceId}/workflows/${workflowId}`;
-    await fetchAPI.DELETE<void>(url);
-    console.log(`Workflow ${workflowId} deleted successfully.`);
-  } catch (error) {
-    console.error(`Error deleting workflow ${workflowId}:`, error);
-    throw error;
-  }
-};
-
 /**
  * Toggles a workflow on or off.
  * @param workspaceId The ID of the workspace.
@@ -186,24 +125,6 @@ export const getWorkflow = async (workspaceId: number, workflowId: number): Prom
  * @param isEnabled Whether the workflow should be enabled or disabled.
  * @returns A promise that resolves to the updated workflow.
  */
-  isEnabled: boolean
-
-
-  try {
-    const url = `${API_BASE_URL}/v1/workspaces/${workspaceId}/workflows/${workflowId}/toggle`;
-    const response = await fetchAPI.POST<Workflow>(url, { is_enabled: isEnabled });
-
-    if (!response || !response.data) {
-      console.error(`Failed to toggle workflow ${workflowId} or data is missing`);
-      throw new Error('Failed to toggle workflow');
-    }
-
-    return response.data;
-  } catch (error) {
-    console.error(`Error toggling workflow ${workflowId}:`, error);
-    throw error;
-  }
-};
 
 /**
  * Duplicates a workflow.
@@ -212,66 +133,17 @@ export const getWorkflow = async (workspaceId: number, workflowId: number): Prom
  * @returns A promise that resolves to the duplicated workflow.
  */
 
-  try {
-    const url = `${API_BASE_URL}/v1/workspaces/${workspaceId}/workflows/${workflowId}/duplicate`;
-    const response = await fetchAPI.POST<Workflow>(url, {});
-
-    if (!response || !response.data) {
-      console.error(`Failed to duplicate workflow ${workflowId} or data is missing`);
-      throw new Error('Failed to duplicate workflow');
-    }
-
-    return response.data;
-  } catch (error) {
-    console.error(`Error duplicating workflow ${workflowId}:`, error);
-    throw error;
-  }
-};
-
 /**
  * Fetches available workflow triggers.
  * @param workspaceId The ID of the workspace.
  * @returns A promise that resolves to available triggers.
  */
 
-  try {
-    const url = `${API_BASE_URL}/v1/workspaces/${workspaceId}/triggers`;
-    const response = await fetchAPI.GET<WorkflowTrigger[]>(url);
-
-    if (!response || !response.data) {
-      console.error('Failed to fetch workflow triggers or data is missing');
-      throw new Error('Failed to fetch workflow triggers');
-    }
-
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching workflow triggers:', error);
-    throw error;
-  }
-};
-
 /**
  * Fetches available workflow actions.
  * @param workspaceId The ID of the workspace.
  * @returns A promise that resolves to available actions.
  */
-
-
-  try {
-    const url = `${API_BASE_URL}/v1/workspaces/${workspaceId}/actions`;
-    const response = await fetchAPI.GET<WorkflowActionOption[]>(url);
-
-    if (!response || !response.data) {
-      console.error('Failed to fetch workflow actions or data is missing');
-      throw new Error('Failed to fetch workflow actions');
-    }
-
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching workflow actions:', error);
-    throw error;
-  }
-};
 
 /**
  * Test message analysis functionality.
@@ -280,35 +152,3 @@ export const getWorkflow = async (workspaceId: number, workflowId: number): Prom
  * @param analysisRules Optional analysis rules.
  * @returns A promise that resolves to the analysis result.
  */
-  analysisRules?: MessageAnalysisRule
-): Promise<{
-  message: string;
-  analysis: MessageAnalysisResult;
-  analysis_rules?: MessageAnalysisRule;
-
-
-  try {
-    const url = `${API_BASE_URL}/v1/workspaces/${workspaceId}/test-analysis`;
-    const requestBody: Record<string, unknown> = { message };
-
-    if (analysisRules) {
-      requestBody.analysis_rules = analysisRules;
-    }
-
-    const response = await fetchAPI.POST<{
-      message: string;
-      analysis: MessageAnalysisResult;
-      analysis_rules?: MessageAnalysisRule;
-    }>(url, requestBody);
-
-    if (!response || !response.data) {
-      console.error('Failed to test message analysis or data is missing');
-      throw new Error('Failed to test message analysis');
-    }
-
-    return response.data;
-  } catch (error) {
-    console.error('Error testing message analysis:', error);
-    throw error;
-  }
-};

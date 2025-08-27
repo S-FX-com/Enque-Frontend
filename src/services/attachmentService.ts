@@ -1,4 +1,3 @@
-import { fetchAPI } from '@/lib/fetch-api';
 import { AppConfigs } from '@/configs';
 import { getAuthToken } from '@/lib/auth';
 
@@ -78,17 +77,3 @@ export const uploadAttachments = async (files: File[]): Promise<any[]> => {
  * Use this if user decides to remove an attachment before sending the message.
  * @param attachmentId - ID of the attachment to remove
  */
-    const response = await fetchAPI.DELETE(url);
-
-    if (!response.success) {
-      throw new Error(response.message || 'Failed to remove attachment');
-    }
-  } catch (error) {
-    console.error('Error removing attachment:', error);
-    if (error instanceof Error) {
-      throw error;
-    } else {
-      throw new Error('An unknown error occurred while removing the attachment.');
-    }
-  }
-};

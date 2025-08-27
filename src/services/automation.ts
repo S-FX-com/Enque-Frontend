@@ -141,21 +141,3 @@ export async function deleteAutomation(automationId: number): Promise<void> {
  * Fetches automation statistics.
  * @returns A promise that resolves to automation statistics.
  */
-}> {
-  try {
-    const url = `${API_BASE_URL}/v1/automations/stats/summary`;
-    const response = await fetchAPI.GET<{
-      total_count: number;
-      active_count: number;
-    }>(url);
-    if (response && response.success && response.data) {
-      return response.data;
-    } else {
-      console.error('Error fetching automation stats:', response?.message || 'Unknown API error');
-      return { total_count: 0, active_count: 0 };
-    }
-  } catch (error) {
-    console.error('Error fetching automation stats (catch block):', error);
-    return { total_count: 0, active_count: 0 };
-  }
-}
