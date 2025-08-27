@@ -66,33 +66,30 @@ export default function DashboardPage() {
     return stats.teamsStats.length === 0 ? (
       <p className="text-sm text-muted-foreground pt-4">You are not assigned to any teams.</p>
     ) : (
-      stats.teamsStats.map(
-        team => (
-          <div
-            key={team.id}
-            className="border-b border-slate-100 dark:border-slate-800 pb-4 last:border-0 last:pb-0"
-          >
-            <h4 className="font-medium mb-2">{team.name}</h4>
-            <div className="flex items-center justify-between text-sm flex-wrap gap-x-4 gap-y-1">
-              <div className="flex items-center">
-                <span className="text-slate-500 dark:text-slate-400 mr-1">Open:</span>
-                <span className="font-medium">{team.ticketsOpen}</span>
-              </div>
-              <div className="flex items-center">
-                <span className="text-slate-500 dark:text-slate-400 mr-1">With You:</span>
-                <span className="font-medium">{team.ticketsWithUser}</span>
-              </div>
-              <div className="flex items-center">
-                <span className="text-slate-500 dark:text-slate-400 mr-1">Total:</span>
-                <span className="font-medium">{team.ticketsAssigned}</span>
-              </div>
+      stats.teamsStats.map(team => (
+        <div
+          key={team.id}
+          className="border-b border-slate-100 dark:border-slate-800 pb-4 last:border-0 last:pb-0"
+        >
+          <h4 className="font-medium mb-2">{team.name}</h4>
+          <div className="flex items-center justify-between text-sm flex-wrap gap-x-4 gap-y-1">
+            <div className="flex items-center">
+              <span className="text-slate-500 dark:text-slate-400 mr-1">Open:</span>
+              <span className="font-medium">{team.ticketsOpen}</span>
+            </div>
+            <div className="flex items-center">
+              <span className="text-slate-500 dark:text-slate-400 mr-1">With You:</span>
+              <span className="font-medium">{team.ticketsWithUser}</span>
+            </div>
+            <div className="flex items-center">
+              <span className="text-slate-500 dark:text-slate-400 mr-1">Total:</span>
+              <span className="font-medium">{team.ticketsAssigned}</span>
             </div>
           </div>
-        ),
-        [stats]
-      )
+        </div>
+      ))
     );
-  });
+  }, [stats]);
 
   if (isError || (!isLoading && !user)) {
     return (

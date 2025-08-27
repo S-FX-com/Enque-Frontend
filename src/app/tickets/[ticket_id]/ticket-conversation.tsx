@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 //import { Separator } from '@radix-ui/react-separator';
 import 'react-calendar/dist/Calendar.css';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -986,46 +986,58 @@ export function TicketConversation({
     setSelectedAttachments(files);
   };
 
-  const handleCannedReplySelect = (cannedReply: CannedReply) => {
-    let content = cannedReply.content;
-    const userName = ticket.user?.name || 'there';
-    const agentName = currentAgentData?.name || '';
+  const handleCannedReplySelect = useCallback(
+    (cannedReply: CannedReply) => {
+      let content = cannedReply.content;
+      const userName = ticket.user?.name || 'there';
+      const agentName = currentAgentData?.name || '';
 
-    content = content
-      .replace(/\[Customer Name\]/g, userName)
-      .replace(/\[Agent Name\]/g, agentName)
-      .replace(/\[Ticket ID\]/g, ticket.id.toString())
-      .replace(/\[Ticket Title\]/g, ticket.title || '');
+      content = content
+        .replace(/\[Customer Name\]/g, userName)
+        .replace(/\[Agent Name\]/g, agentName)
+        .replace(/\[Ticket ID\]/g, ticket.id.toString())
+        .replace(/\[Ticket Title\]/g, ticket.title || '');
 
-    if (isPrivateNote) {
-      setReplyContent(content);
-    } else {
-      const greeting = `<p>Hi ${userName},</p><p><br></p>`;
-      let signatureToUse = '';
+      if (isPrivateNote) {
+        setReplyContent(content);
+      } else {
+        const greeting = `<p>Hi ${userName},</p><p><br></p>`;
+        let signatureToUse = '';
 
-      if (globalSignatureData?.content) {
-        signatureToUse = globalSignatureData.content
-          .replace(/\[Agent Name\]/g, currentAgentData?.name || '')
-          .replace(/\[Agent Role\]/g, currentAgentData?.job_title || '-');
-      } else if (currentAgentData?.email_signature) {
-        signatureToUse = currentAgentData.email_signature;
+        if (globalSignatureData?.content) {
+          signatureToUse = globalSignatureData.content
+            .replace(/\[Agent Name\]/g, currentAgentData?.name || '')
+            .replace(/\[Agent Role\]/g, currentAgentData?.job_title || '-');
+        } else if (currentAgentData?.email_signature) {
+          signatureToUse = currentAgentData.email_signature;
+        }
+
+        if (signatureToUse) {
+          signatureToUse = `<div class="email-signature text-gray-500">${signatureToUse}</div>`;
+        }
+
+        const fullContent = signatureToUse
+          ? `${greeting}${content}<p><br></p>${signatureToUse}`
+          : `${greeting}${content}`;
+
+        setReplyContent(fullContent);
       }
 
-      if (signatureToUse) {
-        signatureToUse = `<div class="email-signature text-gray-500">${signatureToUse}</div>`;
-      }
-
-      const fullContent = signatureToUse
-        ? `${greeting}${content}<p><br></p>${signatureToUse}`
-        : `${greeting}${content}`;
-
-      setReplyContent(fullContent);
-    }
-
-    setCannedRepliesOpen(false);
-    setCannedSearchTerm('');
-    setEditorKey(prev => prev + 1);
-  };
+      setCannedRepliesOpen(false);
+      setCannedSearchTerm('');
+      setEditorKey(prev => prev + 1);
+    },
+    [
+      currentAgentData?.email_signature,
+      currentAgentData?.job_title,
+      currentAgentData?.name,
+      globalSignatureData?.content,
+      isPrivateNote,
+      ticket.id,
+      ticket.title,
+      ticket.user?.name,
+    ]
+  );
 
   // Function to validate email addresses
   const validateEmails = (emailString: string): boolean => {

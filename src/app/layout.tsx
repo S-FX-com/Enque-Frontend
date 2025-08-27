@@ -31,9 +31,9 @@ export default function RootLayout({
       <head>
         {/*keeping this for sake of watching performance of application,
          in order to build for production, comment it back*/}
-        {process.env.NODE_ENV === 'development' && (
+        {/*{process.env.NODE_ENV === 'development' && (
           <script crossOrigin="anonymous" src="//unpkg.com/react-scan/dist/auto.global.js" />
-        )}
+        )}*/}
       </head>
       <body className={`${geistSans.variable} antialiased theme-transition`}>
         <ThemeProvider
