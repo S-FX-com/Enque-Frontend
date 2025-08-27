@@ -149,14 +149,6 @@ export const verifyCnameSettings = async (workspaceId: number): Promise<CnameSet
  * @param domain The domain to check.
  * @returns A promise that resolves to a status object.
  */
-export const checkDomainAvailability = async (
-  workspaceId: number,
-  domain: string
-): Promise<{ is_available: boolean; message?: string }> => {
-  if (!workspaceId || !domain) {
-    console.error('checkDomainAvailability requires valid workspaceId and domain');
-    throw new Error('Invalid parameters provided');
-  }
 
   try {
     const url = `${API_BASE_URL}/v1/workspaces/${workspaceId}/cname/check`;
@@ -181,13 +173,6 @@ export const checkDomainAvailability = async (
  * @param workspaceId The ID of the workspace.
  * @returns A promise that resolves to a status object.
  */
-export const getSslStatus = async (
-  workspaceId: number
-): Promise<{ status: string; expires_at?: string; message?: string }> => {
-  if (!workspaceId) {
-    console.error('getSslStatus requires a valid workspaceId');
-    throw new Error('Invalid workspace ID provided');
-  }
 
   try {
     const url = `${API_BASE_URL}/v1/workspaces/${workspaceId}/cname/ssl`;

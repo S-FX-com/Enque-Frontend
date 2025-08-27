@@ -141,9 +141,6 @@ export async function deleteAutomation(automationId: number): Promise<void> {
  * Fetches automation statistics.
  * @returns A promise that resolves to automation statistics.
  */
-export async function getAutomationStats(): Promise<{
-  total_count: number;
-  active_count: number;
 }> {
   try {
     const url = `${API_BASE_URL}/v1/automations/stats/summary`;

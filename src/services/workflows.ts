@@ -67,11 +67,7 @@ const API_BASE_URL =
  * @param workspaceId The ID of the workspace.
  * @returns A promise that resolves to an array of workflows.
  */
-export const getWorkflows = async (workspaceId: number): Promise<Workflow[]> => {
-  if (!workspaceId) {
-    console.error('getWorkflows requires a valid workspaceId');
-    throw new Error('Invalid workspace ID provided');
-  }
+
 
   try {
     const url = `${API_BASE_URL}/v1/workspaces/${workspaceId}/workflows`;
@@ -123,14 +119,6 @@ export const getWorkflow = async (workspaceId: number, workflowId: number): Prom
  * @param workflowData The data for the new workflow.
  * @returns A promise that resolves to the created workflow.
  */
-export const createWorkflow = async (
-  workspaceId: number,
-  workflowData: Omit<Workflow, 'id' | 'workspace_id' | 'created_at' | 'updated_at'>
-): Promise<Workflow> => {
-  if (!workspaceId) {
-    console.error('createWorkflow requires a valid workspaceId');
-    throw new Error('Invalid workspace ID provided');
-  }
 
   try {
     const url = `${API_BASE_URL}/v1/workspaces/${workspaceId}/workflows`;
@@ -155,15 +143,8 @@ export const createWorkflow = async (
  * @param workflowData The data to update.
  * @returns A promise that resolves to the updated workflow.
  */
-export const updateWorkflow = async (
-  workspaceId: number,
-  workflowId: number,
   workflowData: Partial<Omit<Workflow, 'id' | 'workspace_id' | 'created_at' | 'updated_at'>>
-): Promise<Workflow> => {
-  if (!workspaceId || !workflowId) {
-    console.error('updateWorkflow requires valid workspaceId and workflowId');
-    throw new Error('Invalid IDs provided');
-  }
+
 
   try {
     const url = `${API_BASE_URL}/v1/workspaces/${workspaceId}/workflows/${workflowId}`;
@@ -187,11 +168,6 @@ export const updateWorkflow = async (
  * @param workflowId The ID of the workflow to delete.
  * @returns A promise that resolves when the deletion is successful.
  */
-export const deleteWorkflow = async (workspaceId: number, workflowId: number): Promise<void> => {
-  if (!workspaceId || !workflowId) {
-    console.error('deleteWorkflow requires valid workspaceId and workflowId');
-    throw new Error('Invalid IDs provided');
-  }
 
   try {
     const url = `${API_BASE_URL}/v1/workspaces/${workspaceId}/workflows/${workflowId}`;
@@ -210,15 +186,8 @@ export const deleteWorkflow = async (workspaceId: number, workflowId: number): P
  * @param isEnabled Whether the workflow should be enabled or disabled.
  * @returns A promise that resolves to the updated workflow.
  */
-export const toggleWorkflow = async (
-  workspaceId: number,
-  workflowId: number,
   isEnabled: boolean
-): Promise<Workflow> => {
-  if (!workspaceId || !workflowId) {
-    console.error('toggleWorkflow requires valid workspaceId and workflowId');
-    throw new Error('Invalid IDs provided');
-  }
+
 
   try {
     const url = `${API_BASE_URL}/v1/workspaces/${workspaceId}/workflows/${workflowId}/toggle`;
@@ -242,14 +211,6 @@ export const toggleWorkflow = async (
  * @param workflowId The ID of the workflow to duplicate.
  * @returns A promise that resolves to the duplicated workflow.
  */
-export const duplicateWorkflow = async (
-  workspaceId: number,
-  workflowId: number
-): Promise<Workflow> => {
-  if (!workspaceId || !workflowId) {
-    console.error('duplicateWorkflow requires valid workspaceId and workflowId');
-    throw new Error('Invalid IDs provided');
-  }
 
   try {
     const url = `${API_BASE_URL}/v1/workspaces/${workspaceId}/workflows/${workflowId}/duplicate`;
@@ -272,11 +233,6 @@ export const duplicateWorkflow = async (
  * @param workspaceId The ID of the workspace.
  * @returns A promise that resolves to available triggers.
  */
-export const getWorkflowTriggers = async (workspaceId: number): Promise<WorkflowTrigger[]> => {
-  if (!workspaceId) {
-    console.error('getWorkflowTriggers requires a valid workspaceId');
-    throw new Error('Invalid workspace ID provided');
-  }
 
   try {
     const url = `${API_BASE_URL}/v1/workspaces/${workspaceId}/triggers`;
@@ -299,11 +255,7 @@ export const getWorkflowTriggers = async (workspaceId: number): Promise<Workflow
  * @param workspaceId The ID of the workspace.
  * @returns A promise that resolves to available actions.
  */
-export const getWorkflowActions = async (workspaceId: number): Promise<WorkflowActionOption[]> => {
-  if (!workspaceId) {
-    console.error('getWorkflowActions requires a valid workspaceId');
-    throw new Error('Invalid workspace ID provided');
-  }
+
 
   try {
     const url = `${API_BASE_URL}/v1/workspaces/${workspaceId}/actions`;
@@ -328,24 +280,12 @@ export const getWorkflowActions = async (workspaceId: number): Promise<WorkflowA
  * @param analysisRules Optional analysis rules.
  * @returns A promise that resolves to the analysis result.
  */
-export const testMessageAnalysis = async (
-  workspaceId: number,
-  message: string,
   analysisRules?: MessageAnalysisRule
 ): Promise<{
   message: string;
   analysis: MessageAnalysisResult;
   analysis_rules?: MessageAnalysisRule;
-}> => {
-  if (!workspaceId) {
-    console.error('testMessageAnalysis requires a valid workspaceId');
-    throw new Error('Invalid workspace ID provided');
-  }
 
-  if (!message || !message.trim()) {
-    console.error('testMessageAnalysis requires a valid message');
-    throw new Error('Invalid message provided');
-  }
 
   try {
     const url = `${API_BASE_URL}/v1/workspaces/${workspaceId}/test-analysis`;

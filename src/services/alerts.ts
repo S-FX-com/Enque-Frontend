@@ -236,9 +236,6 @@ export const testConnection = async (
  * Gets active system alerts for the current user.
  * @returns A promise that resolves to an array of active system alerts.
  */
-export const getActiveSystemAlerts = async (): Promise<SystemAlert[]> => {
-  try {
-    const url = `${API_BASE_URL}/v1/alerts/active`;
     const response = await fetchAPI.GET<SystemAlert[]>(url);
 
     if (!response || !response.data) {
@@ -258,11 +255,7 @@ export const getActiveSystemAlerts = async (): Promise<SystemAlert[]> => {
  * @param alertId The ID of the alert to dismiss.
  * @returns A promise that resolves when the dismissal is successful.
  */
-export const dismissSystemAlert = async (alertId: number): Promise<void> => {
-  if (!alertId) {
-    console.error('dismissSystemAlert requires a valid alertId');
-    throw new Error('Invalid alert ID provided');
-  }
+
 
   try {
     const url = `${API_BASE_URL}/v1/alerts/${alertId}/dismiss`;

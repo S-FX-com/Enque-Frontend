@@ -78,9 +78,6 @@ export const uploadAttachments = async (files: File[]): Promise<any[]> => {
  * Use this if user decides to remove an attachment before sending the message.
  * @param attachmentId - ID of the attachment to remove
  */
-export const removeTemporaryAttachment = async (attachmentId: number): Promise<void> => {
-  try {
-    const url = `${AppConfigs.api}/attachments/${attachmentId}`;
     const response = await fetchAPI.DELETE(url);
 
     if (!response.success) {
