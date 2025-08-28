@@ -193,7 +193,7 @@ export function TicketPageContent({ ticketId }: Props) {
     queryKey: ['ticket', ticketId],
     queryFn: async () => {
       if (!ticketId) return [];
-      const tickets = await getTickets({}, `/v1/tasks-optimized/${ticketId}/fast`);
+      const tickets = await getTickets({}, `/v1/tasks-optimized/${ticketId}/essential`);
       return [tickets] as unknown as ITicket[];
     },
     enabled: !!ticketId,
