@@ -184,7 +184,7 @@ export function TicketPageContent({ ticketId }: Props) {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editedTitle, setEditedTitle] = useState('');
 
-  // Fetch ticket data
+  // Fetch ticket data using optimized endpoint
   const {
     data: ticketData,
     isLoading: isLoadingTicket,
@@ -193,7 +193,7 @@ export function TicketPageContent({ ticketId }: Props) {
     queryKey: ['ticket', ticketId],
     queryFn: async () => {
       if (!ticketId) return [];
-      const tickets = await getTickets({}, `/v1/tasks/${ticketId}`);
+      const tickets = await getTickets({}, `/v1/tasks-optimized/${ticketId}/fast`);
       return [tickets] as unknown as ITicket[];
     },
     enabled: !!ticketId,
