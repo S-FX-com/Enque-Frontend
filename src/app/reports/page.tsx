@@ -21,6 +21,11 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { getTeams, getAgentTeams } from '@/services/team';
 import { useAuth } from '@/hooks/use-auth';
 import type { Team } from '@/typescript/team';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { Button } from '@/components/ui/button';
+import { CalendarIcon } from 'lucide-react';
+import { format } from 'date-fns';
 
 type ChartDataPoint = {
   name: string;
@@ -62,6 +67,11 @@ export default function ReportsPage() {
   const { user } = useAuth();
   const [timeRange, setTimeRange] = useState('last7days');
   const [selectedTeamId, setSelectedTeamId] = useState<string>('all');
+  const [customDateRange, setCustomDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
+    from: undefined,
+    to: undefined,
+  });
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
 
   // Load teams for the current user
   const { data: teamsData = [] } = useQuery<Team[]>({
@@ -80,6 +90,17 @@ export default function ReportsPage() {
   });
 
   const { startDate, endDate } = useMemo(() => {
+    // If custom range is selected and both dates are set, use them
+    if (timeRange === 'custom' && customDateRange.from && customDateRange.to) {
+      const start = new Date(customDateRange.from);
+      const end = new Date(customDateRange.to);
+      // Set start time to beginning of day and end time to end of day
+      start.setHours(0, 0, 0, 0);
+      end.setHours(23, 59, 59, 999);
+      return { startDate: start.toISOString(), endDate: end.toISOString() };
+    }
+    
+    // Default behavior for preset ranges
     const end = new Date();
     const start = new Date();
     switch (timeRange) {
@@ -98,7 +119,7 @@ export default function ReportsPage() {
         break;
     }
     return { startDate: start.toISOString(), endDate: end.toISOString() };
-  }, [timeRange]);
+  }, [timeRange, customDateRange]);
 
   // Build report parameters
   const reportParams = useMemo(() => {
@@ -111,6 +132,25 @@ export default function ReportsPage() {
     }
     return params;
   }, [startDate, endDate, selectedTeamId]);
+
+  // Handle time range change
+  const handleTimeRangeChange = (value: string) => {
+    setTimeRange(value);
+    if (value !== 'custom') {
+      // Reset custom date range when switching to preset ranges
+      setCustomDateRange({ from: undefined, to: undefined });
+    }
+  };
+
+  // Handle custom date range selection
+  const handleDateRangeSelect = (range: { from?: Date; to?: Date } | undefined) => {
+    if (range) {
+      setCustomDateRange({ from: range.from, to: range.to });
+      if (range.from && range.to) {
+        setIsDatePickerOpen(false);
+      }
+    }
+  };
 
   const { data: summaryData, isLoading: isLoadingSummary } = useQuery({
     queryKey: ['reportSummary', reportParams],
@@ -208,17 +248,55 @@ export default function ReportsPage() {
               ))}
             </SelectContent>
           </Select>
-          <Select value={timeRange} onValueChange={setTimeRange}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Select time range" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="last24hours">Last 24 hours</SelectItem>
-              <SelectItem value="last7days">Last 7 days</SelectItem>
-              <SelectItem value="last30days">Last 30 days</SelectItem>
-              <SelectItem value="last90days">Last 90 days</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-2">
+            <Select value={timeRange} onValueChange={handleTimeRangeChange}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Select time range" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="last24hours">Last 24 hours</SelectItem>
+                <SelectItem value="last7days">Last 7 days</SelectItem>
+                <SelectItem value="last30days">Last 30 days</SelectItem>
+                <SelectItem value="last90days">Last 90 days</SelectItem>
+                <SelectItem value="custom">Custom</SelectItem>
+              </SelectContent>
+            </Select>
+            
+            {timeRange === 'custom' && (
+              <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="w-[280px] justify-start text-left font-normal"
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {customDateRange.from ? (
+                      customDateRange.to ? (
+                        <>
+                          {format(customDateRange.from, 'LLL dd, y')} -{' '}
+                          {format(customDateRange.to, 'LLL dd, y')}
+                        </>
+                      ) : (
+                        format(customDateRange.from, 'LLL dd, y')
+                      )
+                    ) : (
+                      <span>Pick a date range</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    initialFocus
+                    mode="range"
+                    defaultMonth={customDateRange.from}
+                    selected={customDateRange}
+                    onSelect={handleDateRangeSelect}
+                    numberOfMonths={2}
+                  />
+                </PopoverContent>
+              </Popover>
+            )}
+          </div>
         </div>
       </div>
 
