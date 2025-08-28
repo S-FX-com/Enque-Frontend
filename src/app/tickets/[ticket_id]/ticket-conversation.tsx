@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 //import { Separator } from '@radix-ui/react-separator';
 import 'react-calendar/dist/Calendar.css';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -39,14 +39,14 @@ import { ScheduleSendCalendar } from './scheduleSend/schedule-send-calendar';
 // Helper function to check if HTML content is effectively empty
 function isHtmlContentEmpty(htmlContent: string): boolean {
   if (!htmlContent || htmlContent.trim() === '') return true;
-
+  
   // Create a temporary div to parse the HTML
   const tempDiv = document.createElement('div');
   tempDiv.innerHTML = htmlContent;
-
+  
   // Get the text content without HTML tags
   const textContent = tempDiv.textContent || tempDiv.innerText || '';
-
+  
   // Check if there's any meaningful text content
   return textContent.trim() === '';
 }
@@ -470,109 +470,7 @@ function OptimizedMessageItem({ content, isInitial = false, ticket }: OptimizedM
     : applyAgentBackground
       ? 'flex items-start space-x-3 py-4 border-b border-slate-200 dark:border-slate-700 last:border-b-0 bg-slate-50 dark:bg-slate-800/50 p-3 rounded-md'
       : 'flex items-start space-x-3 py-4 border-b border-slate-200 dark:border-slate-700 last:border-b-0 p-3 rounded-md';
-  /*
-  const getContentTypeColorMemo = useMemo((contentType: string) => {
-    if (contentType === 'application/pdf') return 'text-red-600';
-    if (contentType.includes('word')) return 'text-blue-600';
-    if (contentType.includes('excel')) return 'text-green-600';
-    if (contentType.startsWith('image/')) return 'text-purple-600';
-    if (contentType.startsWith('video/')) return 'text-blue-500';
-    return 'text-gray-600';
-  }, []);
- */
-  const contentAttachment = useCallback(() => {
-    return content.attachments.map(attachment => {
-      const getFileIcon = (contentType: string) => {
-        if (contentType === 'application/pdf') {
-          return (
-            <svg
-              className="h-5 w-5 flex-shrink-0"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-              <polyline points="14,2 14,8 20,8" />
-              <line x1="16" y1="13" x2="8" y2="13" />
-              <line x1="16" y1="17" x2="8" y2="17" />
-              <line x1="10" y1="9" x2="8" y2="9" />
-            </svg>
-          );
-        } else if (contentType.startsWith('image/')) {
-          return (
-            <svg
-              className="h-5 w-5 flex-shrink-0"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-              <circle cx="8.5" cy="8.5" r="1.5" />
-              <polyline points="21,15 16,10 5,21" />
-            </svg>
-          );
-        } else {
-          return (
-            <svg
-              className="h-5 w-5 flex-shrink-0"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-              <polyline points="14,2 14,8 20,8" />
-            </svg>
-          );
-        }
-      };
-      {
-      }
-      const formatFileSize = (bytes: number) => {
-        if (bytes === 0) return '0 Bytes';
-        const k = 1024;
-        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return Number.parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
-      };
-      const getIconColor = (contentType: string) => {
-        if (contentType === 'application/pdf') return 'text-red-600';
-        if (contentType.includes('word')) return 'text-blue-600';
-        if (contentType.includes('excel')) return 'text-green-600';
-        if (contentType.startsWith('image/')) return 'text-purple-600';
-        if (contentType.startsWith('video/')) return 'text-blue-500';
-        return 'text-gray-600';
-      };
-      const openWindow = () => {
-        window.open(attachment.download_url, '_blank');
-      };
-      return (
-        <div
-          key={attachment.id}
-          className="flex items-center p-2 border border-gray-300 dark:border-gray-600 rounded bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors max-w-xs cursor-pointer"
-          onClick={() => openWindow()}
-          title={`Open ${attachment.file_name}`}
-        >
-          <div className={`${getIconColor(attachment.content_type)} mr-2`}>
-            {getFileIcon(attachment.content_type)}
-          </div>
-          <div className="flex flex-col min-w-0 flex-grow">
-            <span
-              className="text-xs font-medium text-gray-900 dark:text-gray-100 truncate"
-              title={attachment.file_name}
-            >
-              {attachment.file_name}
-            </span>
-            <span className="text-xs text-gray-500 dark:text-gray-400">
-              {formatFileSize(attachment.file_size)}
-            </span>
-          </div>
-        </div>
-      );
-    });
-  }, [content.attachments]);
+
   return (
     <div className={containerClasses}>
       <div className="flex-shrink-0">
@@ -656,9 +554,7 @@ function OptimizedMessageItem({ content, isInitial = false, ticket }: OptimizedM
           <div className="mt-3 space-y-2">
             <p className="text-xs font-medium text-muted-foreground mb-2">Attachments:</p>
             <div className="flex flex-wrap gap-2 items-start">
-              {'useCallback'}
-              {contentAttachment()}
-              {/*content.attachments.map(attachment => {
+              {content.attachments.map(attachment => {
                 const getFileIcon = (contentType: string) => {
                   if (contentType === 'application/pdf') {
                     return (
@@ -705,8 +601,7 @@ function OptimizedMessageItem({ content, isInitial = false, ticket }: OptimizedM
                     );
                   }
                 };
-                {
-                }
+
                 const formatFileSize = (bytes: number) => {
                   if (bytes === 0) return '0 Bytes';
                   const k = 1024;
@@ -714,6 +609,7 @@ function OptimizedMessageItem({ content, isInitial = false, ticket }: OptimizedM
                   const i = Math.floor(Math.log(bytes) / Math.log(k));
                   return Number.parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
                 };
+
                 const getIconColor = (contentType: string) => {
                   if (contentType === 'application/pdf') return 'text-red-600';
                   if (contentType.includes('word')) return 'text-blue-600';
@@ -746,7 +642,7 @@ function OptimizedMessageItem({ content, isInitial = false, ticket }: OptimizedM
                     </div>
                   </div>
                 );
-              })*/}
+              })}
             </div>
           </div>
         )}
@@ -985,58 +881,46 @@ export function TicketConversation({
     setSelectedAttachments(files);
   };
 
-  const handleCannedReplySelect = useCallback(
-    (cannedReply: CannedReply) => {
-      let content = cannedReply.content;
-      const userName = ticket.user?.name || 'there';
-      const agentName = currentAgentData?.name || '';
+  const handleCannedReplySelect = (cannedReply: CannedReply) => {
+    let content = cannedReply.content;
+    const userName = ticket.user?.name || 'there';
+    const agentName = currentAgentData?.name || '';
 
-      content = content
-        .replace(/\[Customer Name\]/g, userName)
-        .replace(/\[Agent Name\]/g, agentName)
-        .replace(/\[Ticket ID\]/g, ticket.id.toString())
-        .replace(/\[Ticket Title\]/g, ticket.title || '');
+    content = content
+      .replace(/\[Customer Name\]/g, userName)
+      .replace(/\[Agent Name\]/g, agentName)
+      .replace(/\[Ticket ID\]/g, ticket.id.toString())
+      .replace(/\[Ticket Title\]/g, ticket.title || '');
 
-      if (isPrivateNote) {
-        setReplyContent(content);
-      } else {
-        const greeting = `<p>Hi ${userName},</p><p><br></p>`;
-        let signatureToUse = '';
+    if (isPrivateNote) {
+      setReplyContent(content);
+    } else {
+      const greeting = `<p>Hi ${userName},</p><p><br></p>`;
+      let signatureToUse = '';
 
-        if (globalSignatureData?.content) {
-          signatureToUse = globalSignatureData.content
-            .replace(/\[Agent Name\]/g, currentAgentData?.name || '')
-            .replace(/\[Agent Role\]/g, currentAgentData?.job_title || '-');
-        } else if (currentAgentData?.email_signature) {
-          signatureToUse = currentAgentData.email_signature;
-        }
-
-        if (signatureToUse) {
-          signatureToUse = `<div class="email-signature text-gray-500">${signatureToUse}</div>`;
-        }
-
-        const fullContent = signatureToUse
-          ? `${greeting}${content}<p><br></p>${signatureToUse}`
-          : `${greeting}${content}`;
-
-        setReplyContent(fullContent);
+      if (globalSignatureData?.content) {
+        signatureToUse = globalSignatureData.content
+          .replace(/\[Agent Name\]/g, currentAgentData?.name || '')
+          .replace(/\[Agent Role\]/g, currentAgentData?.job_title || '-');
+      } else if (currentAgentData?.email_signature) {
+        signatureToUse = currentAgentData.email_signature;
       }
 
-      setCannedRepliesOpen(false);
-      setCannedSearchTerm('');
-      setEditorKey(prev => prev + 1);
-    },
-    [
-      currentAgentData?.email_signature,
-      currentAgentData?.job_title,
-      currentAgentData?.name,
-      globalSignatureData?.content,
-      isPrivateNote,
-      ticket.id,
-      ticket.title,
-      ticket.user?.name,
-    ]
-  );
+      if (signatureToUse) {
+        signatureToUse = `<div class="email-signature text-gray-500">${signatureToUse}</div>`;
+      }
+
+      const fullContent = signatureToUse
+        ? `${greeting}${content}<p><br></p>${signatureToUse}`
+        : `${greeting}${content}`;
+
+      setReplyContent(fullContent);
+    }
+
+    setCannedRepliesOpen(false);
+    setCannedSearchTerm('');
+    setEditorKey(prev => prev + 1);
+  };
 
   // Function to validate email addresses
   const validateEmails = (emailString: string): boolean => {
@@ -1313,27 +1197,29 @@ export function TicketConversation({
     },
   });
 
+
+
   const handleSendReply = () => {
     // Validaciones básicas
     if (isHtmlContentEmpty(replyContent)) {
       toast.error('Please write a message before sending.');
       return;
     }
-
+    
     if (!ticket?.id) {
       toast.error('No ticket selected.');
       return;
     }
-
+    
     if (isSending || createCommentMutation.isPending) {
       return; // El botón ya está deshabilitado, no necesitamos toast
     }
-
+    
     if (extraRecipients.trim() && !validateEmails(extraRecipients)) {
       toast.error('Please enter valid email addresses separated by commas.');
       return;
     }
-
+    
     if (popCalendar) {
       setPopCalendar(false);
     }
@@ -1382,83 +1268,6 @@ export function TicketConversation({
       setEditorKey(prev => prev + 1);
     }
   };
-  const filteredCannedRepliesMemo = useCallback(() => {
-    return filteredCannedReplies.map(reply => (
-      <div
-        key={reply.id}
-        className="p-3 hover:bg-accent rounded-lg cursor-pointer border mb-2"
-        onClick={() => handleCannedReplySelect(reply)}
-      >
-        <div className="flex items-start justify-between mb-1">
-          <h4 className="font-medium text-sm truncate flex-1">{reply.name}</h4>
-          <div className="flex items-center gap-1 ml-2">
-            {reply.usage_count > 0 && (
-              <Badge variant="secondary" className="text-xs">
-                <Clock className="w-3 h-3 mr-1" />
-                {reply.usage_count}
-              </Badge>
-            )}
-          </div>
-        </div>
-        <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
-          {reply.description || reply.content.replace(/<[^>]*>/g, '').substring(0, 100) + '...'}
-        </p>
-      </div>
-    ));
-  }, [filteredCannedReplies, handleCannedReplySelect]);
-
-  const isLoadingHtmlContentHtmlContentConversationItems: boolean =
-    isLoadingHtmlContent && !htmlContent && conversationItems.totalItems === 0;
-  const isConversatioHistoryFound: boolean =
-    conversationItems.totalItems === 0 &&
-    !isLoadingHtmlContent &&
-    !isLoadingComments &&
-    !(isHtmlContentError && isCommentsError);
-  const isFailedToloadConversation: boolean =
-    isHtmlContentError && isCommentsError && !isLoadingHtmlContent && !isLoadingComments;
-  const isInitialMessage =
-    conversationItems.hasInitialMessage &&
-    conversationItems.initialMessageContent &&
-    conversationItems.items.length > 0 &&
-    (conversationItems.items[0] as IComment).id === -1;
-
-  const showConversationUseCallback = useCallback(() => {
-    return conversationItems.isOptimized
-      ? (conversationItems.items as TicketHtmlContent[]).slice(1).map((item: TicketHtmlContent) => (
-          <OptimizedMessageItem
-            key={item.id}
-            content={item}
-            isInitial={item.id === 'initial'}
-            ticket={{
-              to_recipients: ticket.to_recipients,
-              cc_recipients: ticket.cc_recipients,
-              bcc_recipients: ticket.bcc_recipients,
-              user: ticket.user,
-            }}
-          />
-        ))
-      : (conversationItems.items as IComment[])
-          .slice(1)
-          .filter((item: IComment) => item.id !== -1)
-          .map((item: IComment) => (
-            <ConversationMessageItem
-              key={item.id}
-              comment={item}
-              ticket={{
-                to_recipients: ticket.to_recipients,
-                cc_recipients: ticket.cc_recipients,
-                bcc_recipients: ticket.bcc_recipients,
-                user: ticket.user,
-              }}
-            />
-          ));
-  }, [
-    conversationItems,
-    ticket.bcc_recipients,
-    ticket.cc_recipients,
-    ticket.to_recipients,
-    ticket.user,
-  ]);
 
   const [showAllMessages, setShowAllMessages] = useState(false);
 
@@ -1519,7 +1328,11 @@ export function TicketConversation({
 
                 <Popover open={cannedRepliesOpen} onOpenChange={setCannedRepliesOpen}>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" size="sm" disabled={isLoadingCannedReplies}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={isLoadingCannedReplies}
+                    >
                       <MessageSquare className="mr-2 h-4 w-4" />
                       Templates
                     </Button>
@@ -1552,33 +1365,31 @@ export function TicketConversation({
                               : 'No templates available'}
                           </div>
                         ) : (
-                          // filteredCannedReplies.map(reply => (
-                          //   <div
-                          //     key={reply.id}
-                          //     className="p-3 hover:bg-accent rounded-lg cursor-pointer border mb-2"
-                          //     onClick={() => handleCannedReplySelect(reply)}
-                          //   >
-                          //     <div className="flex items-start justify-between mb-1">
-                          //       <h4 className="font-medium text-sm truncate flex-1">
-                          //         {reply.name}
-                          //       </h4>
-                          //       <div className="flex items-center gap-1 ml-2">
-                          //         {reply.usage_count > 0 && (
-                          //           <Badge variant="secondary" className="text-xs">
-                          //             <Clock className="w-3 h-3 mr-1" />
-                          //             {reply.usage_count}
-                          //           </Badge>
-                          //         )}
-                          //       </div>
-                          //     </div>
-                          //     <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
-                          //       {reply.description ||
-                          //         reply.content.replace(/<[^>]*>/g, '').substring(0, 100) + '...'}
-                          //     </p>
-                          //   </div>
-                          // ))
-
-                          filteredCannedRepliesMemo()
+                          filteredCannedReplies.map(reply => (
+                            <div
+                              key={reply.id}
+                              className="p-3 hover:bg-accent rounded-lg cursor-pointer border mb-2"
+                              onClick={() => handleCannedReplySelect(reply)}
+                            >
+                              <div className="flex items-start justify-between mb-1">
+                                <h4 className="font-medium text-sm truncate flex-1">
+                                  {reply.name}
+                                </h4>
+                                <div className="flex items-center gap-1 ml-2">
+                                  {reply.usage_count > 0 && (
+                                    <Badge variant="secondary" className="text-xs">
+                                      <Clock className="w-3 h-3 mr-1" />
+                                      {reply.usage_count}
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
+                              <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
+                                {reply.description ||
+                                  reply.content.replace(/<[^>]*>/g, '').substring(0, 100) + '...'}
+                              </p>
+                            </div>
+                          ))
                         )}
                       </div>
                     </ScrollArea>
@@ -1622,19 +1433,26 @@ export function TicketConversation({
       ) : latestOnly ? (
         <div className="ticket-conversation space-y-4">
           <div className="space-y-4">
-            {isFailedToloadConversation && (
-              <div className="text-center text-red-500 py-4">
-                Failed to load conversation:{' '}
-                {htmlContentError?.message || commentsError?.message || 'Unknown error'}
-              </div>
-            )}
-            {/*useMemo */}
-            {isLoadingHtmlContentHtmlContentConversationItems && (
+            {isHtmlContentError &&
+              isCommentsError &&
+              !isLoadingHtmlContent &&
+              !isLoadingComments && (
+                <div className="text-center text-red-500 py-4">
+                  Failed to load conversation:{' '}
+                  {htmlContentError?.message || commentsError?.message || 'Unknown error'}
+                </div>
+              )}
+
+            {isLoadingHtmlContent && !htmlContent && conversationItems.totalItems === 0 && (
               <div className="space-y-4 animate-pulse">
                 <div className="bg-slate-100 dark:bg-slate-800 rounded-lg p-4 h-20"></div>
               </div>
             )}
-            {isConversatioHistoryFound ? (
+
+            {conversationItems.totalItems === 0 &&
+            !isLoadingHtmlContent &&
+            !isLoadingComments &&
+            !(isHtmlContentError && isCommentsError) ? (
               <div className="text-center text-muted-foreground py-10">
                 No conversation history found.
               </div>
@@ -1657,11 +1475,14 @@ export function TicketConversation({
                   )
                 ) : (
                   <>
-                    {isInitialMessage ? (
+                    {conversationItems.hasInitialMessage &&
+                    conversationItems.initialMessageContent &&
+                    conversationItems.items.length > 0 &&
+                    (conversationItems.items[0] as IComment).id === -1 ? (
                       <InitialTicketMessage
                         key="initial-message-latest"
                         ticketId={ticket.id}
-                        initialContent={conversationItems.initialMessageContent!}
+                        initialContent={conversationItems.initialMessageContent}
                         user={conversationItems.initialMessageSender}
                         createdAt={ticket.created_at}
                         ticket={{
@@ -1690,6 +1511,7 @@ export function TicketConversation({
               </>
             )}
           </div>
+
           {conversationItems.totalItems > 1 && (
             <div className="flex justify-center pt-4">
               <Button
@@ -1706,8 +1528,7 @@ export function TicketConversation({
 
           {showAllMessages && (
             <div className="space-y-4 border-t pt-4">
-              {
-                showConversationUseCallback() /*{conversationItems.isOptimized
+              {conversationItems.isOptimized
                 ? (conversationItems.items as TicketHtmlContent[])
                     .slice(1)
                     .map((item: TicketHtmlContent) => (
@@ -1737,8 +1558,7 @@ export function TicketConversation({
                           user: ticket.user,
                         }}
                       />
-                    ))}*/
-              }
+                    ))}
             </div>
           )}
         </div>
@@ -1759,7 +1579,7 @@ export function TicketConversation({
                 </div>
               )}
 
-            {isLoadingHtmlContentHtmlContentConversationItems && (
+            {isLoadingHtmlContent && !htmlContent && conversationItems.totalItems === 0 && (
               <div className="space-y-4 animate-pulse">
                 <div className="bg-slate-100 dark:bg-slate-800 rounded-lg p-4 h-20"></div>
                 <div className="bg-slate-100 dark:bg-slate-800 rounded-lg p-4 h-16"></div>

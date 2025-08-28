@@ -1,8 +1,6 @@
 import { fetchAPI, type BaseResponse } from '@/lib/fetch-api';
 import type { ITicket, IGetTicket } from '@/typescript/ticket';
 import type { IComment } from '@/typescript/comment';
-import Cache from './cache/cache';
-import { LOAD_LIMIT } from '@/hooks/use-global-tickets';
 
 /**
  * Fetches a list of tickets (tasks) from the backend.
@@ -13,8 +11,6 @@ import { LOAD_LIMIT } from '@/hooks/use-global-tickets';
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || 'https://enque-backend-production.up.railway.app';
 
-const cache = new Cache(null);
-
 export async function getTickets(
   filters: IGetTicket = {},
   endpointPath = '/v1/tasks-optimized/'
@@ -22,10 +18,6 @@ export async function getTickets(
   const { skip = 0, limit = 100, status, priority, type, user_id, team_id } = filters;
 
   try {
-    if (cache.get('tickets') !== null && limit !== LOAD_LIMIT) {
-      const parseData = JSON.parse(cache.get('tickets') as string);
-      return parseData as ITicket[];
-    }
     const queryParams = new URLSearchParams({
       skip: skip.toString(),
       limit: limit.toString(),
@@ -38,7 +30,6 @@ export async function getTickets(
     const url = `${API_BASE_URL}${endpointPath}?${queryParams.toString()}`;
     const response = await fetchAPI.GET<ITicket[]>(url);
     if (response && response.success && response.data) {
-      cache.set('tickets', JSON.stringify(response.data), 86400);
       return response.data;
     } else {
       console.error('Error fetching tickets:', response?.message || 'Unknown API error');

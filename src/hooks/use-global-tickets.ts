@@ -1,11 +1,9 @@
 import { useInfiniteQuery, useQueryClient, type InfiniteData } from '@tanstack/react-query';
 import { getTickets } from '@/services/ticket';
 import type { ITicket } from '@/typescript/ticket';
-import Cache from '@/services/cache/cache';
 
-export const LOAD_LIMIT = 20;
+const LOAD_LIMIT = 20;
 type TicketPage = ITicket[];
-const cache = new Cache(null);
 
 export function useGlobalTickets(enabled: boolean = true) {
   const queryClient = useQueryClient();
@@ -29,8 +27,6 @@ export function useGlobalTickets(enabled: boolean = true) {
     queryKey: ['tickets'],
     queryFn: async ({ pageParam = 0 }) => {
       const tickets = await getTickets({ skip: pageParam, limit: LOAD_LIMIT });
-      cache.set('tickets', JSON.stringify(tickets), 86400);
-
       return tickets;
     },
     getNextPageParam: (lastPage, allPages) => {

@@ -74,7 +74,6 @@
     "react-day-picker": "^9.8.1",
     "react-dom": "^18.3.1",
     "react-hook-form": "^7.55.0",
-    "react-scan": "^0.4.3",
     "react-time-picker": "^7.0.0",
     "recharts": "^2.15.3",
     "socket.io-client": "^4.8.1",

@@ -184,7 +184,7 @@ export function TicketPageContent({ ticketId }: Props) {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editedTitle, setEditedTitle] = useState('');
 
-  // Fetch ticket data using optimized endpoint
+  // Fetch ticket data
   const {
     data: ticketData,
     isLoading: isLoadingTicket,

@@ -398,7 +398,7 @@ export function Topbar({
                           // Determine if this is a user activity (either ticket creation or comment from user)
                           let isUserActivity = false;
                           let displayName = 'User';
-
+                          
                           if (notification.creator_user_name) {
                             displayName = notification.creator_user_name;
                             isUserActivity = true;
@@ -426,9 +426,7 @@ export function Topbar({
                               `agent-${notification.agent_id}` ||
                               'system';
 
-                          const avatarColors = isUserActivity
-                            ? userAvatarColors
-                            : agentAvatarColors; // Choose palette
+                          const avatarColors = isUserActivity ? userAvatarColors : agentAvatarColors; // Choose palette
 
                           const notificationContent = (
                             <div key={notification.id} className="flex items-start gap-3">
