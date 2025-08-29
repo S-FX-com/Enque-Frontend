@@ -688,7 +688,7 @@ export function TicketConversation({
     queryKey: ['ticketHtml', ticket.id],
     queryFn: () => getTicketHtmlContent(ticket.id),
     enabled: !!ticket?.id,
-    staleTime: 2 * 60 * 1000,
+    staleTime: 0, // Always fresh for real-time updates
     refetchInterval: false,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
@@ -705,7 +705,7 @@ export function TicketConversation({
     queryKey: ['comments', ticket.id],
     queryFn: () => getCommentsByTaskId(ticket.id),
     enabled: !!ticket?.id && isHtmlContentError,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 0, // Always fresh for real-time updates
     refetchInterval: false,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,

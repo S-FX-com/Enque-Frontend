@@ -310,12 +310,20 @@ export function useSocket() {
         return htmlContent;
       });
 
-      // Invalidar datos para mantener sincronización
+      // ✅ FORZAR invalidación y refetch inmediato de las queries críticas
+      queryClient.removeQueries({ queryKey: ['ticketHtml', data.ticket_id] });
+      queryClient.removeQueries({ queryKey: ['comments', data.ticket_id] });
+      
+      // Invalidar y refetch inmediatamente
       queryClient.invalidateQueries({ queryKey: ['ticketHtml', data.ticket_id] });
       queryClient.invalidateQueries({ queryKey: ['comments', data.ticket_id] });
-
-      // Invalidar el ticket en sí (por si cambió status, etc.)
       queryClient.invalidateQueries({ queryKey: ['ticket', data.ticket_id] });
+
+      // ✅ FORZAR refetch inmediato para garantizar actualización
+      setTimeout(() => {
+        queryClient.refetchQueries({ queryKey: ['ticketHtml', data.ticket_id] });
+        queryClient.refetchQueries({ queryKey: ['comments', data.ticket_id] });
+      }, 50);
 
       // ✅ OPTIMIZACIÓN: Solo actualizar last_update del ticket en lugar de invalidar toda la lista
       queryClient.setQueryData<InfiniteData<ITicket[], number>>(
