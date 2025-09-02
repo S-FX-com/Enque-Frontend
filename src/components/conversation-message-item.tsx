@@ -610,36 +610,41 @@ export function ConversationMessageItem({ comment, ticket }: Props) {
     addDarkModeStyles();
   }, []);
 
-  const isMigratedToS3 = comment.s3_html_url && comment.content?.startsWith('[MIGRATED_TO_S3]');
+  const isMigratedToS3 = comment.presigned_url || (comment.s3_html_url && comment.content?.startsWith('[MIGRATED_TO_S3]'));
+
   const loadS3Content = useCallback(async () => {
-    if (!isMigratedToS3 || comment.id === -1 || s3Content || isLoadingS3) {
+    if (!isMigratedToS3 || s3Content || isLoadingS3) {
       return;
     }
 
     setIsLoadingS3(true);
     try {
-      const response = await getCommentS3Content(comment.id);
+      let htmlContent: string | undefined;
 
-      if (response.status === 'loaded_from_s3' && response.content) {
-        if (response.content.startsWith('[MIGRATED_TO_S3]')) {
-          const cleanContent =
-            comment.content?.replace(/^\[MIGRATED_TO_S3\][^"]*"[^"]*"/, '').trim() || '';
-          setS3Content(cleanContent || 'Content temporarily unavailable');
-        } else {
-          setS3Content(response.content);
+      if (comment.presigned_url) {
+        const s3Response = await fetch(comment.presigned_url);
+        if (!s3Response.ok) {
+          throw new Error(`Failed to fetch content from S3: ${s3Response.statusText}`);
         }
-      } else if (response.content) {
-        setS3Content(response.content);
+        htmlContent = await s3Response.text();
+      } else {
+        // Fallback for older data structure
+        const response = await getCommentS3Content(comment.id);
+        htmlContent = response.content;
+      }
+
+      if (htmlContent) {
+        setS3Content(htmlContent);
+      } else {
+        setS3Content('Content could not be loaded.');
       }
     } catch (error) {
       console.error('Error loading S3 content:', error);
-      const cleanContent =
-        comment.content?.replace(/^\[MIGRATED_TO_S3\][^"]*"[^"]*"/, '').trim() || comment.content;
-      setS3Content(cleanContent);
+      setS3Content('Error loading content.');
     } finally {
       setIsLoadingS3(false);
     }
-  }, [comment.id, comment.content, isMigratedToS3, s3Content, isLoadingS3]);
+  }, [comment.id, comment.presigned_url, isMigratedToS3, s3Content, isLoadingS3]);
 
   useEffect(() => {
     if (isMigratedToS3 && !s3Content && !isLoadingS3) {

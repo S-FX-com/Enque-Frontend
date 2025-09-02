@@ -264,6 +264,7 @@ export async function getTicketInitialContent(ticketId: number): Promise<Initial
 export interface TicketHtmlContent {
   id: string | number;
   content: string;
+  presigned_url?: string;
   sender: {
     type: 'user' | 'agent' | 'unknown';
     name: string;
