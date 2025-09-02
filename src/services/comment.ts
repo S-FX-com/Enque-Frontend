@@ -105,42 +105,61 @@ export const createComment = async (
 };
 
 export interface S3ContentResponse {
-  status: 'content_in_database' | 'loaded_from_s3' | 's3_error_fallback';
-  content: string;
-  s3_url?: string;
+  status: 'content_in_database' | 'loaded_from_s3' | 's3_error_fallback' | 'presigned_url_generated';
+  content?: string;
+  presigned_url?: string;
   message: string;
 }
-const s3ContentCache = new Map<number, S3ContentResponse>();
-/**
- * @param commentId
- * @returns
- */
+
+const s3ContentCache = new Map<number, string>();
+
 export async function getCommentS3Content(commentId: number): Promise<S3ContentResponse> {
-  // Verificar cache
   if (s3ContentCache.has(commentId)) {
-    return s3ContentCache.get(commentId)!;
+    return {
+      status: 'loaded_from_s3',
+      content: s3ContentCache.get(commentId)!,
+      message: 'Content loaded from cache',
+    };
   }
 
   try {
-    const url = `${AppConfigs.api}/comments/${commentId}/s3-content`;
-    const response = await fetchAPI.GET<S3ContentResponse>(url);
+    const apiUrl = `${AppConfigs.api}/comments/${commentId}/s3-content`;
+    const response = await fetchAPI.GET<S3ContentResponse>(apiUrl);
 
-    if (response && response.success && response.data) {
-      // Guardar en cache por 5 minutos
-      s3ContentCache.set(commentId, response.data);
+    if (!response.success || !response.data) {
+      throw new Error(response.message || 'Failed to get S3 content metadata');
+    }
 
-      // Limpiar cache después de 5 minutos
-      setTimeout(
-        () => {
-          s3ContentCache.delete(commentId);
-        },
-        5 * 60 * 1000
-      );
+    const data = response.data;
 
-      return response.data;
+    if (data.status === 'presigned_url_generated' && data.presigned_url) {
+      // Si tenemos una URL prefirmada, la usamos para descargar el contenido
+      const s3Response = await fetch(data.presigned_url);
+      if (!s3Response.ok) {
+        throw new Error(`Failed to fetch content from S3: ${s3Response.statusText}`);
+      }
+      const htmlContent = await s3Response.text();
+
+      // Guardar el contenido HTML final en el caché
+      s3ContentCache.set(commentId, htmlContent);
+      setTimeout(() => s3ContentCache.delete(commentId), 5 * 60 * 1000);
+
+      return {
+        status: 'loaded_from_s3',
+        content: htmlContent,
+        message: 'Content successfully fetched from S3',
+      };
+    } else if (data.content) {
+      // Si el contenido está en la base de datos, lo usamos directamente
+      s3ContentCache.set(commentId, data.content);
+      setTimeout(() => s3ContentCache.delete(commentId), 5 * 60 * 1000);
+      return {
+        status: 'content_in_database',
+        content: data.content,
+        message: data.message,
+      };
     } else {
-      const errorMsg = response?.message || 'Failed to get S3 content';
-      throw new Error(errorMsg);
+      throw new Error('API response did not provide content or a presigned URL.');
     }
   } catch (error) {
     console.error(`💥 Exception in getCommentS3Content for comment ${commentId}:`, error);

@@ -208,9 +208,9 @@ export async function createTicket(ticketData: TicketCreatePayload): Promise<ITi
 }
 
 export interface InitialContentResponse {
-  status: 'content_in_database' | 'loaded_from_s3' | 's3_error_fallback' | 'no_initial_comment';
-  content: string;
-  s3_url?: string;
+  status: 'content_in_database' | 'loaded_from_s3' | 's3_error_fallback' | 'no_initial_comment' | 'presigned_url_generated';
+  content?: string;
+  presigned_url?: string;
   message: string;
 }
 
@@ -221,17 +221,42 @@ export interface InitialContentResponse {
  */
 export async function getTicketInitialContent(ticketId: number): Promise<InitialContentResponse> {
   try {
-    const url = `${API_BASE_URL}/v1/tasks/${ticketId}/initial-content`;
-    const response = await fetchAPI.GET<InitialContentResponse>(url);
+    const apiUrl = `${API_BASE_URL}/v1/tasks/${ticketId}/initial-content`;
+    const response = await fetchAPI.GET<InitialContentResponse>(apiUrl);
 
-    if (response && response.success && response.data) {
-      return response.data;
+    if (!response.success || !response.data) {
+      throw new Error(response.message || 'Failed to get initial content metadata');
+    }
+
+    const data = response.data;
+
+    if (data.status === 'presigned_url_generated' && data.presigned_url) {
+      const s3Response = await fetch(data.presigned_url);
+      if (!s3Response.ok) {
+        throw new Error(`Failed to fetch initial content from S3: ${s3Response.statusText}`);
+      }
+      const htmlContent = await s3Response.text();
+
+      return {
+        status: 'loaded_from_s3',
+        content: htmlContent,
+        message: 'Initial content successfully fetched from S3',
+      };
+    } else if (data.content) {
+      return {
+        status: data.status,
+        content: data.content,
+        message: data.message,
+      };
     } else {
-      const errorMsg = response?.message || 'Failed to get initial ticket content';
-      throw new Error(errorMsg);
+      return {
+        status: 'no_initial_comment',
+        content: '',
+        message: 'No initial content found',
+      };
     }
   } catch (error) {
-    console.error(` Exception in getTicketInitialContent for ticket ${ticketId}:`, error);
+    console.error(`💥 Exception in getTicketInitialContent for ticket ${ticketId}:`, error);
     throw error;
   }
 }
