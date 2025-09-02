@@ -397,7 +397,7 @@ function InitialTicketMessage({
       } else {
         // Fallback al contenido procesado
         let cleanContent = response.content;
-        if (cleanContent.startsWith('[MIGRATED_TO_S3]')) {
+        if (cleanContent && cleanContent.startsWith('[MIGRATED_TO_S3]')) {
           cleanContent = cleanContent.replace(/^\[MIGRATED_TO_S3\][^"]*"[^"]*"/, '').trim() || '';
         }
         setS3Content(cleanContent || 'Content temporarily unavailable');
@@ -628,7 +628,7 @@ export function ConversationMessageItem({ comment, ticket }: Props) {
         } else {
           setS3Content(response.content);
         }
-      } else {
+      } else if (response.content) {
         setS3Content(response.content);
       }
     } catch (error) {
