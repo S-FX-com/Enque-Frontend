@@ -157,31 +157,42 @@ export default function SignInPage() {
   };
 
   const handleMicrosoftSignIn = async () => {
-    if (!email) {
-      toast.error('Please enter your email address first.');
-      return;
-    }
-
     setMicrosoftLoading(true);
 
     try {
-      logger.info(`Microsoft login attempt for ${email}`);
+      logger.info(`Microsoft unified signin attempt for email: ${email || 'no email provided'}`);
 
-      // Get the workspace ID (from authMethods if available, or default to 1)
-      const workspaceId = authMethods?.workspace_id || 1;
+      // Get the workspace ID (try from authMethods first, then try to get from subdomain, or default to 1)
+      let workspaceId = authMethods?.workspace_id;
+      
+      if (!workspaceId) {
+        // Try to extract workspace from subdomain if available
+        if (typeof window !== 'undefined') {
+          const hostname = window.location.hostname;
+          if (hostname !== 'app.enque.cc' && hostname.endsWith('.enque.cc')) {
+            // Could potentially get workspace from subdomain in the future
+            // For now, default to 1
+            workspaceId = 1;
+          } else {
+            workspaceId = 1;
+          }
+        } else {
+          workspaceId = 1;
+        }
+      }
 
-      // Get the Microsoft auth URL
-      const response = await authService.getMicrosoftAuthUrl(workspaceId);
+      // Use the new unified signin auth URL that doesn't require email verification
+      const response = await authService.getMicrosoftSigninAuthUrl(workspaceId);
 
       if (response.success && response.data?.auth_url) {
-        logger.info('Redirecting to Microsoft login');
+        logger.info('Redirecting to Microsoft unified signin');
         window.location.href = response.data.auth_url;
       } else {
-        throw new Error(response.message || 'Failed to get Microsoft auth URL');
+        throw new Error(response.message || 'Failed to get Microsoft signin auth URL');
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
-      logger.error(`Microsoft login error for ${email}`, errorMessage);
+      logger.error(`Microsoft signin error`, errorMessage);
       toast.error('Error connecting to Microsoft. Please try again later.');
       console.error(error);
     } finally {
@@ -286,88 +297,80 @@ export default function SignInPage() {
                   </form>
                 </div>
               )}
-              {authMethods.can_use_password &&
-                authMethods.can_use_microsoft &&
-                !authMethods.requires_microsoft && (
-                  <div className="text-center">
-                    <div className="relative">
-                      <div className="absolute inset-0 flex items-center">
-                        <span className="w-full border-t border-gray-200" />
-                      </div>
-                      <div className="relative flex justify-center text-xs uppercase">
-                        <span className="bg-white px-2 text-gray-500">or</span>
-                      </div>
+              {/* Always show "or" separator if password auth is available */}
+              {authMethods?.can_use_password && (
+                <div className="text-center">
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                      <span className="w-full border-t border-gray-200" />
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                      <span className="bg-white px-2 text-gray-500">or</span>
                     </div>
                   </div>
-                )}
-              {authMethods.can_use_microsoft && (
-                <div className="space-y-4">
-                  {authMethods.requires_microsoft && (
-                    <div className="text-center">
-                      <div className="relative">
-                        <div className="absolute inset-0 flex items-center">
-                          <span className="w-full border-t border-gray-200" />
-                        </div>
-                        <div className="relative flex justify-center text-xs uppercase">
-                          <span className="bg-white px-2 text-gray-500">
-                            Login with Microsoft 365
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full flex items-center justify-center gap-2 hover:bg-blue-50 border-blue-200"
-                    onClick={handleMicrosoftSignIn}
-                    disabled={microsoftLoading}
-                  >
-                    {microsoftLoading ? (
-                      <span className="flex items-center justify-center gap-2">
-                        <svg
-                          className="animate-spin -ml-1 mr-2 h-4 w-4"
-                          xmlns="http://www.w3.org/2000/svg"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                        >
-                          <circle
-                            className="opacity-25"
-                            cx="12"
-                            cy="12"
-                            r="10"
-                            stroke="currentColor"
-                            strokeWidth="4"
-                          ></circle>
-                          <path
-                            className="opacity-75"
-                            fill="currentColor"
-                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                          ></path>
-                        </svg>
-                        Connecting...
-                      </span>
-                    ) : (
-                      <>
-                        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none">
-                          <path
-                            d="M11.4 24H0V12.6h11.4V24zM24 24H12.6V12.6H24V24zM11.4 11.4H0V0h11.4v11.4zM24 11.4H12.6V0H24v11.4z"
-                            fill="#00BCF2"
-                          />
-                        </svg>
-                        Sign in with Microsoft 365
-                      </>
-                    )}
-                  </Button>
-
-                  {authMethods.requires_microsoft && (
-                    <p className="text-xs text-center text-gray-600">
-                      Your account requires Microsoft 365 authentication
-                    </p>
-                  )}
                 </div>
               )}
+
+              {/* Microsoft signin button - ALWAYS AVAILABLE */}
+              <div className="space-y-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full flex items-center justify-center gap-2 hover:bg-blue-50 border-blue-200"
+                  onClick={handleMicrosoftSignIn}
+                  disabled={microsoftLoading}
+                >
+                  {microsoftLoading ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <svg
+                        className="animate-spin -ml-1 mr-2 h-4 w-4"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        ></circle>
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        ></path>
+                      </svg>
+                      Connecting...
+                    </span>
+                  ) : (
+                    <>
+                      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none">
+                        <path
+                          d="M11.4 24H0V12.6h11.4V24zM24 24H12.6V12.6H24V24zM11.4 11.4H0V0h11.4v11.4zM24 11.4H12.6V0H24v11.4z"
+                          fill="#00BCF2"
+                        />
+                      </svg>
+                      Sign in with Microsoft 365
+                    </>
+                  )}
+                </Button>
+                
+                {/* Show note about Microsoft requirement if applicable */}
+                {authMethods?.requires_microsoft && (
+                  <p className="text-xs text-center text-gray-600">
+                    Your account requires Microsoft 365 authentication
+                  </p>
+                )}
+                
+                {/* Show helpful text when no email is entered */}
+                {!email && !emailChecked && (
+                  <p className="text-xs text-center text-gray-500">
+                    Sign in with your Microsoft 365 account or enter your email above for other options
+                  </p>
+                )}
+              </div>
             </div>
           )}
           {emailChecked && authMethods?.can_use_password && (
