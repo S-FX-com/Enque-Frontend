@@ -287,10 +287,35 @@ export default function MailboxPage() {
     const params = new URLSearchParams(window.location.search);
     const status = params.get('status');
     const message = params.get('message');
+    const newConnectionId = params.get('new_connection_id');
 
     if (status === 'success') {
       toast.success(message || 'Microsoft account connected successfully!');
       fetchConnections();
+
+      if (newConnectionId) {
+        const subscribe = async () => {
+          try {
+            const apiUrlBase =
+              process.env.NEXT_PUBLIC_API_BASE_URL || 'https://enque-backend-production.up.railway.app';
+            const subscribeUrl = `${apiUrlBase}/v1/microsoft/mailboxes/${newConnectionId}/subscribe`;
+            
+            toast.info('Setting up webhook for real-time email updates...');
+            
+            const response = await fetchAPI.POST(subscribeUrl, {});
+            if (response.success) {
+              toast.success('Webhook successfully activated for the new mailbox!');
+            } else {
+              throw new Error(response.message || 'Failed to activate webhook.');
+            }
+          } catch (err) {
+            console.error('Failed to subscribe to webhook:', err);
+            toast.error(err instanceof Error ? err.message : 'An error occurred setting up the webhook.');
+          }
+        };
+        subscribe();
+      }
+
       window.history.replaceState({}, document.title, window.location.pathname);
     } else if (status === 'error') {
       toast.error(message || 'Failed to connect Microsoft account.');
