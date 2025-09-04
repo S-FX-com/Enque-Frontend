@@ -12,7 +12,6 @@ import { useQuery } from '@tanstack/react-query';
 import { getAgentTeams, getTeams } from '@/services/team';
 import type { Team } from '@/typescript/team';
 import { Badge } from '@/components/ui/badge';
-import { getTickets } from '@/services/ticket';
 import { Agent } from '@/typescript/agent';
 
 interface MyTeamsListProps {
@@ -104,36 +103,31 @@ function SidebarContent() {
     refetchOnMount: false, // ❌ OPTIMIZADO: Solo si datos obsoletos
   });
 
-  // Add query for all tickets count (excluding closed)
+  // Add query for all tickets count (excluding closed) - OPTIMIZED VERSION
   const { data: allTicketsCount = 0 } = useQuery<number>({
     queryKey: ['ticketsCount', 'all'],
     queryFn: async () => {
-      // Usar un límite muy alto para obtener todos los tickets
-      const tickets = await getTickets({ limit: 10000 });
-      // Filter out closed tickets to match My Teams behavior
-      const activeTickets = tickets.filter(ticket => ticket.status !== 'Closed');
-      return activeTickets.length || 0;
+      // 🚀 OPTIMIZADO: Usar endpoint de conteo general en lugar de descargar todos
+      const { getTicketsCount } = await import('@/services/optimized-tickets');
+      return await getTicketsCount(); // Sin filtros = excluye cerrados por defecto
     },
-    staleTime: 1000 * 60 * 10, // ✅ OPTIMIZADO: 10 minutos (era 5)
+    staleTime: 1000 * 60 * 10, // ✅ OPTIMIZADO: 10 minutos
     refetchInterval: false, // ❌ REMOVIDO: No más polling - usar Socket.IO
     refetchOnWindowFocus: false, // ❌ REMOVIDO: Sin refetch al hacer foco
     refetchOnMount: false, // ❌ OPTIMIZADO: Solo si datos obsoletos
   });
 
-  // Add query for my tickets count (excluding closed)
+  // Add query for my tickets count (excluding closed) - OPTIMIZED VERSION
   const { data: myTicketsCount = 0 } = useQuery<number>({
     queryKey: ['ticketsCount', 'my', user?.id],
     queryFn: async () => {
       if (!user?.id) return 0;
-      // Usar un límite muy alto para obtener todos los tickets
-      // Using optimized assignee endpoint for better performance
-      const tickets = await getTickets({ limit: 10000 }, `/v1/tasks-optimized/assignee/${user.id}`);
-      // Filter out closed tickets to match My Teams behavior
-      const activeTickets = tickets.filter(ticket => ticket.status !== 'Closed');
-      return activeTickets.length || 0;
+      // 🚀 OPTIMIZADO: Usar endpoint de conteo en lugar de descargar 10,000 tickets
+      const { getAssigneeTicketsCount } = await import('@/services/optimized-tickets');
+      return await getAssigneeTicketsCount(user.id); // Sin status = excluye cerrados por defecto
     },
     enabled: !!user?.id && !isLoadingUser,
-    staleTime: 1000 * 60 * 10, // ✅ OPTIMIZADO: 10 minutos (era 5)
+    staleTime: 1000 * 60 * 10, // ✅ OPTIMIZADO: 10 minutos
     refetchInterval: false, // ❌ REMOVIDO: No más polling - usar Socket.IO
     refetchOnWindowFocus: false, // ❌ REMOVIDO: Sin refetch al hacer foco
     refetchOnMount: false, // ❌ OPTIMIZADO: Solo si datos obsoletos
