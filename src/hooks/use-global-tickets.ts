@@ -5,7 +5,7 @@ import type { ITicket } from '@/typescript/ticket';
 const LOAD_LIMIT = 20;
 type TicketPage = ITicket[];
 
-export function useGlobalTickets(enabled: boolean = true) {
+export function useGlobalTickets(enabled: boolean = false) {
   const queryClient = useQueryClient();
 
   const {

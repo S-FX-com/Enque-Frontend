@@ -3,6 +3,35 @@ import type { ITicket, IGetTicket } from '@/typescript/ticket';
 import type { IComment } from '@/typescript/comment';
 
 /**
+ * Fetches the count of tickets from the backend.
+ * @param filters - Optional filters including status, user_id, team_id, etc.
+ * @returns A promise that resolves to the count of tickets.
+ */
+export async function getTicketsCount(filters: IGetTicket = {}): Promise<number> {
+  const { status, user_id, team_id } = filters;
+
+  try {
+    const queryParams = new URLSearchParams();
+    if (status !== undefined) queryParams.append('status', status);
+    if (user_id !== undefined) queryParams.append('assignee_id', String(user_id));
+    if (team_id !== undefined) queryParams.append('team_id', String(team_id));
+
+    const url = `${API_BASE_URL}/v1/tasks-optimized/count?${queryParams.toString()}`;
+    const response = await fetchAPI.GET<{ count: number }>(url);
+
+    if (response && response.success && response.data) {
+      return response.data.count;
+    } else {
+      console.error('Error fetching tickets count:', response?.message || 'Unknown API error');
+      return 0;
+    }
+  } catch (error) {
+    console.error('Error fetching tickets count (catch block):', error);
+    return 0;
+  }
+}
+
+/**
  * Fetches a list of tickets (tasks) from the backend.
  * @param filters - Optional filters including skip, limit, status, etc.
  * @param endpointPath - Optional endpoint path (defaults to /v1/tasks-optimized/ for better performance)

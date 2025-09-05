@@ -12,7 +12,7 @@ import { useQuery } from '@tanstack/react-query';
 import { getAgentTeams, getTeams } from '@/services/team';
 import type { Team } from '@/typescript/team';
 import { Badge } from '@/components/ui/badge';
-import { getTickets } from '@/services/ticket';
+import { getTicketsCount } from '@/services/ticket';
 import { Agent } from '@/typescript/agent';
 
 interface MyTeamsListProps {
@@ -107,36 +107,22 @@ function SidebarContent() {
   // Add query for all tickets count (excluding closed)
   const { data: allTicketsCount = 0 } = useQuery<number>({
     queryKey: ['ticketsCount', 'all'],
-    queryFn: async () => {
-      // Usar un límite muy alto para obtener todos los tickets
-      const tickets = await getTickets({ limit: 10000 });
-      // Filter out closed tickets to match My Teams behavior
-      const activeTickets = tickets.filter(ticket => ticket.status !== 'Closed');
-      return activeTickets.length || 0;
-    },
-    staleTime: 1000 * 60 * 10, // ✅ OPTIMIZADO: 10 minutos (era 5)
-    refetchInterval: false, // ❌ REMOVIDO: No más polling - usar Socket.IO
-    refetchOnWindowFocus: false, // ❌ REMOVIDO: Sin refetch al hacer foco
-    refetchOnMount: false, // ❌ OPTIMIZADO: Solo si datos obsoletos
+    queryFn: () => getTicketsCount({ status: 'Open' }), 
+    staleTime: 1000 * 60 * 10, 
+    refetchInterval: false, 
+    refetchOnWindowFocus: false, 
+    refetchOnMount: false, 
   });
 
   // Add query for my tickets count (excluding closed)
   const { data: myTicketsCount = 0 } = useQuery<number>({
     queryKey: ['ticketsCount', 'my', user?.id],
-    queryFn: async () => {
-      if (!user?.id) return 0;
-      // Usar un límite muy alto para obtener todos los tickets
-      // Using optimized assignee endpoint for better performance
-      const tickets = await getTickets({ limit: 10000 }, `/v1/tasks-optimized/assignee/${user.id}`);
-      // Filter out closed tickets to match My Teams behavior
-      const activeTickets = tickets.filter(ticket => ticket.status !== 'Closed');
-      return activeTickets.length || 0;
-    },
+    queryFn: () => getTicketsCount({ status: 'Open', user_id: user?.id }), 
     enabled: !!user?.id && !isLoadingUser,
-    staleTime: 1000 * 60 * 10, // ✅ OPTIMIZADO: 10 minutos (era 5)
-    refetchInterval: false, // ❌ REMOVIDO: No más polling - usar Socket.IO
-    refetchOnWindowFocus: false, // ❌ REMOVIDO: Sin refetch al hacer foco
-    refetchOnMount: false, // ❌ OPTIMIZADO: Solo si datos obsoletos
+    staleTime: 1000 * 60 * 10,
+    refetchInterval: false,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
   });
 
   const mainItems = [
