@@ -209,10 +209,10 @@ export function useSocket() {
         ['comments', data.ticket_id],
         (oldComments: IComment[] | undefined) => {
           if (!oldComments) {
-            console.log(`🔄 No cached comments for ticket ${data.ticket_id}, invalidating queries`);
+            // Don't update cache if it doesn't exist, just invalidate
             queryClient.invalidateQueries({ queryKey: ['comments', data.ticket_id] });
             queryClient.invalidateQueries({ queryKey: ['ticketHtml', data.ticket_id] });
-            return [];
+            return oldComments;
           }
 
           const existingComment = oldComments.find(comment => comment.id === data.id);
@@ -310,20 +310,11 @@ export function useSocket() {
         return htmlContent;
       });
 
-      // ✅ FORZAR invalidación y refetch inmediato de las queries críticas
-      queryClient.removeQueries({ queryKey: ['ticketHtml', data.ticket_id] });
-      queryClient.removeQueries({ queryKey: ['comments', data.ticket_id] });
-      
-      // Invalidar y refetch inmediatamente
+      // Invalidate queries to refetch in the background for consistency.
+      // The optimistic update above should handle the immediate UI change.
       queryClient.invalidateQueries({ queryKey: ['ticketHtml', data.ticket_id] });
       queryClient.invalidateQueries({ queryKey: ['comments', data.ticket_id] });
       queryClient.invalidateQueries({ queryKey: ['ticket', data.ticket_id] });
-
-      // ✅ FORZAR refetch inmediato para garantizar actualización
-      setTimeout(() => {
-        queryClient.refetchQueries({ queryKey: ['ticketHtml', data.ticket_id] });
-        queryClient.refetchQueries({ queryKey: ['comments', data.ticket_id] });
-      }, 50);
 
       // ✅ OPTIMIZACIÓN: Solo actualizar last_update del ticket en lugar de invalidar toda la lista
       queryClient.setQueryData<InfiniteData<ITicket[], number>>(
@@ -365,11 +356,8 @@ export function useSocket() {
       if (!data.agent_id && data.user_name) {
         toast.info(`${data.user_name} commented on ticket #${data.ticket_id}`);
       }
-      setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ['comments', data.ticket_id] });
-        queryClient.invalidateQueries({ queryKey: ['ticketHtml', data.ticket_id] });
-        console.log(`🔄 Backup invalidation triggered for ticket ${data.ticket_id}`);
-      }, 500);
+      // The backup invalidation is likely causing more harm than good with the new approach.
+      // console.log(`🔄 Comment update processed for ticket ${data.ticket_id}`);
       if (data.agent_id === user?.id) {
         window.dispatchEvent(
           new CustomEvent('commentSyncCompleted', {
