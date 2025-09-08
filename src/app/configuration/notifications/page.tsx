@@ -8,9 +8,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Terminal, Info, AlertCircle, Mail, Users } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Terminal, Info, AlertCircle, Mail, Users, MessageSquare, ExternalLink, CheckCircle } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { getNotificationSettings, toggleNotificationSetting } from '@/services/notifications';
+import { getNotificationSettings, toggleNotificationSetting, enableTeamsNotifications, disableTeamsNotifications, getTeamsNotificationStatus, sendTestTeamsNotification } from '@/services/notifications';
 import { useState } from 'react';
 
 
@@ -27,10 +28,20 @@ interface NotificationSettingsObject {
   [key: string]: NotificationSettingsObject | NotificationSetting | boolean | number | undefined;
 }
 
+interface TeamsNotificationStatus {
+  is_enabled: boolean;
+  setting_id: number | null;
+  agents_with_teams: number;
+  total_agents: number;
+  coverage_percentage: number;
+}
+
 export default function NotificationsConfigPage() {
   const queryClient = useQueryClient();
   const { user, isLoading: isLoadingAuthUser } = useAuth();
   const [updatingSettingId, setUpdatingSettingId] = useState<number | null>(null);
+  const [isEnablingTeams, setIsEnablingTeams] = useState(false);
+  const [isSendingTest, setIsSendingTest] = useState(false);
 
   const currentUserRole = user?.role;
   const workspaceId = user?.workspace_id;
@@ -45,6 +56,17 @@ export default function NotificationsConfigPage() {
     queryFn: () => getNotificationSettings(workspaceId!),
     enabled: !!workspaceId,
     staleTime: 5 * 60 * 1000,
+  });
+
+  const {
+    data: teamsStatus,
+    isLoading: isLoadingTeamsStatus,
+    refetch: refetchTeamsStatus,
+  } = useQuery<TeamsNotificationStatus>({
+    queryKey: ['teamsNotificationStatus', workspaceId],
+    queryFn: () => getTeamsNotificationStatus(workspaceId!),
+    enabled: !!workspaceId,
+    staleTime: 2 * 60 * 1000,
   });
 
   const toggleSettingMutation = useMutation({
@@ -64,6 +86,61 @@ export default function NotificationsConfigPage() {
       setUpdatingSettingId(null);
       // Solo invalidar en caso de error para revertir el estado
       queryClient.invalidateQueries({ queryKey: ['notificationSettings', workspaceId] });
+    },
+  });
+
+  const enableTeamsMutation = useMutation({
+    mutationFn: async () => {
+      if (!workspaceId) throw new Error('Workspace ID is missing');
+      setIsEnablingTeams(true);
+      return enableTeamsNotifications(workspaceId);
+    },
+    onSuccess: () => {
+      toast.success('Teams notifications enabled successfully!');
+      setIsEnablingTeams(false);
+      refetchTeamsStatus();
+      queryClient.invalidateQueries({ queryKey: ['notificationSettings', workspaceId] });
+    },
+    onError: error => {
+      console.error('Failed to enable Teams notifications:', error);
+      toast.error(`Failed to enable Teams notifications: ${error.message}`);
+      setIsEnablingTeams(false);
+    },
+  });
+
+  const disableTeamsMutation = useMutation({
+    mutationFn: async () => {
+      if (!workspaceId) throw new Error('Workspace ID is missing');
+      setIsEnablingTeams(true);
+      return disableTeamsNotifications(workspaceId);
+    },
+    onSuccess: () => {
+      toast.success('Teams notifications disabled successfully!');
+      setIsEnablingTeams(false);
+      refetchTeamsStatus();
+      queryClient.invalidateQueries({ queryKey: ['notificationSettings', workspaceId] });
+    },
+    onError: error => {
+      console.error('Failed to disable Teams notifications:', error);
+      toast.error(`Failed to disable Teams notifications: ${error.message}`);
+      setIsEnablingTeams(false);
+    },
+  });
+
+  const testTeamsMutation = useMutation({
+    mutationFn: async () => {
+      if (!workspaceId) throw new Error('Workspace ID is missing');
+      setIsSendingTest(true);
+      return sendTestTeamsNotification(workspaceId);
+    },
+    onSuccess: () => {
+      toast.success('Test Teams notification sent! Check your Teams for the notification.');
+      setIsSendingTest(false);
+    },
+    onError: error => {
+      console.error('Failed to send test Teams notification:', error);
+      toast.error(`Failed to send test notification: ${error.message}`);
+      setIsSendingTest(false);
     },
   });
 
@@ -292,6 +369,124 @@ export default function NotificationsConfigPage() {
 
 
                     </div>
+                  </div>
+
+                  {/* Teams Notifications Section */}
+                  <div className="border rounded-md p-6">
+                    <div className="flex items-center gap-2 mb-4">
+                      <MessageSquare className="h-4 w-4 text-blue-600" />
+                      <span className="font-medium text-lg">Microsoft Teams Notifications</span>
+                    </div>
+                    
+                    {isLoadingTeamsStatus ? (
+                      <div className="space-y-3">
+                        <Skeleton className="h-4 w-full" />
+                        <Skeleton className="h-10 w-32" />
+                      </div>
+                    ) : (
+                      <div className="space-y-4 pl-6">
+                        <div className="flex items-center justify-between py-2 border-b">
+                          <div>
+                            <h4 className="font-medium">Teams Integration Status</h4>
+                            <p className="text-sm text-muted-foreground">
+                              Send notifications directly to Microsoft Teams
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-4">
+                            <div className="text-sm text-muted-foreground">
+                              {teamsStatus?.agents_with_teams || 0} of {teamsStatus?.total_agents || 0} agents connected ({(teamsStatus?.coverage_percentage || 0).toFixed(0)}%)
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <Switch
+                                id="teams-notifications"
+                                checked={teamsStatus?.is_enabled || false}
+                                onCheckedChange={(checked) => {
+                                  if (checked) {
+                                    enableTeamsMutation.mutate();
+                                  } else {
+                                    disableTeamsMutation.mutate();
+                                  }
+                                }}
+                                disabled={isEnablingTeams}
+                              />
+                              <Label htmlFor="teams-notifications">
+                                {teamsStatus?.is_enabled ? 'Enabled' : 'Disabled'}
+                              </Label>
+                            </div>
+                          </div>
+                        </div>
+
+                        {teamsStatus?.is_enabled && (
+                          <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
+                            <div className="flex items-center gap-2 mb-2">
+                              <CheckCircle className="h-4 w-4 text-blue-600" />
+                              <span className="font-medium text-blue-900">Teams Notifications Active</span>
+                            </div>
+                            <p className="text-sm text-blue-800 mb-3">
+                              Agents will receive Teams notifications for:
+                            </p>
+                            <ul className="text-sm text-blue-800 list-disc list-inside space-y-1 mb-4">
+                              <li>New tickets created for their team</li>
+                              <li>Tickets assigned to them specifically</li>
+                              <li>New responses on their tickets</li>
+                            </ul>
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => testTeamsMutation.mutate()}
+                                disabled={isSendingTest}
+                                className="text-blue-700 border-blue-300 hover:bg-blue-100"
+                              >
+                                {isSendingTest ? 'Sending...' : 'Send Test Notification'}
+                              </Button>
+                              {user?.microsoft_user_id ? (
+                                <div className="flex items-center gap-1 text-sm text-green-600">
+                                  <CheckCircle className="h-3 w-3" />
+                                  Your Microsoft account is connected
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-1 text-sm text-amber-600">
+                                  <AlertCircle className="h-3 w-3" />
+                                  <span>Connect your Microsoft account to receive notifications</span>
+                                  <Button size="sm" variant="link" className="h-auto p-0 text-blue-600">
+                                    <ExternalLink className="h-3 w-3 ml-1" />
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {!teamsStatus?.is_enabled && teamsStatus?.agents_with_teams === 0 && (
+                          <Alert>
+                            <Info className="h-4 w-4" />
+                            <AlertTitle>Microsoft Teams Setup Required</AlertTitle>
+                            <AlertDescription>
+                              <p className="mb-2">
+                                To enable Teams notifications, agents need to connect their Microsoft 365 accounts.
+                              </p>
+                              <ul className="list-disc list-inside text-sm space-y-1">
+                                <li>Agents must sign in with their Microsoft 365 account</li>
+                                <li>Your Azure app must have Teams permissions configured</li>
+                                <li>Admin consent may be required for your organization</li>
+                              </ul>
+                            </AlertDescription>
+                          </Alert>
+                        )}
+
+                        {!teamsStatus?.is_enabled && (teamsStatus?.agents_with_teams || 0) > 0 && (
+                          <Alert>
+                            <Info className="h-4 w-4" />
+                            <AlertTitle>Ready to Enable Teams Notifications</AlertTitle>
+                            <AlertDescription>
+                              You have {teamsStatus?.agents_with_teams} agents connected to Microsoft 365. 
+                              Enable Teams notifications to start sending notifications directly to Teams.
+                            </AlertDescription>
+                          </Alert>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               </TabsContent>

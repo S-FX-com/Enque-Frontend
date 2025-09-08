@@ -101,3 +101,55 @@ export const connectNotificationChannel = async (
 
   throw new Error(`Unsupported notification channel: ${channel}`);
 };
+
+/**
+ * Enable Teams notifications for a workspace
+ */
+export const enableTeamsNotifications = async (
+  workspaceId: number
+): Promise<ApiSuccessResponse> => {
+  const response = await apiClient.post<ApiSuccessResponse>(
+    `/notifications/${workspaceId}/teams/enable`
+  );
+  return response.data;
+};
+
+/**
+ * Disable Teams notifications for a workspace
+ */
+export const disableTeamsNotifications = async (
+  workspaceId: number
+): Promise<ApiSuccessResponse> => {
+  const response = await apiClient.delete<ApiSuccessResponse>(
+    `/notifications/${workspaceId}/teams/disable`
+  );
+  return response.data;
+};
+
+interface TeamsNotificationStatus {
+  is_enabled: boolean;
+  setting_id: number | null;
+  agents_with_teams: number;
+  total_agents: number;
+  coverage_percentage: number;
+}
+
+/**
+ * Get Teams notification status for a workspace
+ */
+export const getTeamsNotificationStatus = async (workspaceId: number): Promise<TeamsNotificationStatus> => {
+  const response = await apiClient.get<TeamsNotificationStatus>(`/notifications/${workspaceId}/teams/status`);
+  return response.data;
+};
+
+/**
+ * Send a test Teams notification
+ */
+export const sendTestTeamsNotification = async (
+  workspaceId: number
+): Promise<ApiSuccessResponse> => {
+  const response = await apiClient.post<ApiSuccessResponse>(
+    `/notifications/${workspaceId}/teams/test`
+  );
+  return response.data;
+};
