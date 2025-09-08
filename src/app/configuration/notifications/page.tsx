@@ -61,7 +61,6 @@ export default function NotificationsConfigPage() {
   const {
     data: teamsStatus,
     isLoading: isLoadingTeamsStatus,
-    refetch: refetchTeamsStatus,
   } = useQuery<TeamsNotificationStatus>({
     queryKey: ['teamsNotificationStatus', workspaceId],
     queryFn: () => getTeamsNotificationStatus(workspaceId!),
@@ -96,9 +95,11 @@ export default function NotificationsConfigPage() {
       return enableTeamsNotifications(workspaceId);
     },
     onSuccess: () => {
+      console.log('Teams notifications enabled successfully - updating status...');
       toast.success('Teams notifications enabled successfully!');
       setIsEnablingTeams(false);
-      refetchTeamsStatus();
+      // Invalidar las queries para forzar refetch
+      queryClient.invalidateQueries({ queryKey: ['teamsNotificationStatus', workspaceId] });
       queryClient.invalidateQueries({ queryKey: ['notificationSettings', workspaceId] });
     },
     onError: error => {
@@ -115,9 +116,11 @@ export default function NotificationsConfigPage() {
       return disableTeamsNotifications(workspaceId);
     },
     onSuccess: () => {
+      console.log('Teams notifications disabled successfully - updating status...');
       toast.success('Teams notifications disabled successfully!');
       setIsEnablingTeams(false);
-      refetchTeamsStatus();
+      // Invalidar las queries para forzar refetch
+      queryClient.invalidateQueries({ queryKey: ['teamsNotificationStatus', workspaceId] });
       queryClient.invalidateQueries({ queryKey: ['notificationSettings', workspaceId] });
     },
     onError: error => {
