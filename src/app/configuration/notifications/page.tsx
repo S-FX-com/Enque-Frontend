@@ -440,7 +440,7 @@ export default function NotificationsConfigPage() {
                               >
                                 {isSendingTest ? 'Sending...' : 'Send Test Notification'}
                               </Button>
-                              {user?.microsoft_user_id ? (
+                              {user?.microsoft_id ? (
                                 <div className="flex items-center gap-1 text-sm text-green-600">
                                   <CheckCircle className="h-3 w-3" />
                                   Your Microsoft account is connected

@@ -9,7 +9,7 @@ export interface Agent {
   phone_number?: string | null;
   email_signature?: string | null;
   avatar_url?: string | null;
-  microsoft_user_id?: string | null;
+  microsoft_id?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -24,7 +24,7 @@ export interface AgentCreate {
   phone_number?: string | null;
   email_signature?: string | null;
   avatar_url?: string | null;
-  microsoft_user_id?: string | null;
+  microsoft_id?: string | null;
 }
 export interface AgentUpdate {
   name?: string | null;
@@ -36,5 +36,5 @@ export interface AgentUpdate {
   phone_number?: string | null;
   email_signature?: string | null;
   avatar_url?: string | null;
-  microsoft_user_id?: string | null;
+  microsoft_id?: string | null;
 }
