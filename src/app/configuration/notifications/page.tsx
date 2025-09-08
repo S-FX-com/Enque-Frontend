@@ -94,6 +94,13 @@ export default function NotificationsConfigPage() {
       setIsEnablingTeams(true);
       return enableTeamsNotifications(workspaceId);
     },
+    onMutate: async () => {
+      // Actualización optimista - actualizar el estado inmediatamente
+      if (teamsStatus) {
+        const optimisticStatus = { ...teamsStatus, is_enabled: true };
+        queryClient.setQueryData(['teamsNotificationStatus', workspaceId], optimisticStatus);
+      }
+    },
     onSuccess: () => {
       console.log('Teams notifications enabled successfully - updating status...');
       toast.success('Teams notifications enabled successfully!');
@@ -102,10 +109,14 @@ export default function NotificationsConfigPage() {
       queryClient.invalidateQueries({ queryKey: ['teamsNotificationStatus', workspaceId] });
       queryClient.invalidateQueries({ queryKey: ['notificationSettings', workspaceId] });
     },
-    onError: error => {
+    onError: (error) => {
       console.error('Failed to enable Teams notifications:', error);
       toast.error(`Failed to enable Teams notifications: ${error.message}`);
       setIsEnablingTeams(false);
+      // Revertir el cambio optimista en caso de error
+      if (teamsStatus) {
+        queryClient.setQueryData(['teamsNotificationStatus', workspaceId], teamsStatus);
+      }
     },
   });
 
@@ -115,6 +126,13 @@ export default function NotificationsConfigPage() {
       setIsEnablingTeams(true);
       return disableTeamsNotifications(workspaceId);
     },
+    onMutate: async () => {
+      // Actualización optimista - actualizar el estado inmediatamente
+      if (teamsStatus) {
+        const optimisticStatus = { ...teamsStatus, is_enabled: false };
+        queryClient.setQueryData(['teamsNotificationStatus', workspaceId], optimisticStatus);
+      }
+    },
     onSuccess: () => {
       console.log('Teams notifications disabled successfully - updating status...');
       toast.success('Teams notifications disabled successfully!');
@@ -123,10 +141,14 @@ export default function NotificationsConfigPage() {
       queryClient.invalidateQueries({ queryKey: ['teamsNotificationStatus', workspaceId] });
       queryClient.invalidateQueries({ queryKey: ['notificationSettings', workspaceId] });
     },
-    onError: error => {
+    onError: (error) => {
       console.error('Failed to disable Teams notifications:', error);
       toast.error(`Failed to disable Teams notifications: ${error.message}`);
       setIsEnablingTeams(false);
+      // Revertir el cambio optimista en caso de error
+      if (teamsStatus) {
+        queryClient.setQueryData(['teamsNotificationStatus', workspaceId], teamsStatus);
+      }
     },
   });
 
