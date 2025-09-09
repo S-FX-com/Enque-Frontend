@@ -8,10 +8,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Terminal, Info, AlertCircle, Mail, Users } from 'lucide-react';
+import { Terminal, Info, AlertCircle, Mail, Users, MessageSquare } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { getNotificationSettings, toggleNotificationSetting } from '@/services/notifications';
-import { useState } from 'react';
+import { getNotificationSettings, toggleNotificationSetting, toggleTeamsChannel } from '@/services/notifications';
+import { useState, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
 
 
 // Definir un tipo para los ajustes de notificaciones
@@ -46,6 +47,32 @@ export default function NotificationsConfigPage() {
     enabled: !!workspaceId,
     staleTime: 5 * 60 * 1000,
   });
+
+  const [isTeamsConnected, setIsTeamsConnected] = useState(false);
+
+  useEffect(() => {
+    if (notificationSettings) {
+      setIsTeamsConnected(notificationSettings.agents.teams.is_connected);
+    }
+  }, [notificationSettings]);
+
+  const toggleTeamsMutation = useMutation({
+    mutationFn: (enable: boolean) => {
+      if (!workspaceId) throw new Error('Workspace ID is missing');
+      return toggleTeamsChannel(workspaceId, enable);
+    },
+    onSuccess: () => {
+      toast.success(`Teams channel ${isTeamsConnected ? 'disconnected' : 'connected'} successfully.`);
+      queryClient.invalidateQueries({ queryKey: ['notificationSettings', workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(`Failed to update Teams channel: ${error.message}`);
+    },
+  });
+
+  const handleToggleTeamsConnection = () => {
+    toggleTeamsMutation.mutate(!isTeamsConnected);
+  };
 
   const toggleSettingMutation = useMutation({
     mutationFn: async ({ settingId, enabled }: { settingId: number; enabled: boolean }) => {
@@ -291,6 +318,29 @@ export default function NotificationsConfigPage() {
                       </div>
 
 
+                    </div>
+                  </div>
+                  <div className="border rounded-md p-6">
+                    <div className="flex items-center gap-2 mb-4">
+                      <MessageSquare className="h-4 w-4" />
+                      <span className="font-medium text-lg">Microsoft Teams Notifications</span>
+                    </div>
+                    <div className="space-y-4 pl-6">
+                      <div className="flex items-center justify-between py-2">
+                        <div>
+                          <h4 className="font-medium">Connect Teams Channel</h4>
+                          <p className="text-sm text-muted-foreground">
+                            Enable or disable Microsoft Teams as a notification channel for the workspace.
+                          </p>
+                        </div>
+                        <Button
+                          variant={isTeamsConnected ? "destructive" : "outline"}
+                          onClick={handleToggleTeamsConnection}
+                          disabled={toggleTeamsMutation.isPending}
+                        >
+                          {toggleTeamsMutation.isPending ? 'Updating...' : (isTeamsConnected ? 'Disconnect' : 'Connect')}
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </div>
