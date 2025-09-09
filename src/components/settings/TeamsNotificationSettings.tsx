@@ -52,12 +52,31 @@ const TeamsNotificationSettings: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isTestingConnection, setIsTestingConnection] = useState(false);
   const [showAppConfig, setShowAppConfig] = useState(false);
+  const [isMicrosoftConnected, setIsMicrosoftConnected] = useState(false);
+  const [checkingMicrosoftConnection, setCheckingMicrosoftConnection] = useState(true);
 
   useEffect(() => {
     loadTeamsConfiguration();
     loadAgentSettings();
     loadNotificationHistory();
+    checkMicrosoftConnection();
   }, []);
+
+  const checkMicrosoftConnection = async () => {
+    setCheckingMicrosoftConnection(true);
+    try {
+      const response = await fetch('/api/v1/microsoft/status');
+      if (response.ok) {
+        const status = await response.json();
+        setIsMicrosoftConnected(status.is_connected || false);
+      }
+    } catch (error) {
+      console.error('Error checking Microsoft connection:', error);
+      setIsMicrosoftConnected(false);
+    } finally {
+      setCheckingMicrosoftConnection(false);
+    }
+  };
 
   const loadTeamsConfiguration = async () => {
     try {
@@ -197,6 +216,32 @@ const TeamsNotificationSettings: React.FC = () => {
         </div>
       </div>
 
+      {/* Microsoft 365 Connection Status */}
+      {checkingMicrosoftConnection ? (
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            Checking Microsoft 365 connection status...
+          </AlertDescription>
+        </Alert>
+      ) : !isMicrosoftConnected ? (
+        <Alert className="border-yellow-200 bg-yellow-50">
+          <AlertCircle className="h-4 w-4 text-yellow-600" />
+          <AlertDescription className="text-yellow-800">
+            <strong>Microsoft 365 account not connected.</strong> You need to connect your Microsoft 365 account first to enable Teams notifications. 
+            <br />
+            Please go to <strong>Integrations → Microsoft 365</strong> to connect your account.
+          </AlertDescription>
+        </Alert>
+      ) : (
+        <Alert className="border-green-200 bg-green-50">
+          <CheckCircle className="h-4 w-4 text-green-600" />
+          <AlertDescription className="text-green-800">
+            Microsoft 365 account is connected and ready for Teams notifications.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* App Configuration Card */}
       <Card>
         <CardHeader>
@@ -293,12 +338,17 @@ const TeamsNotificationSettings: React.FC = () => {
                 <p className="text-sm text-gray-600">
                   Receive helpdesk notifications in Microsoft Teams
                 </p>
+                {!isMicrosoftConnected && (
+                  <p className="text-sm text-yellow-600">
+                    Connect your Microsoft 365 account first to enable this feature
+                  </p>
+                )}
               </div>
               <Switch
                 id="teams-notifications"
                 checked={agentSettings.teams_notifications_enabled}
                 onCheckedChange={updateAgentSettings}
-                disabled={!appConfig || isLoading}
+                disabled={!appConfig || isLoading || !isMicrosoftConnected}
               />
             </div>
 
@@ -329,7 +379,7 @@ const TeamsNotificationSettings: React.FC = () => {
                     variant="outline"
                     size="sm"
                     onClick={testConnection}
-                    disabled={isTestingConnection}
+                    disabled={isTestingConnection || !isMicrosoftConnected}
                   >
                     <TestTube className="w-4 h-4 mr-2" />
                     {isTestingConnection ? 'Testing...' : 'Test Connection'}

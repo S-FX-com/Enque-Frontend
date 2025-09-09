@@ -82,9 +82,18 @@ export default function NotificationsConfigPage() {
       setConnectingTeams(false);
       queryClient.invalidateQueries({ queryKey: ['notificationSettings', workspaceId] });
     },
-    onError: (error: Error) => {
+    onError: (error: Error & { response?: { data?: { detail?: string } } }) => {
       console.error('Failed to connect Teams:', error);
-      toast.error(`Failed to connect Teams: ${error.message}`);
+      
+      // Check if it's a Microsoft account linking issue
+      if (error?.response?.data?.detail?.includes('Microsoft 365 account not linked')) {
+        toast.error('Please link your Microsoft 365 account first. Go to Integrations > Microsoft 365 to connect your account.');
+      } else if (error?.response?.data?.detail) {
+        toast.error(`Failed to connect Teams: ${error.response.data.detail}`);
+      } else {
+        toast.error(`Failed to connect Teams: ${error.message || 'Unknown error'}`);
+      }
+      
       setConnectingTeams(false);
     },
   });
