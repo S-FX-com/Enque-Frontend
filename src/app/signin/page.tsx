@@ -12,7 +12,7 @@ import { removeAuthToken, isAuthenticated, setupHistoryProtection, setAuthToken 
 import { toast } from 'sonner';
 
 export default function SignInPage() {
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState('richard@s-fx.com'); // ✅ Pre-filled email
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [microsoftLoading, setMicrosoftLoading] = useState(false);
@@ -55,7 +55,21 @@ export default function SignInPage() {
   const handleMicrosoftSignIn = async () => {
     setMicrosoftLoading(true);
     try {
-      window.location.href = `${process.env.NEXT_PUBLIC_API_URL || 'https://enque-backend-production.up.railway.app'}/v1/auth/microsoft/login`;
+      // Llamar al endpoint correcto para obtener la URL de Microsoft
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://enque-backend-production.up.railway.app'}/v1/auth/microsoft/auth/url`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // Redirigir a la URL de Microsoft
+        window.location.href = data.auth_url;
+      } else {
+        throw new Error('Failed to get Microsoft auth URL');
+      }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       logger.error('Error initiating Microsoft sign-in:', errorMessage);
