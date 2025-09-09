@@ -24,6 +24,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Terminal, Info } from 'lucide-react';
 import { getGlobalSignature } from '@/services/global-signature';
 import Link from 'next/link';
+import { TeamsNotificationSettings } from '@/components/forms/teams-notification-settings';
 
 const DetailRow: React.FC<{ label: string; value: React.ReactNode }> = ({ label, value }) => (
   <div className="grid grid-cols-3 gap-4 py-1">
@@ -355,6 +356,13 @@ export default function ProfileSettingsPage() {
                 )}
               </div>
             )}
+          </section>
+
+          <Separator className="my-4 bg-slate-200 dark:bg-slate-700" />
+
+          <section className="mb-6">
+            <h2 className="text-lg font-semibold mb-3">Notifications</h2>
+            <TeamsNotificationSettings />
           </section>
 
           <Separator className="my-4 bg-slate-200 dark:bg-slate-700" />
