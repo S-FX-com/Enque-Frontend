@@ -65,10 +65,14 @@ const TeamsNotificationSettings: React.FC = () => {
   const checkMicrosoftConnection = async () => {
     setCheckingMicrosoftConnection(true);
     try {
-      const response = await fetch('/api/v1/microsoft/status');
+      const response = await fetch('/api/v1/microsoft/auth/status');
       if (response.ok) {
         const status = await response.json();
+        console.log('Microsoft status response:', status);
         setIsMicrosoftConnected(status.is_connected || false);
+      } else {
+        console.error('Failed to check Microsoft status:', response.status, response.statusText);
+        setIsMicrosoftConnected(false);
       }
     } catch (error) {
       console.error('Error checking Microsoft connection:', error);
