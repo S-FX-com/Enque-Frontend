@@ -10,7 +10,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Terminal, Info, AlertCircle, Mail, Users, MessageSquare } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { getNotificationSettings, toggleNotificationSetting, toggleTeamsChannel } from '@/services/notifications';
+import { getNotificationSettings, toggleNotificationSetting, toggleTeamsChannel, sendTestTeamsNotification } from '@/services/notifications';
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 
@@ -72,6 +72,23 @@ export default function NotificationsConfigPage() {
 
   const handleToggleTeamsConnection = () => {
     toggleTeamsMutation.mutate(!isTeamsConnected);
+  };
+
+  const testTeamsMutation = useMutation({
+    mutationFn: () => {
+      if (!workspaceId) throw new Error('Workspace ID is missing');
+      return sendTestTeamsNotification(workspaceId);
+    },
+    onSuccess: () => {
+      toast.success("Test notification sent successfully!");
+    },
+    onError: (error) => {
+      toast.error(`Failed to send test notification: ${error.message}`);
+    },
+  });
+
+  const handleSendTestNotification = () => {
+    testTeamsMutation.mutate();
   };
 
   const toggleSettingMutation = useMutation({
@@ -341,6 +358,23 @@ export default function NotificationsConfigPage() {
                           {toggleTeamsMutation.isPending ? 'Updating...' : (isTeamsConnected ? 'Disconnect' : 'Connect')}
                         </Button>
                       </div>
+                      {isTeamsConnected && (
+                        <div className="flex items-center justify-between py-2">
+                          <div>
+                            <h4 className="font-medium">Send Test Notification</h4>
+                            <p className="text-sm text-muted-foreground">
+                              Send a test notification to your Teams client to verify the connection.
+                            </p>
+                          </div>
+                          <Button
+                            variant="outline"
+                            onClick={handleSendTestNotification}
+                            disabled={testTeamsMutation.isPending}
+                          >
+                            {testTeamsMutation.isPending ? 'Sending...' : 'Send Test'}
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

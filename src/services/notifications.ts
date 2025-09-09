@@ -34,3 +34,11 @@ export async function toggleTeamsChannel(
     throw new Error(response.message || 'Failed to toggle Teams channel');
   }
 }
+
+export async function sendTestTeamsNotification(workspaceId: number): Promise<void> {
+  const url = `${API_BASE_URL}/v1/notifications/${workspaceId}/test/teams`;
+  const response = await fetchAPI.POST(url, {});
+  if (!response.success) {
+    throw new Error(response.message || 'Failed to send test notification');
+  }
+}
