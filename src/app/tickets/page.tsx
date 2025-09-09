@@ -363,52 +363,17 @@ function TicketsClientContent() {
   ]);
 
   const handleLoadMore = () => {
-    setDisplayedTicketsCount(prev => prev + 10);
+    // First, try to show more from already loaded tickets
+    if (displayedTicketsCount < filteredTicketsDataSorted.length) {
+      setDisplayedTicketsCount(prev => prev + 10);
+    } 
+    // If we've shown all filtered tickets but there are more on the server, fetch them
+    else if (hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
+    }
   };
 
-  const allTicketsDisplayed = displayedTicketsCount >= filteredTicketsDataSorted.length;
-
-  useEffect(() => {
-    const container = scrollContainerRef.current;
-
-    const handleScroll = () => {
-      if (container) {
-        const { scrollTop, scrollHeight, clientHeight } = container;
-        if (scrollHeight - scrollTop - clientHeight < 200 && hasNextPage && !isFetchingNextPage) {
-          fetchNextPage();
-        }
-      }
-    };
-
-    const checkIfNeedsMoreContent = () => {
-      if (container && hasNextPage && !isFetchingNextPage && !isLoadingTickets) {
-        const { scrollHeight, clientHeight } = container;
-        // If content doesn't fill the container, load more
-        if (scrollHeight <= clientHeight) {
-          fetchNextPage();
-        }
-      }
-    };
-
-    // Check immediately when data changes
-    checkIfNeedsMoreContent();
-
-    if (container) {
-      container.addEventListener('scroll', handleScroll);
-    }
-
-    return () => {
-      if (container) {
-        container.removeEventListener('scroll', handleScroll);
-      }
-    };
-  }, [
-    hasNextPage,
-    isFetchingNextPage,
-    fetchNextPage,
-    isLoadingTickets,
-    filteredTicketsData.length,
-  ]);
+  const allTicketsDisplayed = displayedTicketsCount >= filteredTicketsDataSorted.length && (!hasNextPage || isFetchingNextPage);
 
   useEffect(() => {
     const teamIdFromQuery = searchParams.get('teamId');
@@ -1586,9 +1551,18 @@ function TicketsClientContent() {
                     <Button
                       variant="outline"
                       onClick={handleLoadMore}
+                      disabled={isFetchingNextPage}
                       className="px-6 bg-transparent"
                     >
-                      Load More ({displayedTicketsCount} of {filteredTicketsDataSorted.length})
+                      {isFetchingNextPage ? (
+                        "Loading..."
+                      ) : displayedTicketsCount < filteredTicketsDataSorted.length ? (
+                        `Load More (${displayedTicketsCount} of ${filteredTicketsDataSorted.length})`
+                      ) : hasNextPage ? (
+                        "Load More Tickets"
+                      ) : (
+                        `Load More (${displayedTicketsCount} of ${filteredTicketsDataSorted.length})`
+                      )}
                     </Button>
                   )}
                 </div>
