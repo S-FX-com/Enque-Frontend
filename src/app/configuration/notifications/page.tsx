@@ -72,18 +72,30 @@ export default function NotificationsConfigPage() {
     mutationFn: async () => {
       if (!workspaceId) throw new Error('Workspace ID is missing');
       setConnectingTeams(true);
-      return connectNotificationChannel(workspaceId, 'teams', {
-        enable_notifications: true,
-        activity_types: ["ticketCreated", "ticketAssigned", "newResponse"]
-      });
+      console.log('🔄 Starting Teams connection process for workspace:', workspaceId);
+      
+      try {
+        const result = await connectNotificationChannel(workspaceId, 'teams', {
+          enable_notifications: true,
+          activity_types: ["ticketCreated", "ticketAssigned", "newResponse"]
+        });
+        console.log('✅ Teams connection result:', result);
+        return result;
+      } catch (error) {
+        console.error('❌ Teams connection error:', error);
+        throw error;
+      }
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log('🎉 Teams connection successful:', data);
       toast.success('Microsoft Teams notifications enabled successfully!');
       setConnectingTeams(false);
       queryClient.invalidateQueries({ queryKey: ['notificationSettings', workspaceId] });
     },
     onError: (error: Error & { response?: { data?: { detail?: string } } }) => {
-      console.error('Failed to connect Teams:', error);
+      console.error('💥 Teams connection mutation error:', error);
+      console.error('💥 Error response:', error?.response);
+      console.error('💥 Error data:', error?.response?.data);
       
       // Check if it's a Microsoft account linking issue
       if (error?.response?.data?.detail?.includes('Microsoft 365 account not linked')) {
