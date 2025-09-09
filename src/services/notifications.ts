@@ -93,7 +93,8 @@ export const connectNotificationChannel = async (
     const response = await apiClient.post<ApiSuccessResponse>(
       `/notifications/${workspaceId}/connect/teams`,
       {
-        webhook_url: config.webhook_url || '',
+        enable_notifications: config.enable_notifications || true,
+        activity_types: config.activity_types || ["ticketCreated", "ticketAssigned", "newResponse"]
       }
     );
     return response.data;
