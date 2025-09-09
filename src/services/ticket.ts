@@ -54,7 +54,7 @@ export async function getTickets(
   filters: IGetTicket = {},
   endpointPath = '/v1/tasks-optimized/'
 ): Promise<ITicket[]> {
-  const { skip = 0, limit = 100, status, priority, type, user_id, team_id } = filters;
+  const { skip = 0, limit = 25, status, priority, type, user_id, team_id } = filters;  // ✅ REDUCIDO: de 100 a 25
 
   try {
     const queryParams = new URLSearchParams({

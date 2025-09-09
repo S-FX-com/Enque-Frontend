@@ -688,11 +688,13 @@ export function TicketConversation({
     queryKey: ['ticketHtml', ticket.id],
     queryFn: () => getTicketHtmlContent(ticket.id),
     enabled: !!ticket?.id,
-    staleTime: 5 * 60 * 1000, // 5 minutes cache
+    staleTime: 10 * 60 * 1000, // ✅ AUMENTADO: 10 minutos cache
+    gcTime: 15 * 60 * 1000, // ✅ AGREGADO: 15 minutos garbage collection
     refetchInterval: false,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: false, // Evitar refetch al enfocar ventana
     refetchOnMount: false, // Evitar refetch al montar si hay cache
+    refetchOnReconnect: false, // ✅ AGREGADO: No refetch al reconectar
     placeholderData: previousData => previousData,
     notifyOnChangeProps: ['data', 'error', 'isError'],
   });
