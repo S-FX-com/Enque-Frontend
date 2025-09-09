@@ -12,7 +12,7 @@ import { removeAuthToken, isAuthenticated, setupHistoryProtection, setAuthToken 
 import { toast } from 'sonner';
 
 export default function SignInPage() {
-  const [email, setEmail] = useState('richard@s-fx.com'); // ✅ Pre-filled email
+  const [email, setEmail] = useState(''); // ✅ Campo vacío
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [microsoftLoading, setMicrosoftLoading] = useState(false);
