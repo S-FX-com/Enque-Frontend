@@ -138,7 +138,7 @@ export default function SignInPage() {
               type="email"
               value={email}
               onChange={e => setEmail(e.target.value)}
-              placeholder="Enter your email address"
+              placeholder=""
               required
             />
           </div>
