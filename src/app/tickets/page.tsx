@@ -110,7 +110,7 @@ function TicketsClientContent() {
   const [selectedTargetTicketId, setSelectedTargetTicketId] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const [displayedTicketsCount, setDisplayedTicketsCount] = useState(10);
+  const [displayedTicketsCount, setDisplayedTicketsCount] = useState(25);
 
   const [sortColumn, setSortColumn] = useState<SortColumn | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
@@ -350,7 +350,7 @@ function TicketsClientContent() {
   }, [filteredTicketsDataSorted, displayedTicketsCount]);
 
   useEffect(() => {
-    setDisplayedTicketsCount(10);
+    setDisplayedTicketsCount(25);
   }, [
     debouncedSubjectFilter,
     selectedStatuses,
@@ -365,15 +365,23 @@ function TicketsClientContent() {
   const handleLoadMore = () => {
     // First, try to show more from already loaded tickets
     if (displayedTicketsCount < filteredTicketsDataSorted.length) {
-      setDisplayedTicketsCount(prev => prev + 10);
+      setDisplayedTicketsCount(prev => Math.min(prev + 25, filteredTicketsDataSorted.length));
     } 
     // If we've shown all filtered tickets but there are more on the server, fetch them
     else if (hasNextPage && !isFetchingNextPage) {
       fetchNextPage();
+      // The useEffect above will automatically update displayedTicketsCount when new data arrives
     }
   };
 
   const allTicketsDisplayed = displayedTicketsCount >= filteredTicketsDataSorted.length && (!hasNextPage || isFetchingNextPage);
+
+  // Auto-update displayedTicketsCount when new tickets are loaded from server
+  useEffect(() => {
+    if (allTicketsData.length > displayedTicketsCount) {
+      setDisplayedTicketsCount(allTicketsData.length);
+    }
+  }, [allTicketsData.length, displayedTicketsCount]);
 
   useEffect(() => {
     const teamIdFromQuery = searchParams.get('teamId');
