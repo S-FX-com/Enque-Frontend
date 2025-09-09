@@ -16,13 +16,6 @@ export default function SignInPage() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [microsoftLoading, setMicrosoftLoading] = useState(false);
-  const [authMethods, setAuthMethods] = useState<{
-    can_use_password: boolean;
-    can_use_microsoft: boolean;
-    requires_microsoft: boolean;
-    workspace_id?: number;
-  } | null>(null);
-  const [emailChecked, setEmailChecked] = useState(false);
 
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
@@ -48,68 +41,26 @@ export default function SignInPage() {
     if (fromError) {
       toast.error('Your session has expired. Please sign in again.');
       removeAuthToken();
-    } else {
-      if (isAuthenticated()) {
-        toast.success('Welcome back! Redirecting to dashboard...');
-        window.location.replace(AppConfigs.routes.dashboard);
-        return;
-      }
     }
 
+    // Set up history protection to prevent back button after logout
     setupHistoryProtection();
+
+    // Check if already authenticated
+    if (isAuthenticated()) {
+      window.location.replace(AppConfigs.routes.dashboard);
+    }
   }, []);
 
-  // Check authentication methods when email is provided
-  const checkAuthMethods = async (emailValue: string) => {
-    if (!emailValue || !emailValue.includes('@')) {
-      setAuthMethods(null);
-      setEmailChecked(false);
-      return;
-    }
-
+  const handleMicrosoftSignIn = async () => {
+    setMicrosoftLoading(true);
     try {
-      logger.info(`Checking auth methods for: ${emailValue}`);
-      const response = await authService.checkAuthMethods(emailValue);
-      console.log(response);
-      if (response.success && response.data) {
-        setAuthMethods({
-          can_use_password: response.data.can_use_password,
-          can_use_microsoft: response.data.can_use_microsoft,
-          requires_microsoft: response.data.requires_microsoft,
-          workspace_id: response.data.workspace_id,
-        });
-        setEmailChecked(true);
-        logger.info(`Auth methods for ${emailValue}:`, JSON.stringify(response.data));
-      } else {
-        // Default to password-only if check fails
-        setAuthMethods({
-          can_use_password: true,
-          can_use_microsoft: false,
-          requires_microsoft: false,
-        });
-        setEmailChecked(true);
-      }
+      window.location.href = `${process.env.NEXT_PUBLIC_API_URL || 'https://enque-backend-production.up.railway.app'}/v1/auth/microsoft/login`;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      logger.error('Error checking auth methods:', errorMessage);
-      // Default to password-only on error
-      setAuthMethods({
-        can_use_password: true,
-        can_use_microsoft: false,
-        requires_microsoft: false,
-      });
-      setEmailChecked(true);
-    }
-  };
-
-  // Handle email field blur/enter
-  const handleEmailBlur = () => {
-    checkAuthMethods(email);
-  };
-
-  const handleEmailKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      checkAuthMethods(email);
+      logger.error('Error initiating Microsoft sign-in:', errorMessage);
+      toast.error('Error initiating Microsoft sign-in. Please try again.');
+      setMicrosoftLoading(false);
     }
   };
 
@@ -148,55 +99,10 @@ export default function SignInPage() {
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
-      logger.error(`Login error for ${email}`, errorMessage);
-      toast.error('Error connecting to the server. Please try again later.');
-      console.error(error);
+      logger.error(`Login error for ${email}:`, errorMessage);
+      toast.error('Network error. Please check your connection and try again.');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleMicrosoftSignIn = async () => {
-    setMicrosoftLoading(true);
-
-    try {
-      logger.info(`Microsoft unified signin attempt for email: ${email || 'no email provided'}`);
-
-      // Get the workspace ID (try from authMethods first, then try to get from subdomain, or default to 1)
-      let workspaceId = authMethods?.workspace_id;
-      
-      if (!workspaceId) {
-        // Try to extract workspace from subdomain if available
-        if (typeof window !== 'undefined') {
-          const hostname = window.location.hostname;
-          if (hostname !== 'app.enque.cc' && hostname.endsWith('.enque.cc')) {
-            // Could potentially get workspace from subdomain in the future
-            // For now, default to 1
-            workspaceId = 1;
-          } else {
-            workspaceId = 1;
-          }
-        } else {
-          workspaceId = 1;
-        }
-      }
-
-      // Use the new unified signin auth URL that doesn't require email verification
-      const response = await authService.getMicrosoftSigninAuthUrl(workspaceId);
-
-      if (response.success && response.data?.auth_url) {
-        logger.info('Redirecting to Microsoft unified signin');
-        window.location.href = response.data.auth_url;
-      } else {
-        throw new Error(response.message || 'Failed to get Microsoft signin auth URL');
-      }
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
-      logger.error(`Microsoft signin error`, errorMessage);
-      toast.error('Error connecting to Microsoft. Please try again later.');
-      console.error(error);
-    } finally {
-      setMicrosoftLoading(false);
     }
   };
 
@@ -208,7 +114,7 @@ export default function SignInPage() {
         </div>
 
         <div className="w-full space-y-6">
-          {/* Email input - always visible */}
+          {/* Email input */}
           <div className="space-y-2">
             <label htmlFor="email" className="text-sm font-medium">
               Email
@@ -217,179 +123,150 @@ export default function SignInPage() {
               id="email"
               type="email"
               value={email}
-              onChange={e => {
-                setEmail(e.target.value);
-                if (emailChecked) {
-                  setEmailChecked(false);
-                  setAuthMethods(null);
-                }
-              }}
-              onBlur={handleEmailBlur}
-              onKeyDown={handleEmailKeyDown}
+              onChange={e => setEmail(e.target.value)}
               placeholder="Enter your email address"
               required
             />
           </div>
 
-          {/* Show authentication options after email is checked */}
-          {emailChecked && authMethods && (
-            <div className="space-y-4">
-              {/* Password login section */}
-              {authMethods.can_use_password && !authMethods.requires_microsoft && (
-                <div className="space-y-4">
-                  <div className="text-center">
-                    <div className="relative">
-                      <div className="absolute inset-0 flex items-center">
-                        <span className="w-full border-t border-gray-200" />
-                      </div>
-                      <div className="relative flex justify-center text-xs uppercase">
-                        <span className="bg-white px-2 text-gray-500">
-                          Login with Username & Password
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <form className="space-y-4" onSubmit={handleSubmit}>
-                    <div className="space-y-2">
-                      <label htmlFor="password" className="text-sm font-medium">
-                        Password
-                      </label>
-                      <Input
-                        id="password"
-                        type="password"
-                        value={password}
-                        onChange={e => setPassword(e.target.value)}
-                        placeholder="Enter your password"
-                        required={!authMethods.requires_microsoft}
-                      />
-                    </div>
-
-                    <Button type="submit" className="w-full" disabled={loading}>
-                      {loading ? (
-                        <span className="flex items-center justify-center gap-2">
-                          <svg
-                            className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-                            xmlns="http://www.w3.org/2000/svg"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                          >
-                            <circle
-                              className="opacity-25"
-                              cx="12"
-                              cy="12"
-                              r="10"
-                              stroke="currentColor"
-                              strokeWidth="4"
-                            ></circle>
-                            <path
-                              className="opacity-75"
-                              fill="currentColor"
-                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                            ></path>
-                          </svg>
-                          Signing in...
-                        </span>
-                      ) : (
-                        'Sign In with Password'
-                      )}
-                    </Button>
-                  </form>
+          {/* Password login section */}
+          <div className="space-y-4">
+            <div className="text-center">
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t border-gray-200" />
                 </div>
-              )}
-              {/* Always show "or" separator if password auth is available */}
-              {authMethods?.can_use_password && (
-                <div className="text-center">
-                  <div className="relative">
-                    <div className="absolute inset-0 flex items-center">
-                      <span className="w-full border-t border-gray-200" />
-                    </div>
-                    <div className="relative flex justify-center text-xs uppercase">
-                      <span className="bg-white px-2 text-gray-500">or</span>
-                    </div>
-                  </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-white px-2 text-gray-500">
+                    Login with Username & Password
+                  </span>
                 </div>
-              )}
-
-              {/* Microsoft signin button - ALWAYS AVAILABLE */}
-              <div className="space-y-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full flex items-center justify-center gap-2 hover:bg-blue-50 border-blue-200"
-                  onClick={handleMicrosoftSignIn}
-                  disabled={microsoftLoading}
-                >
-                  {microsoftLoading ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <svg
-                        className="animate-spin -ml-1 mr-2 h-4 w-4"
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                      >
-                        <circle
-                          className="opacity-25"
-                          cx="12"
-                          cy="12"
-                          r="10"
-                          stroke="currentColor"
-                          strokeWidth="4"
-                        ></circle>
-                        <path
-                          className="opacity-75"
-                          fill="currentColor"
-                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                        ></path>
-                      </svg>
-                      Connecting...
-                    </span>
-                  ) : (
-                    <>
-                      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none">
-                        <path
-                          d="M11.4 24H0V12.6h11.4V24zM24 24H12.6V12.6H24V24zM11.4 11.4H0V0h11.4v11.4zM24 11.4H12.6V0H24v11.4z"
-                          fill="#00BCF2"
-                        />
-                      </svg>
-                      Sign in with Microsoft 365
-                    </>
-                  )}
-                </Button>
-                
-                {/* Show note about Microsoft requirement if applicable */}
-                {authMethods?.requires_microsoft && (
-                  <p className="text-xs text-center text-gray-600">
-                    Your account requires Microsoft 365 authentication
-                  </p>
-                )}
-                
-                {/* Show helpful text when no email is entered */}
-                {!email && !emailChecked && (
-                  <p className="text-xs text-center text-gray-500">
-                    Sign in with your Microsoft 365 account or enter your email above for other options
-                  </p>
-                )}
               </div>
             </div>
-          )}
-          {emailChecked && authMethods?.can_use_password && (
-            <div className="text-center pt-4">
-              <p className="text-sm text-slate-500">
-                {`Forgot password? `}
-                <Link href="/forgot-password" className="text-blue-600 hover:underline font-medium">
-                  Recover it
-                </Link>
-              </p>
+
+            <form className="space-y-4" onSubmit={handleSubmit}>
+              <div className="space-y-2">
+                <label htmlFor="password" className="text-sm font-medium">
+                  Password
+                </label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  placeholder="Enter your password"
+                  required
+                />
+              </div>
+
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <svg
+                      className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
+                    </svg>
+                    Signing in...
+                  </span>
+                ) : (
+                  'Sign In with Password'
+                )}
+              </Button>
+            </form>
+          </div>
+
+          {/* "or" separator */}
+          <div className="text-center">
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-gray-200" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-white px-2 text-gray-500">or</span>
+              </div>
             </div>
-          )}
-          {emailChecked && !authMethods && (
-            <div className="text-center pt-4">
-              <p className="text-sm text-slate-500">
-                Enter your email address to see available sign-in options
-              </p>
-            </div>
-          )}
+          </div>
+
+          {/* Microsoft signin button */}
+          <div className="space-y-4">
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full flex items-center justify-center gap-2 hover:bg-blue-50 border-blue-200"
+              onClick={handleMicrosoftSignIn}
+              disabled={microsoftLoading}
+            >
+              {microsoftLoading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <svg
+                    className="animate-spin -ml-1 mr-2 h-4 w-4"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
+                  </svg>
+                  Connecting...
+                </span>
+              ) : (
+                <>
+                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none">
+                    <path
+                      d="M21 12.0047C21 11.1734 20.9225 10.3936 20.7775 9.65527H12V14.0598H17.0225C16.8 15.1059 16.17 16.0048 15.2175 16.6284V19.4132H18.2575C19.9775 17.8412 21 15.1735 21 12.0047Z"
+                      fill="#4285F4"
+                    />
+                    <path
+                      d="M12 22.0001C14.97 22.0001 17.46 21.0076 18.2575 19.4133L15.2175 16.6285C14.4075 17.1285 13.3125 17.4285 12 17.4285C9.11249 17.4285 6.67499 15.8285 5.96249 13.5762H2.81749V16.4619C4.62749 20.0619 8.02499 22.0001 12 22.0001Z"
+                      fill="#34A853"
+                    />
+                    <path
+                      d="M5.9625 13.5761C5.7675 13.0761 5.6575 12.5476 5.6575 11.9999C5.6575 11.4523 5.7675 10.9238 5.9625 10.4238V7.53809H2.8175C2.295 8.58095 2 9.7571 2 11.9999C2 14.2428 2.295 15.419 2.8175 16.4619L5.9625 13.5761Z"
+                      fill="#FBBC05"
+                    />
+                    <path
+                      d="M12 6.57147C13.4625 6.57147 14.7675 7.09523 15.7725 8.04523L18.435 5.38285C17.4525 4.48523 16.1175 3.99999 12 3.99999C8.02499 3.99999 4.62749 5.93809 2.81749 9.53809L5.96249 12.4238C6.67499 10.1714 9.11249 6.57147 12 6.57147Z"
+                      fill="#EA4335"
+                    />
+                  </svg>
+                  Sign in with Microsoft 365
+                </>
+              )}
+            </Button>
+          </div>
+
+          <div className="text-center text-sm">
+            <Link href="/forgot-password" className="text-[#1D73F4] hover:underline">
+              Forgot password? Recover it
+            </Link>
+          </div>
         </div>
       </div>
     </main>
