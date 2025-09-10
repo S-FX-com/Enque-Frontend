@@ -19,9 +19,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { TimePickingSelect } from './time-picking-select';
 import { Send } from 'lucide-react';
-
-type ValuePiece = Date | null;
-type Value = ValuePiece | [ValuePiece, ValuePiece];
+import { Value } from './valueType';
 
 interface Props {
   day: number;
@@ -63,7 +61,7 @@ export function ScheduleSendCalendar({
   }, [date, minDate, setDate]);
 
   const handleDateSelect = (selectedDate: Date | undefined) => {
-    setDate(selectedDate || null);
+    if (selectedDate!.getDate() >= day) setDate(selectedDate || null);
   };
 
   return (
@@ -91,7 +89,7 @@ export function ScheduleSendCalendar({
                   {date instanceof Date ? format(date, 'MM/dd/yyyy') : 'No date selected'}
                 </div>
               </div>
-              <TimePickingSelect setTime={setTime} />
+              <TimePickingSelect nowDate={date} setTime={setTime} />
             </div>
           </div>
           <DialogFooter className="p-6 pt-0 flex flex-col sm:flex-row sm:justify-end gap-2">

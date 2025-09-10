@@ -35,7 +35,10 @@ import { getEnabledGlobalSignature } from '@/services/global-signature';
 import { getCannedReplies, type CannedReply } from '@/services/canned-replies';
 import { createReplyHeader, formatRelativeTime } from '@/lib/utils';
 import { ScheduleSendCalendar } from './scheduleSend/schedule-send-calendar';
+import { Value } from './scheduleSend/valueType';
 
+//export type ValuePiece = Date | null;
+//export type Value = ValuePiece | [ValuePiece, ValuePiece];
 // Helper function to check if HTML content is effectively empty
 function isHtmlContentEmpty(htmlContent: string): boolean {
   if (!htmlContent || htmlContent.trim() === '') return true;
@@ -661,8 +664,8 @@ export function TicketConversation({
   onExtraRecipientsChange,
   extraBccRecipients = '',
 }: Props) {
-  type ValuePiece = Date | null;
-  type Value = ValuePiece | [ValuePiece, ValuePiece];
+  //type ValuePiece = Date | null;
+  //type Value = ValuePiece | [ValuePiece, ValuePiece];
 
   const queryClient = useQueryClient();
   const { user: currentUser } = useAuth();
