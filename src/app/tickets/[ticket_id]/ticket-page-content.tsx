@@ -42,6 +42,7 @@ import BoringAvatar from 'boring-avatars';
 import { useAuth } from '@/hooks/use-auth';
 import { getUsers } from '@/services/user';
 import type { IUser } from '@/typescript/user';
+import { set } from 'zod';
 
 interface Props {
   ticketId: number;
@@ -212,10 +213,10 @@ export function TicketPageContent({ ticketId }: Props) {
 
   useEffect(() => {
     if (currentTicket) {
-      console.log('🎫 Ticket loaded successfully:', currentTicket.id);
+      //console.log('🎫 Ticket loaded successfully:', currentTicket.id);
       setTicket(currentTicket as unknown as ITicket);
       if (currentTicket?.cc_recipients) {
-        const emails = currentTicket.cc_recipients
+        const emails = currentTicket?.cc_recipients
           .split(',')
           .map(email => email.trim())
           .filter(email => email.length > 0);
@@ -223,6 +224,29 @@ export function TicketPageContent({ ticketId }: Props) {
       } else {
         setExistingCcEmails([]);
       }
+
+      if (currentTicket?.to_recipients) {
+        const emails = currentTicket?.to_recipients
+          .split(',')
+          .map(email => email.trim())
+          .filter(email => email.length > 0);
+        if (existingCcEmails.length > 0) {
+          setExistingCcEmails(existingCcEmails.concat(emails));
+        } else {
+          setExistingCcEmails(emails);
+        }
+      }
+
+      console.log(currentTicket);
+      //if (
+      //  existingCcEmails.length > 0 ||
+      //  (!currentTicket?.cc_recipients && currentTicket?.user?.email)
+      //) {
+      //  const userName: string = currentTicket?.user?.name
+      //    ? `${currentTicket?.user.name} <${currentTicket?.user.email}>`
+      //    : currentTicket?.user?.email;
+      //  setExistingCcEmails(existingCcEmails.concat([userName]));
+      //}
       // Initialize BCC emails if they exist in the ticket data
       if (currentTicket?.bcc_recipients) {
         const bccEmails = currentTicket.bcc_recipients
@@ -755,11 +779,11 @@ export function TicketPageContent({ ticketId }: Props) {
           </p>
         )}
         <div className="space-x-2">
-          <Button 
+          <Button
             onClick={() => {
               queryClient.invalidateQueries({ queryKey: ['ticket', ticketId] });
               window.location.reload();
-            }} 
+            }}
             variant="default"
           >
             Try Again
