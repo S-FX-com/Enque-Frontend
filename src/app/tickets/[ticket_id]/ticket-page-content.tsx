@@ -42,7 +42,6 @@ import BoringAvatar from 'boring-avatars';
 import { useAuth } from '@/hooks/use-auth';
 import { getUsers } from '@/services/user';
 import type { IUser } from '@/typescript/user';
-import { set } from 'zod';
 
 interface Props {
   ticketId: number;
