@@ -689,11 +689,13 @@ export function TicketConversation({
     queryKey: ['ticketHtml', ticket.id],
     queryFn: () => getTicketHtmlContent(ticket.id),
     enabled: !!ticket?.id,
-    staleTime: 0, // Always fresh for real-time updates
+    staleTime: 10 * 60 * 1000, // ✅ AUMENTADO: 10 minutos cache
+    gcTime: 15 * 60 * 1000, // ✅ AGREGADO: 15 minutos garbage collection
     refetchInterval: false,
     refetchIntervalInBackground: false,
-    refetchOnWindowFocus: true,
-    refetchOnMount: true,
+    refetchOnWindowFocus: false, // Evitar refetch al enfocar ventana
+    refetchOnMount: false, // Evitar refetch al montar si hay cache
+    refetchOnReconnect: false, // ✅ AGREGADO: No refetch al reconectar
     placeholderData: previousData => previousData,
     notifyOnChangeProps: ['data', 'error', 'isError'],
   });
@@ -706,11 +708,11 @@ export function TicketConversation({
     queryKey: ['comments', ticket.id],
     queryFn: () => getCommentsByTaskId(ticket.id),
     enabled: !!ticket?.id && isHtmlContentError,
-    staleTime: 0, // Always fresh for real-time updates
+    staleTime: 2 * 60 * 1000, // 2 minutes cache for comments
     refetchInterval: false,
     refetchIntervalInBackground: false,
-    refetchOnWindowFocus: true,
-    refetchOnMount: true,
+    refetchOnWindowFocus: false, // Evitar refetch al enfocar ventana
+    refetchOnMount: false, // Evitar refetch al montar si hay cache
   });
 
   const currentAgentId = currentUser?.id;
@@ -1137,8 +1139,11 @@ export function TicketConversation({
           toast.success('Private note saved successfully.');
           // Forzar actualización inmediata para notas privadas
           queryClient.invalidateQueries({ queryKey: ['comments', ticket.id] });
+          queryClient.invalidateQueries({ queryKey: ['ticketHtml', ticket.id] });
         } else {
           toast.success('Reply sent successfully.');
+          // También invalidar html content para respuestas públicas
+          queryClient.invalidateQueries({ queryKey: ['ticketHtml', ticket.id] });
         }
       }
 
@@ -1167,6 +1172,8 @@ export function TicketConversation({
         if (isPrivateNote) {
           queryClient.invalidateQueries({ queryKey: ['comments', ticket.id] });
         }
+        // Siempre invalidar ticketHtml cuando hay cambios
+        queryClient.invalidateQueries({ queryKey: ['ticketHtml', ticket.id] });
 
         if (data.assignee_changed && currentUser) {
           toast.info(`You were automatically assigned to this ticket.`);

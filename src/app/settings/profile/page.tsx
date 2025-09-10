@@ -21,14 +21,8 @@ import { AgentUpdate, Agent } from '@/typescript/agent';
 import { RichTextEditor } from '@/components/tiptap/RichTextEditor';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Terminal, Info, Link as LinkIcon, Unlink } from 'lucide-react';
+import { Terminal, Info } from 'lucide-react';
 import { getGlobalSignature } from '@/services/global-signature';
-import {
-  microsoftAuthService,
-  MicrosoftAuthStatus,
-  MicrosoftProfileData,
-} from '@/services/microsoftAuth';
-import { getAuthToken } from '@/lib/auth';
 import Link from 'next/link';
 
 const DetailRow: React.FC<{ label: string; value: React.ReactNode }> = ({ label, value }) => (
@@ -93,36 +87,6 @@ export default function ProfileSettingsPage() {
     enabled: !!user?.workspace_id,
     staleTime: 5 * 60 * 1000,
   });
-  const {
-    data: microsoftAuthStatus,
-    isLoading: isLoadingMicrosoftAuth,
-    refetch: refetchMicrosoftAuth,
-  } = useQuery<MicrosoftAuthStatus>({
-    queryKey: ['microsoftAuthStatus', agentId],
-    queryFn: async () => {
-      const token = getAuthToken();
-      if (!token) throw new Error('No auth token');
-      const response = await microsoftAuthService.getAuthStatus(token);
-      if (!response.success) throw new Error(response.message);
-      return response.data!;
-    },
-    enabled: !!agentId,
-    staleTime: 5 * 60 * 1000,
-  });
-
-  const { data: microsoftProfile, isLoading: isLoadingMicrosoftProfile } =
-    useQuery<MicrosoftProfileData>({
-      queryKey: ['microsoftProfile', agentId],
-      queryFn: async () => {
-        const token = getAuthToken();
-        if (!token) throw new Error('No auth token');
-        const response = await microsoftAuthService.getProfile(token);
-        if (!response.success) throw new Error(response.message);
-        return response.data!;
-      },
-      enabled: !!agentId && !!microsoftAuthStatus?.is_linked,
-      staleTime: 5 * 60 * 1000,
-    });
 
   useEffect(() => {
     if (agentProfileData) {
@@ -143,29 +107,6 @@ export default function ProfileSettingsPage() {
       setAvatarUrl(undefined);
     }
   }, [agentProfileData]);
-  useEffect(() => {
-    const searchParams = new URLSearchParams(window.location.search);
-    const microsoftLink = searchParams.get('microsoft_link');
-    const status = searchParams.get('status');
-
-    if (microsoftLink === 'true') {
-      if (status === 'success') {
-        toast.success('Microsoft 365 account linked successfully!');
-        refetchMicrosoftAuth();
-        queryClient.invalidateQueries({ queryKey: ['microsoftAuthStatus'] });
-        queryClient.invalidateQueries({ queryKey: ['microsoftProfile'] });
-        //setAvatarUrl(`https://graph.microsoft.com/v1.0/users/${agentId}/photo/`);
-        if (agentId) {
-          queryClient.invalidateQueries({ queryKey: ['agent', agentId] });
-        }
-      } else if (status === 'error') {
-        const message = searchParams.get('message');
-        toast.error(`Failed to link Microsoft 365: ${message || 'Unknown error'}`);
-      }
-
-      window.history.replaceState({}, document.title, window.location.pathname);
-    }
-  }, [agentId, refetchMicrosoftAuth, queryClient]);
 
   const updateProfileMutation = useMutation({
     mutationFn: (payload: AgentUpdate) => {
@@ -190,37 +131,6 @@ export default function ProfileSettingsPage() {
     onError: error => {
       console.error('Failed to save profile:', error);
       toast.error(`Failed to update profile: ${error.message}`);
-    },
-  });
-  const linkMicrosoftMutation = useMutation({
-    mutationFn: async () => {
-      if (!agentId) throw new Error('User ID is missing');
-      await microsoftAuthService.initiateLinking();
-    },
-    onError: error => {
-      console.error('Failed to initiate Microsoft link:', error);
-      toast.error(`Failed to link Microsoft 365: ${error.message}`);
-    },
-  });
-
-  const unlinkMicrosoftMutation = useMutation({
-    mutationFn: async () => {
-      if (!agentId) throw new Error('User ID is missing');
-      const token = getAuthToken();
-      if (!token) throw new Error('No auth token');
-
-      const response = await microsoftAuthService.unlinkAgent(token, agentId);
-      if (!response.success) throw new Error(response.message);
-      return response.data!;
-    },
-    onSuccess: () => {
-      toast.success('Microsoft 365 account unlinked successfully!');
-      refetchMicrosoftAuth();
-      queryClient.invalidateQueries({ queryKey: ['microsoftProfile', agentId] });
-    },
-    onError: error => {
-      console.error('Failed to unlink Microsoft account:', error);
-      toast.error(`Failed to unlink Microsoft 365: ${error.message}`);
     },
   });
 
@@ -559,146 +469,6 @@ export default function ProfileSettingsPage() {
                       : '<p class="text-muted-foreground">No signature set.</p>'),
                 }}
               />
-            )}
-          </section>
-
-          <Separator className="my-4 bg-slate-200 dark:bg-slate-700" />
-
-          {/* Microsoft 365 Integration Section */}
-          <section className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-medium">Microsoft 365 Integration</h3>
-                <p className="text-sm text-muted-foreground">
-                  Link your account to sign in with Microsoft 365
-                </p>
-              </div>
-            </div>
-
-            {isLoadingMicrosoftAuth ? (
-              <div className="space-y-3">
-                <Skeleton className="h-12 w-full" />
-                <Skeleton className="h-4 w-3/4" />
-              </div>
-            ) : microsoftAuthStatus?.is_linked ? (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 border rounded-lg bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800">
-                  <div className="flex items-center space-x-3">
-                    <div className="p-2 bg-green-100 dark:bg-green-900 rounded-full">
-                      <LinkIcon className="h-4 w-4 text-green-600 dark:text-green-400" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-green-900 dark:text-green-100">
-                        Microsoft 365 Connected
-                      </p>
-                      <p className="text-sm text-green-700 dark:text-green-300">
-                        {microsoftAuthStatus.microsoft_email}
-                      </p>
-                    </div>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => unlinkMicrosoftMutation.mutate()}
-                    disabled={
-                      unlinkMicrosoftMutation.isPending || !microsoftAuthStatus.has_password
-                    }
-                    className="border-red-200 text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/20"
-                  >
-                    <Unlink className="h-4 w-4 mr-2" />
-                    {unlinkMicrosoftMutation.isPending ? 'Unlinking...' : 'Unlink'}
-                  </Button>
-                </div>
-
-                {!microsoftAuthStatus.has_password && (
-                  <Alert variant="destructive">
-                    <Terminal className="h-4 w-4" />
-                    <AlertTitle>Cannot Unlink</AlertTitle>
-                    <AlertDescription>
-                      You cannot unlink Microsoft 365 because you don&apos;t have a password set.
-                      Please set a password first before unlinking.
-                    </AlertDescription>
-                  </Alert>
-                )}
-
-                {isLoadingMicrosoftProfile ? (
-                  <div className="space-y-2">
-                    <Skeleton className="h-4 w-1/2" />
-                    <Skeleton className="h-4 w-2/3" />
-                  </div>
-                ) : (
-                  microsoftProfile &&
-                  microsoftAuthStatus?.is_linked && (
-                    <div className="p-4 border rounded-lg bg-muted/20">
-                      <h4 className="text-sm font-medium mb-2">Microsoft Profile</h4>
-                      <div className="space-y-1 text-sm text-muted-foreground">
-                        <DetailRow label="Display Name" value={microsoftProfile.displayName} />
-                        <DetailRow
-                          label="Email"
-                          value={microsoftProfile.mail || microsoftProfile.userPrincipalName}
-                        />
-                        <DetailRow label="Job Title" value={microsoftProfile.jobTitle} />
-                        <DetailRow label="Tenant ID" value={microsoftProfile.tenantId} />
-                      </div>
-                    </div>
-                  )
-                )}
-
-                <div className="text-xs text-muted-foreground">
-                  <p>
-                    Authentication Method:{' '}
-                    <span className="font-medium">{microsoftAuthStatus.auth_method}</span>
-                  </p>
-                  <p>
-                    You can sign in using{' '}
-                    {microsoftAuthStatus.can_use_password && microsoftAuthStatus.can_use_microsoft
-                      ? 'either password or Microsoft 365'
-                      : microsoftAuthStatus.can_use_microsoft
-                        ? 'Microsoft 365 only'
-                        : 'password only'}
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex items-center space-x-3">
-                    <div className="p-2 bg-muted rounded-full">
-                      <svg className="h-4 w-4" viewBox="0 0 24 24">
-                        <path
-                          fill="currentColor"
-                          d="M11.4 24H0V12.6h11.4V24zM24 24H12.6V12.6H24V24zM11.4 11.4H0V0h11.4v11.4zM24 11.4H12.6V0H24v11.4z"
-                        />
-                      </svg>
-                    </div>
-                    <div>
-                      <p className="font-medium">Microsoft 365 Not Connected</p>
-                      <p className="text-sm text-muted-foreground">
-                        Link your Microsoft 365 account to sign in seamlessly
-                      </p>
-                    </div>
-                  </div>
-                  <Button
-                    onClick={() => linkMicrosoftMutation.mutate()}
-                    disabled={linkMicrosoftMutation.isPending}
-                    size="sm"
-                  >
-                    <LinkIcon className="h-4 w-4 mr-2" />
-                    {linkMicrosoftMutation.isPending ? 'Connecting...' : 'Connect Microsoft 365'}
-                  </Button>
-                </div>
-
-                <Alert>
-                  <Info className="h-4 w-4" />
-                  <AlertTitle>Benefits of linking Microsoft 365</AlertTitle>
-                  <AlertDescription>
-                    • Sign in with your Microsoft 365 account
-                    <br />
-                    • Access your work profile information
-                    <br />• Seamless integration with Microsoft services
-                  </AlertDescription>
-                </Alert>
-              </div>
             )}
           </section>
 

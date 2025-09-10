@@ -2,7 +2,7 @@ import { useInfiniteQuery, useQueryClient, type InfiniteData } from '@tanstack/r
 import { getTickets } from '@/services/ticket';
 import type { ITicket } from '@/typescript/ticket';
 
-const LOAD_LIMIT = 20;
+const LOAD_LIMIT = 25;
 type TicketPage = ITicket[];
 
 export function useGlobalTickets(enabled: boolean = true) {

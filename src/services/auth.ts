@@ -110,6 +110,53 @@ export const authService = {
     }
   },
 
+  // Get Microsoft Auth URL for unified signin (no authentication required)
+  async getMicrosoftSigninAuthUrl(workspaceId?: number): Promise<ServiceResponse<{auth_url: string}>> {
+    try {
+      // Build URL with optional workspace_id and origin_url
+      const params = new URLSearchParams();
+      if (workspaceId) {
+        params.append('workspace_id', workspaceId.toString());
+      }
+      if (typeof window !== 'undefined') {
+        params.append('origin_url', window.location.origin);
+      }
+
+      const response = await fetch(`${AppConfigs.api}/microsoft/signin/auth/url?${params}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return {
+          success: false,
+          message: data.detail || 'Failed to get Microsoft signin auth URL',
+          data: undefined,
+        };
+      }
+
+      return {
+        success: true,
+        message: 'Microsoft signin auth URL generated successfully',
+        data: data,
+      };
+    } catch (error) {
+      logger.error(
+        'Get Microsoft signin auth URL error:',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Network error',
+        data: undefined,
+      };
+    }
+  },
+
   // Get Microsoft Auth URL
   async getMicrosoftAuthUrl(workspaceId: number): Promise<ServiceResponse<{auth_url: string}>> {
     try {
