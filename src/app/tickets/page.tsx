@@ -110,7 +110,7 @@ function TicketsClientContent() {
   const [selectedTargetTicketId, setSelectedTargetTicketId] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const [displayedTicketsCount, setDisplayedTicketsCount] = useState(10);
+  const [displayedTicketsCount, setDisplayedTicketsCount] = useState(25);
 
   const [sortColumn, setSortColumn] = useState<SortColumn | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
@@ -350,7 +350,7 @@ function TicketsClientContent() {
   }, [filteredTicketsDataSorted, displayedTicketsCount]);
 
   useEffect(() => {
-    setDisplayedTicketsCount(10);
+    setDisplayedTicketsCount(25);
   }, [
     debouncedSubjectFilter,
     selectedStatuses,
@@ -363,52 +363,25 @@ function TicketsClientContent() {
   ]);
 
   const handleLoadMore = () => {
-    setDisplayedTicketsCount(prev => prev + 10);
+    // First, try to show more from already loaded tickets
+    if (displayedTicketsCount < filteredTicketsDataSorted.length) {
+      setDisplayedTicketsCount(prev => Math.min(prev + 25, filteredTicketsDataSorted.length));
+    } 
+    // If we've shown all filtered tickets but there are more on the server, fetch them
+    else if (hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
+      // The useEffect above will automatically update displayedTicketsCount when new data arrives
+    }
   };
 
-  const allTicketsDisplayed = displayedTicketsCount >= filteredTicketsDataSorted.length;
+  const allTicketsDisplayed = displayedTicketsCount >= filteredTicketsDataSorted.length && (!hasNextPage || isFetchingNextPage);
 
+  // Auto-update displayedTicketsCount when new tickets are loaded from server
   useEffect(() => {
-    const container = scrollContainerRef.current;
-
-    const handleScroll = () => {
-      if (container) {
-        const { scrollTop, scrollHeight, clientHeight } = container;
-        if (scrollHeight - scrollTop - clientHeight < 200 && hasNextPage && !isFetchingNextPage) {
-          fetchNextPage();
-        }
-      }
-    };
-
-    const checkIfNeedsMoreContent = () => {
-      if (container && hasNextPage && !isFetchingNextPage && !isLoadingTickets) {
-        const { scrollHeight, clientHeight } = container;
-        // If content doesn't fill the container, load more
-        if (scrollHeight <= clientHeight) {
-          fetchNextPage();
-        }
-      }
-    };
-
-    // Check immediately when data changes
-    checkIfNeedsMoreContent();
-
-    if (container) {
-      container.addEventListener('scroll', handleScroll);
+    if (allTicketsData.length > displayedTicketsCount) {
+      setDisplayedTicketsCount(allTicketsData.length);
     }
-
-    return () => {
-      if (container) {
-        container.removeEventListener('scroll', handleScroll);
-      }
-    };
-  }, [
-    hasNextPage,
-    isFetchingNextPage,
-    fetchNextPage,
-    isLoadingTickets,
-    filteredTicketsData.length,
-  ]);
+  }, [allTicketsData.length, displayedTicketsCount]);
 
   useEffect(() => {
     const teamIdFromQuery = searchParams.get('teamId');
@@ -1586,9 +1559,18 @@ function TicketsClientContent() {
                     <Button
                       variant="outline"
                       onClick={handleLoadMore}
+                      disabled={isFetchingNextPage}
                       className="px-6 bg-transparent"
                     >
-                      Load More ({displayedTicketsCount} of {filteredTicketsDataSorted.length})
+                      {isFetchingNextPage ? (
+                        "Loading..."
+                      ) : displayedTicketsCount < filteredTicketsDataSorted.length ? (
+                        `Load More (${displayedTicketsCount} of ${filteredTicketsDataSorted.length})`
+                      ) : hasNextPage ? (
+                        "Load More Tickets"
+                      ) : (
+                        `Load More (${displayedTicketsCount} of ${filteredTicketsDataSorted.length})`
+                      )}
                     </Button>
                   )}
                 </div>
