@@ -11,11 +11,9 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { acceptAgentInvitation } from '@/services/agent'; // We'll create this
+import { acceptAgentInvitation } from '@/services/agent'; 
 import { setAuthToken } from '@/lib/auth';
 import Image from 'next/image';
-
-// Validaciones de contraseña robustas que coinciden con el backend
 const passwordSchema = z
   .object({
     password: z
@@ -57,8 +55,6 @@ const passwordSchema = z
   });
 
 type PasswordFormData = z.infer<typeof passwordSchema>;
-
-// Función para evaluar la fuerza de la contraseña
 interface PasswordRequirement {
   label: string;
   test: (password: string) => boolean;
@@ -75,8 +71,6 @@ const passwordRequirements: PasswordRequirement[] = [
 function PasswordStrengthIndicator({ password }: { password: string }) {
   const passedRequirements = passwordRequirements.filter(req => req.test(password));
   const strengthPercentage = (passedRequirements.length / passwordRequirements.length) * 100;
-
-  // Determinar el color y texto de la barra según la fuerza
   const getStrengthColor = () => {
     if (strengthPercentage < 40) return 'bg-red-500';
     if (strengthPercentage < 80) return 'bg-yellow-500';
@@ -141,7 +135,6 @@ function AcceptInvitationForm() {
     onSuccess: (data: { access_token: string; token_type: string }) => {
       setAuthToken(data.access_token);
       toast.success('Account activated successfully! You will be redirected.');
-      // Force a full page reload to ensure auth state is correctly initialized everywhere
       window.location.href = '/dashboard';
     },
     onError: (error: Error) => {
@@ -168,7 +161,6 @@ function AcceptInvitationForm() {
   };
 
   if (!token) {
-    // Check for token before rendering form
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-slate-100 dark:bg-slate-900 p-4">
         <div className="mb-8">
@@ -208,7 +200,6 @@ function AcceptInvitationForm() {
           {error && !mutation.isError && (
             <p className="text-sm text-red-500 mb-4 text-center">{error}</p>
           )}
-          {/* Display error from mutation if it occurred */}
           {mutation.isError && (
             <p className="text-sm text-red-500 mb-4 text-center">
               {(mutation.error as Error)?.message || 'An unknown error occurred.'}
@@ -255,7 +246,6 @@ function AcceptInvitationForm() {
     </div>
   );
 }
-
 export default function AcceptInvitationPage() {
   return (
     <React.Suspense
