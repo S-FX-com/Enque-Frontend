@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import {
   Select,
   SelectContent,
@@ -16,7 +17,7 @@ import {
 import { AgentAvatar } from '@/components/agent/agent-avatar';
 import { useAuth } from '@/hooks/use-auth';
 import { toast } from 'sonner';
-import { getAgentById, updateAgentProfile } from '@/services/agent';
+import { getAgentById, updateAgentProfile, updateAgentTeamsNotifications } from '@/services/agent';
 import { AgentUpdate, Agent } from '@/typescript/agent';
 import { RichTextEditor } from '@/components/tiptap/RichTextEditor';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -65,6 +66,7 @@ export default function ProfileSettingsPage() {
   const [editedRole, setEditedRole] = useState('');
   const [editedSignature, setEditedSignature] = useState('');
   const [avatarUrl, setAvatarUrl] = useState<string | null | undefined>(undefined);
+  const [teamsNotificationsEnabled, setTeamsNotificationsEnabled] = useState(false);
 
   const currentUserRole = user?.role;
 
@@ -97,6 +99,7 @@ export default function ProfileSettingsPage() {
       setEditedRole(agentProfileData.role || 'agent');
       setEditedSignature(agentProfileData.email_signature || '');
       setAvatarUrl(agentProfileData.avatar_url);
+      setTeamsNotificationsEnabled(!!agentProfileData.teams_notifications_enabled);
     } else {
       setEditedName('');
       setEditedEmail('');
@@ -105,6 +108,7 @@ export default function ProfileSettingsPage() {
       setEditedRole('agent');
       setEditedSignature('');
       setAvatarUrl(undefined);
+      setTeamsNotificationsEnabled(false);
     }
   }, [agentProfileData]);
 
@@ -133,6 +137,32 @@ export default function ProfileSettingsPage() {
       toast.error(`Failed to update profile: ${error.message}`);
     },
   });
+
+  const updateTeamsNotificationMutation = useMutation({
+    mutationFn: (enabled: boolean) => {
+      if (!agentId) throw new Error('User ID is missing');
+      return updateAgentTeamsNotifications(agentId, enabled);
+    },
+    onSuccess: (data) => {
+      toast.success(`Teams notifications ${data.teams_notifications_enabled ? 'enabled' : 'disabled'}.`);
+      queryClient.setQueryData(['agent', agentId], data);
+      setTeamsNotificationsEnabled(!!data.teams_notifications_enabled);
+    },
+    onError: (error) => {
+      toast.error(`Failed to update setting: ${error.message}`);
+      // Revert optimistic update
+      setTeamsNotificationsEnabled(prev => !prev);
+    }
+  });
+
+  const handleTeamsNotificationToggle = (enabled: boolean) => {
+    if (!agentProfileData?.microsoft_id) {
+      toast.error('You must link your Microsoft account to enable Teams notifications.');
+      return;
+    }
+    setTeamsNotificationsEnabled(enabled); // Optimistic update
+    updateTeamsNotificationMutation.mutate(enabled);
+  };
 
   const displayData = {
     name: agentProfileData?.name || '...',
@@ -302,6 +332,36 @@ export default function ProfileSettingsPage() {
                   value={editedPhoneNumber}
                   onChange={e => setEditedPhoneNumber(e.target.value)}
                   disabled={updateProfileMutation.isPending || currentUserRole !== 'admin'}
+                />
+              </div>
+            )}
+          </section>
+
+          <Separator className="my-4 bg-slate-200 dark:bg-slate-700" />
+          
+          <section className="mb-6">
+            <h2 className="text-lg font-semibold mb-3">Notifications</h2>
+            {!agentProfileData?.microsoft_id ? (
+                <Alert>
+                  <Info className="h-4 w-4" />
+                  <AlertTitle>Link Microsoft Account</AlertTitle>
+                  <AlertDescription>
+                    You need to link your Microsoft 365 account to this profile to enable Teams notifications.
+                  </AlertDescription>
+                </Alert>
+            ) : (
+              <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm">
+                <div className="space-y-0.5">
+                  <Label htmlFor="teams-notifications" className="text-base">Microsoft Teams Notifications</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Receive notifications for new tickets and replies directly in Teams.
+                  </p>
+                </div>
+                <Switch
+                  id="teams-notifications"
+                  checked={teamsNotificationsEnabled}
+                  onCheckedChange={handleTeamsNotificationToggle}
+                  disabled={!agentProfileData?.microsoft_id || updateTeamsNotificationMutation.isPending}
                 />
               </div>
             )}
