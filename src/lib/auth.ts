@@ -86,11 +86,10 @@ export const handleLogout = async (): Promise<void> => {
   // Limpiar el historial de navegación para prevenir volver al dashboard
   //window.history.pushState(null, '', '/signin');
   const token = getAuthToken();
-  if (!token) throw new Error('No auth token');
-  const response = await microsoftAuthService.getAuthStatus(token);
-  if (!response.success) throw new Error(response.message);
-  microsoftAuthService.logoutMicrosoft();
-  console.log('Logout sucessful');
+  if (token) {
+    await microsoftAuthService.logoutMicrosoft();
+    console.log('Logout sucessful');
+  }
 
   // Eliminar tokens y datos de usuario
   removeAuthToken();
