@@ -253,30 +253,4 @@ export async function acceptAgentInvitation(
   }
 }
 
-/**
- * Updates an agent's Teams notification setting.
- * @param agentId The ID of the agent to update.
- * @param enabled The new value for the setting.
- * @returns A promise that resolves to the updated Agent object.
- */
-export async function updateAgentTeamsNotifications(
-  agentId: number,
-  enabled: boolean
-): Promise<Agent> {
-  try {
-    const url = `${API_BASE_URL}/v1/agents/${agentId}/teams-notifications`;
-    const payload = { enabled };
-    const response = await fetchAPI.PUT<Agent>(url, payload as unknown as Record<string, unknown>);
-
-    if (response && response.success && response.data) {
-      return response.data;
-    } else {
-      throw new Error(response?.message || 'Failed to update Teams notification settings');
-    }
-  } catch (error) {
-    console.error('Error updating Teams notification settings:', error);
-    throw error;
-  }
-}
-
 // Add other agent-related service functions if needed

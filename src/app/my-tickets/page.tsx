@@ -99,13 +99,13 @@ function MyTicketsClientContent() {
       if (!currentUser?.id) return [];
       // Using optimized assignee endpoint for better performance
       const tickets = await getTickets(
-        { skip: pageParam, limit: 25 },
+        { skip: pageParam, limit: 50 },
         `/v1/tasks-optimized/assignee/${currentUser.id}`
       );
       return tickets;
     },
     getNextPageParam: (lastPage, allPages) => {
-      if (!lastPage || lastPage.length < 25) {
+      if (!lastPage || lastPage.length < 50) {
         return undefined;
       }
       return allPages.flat().length;

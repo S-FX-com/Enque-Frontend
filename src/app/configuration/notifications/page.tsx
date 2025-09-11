@@ -8,9 +8,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Terminal, Info, AlertCircle, Mail, Users, MessageSquare } from 'lucide-react';
+import { Terminal, Info, AlertCircle, Mail, Users } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { getNotificationSettings, toggleNotificationSetting, connectNotificationChannel } from '@/services/notifications';
+import { getNotificationSettings, toggleNotificationSetting } from '@/services/notifications';
 import { useState } from 'react';
 
 
@@ -31,7 +31,6 @@ export default function NotificationsConfigPage() {
   const queryClient = useQueryClient();
   const { user, isLoading: isLoadingAuthUser } = useAuth();
   const [updatingSettingId, setUpdatingSettingId] = useState<number | null>(null);
-  const [connectingTeams, setConnectingTeams] = useState(false);
 
   const currentUserRole = user?.role;
   const workspaceId = user?.workspace_id;
@@ -65,48 +64,6 @@ export default function NotificationsConfigPage() {
       setUpdatingSettingId(null);
       // Solo invalidar en caso de error para revertir el estado
       queryClient.invalidateQueries({ queryKey: ['notificationSettings', workspaceId] });
-    },
-  });
-
-  const connectTeamsMutation = useMutation({
-    mutationFn: async () => {
-      if (!workspaceId) throw new Error('Workspace ID is missing');
-      setConnectingTeams(true);
-      console.log('🔄 Starting Teams connection process for workspace:', workspaceId);
-      
-      try {
-        const result = await connectNotificationChannel(workspaceId, 'teams', {
-          enable_notifications: true,
-          activity_types: ["ticketCreated", "ticketAssigned", "newResponse"]
-        });
-        console.log('✅ Teams connection result:', result);
-        return result;
-      } catch (error) {
-        console.error('❌ Teams connection error:', error);
-        throw error;
-      }
-    },
-    onSuccess: (data) => {
-      console.log('🎉 Teams connection successful:', data);
-      toast.success('Microsoft Teams notifications enabled successfully!');
-      setConnectingTeams(false);
-      queryClient.invalidateQueries({ queryKey: ['notificationSettings', workspaceId] });
-    },
-    onError: (error: Error & { response?: { data?: { detail?: string } } }) => {
-      console.error('💥 Teams connection mutation error:', error);
-      console.error('💥 Error response:', error?.response);
-      console.error('💥 Error data:', error?.response?.data);
-      
-      // Check if it's a Microsoft account linking issue
-      if (error?.response?.data?.detail?.includes('Microsoft 365 account not linked')) {
-        toast.error('Please link your Microsoft 365 account first. Go to Integrations > Microsoft 365 to connect your account.');
-      } else if (error?.response?.data?.detail) {
-        toast.error(`Failed to connect Teams: ${error.response.data.detail}`);
-      } else {
-        toast.error(`Failed to connect Teams: ${error.message || 'Unknown error'}`);
-      }
-      
-      setConnectingTeams(false);
     },
   });
 
@@ -335,79 +292,6 @@ export default function NotificationsConfigPage() {
 
 
                     </div>
-                  </div>
-
-                  {/* Microsoft Teams Notifications Section */}
-                  <div className="border rounded-md p-6">
-                    <div className="flex items-center gap-2 mb-4">
-                      <MessageSquare className="h-4 w-4" />
-                      <span className="font-medium text-lg">Microsoft Teams Notifications</span>
-                    </div>
-                    
-                    {notificationSettings?.agents.teams.is_connected ? (
-                      <div className="space-y-4 pl-6">
-                        <div className="bg-green-50 border border-green-200 rounded-md p-4 mb-4">
-                          <div className="flex items-center gap-2">
-                            <Info className="h-4 w-4 text-green-600" />
-                            <span className="text-green-800 font-medium">Teams Connected</span>
-                          </div>
-                          <p className="text-green-700 text-sm mt-1">
-                            Teams notifications are set up and ready to use.
-                          </p>
-                        </div>
-
-                        <div className="flex items-center justify-between py-2 border-b">
-                          <div>
-                            <h4 className="font-medium">Teams Notifications</h4>
-                            <p className="text-sm text-muted-foreground">
-                              Send activity feed notifications to Microsoft Teams for ticket updates
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-4">
-                            <div className="flex items-center space-x-2">
-                              <Switch
-                                id="teams-notifications"
-                                checked={notificationSettings?.agents.teams.is_enabled}
-                                onCheckedChange={() =>
-                                  handleToggleSetting(
-                                    notificationSettings?.agents.teams.id || 0,
-                                    notificationSettings?.agents.teams.is_enabled
-                                  )
-                                }
-                                disabled={
-                                  updatingSettingId === (notificationSettings?.agents.teams.id || 0)
-                                }
-                              />
-                              <Label htmlFor="teams-notifications">
-                                {notificationSettings?.agents.teams.is_enabled
-                                  ? 'Enabled'
-                                  : 'Disabled'}
-                              </Label>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="space-y-4 pl-6">
-                        <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
-                          <div className="flex items-center gap-2 mb-2">
-                            <Info className="h-4 w-4 text-blue-600" />
-                            <span className="text-blue-800 font-medium">Setup Required</span>
-                          </div>
-                          <p className="text-blue-700 text-sm mb-3">
-                            Connect Microsoft Teams to receive activity feed notifications for ticket updates.
-                            Agents must have their Microsoft 365 accounts linked.
-                          </p>
-                          <button
-                            onClick={() => connectTeamsMutation.mutate()}
-                            disabled={connectingTeams}
-                            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            {connectingTeams ? 'Connecting...' : 'Enable Teams Notifications'}
-                          </button>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 </div>
               </TabsContent>

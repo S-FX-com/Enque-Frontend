@@ -89,34 +89,14 @@ export const connectNotificationChannel = async (
   channel: string,
   config: Record<string, unknown>
 ): Promise<ApiSuccessResponse> => {
-  console.log('🔌 connectNotificationChannel called:', { workspaceId, channel, config });
-  
   if (channel === 'teams') {
-    const payload = {
-      enable_notifications: config.enable_notifications || true,
-      activity_types: config.activity_types || ["ticketCreated", "ticketAssigned", "newResponse"]
-    };
-    
-    console.log('📤 Sending Teams connection request:', {
-      url: `/notifications/${workspaceId}/connect/teams`,
-      payload
-    });
-    
-    try {
-      const response = await apiClient.post<ApiSuccessResponse>(
-        `/notifications/${workspaceId}/connect/teams`,
-        payload
-      );
-      
-      console.log('📨 Teams connection response:', response);
-      console.log('📊 Response status:', response.status);
-      console.log('📄 Response data:', response.data);
-      
-      return response.data;
-    } catch (error) {
-      console.error('❌ Teams connection service error:', error);
-      throw error;
-    }
+    const response = await apiClient.post<ApiSuccessResponse>(
+      `/notifications/${workspaceId}/connect/teams`,
+      {
+        webhook_url: config.webhook_url || '',
+      }
+    );
+    return response.data;
   }
 
   throw new Error(`Unsupported notification channel: ${channel}`);
