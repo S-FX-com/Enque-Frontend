@@ -783,7 +783,7 @@ export function TicketConversation({
     let initialMessageContent: string | null | undefined = null;
     let initialMessageSender: IComment['user'] = null;
     let hasInitialMessage = false;
-
+    items[0].
     if (ticket.description) {
       initialMessageContent = ticket.description;
       initialMessageSender = ticket.user;
