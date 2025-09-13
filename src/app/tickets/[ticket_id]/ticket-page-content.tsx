@@ -50,6 +50,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from '@/components/ui';
+import { ChevronDown } from 'lucide-react';
+
 interface Props {
   ticketId: number;
 }
@@ -242,7 +244,7 @@ export function TicketPageContent({ ticketId }: Props) {
 
   const currentTicket = ticketData?.[0] || null;
   const currentscheduledComments = scheduledComments;
-
+  console.log(currentscheduledComments);
   useEffect(() => {
     if (currentTicket) {
       console.log('🎫 Ticket loaded successfully:', currentTicket.id);
@@ -915,27 +917,37 @@ export function TicketPageContent({ ticketId }: Props) {
         <div className="lg:col-span-2">
           {/* Conversation - Modified to show latest message without scroll */}
           <Card>
-            <CardHeader>
+            <CardHeader
+              className={
+                scheduleCommentsStatus !== undefined
+                  ? 'flex flex-row items-center justify-between w-5/10'
+                  : ''
+              }
+            >
               <CardTitle className="text-lg">Latest Message</CardTitle>
-              {!isLoadingScheduledComments && scheduleCommentsStatus && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger className="px-4 py-2 bg-blue-600 text-white rounded">
-                    Scheduled Messages Status
-                  </DropdownMenuTrigger>
+              {
+                //scheduleCommentsStatus.length > 0 && (
+                scheduleCommentsStatus !== undefined && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger className="px-2 flex flex-row items-center justify-between w-6/10 py-2 text-white bg-primary rounded">
+                      Scheduled Messages Status
+                      <ChevronDown className="ml-2 h-4 w-5" />
+                    </DropdownMenuTrigger>
 
-                  <DropdownMenuContent
-                    className="bg-white border rounded shadow-md p-2"
-                    sideOffset={5}
-                  >
-                    {scheduleCommentsStatus.map(comment => (
-                      <DropdownMenuItem
-                        key={comment.due_date}
-                      >{`${comment.status}\n${comment.due_date}`}</DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
-              )
+                    <DropdownMenuContent
+                      className="bg-white border rounded shadow-md p-2"
+                      sideOffset={5}
+                    >
+                      {scheduleCommentsStatus.map(comment => (
+                        <DropdownMenuItem
+                          className="w-6/10 rounded"
+                          key={comment.due_date}
+                        >{`${comment.status}\n${comment.due_date}`}</DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )
+              }
             </CardHeader>
             <CardContent>
               <TicketConversation
