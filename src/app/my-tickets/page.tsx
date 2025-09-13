@@ -664,7 +664,7 @@ function MyTicketsClientContent() {
       setIsRefreshing(false);
     }
   };
-
+  console.log(allTicketsData);
   return (
     <div className="flex h-full gap-6">
       <div className="flex-1 flex flex-col h-full">
