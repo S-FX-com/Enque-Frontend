@@ -35,18 +35,21 @@ import { getEnabledGlobalSignature } from '@/services/global-signature';
 import { getCannedReplies, type CannedReply } from '@/services/canned-replies';
 import { createReplyHeader, formatRelativeTime } from '@/lib/utils';
 import { ScheduleSendCalendar } from './scheduleSend/schedule-send-calendar';
+import { Value } from './scheduleSend/valueType';
 
+//export type ValuePiece = Date | null;
+//export type Value = ValuePiece | [ValuePiece, ValuePiece];
 // Helper function to check if HTML content is effectively empty
 function isHtmlContentEmpty(htmlContent: string): boolean {
   if (!htmlContent || htmlContent.trim() === '') return true;
-  
+
   // Create a temporary div to parse the HTML
   const tempDiv = document.createElement('div');
   tempDiv.innerHTML = htmlContent;
-  
+
   // Get the text content without HTML tags
   const textContent = tempDiv.textContent || tempDiv.innerText || '';
-  
+
   // Check if there's any meaningful text content
   return textContent.trim() === '';
 }
@@ -395,7 +398,7 @@ function OptimizedMessageItem({ content, isInitial = false, ticket }: OptimizedM
     if (!ticket) return null;
 
     const isAgentMessage = senderInfo.type === 'agent';
-
+    console.log(ticket);
     let toRecipients = '';
     if (isAgentMessage && ticket.user?.email) {
       const userName = ticket.user.name
@@ -409,6 +412,7 @@ function OptimizedMessageItem({ content, isInitial = false, ticket }: OptimizedM
     const recipients = [];
 
     if (toRecipients) {
+      console.log(toRecipients);
       recipients.push(
         <div key="to" className="flex items-center gap-1 flex-wrap">
           <span className="text-xs font-medium text-slate-600 dark:text-slate-400">To:</span>
@@ -660,8 +664,8 @@ export function TicketConversation({
   onExtraRecipientsChange,
   extraBccRecipients = '',
 }: Props) {
-  type ValuePiece = Date | null;
-  type Value = ValuePiece | [ValuePiece, ValuePiece];
+  //type ValuePiece = Date | null;
+  //type Value = ValuePiece | [ValuePiece, ValuePiece];
 
   const queryClient = useQueryClient();
   const { user: currentUser } = useAuth();
@@ -779,7 +783,6 @@ export function TicketConversation({
     let initialMessageContent: string | null | undefined = null;
     let initialMessageSender: IComment['user'] = null;
     let hasInitialMessage = false;
-
     if (ticket.description) {
       initialMessageContent = ticket.description;
       initialMessageSender = ticket.user;
@@ -1204,29 +1207,27 @@ export function TicketConversation({
     },
   });
 
-
-
   const handleSendReply = () => {
     // Validaciones básicas
     if (isHtmlContentEmpty(replyContent)) {
       toast.error('Please write a message before sending.');
       return;
     }
-    
+
     if (!ticket?.id) {
       toast.error('No ticket selected.');
       return;
     }
-    
+
     if (isSending || createCommentMutation.isPending) {
       return; // El botón ya está deshabilitado, no necesitamos toast
     }
-    
+
     if (extraRecipients.trim() && !validateEmails(extraRecipients)) {
       toast.error('Please enter valid email addresses separated by commas.');
       return;
     }
-    
+
     if (popCalendar) {
       setPopCalendar(false);
     }
@@ -1335,11 +1336,7 @@ export function TicketConversation({
 
                 <Popover open={cannedRepliesOpen} onOpenChange={setCannedRepliesOpen}>
                   <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={isLoadingCannedReplies}
-                    >
+                    <Button variant="outline" size="sm" disabled={isLoadingCannedReplies}>
                       <MessageSquare className="mr-2 h-4 w-4" />
                       Templates
                     </Button>

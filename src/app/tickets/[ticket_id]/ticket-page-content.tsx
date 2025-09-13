@@ -42,7 +42,14 @@ import BoringAvatar from 'boring-avatars';
 import { useAuth } from '@/hooks/use-auth';
 import { getUsers } from '@/services/user';
 import type { IUser } from '@/typescript/user';
-
+import { ScheduleCommentStatus } from '@/services/comment';
+import { getScheduledComments } from '@/services/comment'; // Import getScheduledComments
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from '@/components/ui';
 interface Props {
   ticketId: number;
 }
@@ -179,7 +186,9 @@ export function TicketPageContent({ ticketId }: Props) {
   const [extraBccEmails, setExtraBccEmails] = useState<string[]>([]);
   const [contactSearchQuery, setContactSearchQuery] = useState('');
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
-
+  const [scheduleCommentsStatus, setScheduledCommentsStatus] = useState<ScheduleCommentStatus[]>(
+    []
+  );
   // States for title editing
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editedTitle, setEditedTitle] = useState('');
@@ -208,7 +217,31 @@ export function TicketPageContent({ ticketId }: Props) {
     retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
 
+  const {
+    data: scheduledComments,
+    isLoading: isLoadingScheduledComments,
+    error: scheduledCommentsError,
+  } = useQuery<ScheduleCommentStatus[]>({
+    queryKey: ['scheduledComments', ticketId],
+    queryFn: async () => {
+      if (!ticketId) return [];
+      const comments = await getScheduledComments(ticketId);
+      return comments;
+    },
+    enabled: !!ticketId,
+    staleTime: 1000 * 60 * 5,
+    retry: (failureCount, error: unknown) => {
+      // Si es un 404 (ticket no encontrado), no reintentar
+      const httpError = error as { response?: { status?: number } };
+      if (httpError?.response?.status === 404) return false;
+      // Para otros errores, reintentar hasta 3 veces
+      return failureCount < 3;
+    },
+    retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000),
+  });
+
   const currentTicket = ticketData?.[0] || null;
+  const currentscheduledComments = scheduledComments;
 
   useEffect(() => {
     if (currentTicket) {
@@ -237,6 +270,14 @@ export function TicketPageContent({ ticketId }: Props) {
       console.error('❌ Error loading ticket:', ticketError);
     }
   }, [currentTicket, ticketError]);
+
+  useEffect(() => {
+    if (currentscheduledComments) {
+      setScheduledCommentsStatus(currentscheduledComments);
+    } else {
+      console.log('Error loading scheduled comments:', scheduledCommentsError);
+    }
+  }, [currentscheduledComments, scheduledCommentsError]);
 
   // Socket listener for real-time updates
   useEffect(() => {
@@ -755,11 +796,11 @@ export function TicketPageContent({ ticketId }: Props) {
           </p>
         )}
         <div className="space-x-2">
-          <Button 
+          <Button
             onClick={() => {
               queryClient.invalidateQueries({ queryKey: ['ticket', ticketId] });
               window.location.reload();
-            }} 
+            }}
             variant="default"
           >
             Try Again
@@ -876,6 +917,25 @@ export function TicketPageContent({ ticketId }: Props) {
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">Latest Message</CardTitle>
+              {!isLoadingScheduledComments && scheduleCommentsStatus && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger className="px-4 py-2 bg-blue-600 text-white rounded">
+                    Scheduled Messages Status
+                  </DropdownMenuTrigger>
+
+                  <DropdownMenuContent
+                    className="bg-white border rounded shadow-md p-2"
+                    sideOffset={5}
+                  >
+                    {scheduleCommentsStatus.map(comment => (
+                      <DropdownMenuItem
+                        key={comment.due_date}
+                      >{`${comment.status}\n${comment.due_date}`}</DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+              )
             </CardHeader>
             <CardContent>
               <TicketConversation
