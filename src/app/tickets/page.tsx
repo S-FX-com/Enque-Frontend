@@ -347,7 +347,6 @@ function TicketsClientContent() {
   const displayedTickets = useMemo(() => {
     return filteredTicketsDataSorted.slice(0, displayedTicketsCount);
   }, [filteredTicketsDataSorted, displayedTicketsCount]);
-  console.log('displayed Tickets: ', displayedTickets);
   useEffect(() => {
     setDisplayedTicketsCount(25);
   }, [
@@ -365,6 +364,8 @@ function TicketsClientContent() {
     // First, try to show more from already loaded tickets
     if (displayedTicketsCount < filteredTicketsDataSorted.length) {
       setDisplayedTicketsCount(prev => Math.min(prev + 25, filteredTicketsDataSorted.length));
+      console.log('displayedTicketsCount:', displayedTicketsCount);
+      console.log('displayTickets:', displayedTickets);
     }
     // If we've shown all filtered tickets but there are more on the server, fetch them
     else if (hasNextPage && !isFetchingNextPage) {

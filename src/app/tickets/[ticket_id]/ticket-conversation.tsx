@@ -678,7 +678,7 @@ export function TicketConversation({
   const [sendNow, setSendNow] = useState<boolean>(true);
   const [popCalendar, setPopCalendar] = useState<boolean>(false);
   const now: Date = new Date();
-  const [date, setDate] = useState<Value>(null);
+  const [date, setDate] = useState<Value>(now);
   const [time, setTime] = useState<string>('');
   const [cannedRepliesOpen, setCannedRepliesOpen] = useState(false);
   const [cannedSearchTerm, setCannedSearchTerm] = useState('');
