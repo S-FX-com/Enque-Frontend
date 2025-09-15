@@ -84,7 +84,6 @@ function TicketsClientContent() {
     ticketsError,
     refetch: refetchTickets, // Add this line to get the refetch function
   } = useGlobalTicketsContext();
-
   const queryClient = useQueryClient();
   const router = useRouter();
   const searchParams = useSearchParams();
