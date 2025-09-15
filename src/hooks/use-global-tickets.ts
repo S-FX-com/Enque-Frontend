@@ -27,6 +27,7 @@ export function useGlobalTickets(enabled: boolean = true) {
     queryKey: ['tickets'],
     queryFn: async ({ pageParam = 0 }) => {
       const tickets = await getTickets({ skip: pageParam, limit: LOAD_LIMIT });
+      console.log(tickets);
       return tickets;
     },
     getNextPageParam: (lastPage, allPages) => {
