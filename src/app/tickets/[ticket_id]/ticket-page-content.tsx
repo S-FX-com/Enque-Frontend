@@ -30,7 +30,7 @@ import type { ICategory } from '@/typescript/category';
 import type { Team } from '@/typescript/team';
 import type { ICompany } from '@/typescript/company'; // Import ICompany
 import { getTickets, updateTicket } from '@/services/ticket';
-import { getScheduledCommentsByTaskId, IScheduledComment } from '@/services/comment';
+import { /*getScheduledCommentsByTaskId,*/ IScheduledComment } from '@/services/comment';
 import { getAgents } from '@/services/agent';
 import { getTeams } from '@/services/team';
 import { getCategories } from '@/services/category';
@@ -49,7 +49,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from '@/components/ui';
-//import { ChevronDown } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 
 interface Props {
   ticketId: number;
@@ -189,8 +189,7 @@ export function TicketPageContent({ ticketId }: Props) {
   const [extraBccEmails, setExtraBccEmails] = useState<string[]>([]);
   const [contactSearchQuery, setContactSearchQuery] = useState('');
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
-
-  // States for title editing
+  const [scheduledComments, setScheduledComments] = useState<IScheduledComment[]>([]);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editedTitle, setEditedTitle] = useState('');
 
@@ -217,6 +216,7 @@ export function TicketPageContent({ ticketId }: Props) {
     },
     retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
+
   /*
   const {
     data: scheduledComments,
@@ -265,7 +265,6 @@ export function TicketPageContent({ ticketId }: Props) {
           .split(',')
           .map(email => email.trim())
           .filter(email => email.length > 0);
-
         setExistingToEmails(emails);
       } else {
         setExistingToEmails([]);
@@ -280,10 +279,17 @@ export function TicketPageContent({ ticketId }: Props) {
       } else {
         setExistingBccEmails([]);
       }
+
+      if (process.env.NODE_ENV === 'development') {
+        setScheduledComments([
+          { due_date: new Date().toString(), status: 'pending' },
+          { due_date: new Date().toString(), status: 'pending' },
+        ]);
+      }
     } else if (ticketError) {
       console.error('❌ Error loading ticket:', ticketError);
     }
-  }, [currentTicket, ticketError, existingCcEmails]);
+  }, [currentTicket, ticketError]);
 
   // Socket listener for real-time updates
   useEffect(() => {
@@ -921,31 +927,32 @@ export function TicketPageContent({ ticketId }: Props) {
           {/* Conversation - Modified to show latest message without scroll */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Latest Message</CardTitle>
-              {/*process.env.NODE_ENV === 'development' &&
-                currentscheduledComments !== undefined &&
-                currentscheduledComments.length > 0 && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger className="px-4 py-2 bg-blue-600 text-white rounded">
-                      Scheduled messages status
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent
-                      className="bg-white border rounded shadow-md p-2"
-                      sideOffset={5}
-                    >
-                      {currentscheduledComments!.map(comment => (
-                        <DropdownMenuItem
-                          key={comment.due_date}
-                          className="px-2 py-1 hover:bg-gray-100 cursor-pointer rounded"
-                          onSelect={() => alert('Opção 1 selecionada')}
-                        >
-                          {comment.due_date}
-                          {comment.status}
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )*/}
+              <CardTitle className="text-lg mr-4">Latest Message</CardTitle>
+              {process.env.NODE_ENV === 'development' && scheduledComments.length > 0 && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger className="w-3/10 bg-blue-600 text-white rounded">
+                    <div className="w-100 flex">
+                      <p className="w-6/10">Scheduled messages status</p>
+                      <ChevronDown />
+                    </div>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    className="bg-white border rounded shadow-md p-2"
+                    sideOffset={5}
+                  >
+                    {scheduledComments!.map(comment => (
+                      <DropdownMenuItem
+                        key={comment.due_date}
+                        className="px-2 py-1 hover:bg-gray-100 cursor-pointer rounded"
+                        onSelect={() => alert('Opção 1 selecionada')}
+                      >
+                        <p>Due date:{comment.due_date}</p>
+                        <p> Status:{comment.status}</p>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             </CardHeader>
             <CardContent>
               <TicketConversation
@@ -1142,7 +1149,9 @@ export function TicketPageContent({ ticketId }: Props) {
                   </p>
                 </div>
               </div>
+
               {/*To Recipients */}
+
               <div>
                 <label className="text-sm font-medium text-muted-foreground mb-2 block">To:</label>
                 <div className="space-y-2">
@@ -1160,7 +1169,7 @@ export function TicketPageContent({ ticketId }: Props) {
                       setExistingToEmails(updatedExistingEmails);
                       setExtraToEmails(newExtraEmails);
                     }}
-                    placeholder="Add Cc recipients..."
+                    placeholder="Add To recipients..."
                   />
                   <p className="text-xs text-muted-foreground">
                     Type email addresses and press Enter or comma to add them.
