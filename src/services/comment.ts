@@ -40,6 +40,34 @@ export const getCommentsByTaskId = async (
   }
 };
 
+export interface IScheduledComment {
+  due_date: string;
+  status: string;
+}
+export const getScheduledCommentsByTaskId = async (
+  taskId: number
+): Promise<IScheduledComment[]> => {
+  try {
+    const url = `${AppConfigs.api}/tasks/${taskId}/scheduled_comments`;
+    const response = await fetchAPI.GET<IScheduledComment[]>(url);
+    console.log(response);
+    if (!response.success || !response.data) {
+      const errorMessage = response.message || 'Failed to fetch scheduled comments';
+      console.error('Failed to fetch scheduled comments:', errorMessage);
+      throw new Error(errorMessage);
+      // Or return [];
+    }
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching comments:', error);
+    if (error instanceof Error) {
+      throw error;
+    } else {
+      throw new Error('An unknown error occurred while fetching comments.');
+    }
+    // Or return [];
+  }
+};
 export interface CreateCommentPayload {
   content: string;
   ticket_id: number;

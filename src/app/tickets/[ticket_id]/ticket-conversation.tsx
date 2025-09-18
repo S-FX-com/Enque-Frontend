@@ -398,7 +398,6 @@ function OptimizedMessageItem({ content, isInitial = false, ticket }: OptimizedM
     if (!ticket) return null;
 
     const isAgentMessage = senderInfo.type === 'agent';
-    console.log(ticket);
     let toRecipients = '';
     if (isAgentMessage && ticket.user?.email) {
       const userName = ticket.user.name
@@ -427,10 +426,9 @@ function OptimizedMessageItem({ content, isInitial = false, ticket }: OptimizedM
         </div>
       );
     }
-
     if (ticket.cc_recipients) {
       recipients.push(
-        <div key="cc" className="flex items-center gap-1 flex-wrap">
+        <div key="to" className="flex items-center gap-1 flex-wrap">
           <span className="text-xs font-medium text-slate-600 dark:text-slate-400">Cc:</span>
           {ticket.cc_recipients.split(',').map((email, index) => (
             <span
@@ -678,7 +676,7 @@ export function TicketConversation({
   const [sendNow, setSendNow] = useState<boolean>(true);
   const [popCalendar, setPopCalendar] = useState<boolean>(false);
   const now: Date = new Date();
-  const [date, setDate] = useState<Value>(null);
+  const [date, setDate] = useState<Value>(now);
   const [time, setTime] = useState<string>('');
   const [cannedRepliesOpen, setCannedRepliesOpen] = useState(false);
   const [cannedSearchTerm, setCannedSearchTerm] = useState('');

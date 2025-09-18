@@ -63,7 +63,7 @@ export function ScheduleSendCalendar({
   const handleDateSelect = (selectedDate: Date | undefined) => {
     if (selectedDate!.getDate() >= day) setDate(selectedDate || null);
   };
-
+  console.log(date);
   return (
     <>
       <Dialog open={popCalendar} onOpenChange={setPopCalendar}>
