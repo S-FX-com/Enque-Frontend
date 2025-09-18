@@ -19,21 +19,16 @@ interface TimePickingSelectProps {
 }
 
 export function TimePickingSelect({ nowDate, setTime }: TimePickingSelectProps) {
-  //console.log(nowDate);
   const nowDateAsDate = nowDate as Date;
   const [firstHour, setFirstHour] = React.useState<number>(0);
   const [firstMinute, setFirstMinute] = React.useState<number>(0);
-  useEffect(
-    () => {
-      //const nowDateAsDate = nowDate !== null ? (nowDate as Date) : new Date();
-      const now = new Date();
-      if (now!.getDate() === nowDateAsDate!.getDate()) {
-        setFirstHour(now.getHours());
-        setFirstMinute(now.getMinutes() < 30 ? 30 : 0);
-      }
-    },
-    [nowDateAsDate] /*[nowDate]*/
-  );
+  useEffect(() => {
+    const now = new Date();
+    if (now!.getDate() === nowDateAsDate!.getDate()) {
+      setFirstHour(now.getHours());
+      setFirstMinute(now.getMinutes() < 30 ? 30 : 0);
+    }
+  }, [nowDateAsDate]);
 
   const options: Array<string> = [];
   for (let h = firstHour; h < 24; h++) {

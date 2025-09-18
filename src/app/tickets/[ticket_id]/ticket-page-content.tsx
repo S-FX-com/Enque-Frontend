@@ -30,6 +30,7 @@ import type { ICategory } from '@/typescript/category';
 import type { Team } from '@/typescript/team';
 import type { ICompany } from '@/typescript/company'; // Import ICompany
 import { getTickets, updateTicket } from '@/services/ticket';
+import { getScheduledCommentsByTaskId, IScheduledComment } from '@/services/comment';
 import { getAgents } from '@/services/agent';
 import { getTeams } from '@/services/team';
 import { getCategories } from '@/services/category';
@@ -42,6 +43,12 @@ import BoringAvatar from 'boring-avatars';
 import { useAuth } from '@/hooks/use-auth';
 import { getUsers } from '@/services/user';
 import type { IUser } from '@/typescript/user';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+  DropdownMenuItem,
+} from '@radix-ui/react-dropdown-menu';
 
 interface Props {
   ticketId: number;
@@ -198,6 +205,29 @@ export function TicketPageContent({ ticketId }: Props) {
     },
     enabled: !!ticketId,
     staleTime: 1000 * 60 * 5,
+    retry: (failureCount, error: unknown) => {
+      // Si es un 404 (ticket no encontrado), no reintentar
+      const httpError = error as { response?: { status?: number } };
+      if (httpError?.response?.status === 404) return false;
+      // Para otros errores, reintentar hasta 3 veces
+      return failureCount < 3;
+    },
+    retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000),
+  });
+
+  const {
+    data: scheduledComments,
+    //isLoading: scheduledCommentsLoading,
+    error: scheduledCommentsError,
+  } = useQuery<IScheduledComment[]>({
+    queryKey: ['scheduledComments', ticketId],
+    queryFn: async () => {
+      if (!ticketId) return [];
+      const comments = await getScheduledCommentsByTaskId(ticketId);
+      return comments;
+    },
+    enabled: !!ticketId,
+    staleTime: 1000 * 60 * 1,
     retry: (failureCount, error: unknown) => {
       // Si es un 404 (ticket no encontrado), no reintentar
       const httpError = error as { response?: { status?: number } };
@@ -797,7 +827,8 @@ export function TicketPageContent({ ticketId }: Props) {
   }
 
   const avatarColors = ['#a3a948', '#edb92e', '#f85931', '#ce1836', '#009989'];
-
+  console.log(scheduledComments);
+  console.log(scheduledCommentsError);
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -899,6 +930,28 @@ export function TicketPageContent({ ticketId }: Props) {
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">Latest Message</CardTitle>
+              {scheduledComments !== undefined && scheduledComments.length > 0 && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger className="px-4 py-2 bg-blue-600 text-white rounded">
+                    Scheduled messages status
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    className="bg-white border rounded shadow-md p-2"
+                    sideOffset={5}
+                  >
+                    {scheduledComments!.map(comment => (
+                      <DropdownMenuItem
+                        key={comment.due_date}
+                        className="px-2 py-1 hover:bg-gray-100 cursor-pointer rounded"
+                        onSelect={() => alert('Opção 1 selecionada')}
+                      >
+                        {comment.due_date}
+                        {comment.status}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             </CardHeader>
             <CardContent>
               <TicketConversation
