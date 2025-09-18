@@ -182,6 +182,8 @@ export function TicketPageContent({ ticketId }: Props) {
   const [isReopening, setIsReopening] = useState(false);
   const [existingCcEmails, setExistingCcEmails] = useState<string[]>([]);
   const [extraCcEmails, setExtraCcEmails] = useState<string[]>([]);
+  const [existingToEmails, setExistingToEmails] = useState<string[]>([]);
+  const [extraToEmails, setExtraToEmails] = useState<string[]>([]);
   const [existingBccEmails, setExistingBccEmails] = useState<string[]>([]);
   const [extraBccEmails, setExtraBccEmails] = useState<string[]>([]);
   const [contactSearchQuery, setContactSearchQuery] = useState('');
@@ -259,23 +261,10 @@ export function TicketPageContent({ ticketId }: Props) {
           .split(',')
           .map(email => email.trim())
           .filter(email => email.length > 0);
-        if (existingCcEmails.length > 0) {
-          setExistingCcEmails(existingCcEmails.concat(emails));
-        } else {
-          setExistingCcEmails(emails);
-        }
+        setExistingToEmails(emails);
+      } else {
+        setExistingToEmails([]);
       }
-
-      console.log(currentTicket);
-      //if (
-      //  existingCcEmails.length > 0 ||
-      //  (!currentTicket?.cc_recipients && currentTicket?.user?.email)
-      //) {
-      //  const userName: string = currentTicket?.user?.name
-      //    ? `${currentTicket?.user.name} <${currentTicket?.user.email}>`
-      //    : currentTicket?.user?.email;
-      //  setExistingCcEmails(existingCcEmails.concat([userName]));
-      //}
       // Initialize BCC emails if they exist in the ticket data
       if (currentTicket?.bcc_recipients) {
         const bccEmails = currentTicket.bcc_recipients
@@ -1142,6 +1131,30 @@ export function TicketPageContent({ ticketId }: Props) {
                       setExtraCcEmails(newExtraEmails);
                     }}
                     placeholder="Add Cc recipients..."
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Type email addresses and press Enter or comma to add them.
+                  </p>
+                </div>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-muted-foreground mb-2 block">To:</label>
+                <div className="space-y-2">
+                  <DynamicCCInput
+                    id="cc"
+                    existingEmails={[...existingToEmails, ...extraToEmails]}
+                    onEmailsChange={emails => {
+                      // Split between existing and new emails
+                      const newExtraEmails = emails.filter(
+                        email => !existingToEmails.includes(email)
+                      );
+                      const updatedExistingEmails = emails.filter(email =>
+                        existingToEmails.includes(email)
+                      );
+                      setExistingToEmails(updatedExistingEmails);
+                      setExtraToEmails(newExtraEmails);
+                    }}
+                    placeholder="Add To recipients..."
                   />
                   <p className="text-xs text-muted-foreground">
                     Type email addresses and press Enter or comma to add them.
