@@ -9,10 +9,10 @@ export interface Agent {
   phone_number?: string | null;
   email_signature?: string | null;
   avatar_url?: string | null;
-  microsoft_id?: string | null;
-  teams_notifications_enabled?: boolean;
   created_at: string;
   updated_at: string;
+  teams_notifications_enabled?: boolean;
+  microsoft_id?: string | null;
 }
 export interface AgentCreate {
   name: string;
@@ -25,6 +25,8 @@ export interface AgentCreate {
   phone_number?: string | null;
   email_signature?: string | null;
   avatar_url?: string | null;
+  teams_notifications_enabled?: boolean;
+  microsoft_id?: string | null;
 }
 export interface AgentUpdate {
   name?: string | null;
@@ -32,9 +34,10 @@ export interface AgentUpdate {
   password?: string | null;
   role?: 'admin' | 'agent' | 'manager' | null;
   is_active?: boolean | null;
-  teams_notifications_enabled?: boolean | null;
   job_title?: string | null;
   phone_number?: string | null;
   email_signature?: string | null;
   avatar_url?: string | null;
+  teams_notifications_enabled?: boolean | null;
+  microsoft_id?: string | null;
 }

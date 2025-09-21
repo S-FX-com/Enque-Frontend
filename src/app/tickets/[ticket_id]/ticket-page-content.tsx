@@ -30,6 +30,7 @@ import type { ICategory } from '@/typescript/category';
 import type { Team } from '@/typescript/team';
 import type { ICompany } from '@/typescript/company'; // Import ICompany
 import { getTickets, updateTicket } from '@/services/ticket';
+import { /*getScheduledCommentsByTaskId,*/ IScheduledComment } from '@/services/comment';
 import { getAgents } from '@/services/agent';
 import { getTeams } from '@/services/team';
 import { getCategories } from '@/services/category';
@@ -41,9 +42,7 @@ import { TicketConversation } from './ticket-conversation';
 import BoringAvatar from 'boring-avatars';
 import { useAuth } from '@/hooks/use-auth';
 import { getUsers } from '@/services/user';
-import type { IUser } from '@/typescript/user';
-import { ScheduleCommentStatus } from '@/services/comment';
-import { getScheduledComments } from '@/services/comment'; // Import getScheduledComments
+import type { IUser } from '@/typescript/user'; // Import getScheduledComments
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -184,14 +183,13 @@ export function TicketPageContent({ ticketId }: Props) {
   const [isReopening, setIsReopening] = useState(false);
   const [existingCcEmails, setExistingCcEmails] = useState<string[]>([]);
   const [extraCcEmails, setExtraCcEmails] = useState<string[]>([]);
+  const [existingToEmails, setExistingToEmails] = useState<string[]>([]);
+  const [extraToEmails, setExtraToEmails] = useState<string[]>([]);
   const [existingBccEmails, setExistingBccEmails] = useState<string[]>([]);
   const [extraBccEmails, setExtraBccEmails] = useState<string[]>([]);
   const [contactSearchQuery, setContactSearchQuery] = useState('');
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
-  const [scheduleCommentsStatus, setScheduledCommentsStatus] = useState<ScheduleCommentStatus[]>(
-    []
-  );
-  // States for title editing
+  const [scheduledComments, setScheduledComments] = useState<IScheduledComment[]>([]);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editedTitle, setEditedTitle] = useState('');
 
@@ -219,19 +217,24 @@ export function TicketPageContent({ ticketId }: Props) {
     retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
 
+  /*
   const {
     data: scheduledComments,
-    isLoading: isLoadingScheduledComments,
+    //isLoading: scheduledCommentsLoading,
     error: scheduledCommentsError,
-  } = useQuery<ScheduleCommentStatus[]>({
+  } = useQuery<IScheduledComment[]>({
     queryKey: ['scheduledComments', ticketId],
     queryFn: async () => {
       if (!ticketId) return [];
-      const comments = await getScheduledComments(ticketId);
-      return comments;
+
+      if (process.env.NODE_ENV === 'development') {
+        const comments = await getScheduledCommentsByTaskId(ticketId);
+        return comments;
+      }
+      return [];
     },
     enabled: !!ticketId,
-    staleTime: 1000 * 60 * 5,
+    staleTime: 1000 * 60 * 1,
     retry: (failureCount, error: unknown) => {
       // Si es un 404 (ticket no encontrado), no reintentar
       const httpError = error as { response?: { status?: number } };
@@ -240,11 +243,10 @@ export function TicketPageContent({ ticketId }: Props) {
       return failureCount < 3;
     },
     retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000),
-  });
-
+  });*/
   const currentTicket = ticketData?.[0] || null;
-  const currentscheduledComments = scheduledComments;
-  console.log(currentscheduledComments);
+  //const currentscheduledComments = scheduledComments;
+  //console.log(currentscheduledComments);
   useEffect(() => {
     if (currentTicket) {
       console.log('🎫 Ticket loaded successfully:', currentTicket.id);
@@ -258,6 +260,15 @@ export function TicketPageContent({ ticketId }: Props) {
       } else {
         setExistingCcEmails([]);
       }
+      if (currentTicket?.to_recipients) {
+        const emails = currentTicket.to_recipients
+          .split(',')
+          .map(email => email.trim())
+          .filter(email => email.length > 0);
+        setExistingToEmails(emails);
+      } else {
+        setExistingToEmails([]);
+      }
       // Initialize BCC emails if they exist in the ticket data
       if (currentTicket?.bcc_recipients) {
         const bccEmails = currentTicket.bcc_recipients
@@ -268,18 +279,17 @@ export function TicketPageContent({ ticketId }: Props) {
       } else {
         setExistingBccEmails([]);
       }
+
+      if (process.env.NODE_ENV === 'development') {
+        setScheduledComments([
+          { due_date: new Date().toString(), status: 'pending' },
+          { due_date: new Date().toString(), status: 'pending' },
+        ]);
+      }
     } else if (ticketError) {
       console.error('❌ Error loading ticket:', ticketError);
     }
   }, [currentTicket, ticketError]);
-
-  useEffect(() => {
-    if (currentscheduledComments) {
-      setScheduledCommentsStatus(currentscheduledComments);
-    } else {
-      console.log('Error loading scheduled comments:', scheduledCommentsError);
-    }
-  }, [currentscheduledComments, scheduledCommentsError]);
 
   // Socket listener for real-time updates
   useEffect(() => {
@@ -817,7 +827,6 @@ export function TicketPageContent({ ticketId }: Props) {
   }
 
   const avatarColors = ['#a3a948', '#edb92e', '#f85931', '#ce1836', '#009989'];
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -917,37 +926,33 @@ export function TicketPageContent({ ticketId }: Props) {
         <div className="lg:col-span-2">
           {/* Conversation - Modified to show latest message without scroll */}
           <Card>
-            <CardHeader
-              className={
-                scheduleCommentsStatus !== undefined
-                  ? 'flex flex-row items-center justify-between w-5/10'
-                  : ''
-              }
-            >
-              <CardTitle className="text-lg">Latest Message</CardTitle>
-              {
-                //scheduleCommentsStatus.length > 0 && (
-                scheduleCommentsStatus !== undefined && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger className="px-2 flex flex-row items-center justify-between w-6/10 py-2 text-white bg-primary rounded">
-                      Scheduled Messages Status
-                      <ChevronDown className="ml-2 h-4 w-5" />
-                    </DropdownMenuTrigger>
-
-                    <DropdownMenuContent
-                      className="bg-white border rounded shadow-md p-2"
-                      sideOffset={5}
-                    >
-                      {scheduleCommentsStatus.map(comment => (
-                        <DropdownMenuItem
-                          className="w-6/10 rounded"
-                          key={comment.due_date}
-                        >{`${comment.status}\n${comment.due_date}`}</DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )
-              }
+            <CardHeader>
+              <CardTitle className="text-lg mr-4">Latest Message</CardTitle>
+              {process.env.NODE_ENV === 'development' && scheduledComments.length > 0 && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger className="w-3/10 bg-blue-600 text-white rounded">
+                    <div className="w-100 flex">
+                      <p className="w-6/10">Scheduled messages status</p>
+                      <ChevronDown />
+                    </div>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    className="bg-white border rounded shadow-md p-2"
+                    sideOffset={5}
+                  >
+                    {scheduledComments!.map(comment => (
+                      <DropdownMenuItem
+                        key={comment.due_date}
+                        className="px-2 py-1 hover:bg-gray-100 cursor-pointer rounded"
+                        onSelect={() => alert('Opção 1 selecionada')}
+                      >
+                        <p>Due date:{comment.due_date}</p>
+                        <p> Status:{comment.status}</p>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             </CardHeader>
             <CardContent>
               <TicketConversation
@@ -1138,6 +1143,33 @@ export function TicketPageContent({ ticketId }: Props) {
                       setExtraCcEmails(newExtraEmails);
                     }}
                     placeholder="Add Cc recipients..."
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Type email addresses and press Enter or comma to add them.
+                  </p>
+                </div>
+              </div>
+
+              {/*To Recipients */}
+
+              <div>
+                <label className="text-sm font-medium text-muted-foreground mb-2 block">To:</label>
+                <div className="space-y-2">
+                  <DynamicCCInput
+                    id="To"
+                    existingEmails={[...existingToEmails, ...extraToEmails]}
+                    onEmailsChange={emails => {
+                      // Split between existing and new emails
+                      const newExtraEmails = emails.filter(
+                        email => !existingToEmails.includes(email)
+                      );
+                      const updatedExistingEmails = emails.filter(email =>
+                        existingToEmails.includes(email)
+                      );
+                      setExistingToEmails(updatedExistingEmails);
+                      setExtraToEmails(newExtraEmails);
+                    }}
+                    placeholder="Add To recipients..."
                   />
                   <p className="text-xs text-muted-foreground">
                     Type email addresses and press Enter or comma to add them.

@@ -11,28 +11,26 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { Value } from './valueType';
+
+type ValuePiece = Date | null;
+type Value = ValuePiece | [ValuePiece, ValuePiece];
 
 interface TimePickingSelectProps {
   nowDate: Value;
   setTime: Dispatch<SetStateAction<string>>;
 }
 
-export function TimePickingSelect({ setTime, nowDate }: TimePickingSelectProps) {
+export function TimePickingSelect({ nowDate, setTime }: TimePickingSelectProps) {
   const nowDateAsDate = nowDate as Date;
   const [firstHour, setFirstHour] = React.useState<number>(0);
   const [firstMinute, setFirstMinute] = React.useState<number>(0);
   useEffect(() => {
     const now = new Date();
-    if (now.getDate() === nowDateAsDate.getDate()) {
+    if (now!.getDate() === nowDateAsDate!.getDate()) {
       setFirstHour(now.getHours());
       setFirstMinute(now.getMinutes() < 30 ? 30 : 0);
     }
   }, [nowDateAsDate]);
-  // if (now.getDate() === nowDateAsDate.getDate()) {
-  //   setFirstHour(now.getHours());
-  //   setFirstMinute(now.getMinutes() < 30 ? 30 : 0);
-  // }
 
   const options: Array<string> = [];
   for (let h = firstHour; h < 24; h++) {
