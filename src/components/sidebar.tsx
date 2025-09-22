@@ -36,7 +36,7 @@ const MyTeamsList: React.FC<MyTeamsListProps> = ({ agentTeams, isLoadingUser, us
         const currentTeamIdParam = searchParams.get('teamId');
         const isActive = pathname === '/tickets' && currentTeamIdParam === team.id.toString();
         const FallbackIcon = Users2;
-
+        console.log(team.ticket_count);
         return (
           <Link
             key={team.id}
@@ -105,29 +105,31 @@ function SidebarContent() {
   });
 
   // Add query for all tickets count (excluding closed) - OPTIMIZED
-  const { data: allTicketsCount = 0 } = useQuery<number>({
+  const { data: allTicketsCount } = useQuery<number>({
     queryKey: ['ticketsCount', 'all'],
-    queryFn: () => getAllTicketsCount(), // ✅ OPTIMIZADO: Endpoint específico de conteo
+    queryFn: async () => await getAllTicketsCount(), // ✅ OPTIMIZADO: Endpoint específico de conteo
     staleTime: 1000 * 60 * 10, // ✅ OPTIMIZADO: 10 minutos (era 5)
+    //staleTime: 0, // ✅ OPTIMIZADO: 10 minutos (era 5)
     refetchInterval: false, // ❌ REMOVIDO: No más polling - usar Socket.IO
     refetchOnWindowFocus: false, // ❌ REMOVIDO: Sin refetch al hacer foco
     refetchOnMount: false, // ❌ OPTIMIZADO: Solo si datos obsoletos
   });
 
   // Add query for my tickets count (excluding closed) - OPTIMIZED
-  const { data: myTicketsCount = 0 } = useQuery<number>({
+  const { data: myTicketsCount } = useQuery<number>({
     queryKey: ['ticketsCount', 'my', user?.id],
     queryFn: async () => {
       if (!user?.id) return 0;
       return getAssigneeTicketsCount(user.id); // ✅ OPTIMIZADO: Endpoint específico de conteo
     },
     enabled: !!user?.id && !isLoadingUser,
-    staleTime: 1000 * 60 * 10, // ✅ OPTIMIZADO: 10 minutos (era 5)
-    refetchInterval: false, // ❌ REMOVIDO: No más polling - usar Socket.IO
+    //staleTime: 1000 * 60 * 10, // ✅ OPTIMIZADO: 10 minutos (era 5)
+    staleTime: 0,
+    //refetchInterval: false, // ❌ REMOVIDO: No más polling - usar Socket.IO
+    refetchInterval: 10000,
     refetchOnWindowFocus: false, // ❌ REMOVIDO: Sin refetch al hacer foco
     refetchOnMount: false, // ❌ OPTIMIZADO: Solo si datos obsoletos
   });
-
   const mainItems = [
     {
       title: 'Dashboard',

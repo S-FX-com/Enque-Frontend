@@ -18,9 +18,8 @@ export const getCommentsByTaskId = async (
   limit: number = 100
 ): Promise<IComment[]> => {
   try {
-
     const url = `${AppConfigs.api}/tasks/${taskId}/comments?skip=${skip}&limit=${limit}`;
-    const response = await fetchAPI.GET<IComment[]>(url); 
+    const response = await fetchAPI.GET<IComment[]>(url);
 
     if (!response.success || !response.data) {
       // Handle API error response based on BaseResponse structure
@@ -35,7 +34,6 @@ export const getCommentsByTaskId = async (
     if (error instanceof Error) {
       throw error;
     } else {
-
       throw new Error('An unknown error occurred while fetching comments.');
     }
     // Or return [];
@@ -69,28 +67,29 @@ export const getScheduledCommentsByTaskId = async (
     // Or return [];
   }
 };
+
 export interface CreateCommentPayload {
   content: string;
   ticket_id: number;
   agent_id: number;
   workspace_id: number;
   is_private: boolean;
-  attachment_ids?: number[]; 
+  attachment_ids?: number[];
   other_destinaries?: string;
   bcc_recipients?: string;
   scheduled_send_at?: string;
   [key: string]: unknown;
 }
 /**
- * @param taskId 
- * @param payload 
+ * @param taskId
+ * @param payload
  * @returns
  */
 export interface CommentResponseData {
   comment?: IComment;
-  task: ITicket; 
+  task: ITicket;
   assignee_changed: boolean;
-  is_scheduled?: boolean; 
+  is_scheduled?: boolean;
   scheduled_comment?: {
     id: number;
     ticket_id: number;

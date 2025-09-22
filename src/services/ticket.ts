@@ -15,13 +15,16 @@ const API_BASE_URL =
  * Gets count of all active tickets (excluding closed ones)
  * @returns Promise with count of active tickets
  */
+
 export async function getAllTicketsCount(): Promise<number> {
   try {
-    const url = `${API_BASE_URL}/v1/tasks-optimized/count/all`;
-    const response = await fetchAPI.GET<number>(url);
-    
-    if (response && response.success && typeof response.data === 'number') {
-      return response.data;
+    //const url = `${API_BASE_URL}/v1/tasks-optimized/count/all`;
+    const url = `${API_BASE_URL}/v1/tasks-optimized/count`;
+    const response = await fetchAPI.GET<{ count: number }>(url);
+    // console.log(response && response.success && typeof response.data.count === 'number');
+    if (response && response.success && response.data!.count) {
+      //console.log(response.data!.count);
+      return response.data!.count;
     }
     return 0;
   } catch (error) {
@@ -37,11 +40,11 @@ export async function getAllTicketsCount(): Promise<number> {
  */
 export async function getAssigneeTicketsCount(assigneeId: number): Promise<number> {
   try {
-    const url = `${API_BASE_URL}/v1/tasks-optimized/count/assignee/${assigneeId}`;
-    const response = await fetchAPI.GET<number>(url);
-    
-    if (response && response.success && typeof response.data === 'number') {
-      return response.data;
+    //const url = `${API_BASE_URL}/v1/tasks-optimized/count/assignee/${assigneeId}`;
+    const url = `${API_BASE_URL}/v1/tasks-optimized/count/?assignee_id=${assigneeId}`;
+    const response = await fetchAPI.GET<{ count: number }>(url);
+    if (response && response.success && response.data!.count) {
+      return response.data!.count;
     }
     return 0;
   } catch (error) {
@@ -54,7 +57,7 @@ export async function getTickets(
   filters: IGetTicket = {},
   endpointPath = '/v1/tasks-optimized/'
 ): Promise<ITicket[]> {
-  const { skip = 0, limit = 25, status, priority, type, user_id, team_id } = filters;  // ✅ REDUCIDO: de 100 a 25
+  const { skip = 0, limit = 25, status, priority, type, user_id, team_id } = filters; // ✅ REDUCIDO: de 100 a 25
 
   try {
     const queryParams = new URLSearchParams({

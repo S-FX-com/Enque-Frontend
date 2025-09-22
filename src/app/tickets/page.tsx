@@ -84,7 +84,6 @@ function TicketsClientContent() {
     ticketsError,
     refetch: refetchTickets, // Add this line to get the refetch function
   } = useGlobalTicketsContext();
-
   const queryClient = useQueryClient();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -348,7 +347,6 @@ function TicketsClientContent() {
   const displayedTickets = useMemo(() => {
     return filteredTicketsDataSorted.slice(0, displayedTicketsCount);
   }, [filteredTicketsDataSorted, displayedTicketsCount]);
-
   useEffect(() => {
     setDisplayedTicketsCount(25);
   }, [
@@ -366,13 +364,21 @@ function TicketsClientContent() {
     // First, try to show more from already loaded tickets
     if (displayedTicketsCount < filteredTicketsDataSorted.length) {
       setDisplayedTicketsCount(prev => Math.min(prev + 25, filteredTicketsDataSorted.length));
-    } 
+      console.log('displayedTicketsCount:', displayedTicketsCount);
+      console.log('displayTickets:', displayedTickets);
+    }
     // If we've shown all filtered tickets but there are more on the server, fetch them
     else if (hasNextPage && !isFetchingNextPage) {
       fetchNextPage();
       // The useEffect above will automatically update displayedTicketsCount when new data arrives
     }
-  }, [displayedTicketsCount, filteredTicketsDataSorted.length, hasNextPage, isFetchingNextPage, fetchNextPage]);
+  }, [
+    displayedTicketsCount,
+    filteredTicketsDataSorted.length,
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
+  ]);
 
   // Infinite scroll handler
   const handleScroll = useCallback(() => {
@@ -387,7 +393,9 @@ function TicketsClientContent() {
     }
   }, [handleLoadMore, isFetchingNextPage]);
 
-  const allTicketsDisplayed = displayedTicketsCount >= filteredTicketsDataSorted.length && (!hasNextPage || isFetchingNextPage);
+  const allTicketsDisplayed =
+    displayedTicketsCount >= filteredTicketsDataSorted.length &&
+    (!hasNextPage || isFetchingNextPage);
 
   // Auto-update displayedTicketsCount when new tickets are loaded from server
   useEffect(() => {
@@ -436,7 +444,8 @@ function TicketsClientContent() {
 
   const handleSelectAllChange = (checked: boolean | 'indeterminate') => {
     if (checked === true) {
-      setSelectedTicketIds(new Set(allTicketsData.map(ticket => ticket.id)));
+      //setSelectedTicketIds(new Set(allTicketsData.map(ticket => ticket.id)));
+      setSelectedTicketIds(new Set(displayedTickets.map(ticket => ticket.id)));
     } else {
       setSelectedTicketIds(new Set());
     }
@@ -454,8 +463,10 @@ function TicketsClientContent() {
     });
   };
 
+  /*const isAllSelected =
+    allTicketsData.length > 0 && selectedTicketIds.size === allTicketsData.length;*/
   const isAllSelected =
-    allTicketsData.length > 0 && selectedTicketIds.size === allTicketsData.length;
+    displayedTickets.length > 0 && selectedTicketIds.size === displayedTickets.length;
   const isIndeterminate =
     selectedTicketIds.size > 0 && selectedTicketIds.size < allTicketsData.length;
   const headerCheckboxState = isAllSelected ? true : isIndeterminate ? 'indeterminate' : false;
@@ -1189,7 +1200,7 @@ function TicketsClientContent() {
       </div>
     </TableHead>
   );
-
+  console.log(allTicketsData);
   return (
     <div className="flex h-full gap-6">
       <div className="flex-1 flex flex-col h-full">
@@ -1573,9 +1584,26 @@ function TicketsClientContent() {
               </Table>
               {filteredTicketsDataSorted.length > 0 && allTicketsDisplayed && (
                 <div className="flex justify-center py-6 border-t">
-                  <div className="text-muted-foreground text-sm font-medium">
-                    All Tickets Displayed ({filteredTicketsDataSorted.length} total)
-                  </div>
+                  {allTicketsDisplayed ? (
+                    <div className="text-muted-foreground text-sm font-medium">
+                      All Tickets Displayed ({filteredTicketsDataSorted.length} total)
+                    </div>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      onClick={handleLoadMore}
+                      disabled={isFetchingNextPage}
+                      className="px-6 bg-transparent"
+                    >
+                      {isFetchingNextPage
+                        ? 'Loading...'
+                        : displayedTicketsCount < filteredTicketsDataSorted.length
+                          ? `Load More (${displayedTicketsCount} of ${filteredTicketsDataSorted.length})`
+                          : hasNextPage
+                            ? 'Load More Tickets'
+                            : `Load More (${displayedTicketsCount} of ${filteredTicketsDataSorted.length})`}
+                    </Button>
+                  )}
                 </div>
               )}
             </div>
