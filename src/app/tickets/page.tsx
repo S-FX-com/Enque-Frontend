@@ -360,7 +360,7 @@ function TicketsClientContent() {
     selectedCategories,
   ]);
 
-  const handleLoadMore = () => {
+  const handleLoadMore = useCallback(() => {
     // First, try to show more from already loaded tickets
     if (displayedTicketsCount < filteredTicketsDataSorted.length) {
       setDisplayedTicketsCount(prev => Math.min(prev + 25, filteredTicketsDataSorted.length));
@@ -372,7 +372,26 @@ function TicketsClientContent() {
       fetchNextPage();
       // The useEffect above will automatically update displayedTicketsCount when new data arrives
     }
-  };
+  }, [
+    displayedTicketsCount,
+    filteredTicketsDataSorted.length,
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
+  ]);
+
+  // Infinite scroll handler
+  const handleScroll = useCallback(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const { scrollTop, scrollHeight, clientHeight } = container;
+    const isNearBottom = scrollTop + clientHeight >= scrollHeight - 100; // 100px threshold
+
+    if (isNearBottom && !isFetchingNextPage) {
+      handleLoadMore();
+    }
+  }, [handleLoadMore, isFetchingNextPage]);
 
   const allTicketsDisplayed =
     displayedTicketsCount >= filteredTicketsDataSorted.length &&
@@ -384,6 +403,15 @@ function TicketsClientContent() {
       setDisplayedTicketsCount(allTicketsData.length);
     }
   }, [allTicketsData.length, displayedTicketsCount]);
+
+  // Set up infinite scroll listener
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    container.addEventListener('scroll', handleScroll);
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, [handleScroll]);
 
   useEffect(() => {
     const teamIdFromQuery = searchParams.get('teamId');
@@ -1554,7 +1582,7 @@ function TicketsClientContent() {
                   )}
                 </TableBody>
               </Table>
-              {filteredTicketsDataSorted.length > 0 && (
+              {filteredTicketsDataSorted.length > 0 && allTicketsDisplayed && (
                 <div className="flex justify-center py-6 border-t">
                   {allTicketsDisplayed ? (
                     <div className="text-muted-foreground text-sm font-medium">

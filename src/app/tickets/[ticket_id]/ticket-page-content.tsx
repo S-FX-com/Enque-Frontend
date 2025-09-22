@@ -1124,32 +1124,6 @@ export function TicketPageContent({ ticketId }: Props) {
               <CardTitle className="text-lg">Copied on Replies</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* CC Recipients */}
-              <div>
-                <label className="text-sm font-medium text-muted-foreground mb-2 block">Cc:</label>
-                <div className="space-y-2">
-                  <DynamicCCInput
-                    id="cc"
-                    existingEmails={[...existingCcEmails, ...extraCcEmails]}
-                    onEmailsChange={emails => {
-                      // Split between existing and new emails
-                      const newExtraEmails = emails.filter(
-                        email => !existingCcEmails.includes(email)
-                      );
-                      const updatedExistingEmails = emails.filter(email =>
-                        existingCcEmails.includes(email)
-                      );
-                      setExistingCcEmails(updatedExistingEmails);
-                      setExtraCcEmails(newExtraEmails);
-                    }}
-                    placeholder="Add Cc recipients..."
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Type email addresses and press Enter or comma to add them.
-                  </p>
-                </div>
-              </div>
-
               {/*To Recipients */}
 
               <div>
@@ -1170,6 +1144,31 @@ export function TicketPageContent({ ticketId }: Props) {
                       setExtraToEmails(newExtraEmails);
                     }}
                     placeholder="Add To recipients..."
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Type email addresses and press Enter or comma to add them.
+                  </p>
+                </div>
+              </div>
+              {/* CC Recipients */}
+              <div>
+                <label className="text-sm font-medium text-muted-foreground mb-2 block">Cc:</label>
+                <div className="space-y-2">
+                  <DynamicCCInput
+                    id="cc"
+                    existingEmails={[...existingCcEmails, ...extraCcEmails]}
+                    onEmailsChange={emails => {
+                      // Split between existing and new emails
+                      const newExtraEmails = emails.filter(
+                        email => !existingCcEmails.includes(email)
+                      );
+                      const updatedExistingEmails = emails.filter(email =>
+                        existingCcEmails.includes(email)
+                      );
+                      setExistingCcEmails(updatedExistingEmails);
+                      setExtraCcEmails(newExtraEmails);
+                    }}
+                    placeholder="Add Cc recipients..."
                   />
                   <p className="text-xs text-muted-foreground">
                     Type email addresses and press Enter or comma to add them.

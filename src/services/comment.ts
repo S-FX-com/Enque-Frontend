@@ -39,7 +39,6 @@ export const getCommentsByTaskId = async (
     // Or return [];
   }
 };
-
 export interface IScheduledComment {
   due_date: string;
   status: string;
@@ -68,6 +67,7 @@ export const getScheduledCommentsByTaskId = async (
     // Or return [];
   }
 };
+
 export interface CreateCommentPayload {
   content: string;
   ticket_id: number;
@@ -102,11 +102,6 @@ export interface CommentResponseData {
   };
 }
 
-export interface ScheduleCommentStatus {
-  due_date: string;
-  status: string;
-}
-
 export const createComment = async (
   taskId: number,
   payload: CreateCommentPayload
@@ -121,6 +116,7 @@ export const createComment = async (
       console.error('Failed to create comment:', errorMessage);
       throw new Error(errorMessage);
     }
+
     // Return the response data containing both comment and updated task
     return response.data;
   } catch (error) {
@@ -130,31 +126,6 @@ export const createComment = async (
       throw error;
     } else {
       throw new Error('An unknown error occurred while creating the comment.');
-    }
-  }
-};
-
-export const getScheduledComments = async (taskId: number): Promise<ScheduleCommentStatus[]> => {
-  try {
-    const url = `${AppConfigs.api}/tasks/${taskId}/scheduled_comments`;
-    const response = await fetchAPI.GET<ScheduleCommentStatus[]>(url);
-
-    if (!response.success || !response.data) {
-      // Handle API error response
-      const errorMessage = response.message || 'Failed to fetch scheduled comments';
-      console.error('Failed to fetch scheduled comments:', errorMessage);
-      throw new Error(errorMessage);
-    }
-
-    // Return the response data containing scheduled comments
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching scheduled comments:', error);
-    // Re-throw the error
-    if (error instanceof Error) {
-      throw error;
-    } else {
-      throw new Error('An unknown error occurred while fetching scheduled comments.');
     }
   }
 };
