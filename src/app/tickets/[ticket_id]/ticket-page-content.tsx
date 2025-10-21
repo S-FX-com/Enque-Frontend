@@ -173,6 +173,32 @@ function DynamicCCInput({
 }
 
 export function TicketPageContent({ ticketId }: Props) {
+  // Helper function to determine if an email is a mailbox (system) email
+  const isMailboxEmail = (email: string): boolean => {
+    if (!email || !email.includes('@')) return false;
+    
+    const domain = email.split('@')[1]?.toLowerCase();
+    if (!domain) return false;
+    
+    // Known system domains
+    const systemDomains = ['s-fx.com', 'enque.cc', 'enque.'];
+    
+    // Check if email matches system domains
+    if (systemDomains.some(sysDomain => domain.includes(sysDomain))) {
+      return true;
+    }
+    
+    // Additional check for simple mailbox patterns like "alex@company.com" 
+    // but exclude emails that have numbers or longer names (user emails)
+    const emailPart = email.split('@')[0]?.toLowerCase();
+    if (emailPart && emailPart.length <= 10 && /^[a-z]+$/.test(emailPart)) {
+      // This looks like a simple mailbox name, likely a system mailbox
+      return true;
+    }
+    
+    return false;
+  };
+
   const router = useRouter();
   const queryClient = useQueryClient();
   const { socket } = useSocketContext();
@@ -202,11 +228,13 @@ export function TicketPageContent({ ticketId }: Props) {
     queryKey: ['ticket', ticketId],
     queryFn: async () => {
       if (!ticketId) return [];
-      const tickets = await getTickets({}, `/v1/tasks-optimized/${ticketId}/essential`);
+      const tickets = await getTickets({}, `/v1/tasks/${ticketId}`);
       return [tickets] as unknown as ITicket[];
     },
     enabled: !!ticketId,
-    staleTime: 1000 * 60 * 5,
+    staleTime: 1000 * 15, // 15 segundos
+    refetchOnWindowFocus: true, // Re-fetch cuando la ventana recupera el foco
+    refetchOnReconnect: true, // Re-fetch en reconexión
     retry: (failureCount, error: unknown) => {
       // Si es un 404 (ticket no encontrado), no reintentar
       const httpError = error as { response?: { status?: number } };
@@ -260,15 +288,28 @@ export function TicketPageContent({ ticketId }: Props) {
       } else {
         setExistingCcEmails([]);
       }
+      // For TO recipients, show ALL recipients including the primary contact and additional TO recipients
+      // This provides clarity about who will receive the reply
+      let allToRecipients: string[] = [];
+      
+      // Add the primary contact (user email) if it exists
+      if (currentTicket?.user?.email) {
+        allToRecipients.push(currentTicket.user.email);
+      }
+      
+      // Add additional TO recipients from the ticket, filtering out mailbox emails
       if (currentTicket?.to_recipients) {
-        const emails = currentTicket.to_recipients
+        const additionalToEmails = currentTicket.to_recipients
           .split(',')
           .map(email => email.trim())
-          .filter(email => email.length > 0);
-        setExistingToEmails(emails);
-      } else {
-        setExistingToEmails([]);
+          .filter(email => email.length > 0)
+          .filter(email => !isMailboxEmail(email)) // Filter out system/mailbox emails
+          .filter(email => !allToRecipients.includes(email)); // Avoid duplicates
+        
+        allToRecipients = [...allToRecipients, ...additionalToEmails];
       }
+      
+      setExistingToEmails(allToRecipients);
       // Initialize BCC emails if they exist in the ticket data
       if (currentTicket?.bcc_recipients) {
         const bccEmails = currentTicket.bcc_recipients
@@ -641,6 +682,37 @@ export function TicketPageContent({ ticketId }: Props) {
   const handleTicketUpdate = (updatedTicket: ITicket) => {
     setTicket(updatedTicket);
     queryClient.setQueryData(['ticket', ticketId], [updatedTicket]);
+  
+    // Update existing recipients from the latest ticket data
+    if (updatedTicket.cc_recipients) {
+      const emails = updatedTicket.cc_recipients
+        .split(',')
+        .map(email => email.trim())
+        .filter(email => email.length > 0);
+      setExistingCcEmails(emails);
+    } else {
+      setExistingCcEmails([]);
+    }
+  
+    let allToRecipients: string[] = [];
+    if (updatedTicket.user?.email) {
+      allToRecipients.push(updatedTicket.user.email);
+    }
+    if (updatedTicket.to_recipients) {
+      const additionalToEmails = updatedTicket.to_recipients
+        .split(',')
+        .map(email => email.trim())
+        .filter(email => email.length > 0)
+        .filter(email => !isMailboxEmail(email))
+        .filter(email => !allToRecipients.includes(email));
+      allToRecipients = [...allToRecipients, ...additionalToEmails];
+    }
+    setExistingToEmails(allToRecipients);
+  
+    // Clear only the "extra" fields, to allow for new, temporary recipients in the next reply
+    setExtraToEmails([]);
+    setExtraCcEmails([]);
+    setExtraBccEmails([]);
   };
 
   // Function to get combined CC recipients in comma-separated format
@@ -653,6 +725,13 @@ export function TicketPageContent({ ticketId }: Props) {
   // Function to get combined BCC recipients in comma-separated format
   const getCombinedBccRecipients = (): string => {
     const allEmails = [...existingBccEmails, ...extraBccEmails];
+    const uniqueEmails = [...new Set(allEmails)];
+    return uniqueEmails.join(', ');
+  };
+
+  // Function to get combined TO recipients in comma-separated format
+  const getCombinedToRecipients = (): string => {
+    const allEmails = [...existingToEmails, ...extraToEmails];
     const uniqueEmails = [...new Set(allEmails)];
     return uniqueEmails.join(', ');
   };
@@ -675,6 +754,15 @@ export function TicketPageContent({ ticketId }: Props) {
       setExtraBccEmails([]);
     }
     // Don't do anything else - let the BCC input component handle the state
+  }, []);
+
+  const handleExtraToRecipientsChange = useCallback((recipients: string) => {
+    // Only update if there's an actual change and it's not just clearing
+    if (recipients === '') {
+      // Only clear extra TO emails, don't reset the editor
+      setExtraToEmails([]);
+    }
+    // Don't do anything else - let the TO input component handle the state
   }, []);
 
   // Function to handle primary contact change
@@ -959,6 +1047,8 @@ export function TicketPageContent({ ticketId }: Props) {
                 ticket={ticket as ITicket}
                 onTicketUpdate={handleTicketUpdate}
                 latestOnly={true}
+                extraToRecipients={getCombinedToRecipients()}
+                onExtraToRecipientsChange={handleExtraToRecipientsChange}
                 extraRecipients={getCombinedCcRecipients()}
                 onExtraRecipientsChange={handleExtraCcRecipientsChange}
                 extraBccRecipients={getCombinedBccRecipients()}
@@ -975,6 +1065,8 @@ export function TicketPageContent({ ticketId }: Props) {
                 ticket={ticket as ITicket}
                 onTicketUpdate={handleTicketUpdate}
                 replyOnly={true}
+                extraToRecipients={getCombinedToRecipients()}
+                onExtraToRecipientsChange={handleExtraToRecipientsChange}
                 extraRecipients={getCombinedCcRecipients()}
                 onExtraRecipientsChange={handleExtraCcRecipientsChange}
                 extraBccRecipients={getCombinedBccRecipients()}

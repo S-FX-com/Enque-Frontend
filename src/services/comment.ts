@@ -75,6 +75,7 @@ export interface CreateCommentPayload {
   workspace_id: number;
   is_private: boolean;
   attachment_ids?: number[];
+  to_recipients?: string;
   other_destinaries?: string;
   bcc_recipients?: string;
   scheduled_send_at?: string;

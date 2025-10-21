@@ -7,6 +7,8 @@ import { GlobalTicketsProvider } from '@/providers/global-tickets-provider';
 import { TicketPreloaderProvider } from '@/providers/ticket-preloader-provider';
 import { Toaster } from 'sonner';
 import { SocketProvider } from '@/providers/socket-provider';
+import { TokenHandler } from '@/components/providers/TokenHandler';
+import { Suspense } from 'react';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -37,6 +39,9 @@ export default function RootLayout({
         >
           <QueryProvider>
             <SocketProvider>
+              <Suspense fallback={null}>
+                <TokenHandler />
+              </Suspense>
               <GlobalTicketsProvider>
                 <TicketPreloaderProvider>{children}</TicketPreloaderProvider>
               </GlobalTicketsProvider>

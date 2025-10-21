@@ -540,16 +540,41 @@ export function ConversationMessageItem({ comment, ticket }: Props) {
   const renderEmailRecipients = () => {
     if (comment.is_private) return null;
     
+    if (comment.agent && comment.to_recipients) {
+      console.log('🔍 Agent comment with TO recipients:', {
+        commentId: comment.id,
+        to_recipients: comment.to_recipients,
+        other_destinaries: comment.other_destinaries,
+        bcc_recipients: comment.bcc_recipients
+      });
+    }
+    
     // Determinar si es un mensaje de agente
     const isAgentMessage = !!comment.agent;
     
-    // Para mensajes de agente, el "To:" debe ser el primary contact (usuario del ticket)
-    // Para mensajes de usuario, usar los destinatarios originales del ticket
+    // Para mensajes de agente, combinar el primary contact con destinatarios adicionales
     let toRecipients = '';
     if (isAgentMessage && ticket?.user?.email) {
-      // Si es mensaje de agente, el "To:" es el primary contact
+      // Empezar con el primary contact
       const userName = ticket.user.name ? `${ticket.user.name} <${ticket.user.email}>` : ticket.user.email;
       toRecipients = userName;
+      
+      // Agregar destinatarios adicionales si existen en el comment
+      if (comment.to_recipients && comment.to_recipients.trim()) {
+        const additionalRecipients = comment.to_recipients
+          .split(',')
+          .map((email: string) => email.trim())
+          .filter((email: string) => email.length > 0)
+          .filter((email: string) => {
+            // No duplicar el primary contact
+            const emailOnly = email.includes('<') ? email.match(/<([^>]+)>/)?.[1] : email;
+            return emailOnly !== ticket?.user?.email;
+          });
+        
+        if (additionalRecipients.length > 0) {
+          toRecipients = toRecipients + ', ' + additionalRecipients.join(', ');
+        }
+      }
     } else {
       // Si es mensaje de usuario, usar los destinatarios originales
       toRecipients = ticket?.to_recipients || '';
@@ -668,7 +693,8 @@ export function ConversationMessageItem({ comment, ticket }: Props) {
   if (isInitialMessage && comment.user) {
     senderName = comment.user.name || 'User';
     senderIdentifier = comment.user.email || `user-${comment.user.id}`;
-  } else if (parsedSender) {
+  } else if (parsedSender && !isAgentMessage) {
+    // 🔧 FIX: Only treat as user reply if it's not from an agent
     isUserReply = true;
     senderName = parsedSender.name;
     senderIdentifier = parsedSender.email;

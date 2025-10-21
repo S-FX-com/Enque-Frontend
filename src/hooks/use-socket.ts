@@ -29,6 +29,10 @@ interface SocketEvents {
     content: string;
     is_private: boolean;
     created_at?: string;
+    // ✅ AGREGADO: Campos de recipients para eventos socket
+    other_destinaries?: string;
+    bcc_recipients?: string;
+    to_recipients?: string;
     attachments?: Array<{
       id: number;
       file_name: string;
@@ -204,6 +208,16 @@ export function useSocket() {
 
     socket.on('comment_updated', data => {
       console.log('💬 Comment updated/added:', data);
+      // ✅ DEBUG: Log específico para verificar recipients
+      if (data.to_recipients) {
+        console.log('📧 TO recipients received:', data.to_recipients);
+      }
+      if (data.other_destinaries) {
+        console.log('📧 CC recipients received:', data.other_destinaries);
+      }
+      if (data.bcc_recipients) {
+        console.log('📧 BCC recipients received:', data.bcc_recipients);
+      }
 
       queryClient.setQueryData(
         ['comments', data.ticket_id],
@@ -252,6 +266,10 @@ export function useSocket() {
               ticket_id: data.ticket_id,
               workspace_id: 0,
               attachments: data.attachments || [],
+              // ✅ AGREGADO: Campos de recipients para mostrar en el panel de conversación
+              other_destinaries: data.other_destinaries || null,
+              bcc_recipients: data.bcc_recipients || null,
+              to_recipients: data.to_recipients || null,
             };
 
             return [newComment, ...oldComments];

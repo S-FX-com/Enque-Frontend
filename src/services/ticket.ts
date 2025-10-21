@@ -12,23 +12,22 @@ const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || 'https://enque-backend-production.up.railway.app';
 
 /**
- * Gets count of all active tickets (excluding closed ones)
- * @returns Promise with count of active tickets
+ * Gets count of all active tickets that the user can see based on their team membership
+ * - Admin/Manager: All tickets in workspace
+ * - Regular user: Only tickets from their teams
+ * @returns Promise with count of accessible tickets
  */
-
 export async function getAllTicketsCount(): Promise<number> {
   try {
-    //const url = `${API_BASE_URL}/v1/tasks-optimized/count/all`;
-    const url = `${API_BASE_URL}/v1/tasks-optimized/count`;
+    // Usar el nuevo endpoint que cuenta solo tickets de equipos del usuario
+    const url = `${API_BASE_URL}/v1/tasks/count/my-teams`;
     const response = await fetchAPI.GET<{ count: number }>(url);
-    // console.log(response && response.success && typeof response.data.count === 'number');
-    if (response && response.success && response.data!.count) {
-      //console.log(response.data!.count);
+    if (response && response.success && response.data!.count !== undefined) {
       return response.data!.count;
     }
     return 0;
   } catch (error) {
-    console.error('Error getting all tickets count:', error);
+    console.error('Error getting user teams tickets count:', error);
     return 0;
   }
 }
@@ -40,8 +39,8 @@ export async function getAllTicketsCount(): Promise<number> {
  */
 export async function getAssigneeTicketsCount(assigneeId: number): Promise<number> {
   try {
-    //const url = `${API_BASE_URL}/v1/tasks-optimized/count/assignee/${assigneeId}`;
-    const url = `${API_BASE_URL}/v1/tasks-optimized/count/?assignee_id=${assigneeId}`;
+    //const url = `${API_BASE_URL}/v1/tasks/count/assignee/${assigneeId}`;
+    const url = `${API_BASE_URL}/v1/tasks/count/?assignee_id=${assigneeId}`;
     const response = await fetchAPI.GET<{ count: number }>(url);
     if (response && response.success && response.data!.count) {
       return response.data!.count;
@@ -53,9 +52,28 @@ export async function getAssigneeTicketsCount(assigneeId: number): Promise<numbe
   }
 }
 
+/**
+ * Gets count of tickets assigned to the current user (excluding closed ones)
+ * This uses a dedicated endpoint that filters out closed tickets automatically
+ * @returns Promise with count of current user's assigned tickets
+ */
+export async function getMyTicketsCount(): Promise<number> {
+  try {
+    const url = `${API_BASE_URL}/v1/tasks/count/my-tickets`;
+    const response = await fetchAPI.GET<{ count: number }>(url);
+    if (response && response.success && response.data!.count !== undefined) {
+      return response.data!.count;
+    }
+    return 0;
+  } catch (error) {
+    console.error('Error getting my tickets count:', error);
+    return 0;
+  }
+}
+
 export async function getTickets(
   filters: IGetTicket = {},
-  endpointPath = '/v1/tasks-optimized/'
+  endpointPath = '/v1/tasks/'
 ): Promise<ITicket[]> {
   const { skip = 0, limit = 25, status, priority, type, user_id, team_id } = filters; // ✅ REDUCIDO: de 100 a 25
 
@@ -142,7 +160,7 @@ export async function updateTicket(
       throw new Error(`Invalid ticket ID: ${ticketId}. Cannot update ticket.`);
     }
 
-    const url = `${API_BASE_URL}/v1/tasks-optimized/${ticketId}/refresh`;
+    const url = `${API_BASE_URL}/v1/tasks/${ticketId}/refresh`;
 
     const payload: TicketUpdatePayload = {};
     if (updates.status !== undefined) payload.status = updates.status;

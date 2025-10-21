@@ -100,7 +100,7 @@ function MyTicketsClientContent() {
       // Using optimized assignee endpoint for better performance
       const tickets = await getTickets(
         { skip: pageParam, limit: 25 },
-        `/v1/tasks-optimized/assignee/${currentUser.id}`
+        `/v1/tasks/assignee/${currentUser.id}`
       );
       return tickets;
     },

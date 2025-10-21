@@ -12,7 +12,7 @@ import { useQuery } from '@tanstack/react-query';
 import { getAgentTeams, getTeams } from '@/services/team';
 import type { Team } from '@/typescript/team';
 import { Badge } from '@/components/ui/badge';
-import { getAllTicketsCount, getAssigneeTicketsCount } from '@/services/ticket';
+import { getAllTicketsCount, getMyTicketsCount } from '@/services/ticket';
 import { Agent } from '@/typescript/agent';
 
 interface MyTeamsListProps {
@@ -120,13 +120,11 @@ function SidebarContent() {
     queryKey: ['ticketsCount', 'my', user?.id],
     queryFn: async () => {
       if (!user?.id) return 0;
-      return getAssigneeTicketsCount(user.id); // ✅ OPTIMIZADO: Endpoint específico de conteo
+      return getMyTicketsCount(); // ✅ OPTIMIZADO: Endpoint específico que excluye cerrados automáticamente
     },
     enabled: !!user?.id && !isLoadingUser,
-    //staleTime: 1000 * 60 * 10, // ✅ OPTIMIZADO: 10 minutos (era 5)
-    staleTime: 0,
-    //refetchInterval: false, // ❌ REMOVIDO: No más polling - usar Socket.IO
-    refetchInterval: 10000,
+    staleTime: 1000 * 60 * 5, // ✅ OPTIMIZADO: 5 minutos
+    refetchInterval: false, // ❌ REMOVIDO: No más polling - usar Socket.IO
     refetchOnWindowFocus: false, // ❌ REMOVIDO: Sin refetch al hacer foco
     refetchOnMount: false, // ❌ OPTIMIZADO: Solo si datos obsoletos
   });
