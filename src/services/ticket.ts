@@ -75,18 +75,57 @@ export async function getTickets(
   filters: IGetTicket = {},
   endpointPath = '/v1/tasks/'
 ): Promise<ITicket[]> {
-  const { skip = 0, limit = 25, status, priority, type, user_id, team_id } = filters; // ✅ REDUCIDO: de 100 a 25
+  const {
+    skip = 0,
+    limit = 50,
+    status,
+    priority,
+    type,
+    user_id,
+    team_id,
+    category_id,
+    company_id,
+    subject,
+    statuses,
+    priorities,
+    assignee_ids,
+    user_ids,
+    team_ids,
+    category_ids,
+    company_ids,
+    sort_by,
+    order
+  } = filters;
 
   try {
     const queryParams = new URLSearchParams({
       skip: skip.toString(),
       limit: limit.toString(),
     });
+
+    // Single value filters (backward compatibility)
     if (status !== undefined) queryParams.append('status', status);
     if (priority !== undefined) queryParams.append('priority', priority);
     if (type !== undefined) queryParams.append('type', type);
     if (user_id !== undefined) queryParams.append('user_id', String(user_id));
     if (team_id !== undefined) queryParams.append('team_id', String(team_id));
+    if (category_id !== undefined) queryParams.append('category_id', String(category_id));
+    if (company_id !== undefined) queryParams.append('company_id', String(company_id));
+    if (subject !== undefined) queryParams.append('subject', subject);
+
+    // Multi-value filters
+    if (statuses !== undefined) queryParams.append('statuses', statuses);
+    if (priorities !== undefined) queryParams.append('priorities', priorities);
+    if (assignee_ids !== undefined) queryParams.append('assignee_ids', assignee_ids);
+    if (user_ids !== undefined) queryParams.append('user_ids', user_ids);
+    if (team_ids !== undefined) queryParams.append('team_ids', team_ids);
+    if (category_ids !== undefined) queryParams.append('category_ids', category_ids);
+    if (company_ids !== undefined) queryParams.append('company_ids', company_ids);
+
+    // Sorting
+    if (sort_by !== undefined) queryParams.append('sort_by', sort_by);
+    if (order !== undefined) queryParams.append('order', order);
+
     const url = `${API_BASE_URL}${endpointPath}?${queryParams.toString()}`;
     const response = await fetchAPI.GET<ITicket[]>(url);
     if (response && response.success && response.data) {

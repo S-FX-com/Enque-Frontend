@@ -80,23 +80,8 @@ function TicketsClientContent() {
 
   // Get teamId from URL if present
   const teamIdFromQuery = searchParams.get('teamId');
-  
-  // Create filters based on URL parameters
-  const queryFilters = teamIdFromQuery 
-    ? { team_id: parseInt(teamIdFromQuery, 10) } 
-    : {};
 
-  // Use unified hook for all tickets (global or filtered)
-  const {
-    allTicketsData,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-    isLoadingTickets,
-    isTicketsError,
-    ticketsError,
-    invalidateRelatedQueries,
-  } = useTickets(true, queryFilters);
+  // State declarations MUST come before useMemo that depends on them
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [subjectInput, setSubjectInput] = useState('');
   const debouncedSubjectFilter = useDebounce(subjectInput, 300);
@@ -117,12 +102,115 @@ function TicketsClientContent() {
   const [isMergeDialogOpen, setIsMergeDialogOpen] = useState(false);
   const [selectedTargetTicketId, setSelectedTargetTicketId] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
-
-  // ✅ REMOVIDO: Ya no usamos displayedTicketsCount para limitar la visualización
-  // Ahora mostramos todos los tickets disponibles de inmediato
-
   const [sortColumn, setSortColumn] = useState<SortColumn | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+
+  // Build API filters from component state
+  const apiFilters = useMemo(() => {
+    const filters: {
+      team_id?: number;
+      subject?: string;
+      statuses?: string;
+      team_ids?: string;
+      assignee_ids?: string;
+      priorities?: string;
+      user_ids?: string;
+      company_ids?: string;
+      category_ids?: string;
+      sort_by?: 'status' | 'priority' | 'created_at' | 'updated_at' | 'last_update';
+      order?: 'asc' | 'desc';
+    } = {};
+
+    // Team filter from URL
+    if (teamIdFromQuery) {
+      filters.team_id = parseInt(teamIdFromQuery, 10);
+    }
+
+    // Search filter
+    if (debouncedSubjectFilter) {
+      filters.subject = debouncedSubjectFilter;
+    }
+
+    // Multi-select filters - send as comma-separated strings
+    if (selectedStatuses.length > 0) {
+      filters.statuses = selectedStatuses.join(',');
+    } else {
+      // Por defecto, excluir tickets cerrados
+      filters.statuses = 'Unread,Open,With User,In Progress';
+    }
+
+    if (selectedTeams.length > 0 && !teamIdFromQuery) {
+      filters.team_ids = selectedTeams.join(',');
+    }
+
+    if (selectedAgents.length > 0) {
+      filters.assignee_ids = selectedAgents.join(',');
+    }
+
+    if (selectedPriorities.length > 0) {
+      filters.priorities = selectedPriorities.join(',');
+    }
+
+    if (selectedUsers.length > 0) {
+      filters.user_ids = selectedUsers.join(',');
+    }
+
+    if (selectedCompanies.length > 0) {
+      filters.company_ids = selectedCompanies.join(',');
+    }
+
+    if (selectedCategories.length > 0) {
+      filters.category_ids = selectedCategories.join(',');
+    }
+
+    // Sorting
+    if (sortColumn) {
+      // Map frontend sort columns to backend sort_by values
+      const sortByMap: Record<SortColumn, 'status' | 'priority' | 'created_at' | 'last_update'> = {
+        status: 'status',
+        priority: 'priority',
+        lastUpdate: 'last_update',
+        created: 'created_at',
+      };
+      filters.sort_by = sortByMap[sortColumn];
+      filters.order = sortDirection;
+    }
+
+    return filters;
+  }, [
+    teamIdFromQuery,
+    debouncedSubjectFilter,
+    selectedStatuses,
+    selectedTeams,
+    selectedAgents,
+    selectedPriorities,
+    selectedUsers,
+    selectedCompanies,
+    selectedCategories,
+    sortColumn,
+    sortDirection,
+  ]);
+
+  // Create queryKey matching useTickets hook logic for mutations
+  const hasFilters = Object.keys(apiFilters).length > 0;
+  const baseKey = hasFilters ? 'filtered-tickets' : 'tickets';
+  const ticketsQueryKey = useMemo(() => {
+    return hasFilters
+      ? [baseKey, JSON.stringify(apiFilters)] as const
+      : [baseKey] as const;
+  }, [baseKey, hasFilters, apiFilters]);
+
+  // Use unified hook for all tickets with API filters
+  const {
+    allTicketsData,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoadingTickets,
+    isTicketsError,
+    ticketsError,
+    invalidateRelatedQueries,
+  } = useTickets(true, apiFilters);
 
   const statusOptions: OptionType[] = [
     { value: 'Unread', label: 'Unread' },
@@ -228,82 +316,8 @@ function TicketsClientContent() {
       }));
   }, [categoriesData]);
 
-  const filteredTicketsData = useMemo(() => {
-    let tickets = allTicketsData;
-    const hasTeamIdInUrl = Boolean(searchParams.get('teamId'));
-
-    // ✅ SIEMPRE filtrar tickets cerrados EXCEPTO cuando el usuario los selecciona explícitamente
-    // Esto aplica tanto para "All Tickets" como para "Team Tickets"
-    if (selectedStatuses.length === 0) {
-      tickets = tickets.filter(ticket => ticket.status !== 'Closed');
-    }
-
-    if (debouncedSubjectFilter) {
-      const filter = debouncedSubjectFilter.toLowerCase();
-      tickets = tickets.filter(ticket => ticket.title.toLowerCase().includes(filter));
-    }
-
-    if (selectedStatuses.length > 0) {
-      tickets = tickets.filter(ticket => selectedStatuses.includes(ticket.status));
-    }
-    
-    // Solo aplicar filtros de team client-side si NO hay teamId en la URL
-    // (porque cuando hay teamId, ya viene filtrado desde el backend)
-    if (!hasTeamIdInUrl && selectedTeams.length > 0) {
-      const teamIds = selectedTeams.map(id => Number.parseInt(id, 10));
-      console.log('🔍 Client-side filtering tickets by teams:', selectedTeams, 'parsed IDs:', teamIds);
-      const beforeCount = tickets.length;
-      tickets = tickets.filter(ticket => {
-        const hasTeam = ticket.team_id && teamIds.includes(ticket.team_id);
-        return hasTeam;
-      });
-      console.log(`📊 Client-side team filter: ${beforeCount} → ${tickets.length} tickets`);
-    } else if (hasTeamIdInUrl) {
-    }
-
-    if (selectedAgents.length > 0) {
-      const agentIds = selectedAgents.map(id => Number.parseInt(id, 10));
-      tickets = tickets.filter(
-        ticket => ticket.assignee_id && agentIds.includes(ticket.assignee_id)
-      );
-    }
-
-    if (selectedPriorities.length > 0) {
-      tickets = tickets.filter(ticket => selectedPriorities.includes(ticket.priority));
-    }
-
-    if (selectedUsers.length > 0) {
-      const userIds = selectedUsers.map(id => Number.parseInt(id, 10));
-      tickets = tickets.filter(ticket => ticket.user_id && userIds.includes(ticket.user_id));
-    }
-
-    if (selectedCompanies.length > 0) {
-      const companyIds = selectedCompanies.map(id => Number.parseInt(id, 10));
-      tickets = tickets.filter(
-        ticket => ticket.user?.company_id && companyIds.includes(ticket.user.company_id)
-      );
-    }
-
-    if (selectedCategories.length > 0) {
-      const categoryIds = selectedCategories.map(id => Number.parseInt(id, 10));
-      tickets = tickets.filter(
-        ticket => ticket.category_id && categoryIds.includes(ticket.category_id)
-      );
-    }
-
-    return tickets;
-  }, [
-    allTicketsData,
-    debouncedSubjectFilter,
-    selectedStatuses,
-    selectedTeams,
-    selectedAgents,
-    selectedPriorities,
-    selectedUsers,
-    selectedCompanies,
-    selectedCategories,
-    searchParams, // Added to detect teamId changes
-  ]);
+  // ✅ OPTIMIZADO: No más filtrado client-side - el backend lo maneja todo
+  const filteredTicketsData = allTicketsData; // Backend ya filtró
 
   const handleSort = (column: SortColumn) => {
     if (sortColumn === column) {
@@ -314,53 +328,8 @@ function TicketsClientContent() {
     }
   };
 
-  const filteredTicketsDataSorted = useMemo(() => {
-    const filtered = [...filteredTicketsData];
-
-    // Apply sorting
-    if (sortColumn) {
-      filtered.sort((a, b) => {
-        let aValue: string | number | Date | undefined;
-        let bValue: string | number | Date | undefined;
-
-        switch (sortColumn) {
-          case 'status':
-            aValue = a.status;
-            bValue = b.status;
-            break;
-          case 'priority':
-            // Sort priority by importance: Critical > High > Medium > Low
-            const priorityOrder = { Critical: 4, High: 3, Medium: 2, Low: 1 };
-            aValue = priorityOrder[a.priority as keyof typeof priorityOrder] || 0;
-            bValue = priorityOrder[b.priority as keyof typeof priorityOrder] || 0;
-            break;
-          case 'lastUpdate':
-            aValue = a.last_update ? new Date(a.last_update) : undefined;
-            bValue = b.last_update ? new Date(b.last_update) : undefined;
-            break;
-          case 'created':
-            aValue = a.created_at ? new Date(a.created_at) : undefined;
-            bValue = b.created_at ? new Date(b.created_at) : undefined;
-            break;
-          default:
-            return 0;
-        }
-
-        if (aValue === undefined || bValue === undefined) return 0;
-
-        if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
-        if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
-        return 0;
-      });
-    }
-
-    return filtered;
-  }, [filteredTicketsData, sortColumn, sortDirection]);
-
-  // ✅ SIMPLIFICADO: Mostrar todos los tickets filtrados sin auto-fetch
-  const displayedTickets = useMemo(() => {
-    return filteredTicketsDataSorted;
-  }, [filteredTicketsDataSorted]);
+  // ✅ OPTIMIZADO: No más ordenación client-side - el backend lo maneja
+  const displayedTickets = filteredTicketsData;
 
   // ✅ SIMPLIFICADO: Solo cargar más tickets del servidor cuando hay más disponibles
   const handleLoadMore = useCallback(() => {
@@ -414,22 +383,8 @@ function TicketsClientContent() {
     }
   }, [searchParams, pathname]);
 
-  // ⚡ OPTIMIZADO: Auto-cargar TODAS las páginas para TODAS las vistas (All Tickets, My Tickets, Teams)
-  // Esto elimina la necesidad de hacer scroll para cargar tickets
-  useEffect(() => {
-    // Cargar TODAS las páginas automáticamente en cualquier vista
-    if (hasNextPage && !isFetchingNextPage && !isLoadingTickets) {
-      // Límite de seguridad para evitar cargar infinitamente si hay error
-      const maxTicketsToLoad = 500;
-
-      if (allTicketsData.length < maxTicketsToLoad) {
-        console.log(`📥 Auto-loading next page: ${filteredTicketsData.length} visible / ${allTicketsData.length} total`);
-        fetchNextPage();
-      } else {
-        console.warn(`⚠️ Reached maximum limit of ${maxTicketsToLoad} tickets. Stopping auto-load.`);
-      }
-    }
-  }, [hasNextPage, isFetchingNextPage, isLoadingTickets, filteredTicketsData.length, allTicketsData.length, fetchNextPage]);
+  // ✅ ELIMINADO: Ya NO auto-cargamos 500 tickets
+  // El infinite scroll cargará más tickets solo cuando el usuario haga scroll
 
   const agentIdToNameMap = React.useMemo(() => {
     return agentsData.reduce(
@@ -511,13 +466,13 @@ function TicketsClientContent() {
     },
     onSuccess: () => {},
     onMutate: async ticketIdsToDelete => {
-      await queryClient.cancelQueries({ queryKey: ['tickets'] });
+      await queryClient.cancelQueries({ queryKey: ticketsQueryKey });
 
-      const previousTicketsData = queryClient.getQueryData<InfiniteData<ITicket[], number>>([
-        'tickets',
-      ]);
+      const previousTicketsData = queryClient.getQueryData<InfiniteData<ITicket[], number>>(
+        ticketsQueryKey
+      );
 
-      queryClient.setQueryData<InfiniteData<ITicket[], number>>(['tickets'], oldData => {
+      queryClient.setQueryData<InfiniteData<ITicket[], number>>(ticketsQueryKey, oldData => {
         if (!oldData) return oldData;
         const newPages = oldData.pages.map(page =>
           page.filter(ticket => !ticketIdsToDelete.includes(ticket.id))
@@ -570,7 +525,7 @@ function TicketsClientContent() {
       toast.error(`Error deleting tickets: ${err.message}`);
       console.error(`Error deleting tickets: ${err.message}`);
       if (context?.previousTicketsData) {
-        queryClient.setQueryData(['tickets'], context.previousTicketsData);
+        queryClient.setQueryData(ticketsQueryKey, context.previousTicketsData);
       }
       if (context?.previousAllCount !== undefined) {
         queryClient.setQueryData(['ticketsCount', 'all'], context.previousAllCount);
@@ -694,13 +649,13 @@ function TicketsClientContent() {
       );
     },
     onMutate: async ({ ticketIds, teamId }) => {
-      await queryClient.cancelQueries({ queryKey: ['tickets'] });
+      await queryClient.cancelQueries({ queryKey: ticketsQueryKey });
 
-      const previousTicketsData = queryClient.getQueryData<InfiniteData<ITicket[], number>>([
-        'tickets',
-      ]);
+      const previousTicketsData = queryClient.getQueryData<InfiniteData<ITicket[], number>>(
+        ticketsQueryKey
+      );
 
-      queryClient.setQueryData<InfiniteData<ITicket[], number>>(['tickets'], oldData => {
+      queryClient.setQueryData<InfiniteData<ITicket[], number>>(ticketsQueryKey, oldData => {
         if (!oldData) return oldData;
 
         const newPages = oldData.pages.map(page =>
@@ -734,7 +689,7 @@ function TicketsClientContent() {
       toast.error(`Error assigning tickets to team: ${err.message}`);
       console.error(`Error assigning tickets to team: ${err.message}`);
       if (context?.previousTicketsData) {
-        queryClient.setQueryData(['tickets'], context.previousTicketsData);
+        queryClient.setQueryData(ticketsQueryKey, context.previousTicketsData);
       }
     },
     onSettled: () => {
@@ -778,18 +733,18 @@ function TicketsClientContent() {
       );
     },
     onMutate: async ({ ticketIds, agentId }) => {
-      await queryClient.cancelQueries({ queryKey: ['tickets'] });
+      await queryClient.cancelQueries({ queryKey: ticketsQueryKey });
 
-      const previousTicketsData = queryClient.getQueryData<InfiniteData<ITicket[], number>>([
-        'tickets',
-      ]);
+      const previousTicketsData = queryClient.getQueryData<InfiniteData<ITicket[], number>>(
+        ticketsQueryKey
+      );
 
       // Get current tickets to calculate counter changes
       const allTickets = previousTicketsData?.pages.flat() || [];
       const affectedTickets = allTickets.filter(ticket => ticketIds.includes(ticket.id));
 
       // Update optimistically the tickets data
-      queryClient.setQueryData<InfiniteData<ITicket[], number>>(['tickets'], oldData => {
+      queryClient.setQueryData<InfiniteData<ITicket[], number>>(ticketsQueryKey, oldData => {
         if (!oldData) return oldData;
 
         const newPages = oldData.pages.map(page =>
@@ -901,7 +856,7 @@ function TicketsClientContent() {
       toast.error(`Error assigning tickets: ${err.message}`);
       console.error(`Error assigning tickets: ${err.message}`);
       if (context?.previousTicketsData) {
-        queryClient.setQueryData(['tickets'], context.previousTicketsData);
+        queryClient.setQueryData(ticketsQueryKey, context.previousTicketsData);
       }
     },
     onSettled: () => {
@@ -945,17 +900,17 @@ function TicketsClientContent() {
       toast.success(`${variables.length} ticket(s) closed successfully.`);
     },
     onMutate: async ticketIds => {
-      await queryClient.cancelQueries({ queryKey: ['tickets'] });
+      await queryClient.cancelQueries({ queryKey: ticketsQueryKey });
 
-      const previousTicketsData = queryClient.getQueryData<InfiniteData<ITicket[], number>>([
-        'tickets',
-      ]);
+      const previousTicketsData = queryClient.getQueryData<InfiniteData<ITicket[], number>>(
+        ticketsQueryKey
+      );
 
       // Get current tickets to calculate counter changes
       const allTickets = previousTicketsData?.pages.flat() || [];
       const affectedTickets = allTickets.filter(ticket => ticketIds.includes(ticket.id));
 
-      queryClient.setQueryData<InfiniteData<ITicket[], number>>(['tickets'], oldData => {
+      queryClient.setQueryData<InfiniteData<ITicket[], number>>(ticketsQueryKey, oldData => {
         if (!oldData) return oldData;
 
         const newPages = oldData.pages.map(page =>
@@ -1009,7 +964,7 @@ function TicketsClientContent() {
     ) => {
       toast.error(`Error closing tickets: ${err.message}`);
       if (context?.previousTicketsData) {
-        queryClient.setQueryData(['tickets'], context.previousTicketsData);
+        queryClient.setQueryData(ticketsQueryKey, context.previousTicketsData);
       }
     },
     onSettled: () => {
@@ -1095,14 +1050,14 @@ function TicketsClientContent() {
       );
     },
     onMutate: async ({ ticketIdsToMerge }) => {
-      await queryClient.cancelQueries({ queryKey: ['tickets'] });
+      await queryClient.cancelQueries({ queryKey: ticketsQueryKey });
 
-      const previousTicketsData = queryClient.getQueryData<InfiniteData<ITicket[], number>>([
-        'tickets',
-      ]);
+      const previousTicketsData = queryClient.getQueryData<InfiniteData<ITicket[], number>>(
+        ticketsQueryKey
+      );
 
       // Remove merged tickets from the list (they get deleted after merge)
-      queryClient.setQueryData<InfiniteData<ITicket[], number>>(['tickets'], oldData => {
+      queryClient.setQueryData<InfiniteData<ITicket[], number>>(ticketsQueryKey, oldData => {
         if (!oldData) return oldData;
         const newPages = oldData.pages.map(page =>
           page.filter(ticket => !ticketIdsToMerge.includes(ticket.id))
@@ -1146,7 +1101,7 @@ function TicketsClientContent() {
       toast.error(`Error merging tickets: ${err.message}`);
       console.error(`Error merging tickets: ${err.message}`);
       if (context?.previousTicketsData) {
-        queryClient.setQueryData(['tickets'], context.previousTicketsData);
+        queryClient.setQueryData(ticketsQueryKey, context.previousTicketsData);
       }
     },
     onSettled: () => {
@@ -1471,7 +1426,7 @@ function TicketsClientContent() {
               {isRefreshing ? 'Refreshing...' : 'Refresh'}
             </Button>
             <span className="text-sm text-muted-foreground">
-              {filteredTicketsData.length} ticket{filteredTicketsData.length !== 1 ? 's' : ''}
+              {displayedTickets.length} ticket{displayedTickets.length !== 1 ? 's' : ''}
             </span>
           </div>
         </div>
@@ -1614,10 +1569,10 @@ function TicketsClientContent() {
                   )}
                 </TableBody>
               </Table>
-              {filteredTicketsDataSorted.length > 0 && allTicketsDisplayed && (
+              {displayedTickets.length > 0 && allTicketsDisplayed && (
                 <div className="flex justify-center py-6 border-t">
                   <div className="text-muted-foreground text-sm font-medium">
-                    All Tickets Displayed ({filteredTicketsDataSorted.length} total)
+                    All Tickets Displayed ({displayedTickets.length} total)
                   </div>
                 </div>
               )}

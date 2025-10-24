@@ -75,4 +75,17 @@ export interface IGetTicket extends BaseFilters {
   assignee_id?: number;
   team_id?: number;
   category_id?: number | null;
+  company_id?: number;
+  subject?: string;
+  // Multi-value filters (comma-separated strings)
+  statuses?: string;
+  priorities?: string;
+  assignee_ids?: string;
+  user_ids?: string;
+  team_ids?: string;
+  category_ids?: string;
+  company_ids?: string;
+  // Sorting
+  sort_by?: 'status' | 'priority' | 'created_at' | 'updated_at' | 'last_update';
+  order?: 'asc' | 'desc';
 }
