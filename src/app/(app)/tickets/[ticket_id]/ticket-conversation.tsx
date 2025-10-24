@@ -350,6 +350,11 @@ function OptimizedMessageItem({ content, isInitial = false, ticket }: OptimizedM
       htmlContent = htmlContent.replace(/<original-sender>.*?<\/original-sender>/g, '');
     }
 
+    // 🔒 SECURITY: Remove dangerous tags to prevent CSS/JS injection that affects the entire page
+    htmlContent = htmlContent.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '');
+    htmlContent = htmlContent.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
+    htmlContent = htmlContent.replace(/<link[^>]*>/gi, '');
+
     htmlContent = htmlContent.replace(/<meta[^>]*>/gi, '');
     htmlContent = htmlContent.replace(/^\s*<html[^>]*>/gi, '');
     htmlContent = htmlContent.replace(/<\/html>\s*$/gi, '');
