@@ -66,9 +66,11 @@ export function useTicketEvents(socket: Socket | null) {
         );
       }
 
-      // Invalidar solo contadores (queries pequeñas)
+      // Invalidar contadores (queries pequeñas)
       queryClient.invalidateQueries({ queryKey: ['ticketsCount'] });
       queryClient.invalidateQueries({ queryKey: ['ticketsCount', 'my'] });
+      // ⚡ IMPORTANTE: Invalidar contadores del sidebar para que se actualicen
+      queryClient.invalidateQueries({ queryKey: ['agentTeams'] });
 
       toast.info(`New ticket created: ${data.title}`);
     };
@@ -162,6 +164,11 @@ export function useTicketEvents(socket: Socket | null) {
           return { ...oldData, pages: newPages };
         }
       );
+
+      // ⚡ IMPORTANTE: Si el ticket cambió de team o estado, invalidar contadores del sidebar
+      if (data.team_id || data.status) {
+        queryClient.invalidateQueries({ queryKey: ['agentTeams'] });
+      }
     };
 
     const handleTicketDeleted = (data: { id: number }) => {
@@ -201,8 +208,10 @@ export function useTicketEvents(socket: Socket | null) {
         }
       );
 
-      // Invalidar solo contadores
+      // Invalidar contadores
       queryClient.invalidateQueries({ queryKey: ['ticketsCount'] });
+      // ⚡ IMPORTANTE: Invalidar contadores del sidebar para que se actualicen
+      queryClient.invalidateQueries({ queryKey: ['agentTeams'] });
     };
 
     socket.on('new_ticket', handleNewTicket);
