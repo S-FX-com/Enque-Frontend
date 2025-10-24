@@ -647,6 +647,23 @@ function MyTicketsClientContent() {
     };
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
+  // ⚡ OPTIMIZADO: Auto-cargar TODAS las páginas automáticamente
+  // Esto elimina la necesidad de hacer scroll para cargar tickets
+  useEffect(() => {
+    // Cargar TODAS las páginas automáticamente
+    if (hasNextPage && !isFetchingNextPage && !isLoadingTickets) {
+      // Límite de seguridad para evitar cargar infinitamente si hay error
+      const maxTicketsToLoad = 500;
+
+      if (allTicketsData.length < maxTicketsToLoad) {
+        console.log(`📥 Auto-loading next page (My Tickets): ${filteredTicketsData.length} visible / ${allTicketsData.length} total`);
+        fetchNextPage();
+      } else {
+        console.warn(`⚠️ Reached maximum limit of ${maxTicketsToLoad} tickets. Stopping auto-load.`);
+      }
+    }
+  }, [hasNextPage, isFetchingNextPage, isLoadingTickets, filteredTicketsData.length, allTicketsData.length, fetchNextPage]);
+
   // Calculate active filters count for the badge
   const activeFiltersCount = useMemo(() => {
     let count = 0;
