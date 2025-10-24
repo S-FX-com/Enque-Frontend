@@ -95,7 +95,6 @@ export async function updateAutomation(
     );
 
     if (response && response.success && response.data) {
-      console.log('Automation updated successfully:', response.data);
       return response.data;
     } else {
       console.error(
@@ -130,7 +129,6 @@ export async function deleteAutomation(automationId: number): Promise<void> {
       );
       throw new Error(response?.message || `Failed to delete automation ${automationId}`);
     }
-    console.log(`Automation ${automationId} deleted successfully.`);
   } catch (error) {
     console.error(`Error deleting automation ${automationId} (catch block):`, error);
     throw error;

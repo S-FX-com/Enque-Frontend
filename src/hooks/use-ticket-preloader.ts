@@ -16,15 +16,15 @@ interface PreloadStats {
 interface PreloadOptions {
   maxConcurrent?: number;
   delayBetweenPreloads?: number;
-  priorityThreshold?: number; // Número de tickets más recientes a priorizar
+  priorityThreshold?: number;
   enableBackgroundPreload?: boolean;
 }
 
 const DEFAULT_OPTIONS: Required<PreloadOptions> = {
-  maxConcurrent: 3,
-  delayBetweenPreloads: 500, // 500ms entre precargas
-  priorityThreshold: 10, // Precargar los 10 tickets más recientes primero
-  enableBackgroundPreload: true,
+  maxConcurrent: 1,
+  delayBetweenPreloads: 1000,
+  priorityThreshold: 5,
+  enableBackgroundPreload: false,
 };
 
 export function useTicketPreloader(options: PreloadOptions = {}) {

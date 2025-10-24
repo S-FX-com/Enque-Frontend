@@ -3,10 +3,7 @@ import { Geist } from 'next/font/google';
 import './globals.css';
 import { ThemeProvider } from '@/components/providers/theme-provider';
 import { QueryProvider } from '@/components/providers/query-provider';
-import { GlobalTicketsProvider } from '@/providers/global-tickets-provider';
-import { TicketPreloaderProvider } from '@/providers/ticket-preloader-provider';
 import { Toaster } from 'sonner';
-import { SocketProvider } from '@/providers/socket-provider';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -36,13 +33,10 @@ export default function RootLayout({
           disableTransitionOnChange={false}
         >
           <QueryProvider>
-            <SocketProvider>
-              <GlobalTicketsProvider>
-                <TicketPreloaderProvider>{children}</TicketPreloaderProvider>
-              </GlobalTicketsProvider>
-              <Toaster
-                position="bottom-right"
-                richColors={true}
+            {children}
+            <Toaster
+              position="bottom-right"
+              richColors={true}
                 toastOptions={{
                   classNames: {
                     error:
@@ -57,7 +51,6 @@ export default function RootLayout({
                   },
                 }}
               />
-            </SocketProvider>
           </QueryProvider>
         </ThemeProvider>
       </body>

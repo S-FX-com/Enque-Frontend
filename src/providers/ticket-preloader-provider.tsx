@@ -51,16 +51,13 @@ export function TicketPreloaderProvider({ children }: { children: ReactNode }) {
       // ✅ OPTIMIZACIÓN: Solo invalidar si NO es un ticket cerrado/resuelto
       // Los tickets cerrados no necesitan preloading adicional
       if (data.status === 'Closed') {
-        console.log(`🔒 Ticket ${data.id} closed - skipping cache invalidation`);
         return; // No invalidar para tickets cerrados
       }
 
-      console.log(`🔄 Ticket ${data.id} updated - invalidating cache and re-preloading`);
       preloaderHook.invalidateTicket(data.id);
     };
 
     const handleCommentUpdated = (data: { ticket_id: number }) => {
-      console.log(`💬 Comment updated in ticket ${data.ticket_id} - invalidating cache`);
       preloaderHook.invalidateTicket(data.ticket_id);
     };
 

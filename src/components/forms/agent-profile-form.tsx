@@ -2,12 +2,14 @@
 
 import type React from 'react';
 import { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Avatar } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Select,
   SelectContent,
@@ -21,10 +23,18 @@ import { toast } from 'sonner';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { updateAgentProfile } from '@/services/agent';
 import type { AgentUpdate, Agent } from '@/typescript/agent';
-import { RichTextEditor } from '@/components/tiptap/RichTextEditor';
 import { getEnabledGlobalSignature } from '@/services/global-signature';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Info } from 'lucide-react';
+
+// ⚡ LAZY LOAD: RichTextEditor - Solo carga en sección de firma
+const RichTextEditor = dynamic(
+  () => import('@/components/tiptap/RichTextEditor').then(mod => ({ default: mod.RichTextEditor })),
+  {
+    loading: () => <Skeleton className="h-32 w-full rounded-md" />,
+    ssr: false,
+  }
+);
 
 const DetailRow: React.FC<{ label: string; value: React.ReactNode }> = ({ label, value }) => (
   <div className="grid grid-cols-3 gap-4 py-1">

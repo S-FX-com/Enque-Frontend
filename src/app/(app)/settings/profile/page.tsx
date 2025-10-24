@@ -1,5 +1,6 @@
 'use client';
 import React, { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -16,14 +17,23 @@ import {
 import { AgentAvatar } from '@/components/agent/agent-avatar';
 import { useAuth } from '@/hooks/use-auth';
 import { toast } from 'sonner';
-import { getAgentById, updateAgentProfile } from '@/services/agent';
+import { getAgentById, updateAgentProfile, updateAgentTeamsNotifications } from '@/services/agent';
 import { AgentUpdate, Agent } from '@/typescript/agent';
-import { RichTextEditor } from '@/components/tiptap/RichTextEditor';
 import { Skeleton } from '@/components/ui/skeleton';
+
+// ⚡ LAZY LOAD: RichTextEditor - Solo carga en pestaña de firma
+const RichTextEditor = dynamic(
+  () => import('@/components/tiptap/RichTextEditor').then(mod => ({ default: mod.RichTextEditor })),
+  {
+    loading: () => <Skeleton className="h-32 w-full rounded-md" />,
+    ssr: false,
+  }
+);
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Terminal, Info } from 'lucide-react';
 import { getGlobalSignature } from '@/services/global-signature';
 import Link from 'next/link';
+import { Switch } from '@/components/ui/switch';
 
 const DetailRow: React.FC<{ label: string; value: React.ReactNode }> = ({ label, value }) => (
   <div className="grid grid-cols-3 gap-4 py-1">
@@ -65,6 +75,7 @@ export default function ProfileSettingsPage() {
   const [editedRole, setEditedRole] = useState('');
   const [editedSignature, setEditedSignature] = useState('');
   const [avatarUrl, setAvatarUrl] = useState<string | null | undefined>(undefined);
+  const [teamsNotificationsEnabled, setTeamsNotificationsEnabled] = useState(false);
 
   const currentUserRole = user?.role;
 
@@ -97,6 +108,7 @@ export default function ProfileSettingsPage() {
       setEditedRole(agentProfileData.role || 'agent');
       setEditedSignature(agentProfileData.email_signature || '');
       setAvatarUrl(agentProfileData.avatar_url);
+      setTeamsNotificationsEnabled(agentProfileData.teams_notifications_enabled || false);
     } else {
       setEditedName('');
       setEditedEmail('');
@@ -134,6 +146,29 @@ export default function ProfileSettingsPage() {
     },
   });
 
+  // Teams notifications mutation
+  const updateTeamsMutation = useMutation({
+    mutationFn: async (enabled: boolean) => {
+      if (!agentId) throw new Error('User ID is missing');
+      
+      return updateAgentTeamsNotifications(agentId, enabled);
+    },
+    onSuccess: () => {
+      toast.success('Teams notifications updated successfully!');
+      if (agentId) {
+        queryClient.invalidateQueries({ queryKey: ['agent', agentId] });
+      }
+    },
+    onError: (error) => {
+      console.error('Failed to update Teams notifications:', error);
+      toast.error(`Failed to update Teams notifications: ${error.message}`);
+      // Revert the switch state on error
+      if (agentProfileData) {
+        setTeamsNotificationsEnabled(agentProfileData.teams_notifications_enabled || false);
+      }
+    },
+  });
+
   const displayData = {
     name: agentProfileData?.name || '...',
     email: agentProfileData?.email || '...',
@@ -160,9 +195,15 @@ export default function ProfileSettingsPage() {
         setEditedRole(agentProfileData.role || 'agent');
         setEditedSignature(agentProfileData.email_signature || '');
         setAvatarUrl(agentProfileData.avatar_url);
+        setTeamsNotificationsEnabled(agentProfileData.teams_notifications_enabled || false);
       }
     }
     setIsEditing(!isEditing);
+  };
+
+  const handleTeamsNotificationToggle = (enabled: boolean) => {
+    setTeamsNotificationsEnabled(enabled);
+    updateTeamsMutation.mutate(enabled);
   };
 
   const handleAvatarChange = (newAvatarUrl: string | null) => {
@@ -191,7 +232,6 @@ export default function ProfileSettingsPage() {
       payload.email_signature = editedSignature || null;
 
     if (Object.keys(payload).length > 0) {
-      console.log('Attempting to save profile changes:', payload);
       updateProfileMutation.mutate(payload);
     } else {
       toast.info('No changes detected.');
@@ -354,6 +394,36 @@ export default function ProfileSettingsPage() {
                   <p className="text-sm col-span-2 capitalize">{displayData.role}</p>
                 )}
               </div>
+            )}
+          </section>
+
+          <Separator className="my-4 bg-slate-200 dark:bg-slate-700" />
+
+          <section className="mb-6">
+            <h2 className="text-lg font-semibold mb-3">Teams Notifications</h2>
+            <div className="grid grid-cols-3 items-center gap-4 py-1">
+              <Label htmlFor="teams-notifications" className="text-sm font-medium text-muted-foreground">
+                Enable Teams Notifications
+              </Label>
+              <div className="col-span-2 flex items-center space-x-2">
+                <Switch
+                  id="teams-notifications"
+                  checked={teamsNotificationsEnabled}
+                  onCheckedChange={handleTeamsNotificationToggle}
+                  disabled={updateTeamsMutation.isPending}
+                />
+                <span className="text-sm text-muted-foreground">
+                  {teamsNotificationsEnabled ? 'Enabled' : 'Disabled'}
+                </span>
+              </div>
+            </div>
+            {teamsNotificationsEnabled && (
+              <Alert className="mt-3">
+                <Info className="h-4 w-4" />
+                <AlertDescription className="text-sm">
+                  You will receive ticket notifications in your Microsoft Teams activity feed.
+                </AlertDescription>
+              </Alert>
             )}
           </section>
 

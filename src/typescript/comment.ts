@@ -23,9 +23,10 @@ export interface IComment {
   workspace_id: number; // Add workspace_id based on backend schema
   attachments?: IAttachment[]; // <--- Nuevo campo para los adjuntos
   s3_html_url?: string | null; // URL del contenido almacenado en S3
-  // ✅ Recipients information for Outlook-style display (CC and BCC only - TO comes from ticket)
+  // ✅ Recipients information for Outlook-style display
   other_destinaries?: string | null;  // CC recipients
-  bcc_recipients?: string | null;
+  bcc_recipients?: string | null;     // BCC recipients
+  to_recipients?: string | null;      // TO recipients (additional ones beyond primary contact)
 }
 
 // Optional: Interface for creating comments if needed later

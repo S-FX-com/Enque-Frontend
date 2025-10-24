@@ -29,7 +29,6 @@ export function GlobalTicketsProvider({ children }: { children: ReactNode }) {
     pathname === '/'; // También en home
 
   const ticketsData = useGlobalTickets(shouldActivate);
-  console.log(ticketsData);
   return (
     <GlobalTicketsContext.Provider value={ticketsData}>{children}</GlobalTicketsContext.Provider>
   );

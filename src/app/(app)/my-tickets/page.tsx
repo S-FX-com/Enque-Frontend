@@ -38,7 +38,6 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { useDebounce } from '@/hooks/use-debounce';
-import { motion } from 'framer-motion';
 import type { ITicket, TicketStatus } from '@/typescript/ticket';
 import type { IUser } from '@/typescript/user';
 import { getUsers } from '@/services/user';
@@ -100,7 +99,7 @@ function MyTicketsClientContent() {
       // Using optimized assignee endpoint for better performance
       const tickets = await getTickets(
         { skip: pageParam, limit: 25 },
-        `/v1/tasks-optimized/assignee/${currentUser.id}`
+        `/v1/tasks/assignee/${currentUser.id}`
       );
       return tickets;
     },
@@ -375,8 +374,16 @@ function MyTicketsClientContent() {
       }
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['tickets', 'my', currentUser?.id] });
-      queryClient.invalidateQueries({ queryKey: ['agentTeams'] });
+      // Solo invalidar contadores y queries relacionadas SIN refetch inmediato
+      // Los optimistic updates en onMutate ya actualizaron la UI correctamente
+      queryClient.invalidateQueries({
+        queryKey: ['ticketsCount'],
+        refetchType: 'none'
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['agentTeams'],
+        refetchType: 'none'
+      });
     },
   });
 
@@ -472,8 +479,12 @@ function MyTicketsClientContent() {
       }
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['tickets', 'my', currentUser?.id] });
-      queryClient.invalidateQueries({ queryKey: ['ticketsCount'] });
+      // Solo invalidar contadores SIN refetch inmediato
+      // Los optimistic updates en onMutate ya actualizaron la UI correctamente
+      queryClient.invalidateQueries({
+        queryKey: ['ticketsCount'],
+        refetchType: 'none'
+      });
     },
   });
 
@@ -574,8 +585,16 @@ function MyTicketsClientContent() {
       }
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['tickets', 'my', currentUser?.id] });
-      queryClient.invalidateQueries({ queryKey: ['agentTeams'] });
+      // Solo invalidar contadores y queries relacionadas SIN refetch inmediato
+      // Los optimistic updates en onMutate ya actualizaron la UI correctamente
+      queryClient.invalidateQueries({
+        queryKey: ['ticketsCount'],
+        refetchType: 'none'
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['agentTeams'],
+        refetchType: 'none'
+      });
     },
   });
 
@@ -837,13 +856,8 @@ function MyTicketsClientContent() {
                     </TableRow>
                   ) : (
                     filteredTicketsData.map(ticket => (
-                      <motion.tr
+                      <TableRow
                         key={ticket.id}
-                        layout
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.2 }}
                         className={cn(
                           'border-0 h-14 cursor-pointer hover:bg-muted/50',
                           ticket.status === 'Unread' &&
@@ -926,7 +940,7 @@ function MyTicketsClientContent() {
                         <TableCell className="p-2 py-4">
                           {formatRelativeTime(ticket.created_at)}
                         </TableCell>
-                      </motion.tr> // Close motion.tr
+                      </TableRow>
                     ))
                   )}
                   {isFetchingNextPage && (

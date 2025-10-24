@@ -170,8 +170,8 @@ export function Topbar({
       await clearAllNotifications();
       // Invalidate and refetch notifications
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
-    } catch (error) {
-      console.error('Failed to clear notifications:', error);
+    } catch {
+      // Error silenciado - ya manejado por el toast
     } finally {
       setIsClearingNotifications(false);
     }
@@ -179,13 +179,11 @@ export function Topbar({
 
   // Function to clear cache (in-memory and persisted) and then logout
   const logoutAndClearCache = () => {
-    console.log('Clearing React Query cache and persisted storage before logout...');
     queryClient.clear(); // Clear the in-memory cache
     // Attempt to remove the default persisted cache key
     try {
       localStorage.removeItem('REACT_QUERY_OFFLINE_CACHE');
-    } catch (error) {
-      console.error('Failed to remove persisted cache from localStorage:', error);
+    } catch {
       // Continue logout even if removing item fails
     }
     handleLogout(); // Proceed with original logout logic
