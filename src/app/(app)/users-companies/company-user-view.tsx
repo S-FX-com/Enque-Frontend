@@ -289,7 +289,6 @@ const CompanyUserView: React.FC<CompanyUserViewProps> = ({
     if (field === 'account_manager_id' && value === company.account_manager_id) return;
 
     const updateData: CompanyUpdatePayload = { [field]: value };
-    console.log(`Updating ${field} to:`, value);
     updateMutation.mutate(updateData);
   };
 

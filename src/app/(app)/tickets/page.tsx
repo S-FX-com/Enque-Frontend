@@ -42,7 +42,6 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { useDebounce } from '@/hooks/use-debounce';
-import { motion } from 'framer-motion';
 import { getAgents } from '@/services/agent';
 import { getTeams, getAgentTeams } from '@/services/team';
 import { getUsers } from '@/services/user';
@@ -119,7 +118,8 @@ function TicketsClientContent() {
   const [selectedTargetTicketId, setSelectedTargetTicketId] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const [displayedTicketsCount, setDisplayedTicketsCount] = useState(25);
+  // ✅ REMOVIDO: Ya no usamos displayedTicketsCount para limitar la visualización
+  // Ahora mostramos todos los tickets disponibles de inmediato
 
   const [sortColumn, setSortColumn] = useState<SortColumn | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
@@ -180,8 +180,6 @@ function TicketsClientContent() {
       value: team.id.toString(),
       label: team.name,
     }));
-    console.log('🏷️ Team options generated:', options);
-    console.log('📊 Teams data:', teamsData);
     console.log('📝 Current selected teams:', selectedTeams);
     return options;
   }, [teamsData, selectedTeams]);
@@ -234,7 +232,9 @@ function TicketsClientContent() {
     let tickets = allTicketsData;
     const hasTeamIdInUrl = Boolean(searchParams.get('teamId'));
 
-    if (selectedStatuses.length === 0) {
+    // ⚡ OPTIMIZADO: Solo filtrar tickets cerrados en "All Tickets"
+    // En tickets de team, mostrar todos para ser consistente con el contador del sidebar
+    if (selectedStatuses.length === 0 && !hasTeamIdInUrl) {
       tickets = tickets.filter(ticket => ticket.status !== 'Closed');
     }
 
@@ -259,7 +259,6 @@ function TicketsClientContent() {
       });
       console.log(`📊 Client-side team filter: ${beforeCount} → ${tickets.length} tickets`);
     } else if (hasTeamIdInUrl) {
-      console.log('🎯 Using backend-filtered team tickets (no client-side team filtering)');
     }
 
     if (selectedAgents.length > 0) {
@@ -358,81 +357,17 @@ function TicketsClientContent() {
     return filtered;
   }, [filteredTicketsData, sortColumn, sortDirection]);
 
+  // ✅ SIMPLIFICADO: Mostrar todos los tickets filtrados sin auto-fetch
   const displayedTickets = useMemo(() => {
-    return filteredTicketsDataSorted.slice(0, displayedTicketsCount);
-  }, [filteredTicketsDataSorted, displayedTicketsCount]);
+    return filteredTicketsDataSorted;
+  }, [filteredTicketsDataSorted]);
 
-  useEffect(() => {
-    // Si no hay filtros aplicados, muestra todos los tickets disponibles
-    const hasFilters = debouncedSubjectFilter || 
-                      selectedStatuses.length > 0 || 
-                      selectedTeams.length > 0 || 
-                      selectedAgents.length > 0 || 
-                      selectedPriorities.length > 0 || 
-                      selectedUsers.length > 0 || 
-                      selectedCompanies.length > 0 || 
-                      selectedCategories.length > 0;
-    
-    if (!hasFilters) {
-      // Sin filtros: muestra todos los tickets disponibles
-      setDisplayedTicketsCount(Math.max(25, allTicketsData.length));
-    } else {
-      // Con filtros: restablece a 25 para comenzar la paginación
-      setDisplayedTicketsCount(25);
-    }
-  }, [
-    debouncedSubjectFilter,
-    selectedStatuses,
-    selectedTeams,
-    selectedAgents,
-    selectedPriorities,
-    selectedUsers,
-    selectedCompanies,
-    selectedCategories,
-    allTicketsData.length, // Agregamos esta dependencia
-  ]);
-
-  // Efecto para cargar automáticamente todos los tickets cuando no hay filtros
-  useEffect(() => {
-    const hasFilters = debouncedSubjectFilter || 
-                      selectedStatuses.length > 0 || 
-                      selectedTeams.length > 0 || 
-                      selectedAgents.length > 0 || 
-                      selectedPriorities.length > 0 || 
-                      selectedUsers.length > 0 || 
-                      selectedCompanies.length > 0 || 
-                      selectedCategories.length > 0;
-    
-    // Si no hay filtros y hay más páginas disponibles, cargar automáticamente
-    if (!hasFilters && hasNextPage && !isFetchingNextPage && !isLoadingTickets) {
-      fetchNextPage();
-    }
-  }, [
-    debouncedSubjectFilter,
-    selectedStatuses,
-    selectedTeams,
-    selectedAgents,
-    selectedPriorities,
-    selectedUsers,
-    selectedCompanies,
-    selectedCategories,
-    hasNextPage,
-    isFetchingNextPage,
-    isLoadingTickets,
-    fetchNextPage,
-  ]);
-
+  // ✅ SIMPLIFICADO: Solo cargar más tickets del servidor cuando hay más disponibles
   const handleLoadMore = useCallback(() => {
-    // First, try to show more from already loaded tickets
-    if (displayedTicketsCount < filteredTicketsDataSorted.length) {
-      setDisplayedTicketsCount(prev => Math.min(prev + 25, filteredTicketsDataSorted.length));
-    } 
-    // If we've shown all filtered tickets but there are more on the server, fetch them
-    else if (hasNextPage && !isFetchingNextPage) {
+    if (hasNextPage && !isFetchingNextPage) {
       fetchNextPage();
-      // The useEffect above will automatically update displayedTicketsCount when new data arrives
     }
-  }, [displayedTicketsCount, filteredTicketsDataSorted.length, hasNextPage, isFetchingNextPage, fetchNextPage]);
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   // Infinite scroll handler
   const handleScroll = useCallback(() => {
@@ -447,14 +382,8 @@ function TicketsClientContent() {
     }
   }, [handleLoadMore, isFetchingNextPage]);
 
-  const allTicketsDisplayed = displayedTicketsCount >= filteredTicketsDataSorted.length && (!hasNextPage || isFetchingNextPage);
-
-  // Auto-update displayedTicketsCount when new tickets are loaded from server
-  useEffect(() => {
-    if (allTicketsData.length > displayedTicketsCount) {
-      setDisplayedTicketsCount(allTicketsData.length);
-    }
-  }, [allTicketsData.length, displayedTicketsCount]);
+  // ✅ SIMPLIFICADO: Verificar si todos los tickets disponibles en el servidor están cargados
+  const allTicketsDisplayed = !hasNextPage;
 
   // Set up infinite scroll listener
   useEffect(() => {
@@ -474,6 +403,7 @@ function TicketsClientContent() {
         // cuando ya tenemos filtros de backend
         console.log('🔗 Loading team tickets from backend:', teamIdFromQuery);
         setSelectedTeams([]); // Clear client-side filters
+        setSelectedStatuses([]); // Clear status filters to show ALL tickets including closed
       } else {
         // En "All Tickets", también limpiamos los filtros
         if (selectedTeams.length > 0) {
@@ -483,6 +413,21 @@ function TicketsClientContent() {
       }
     }
   }, [searchParams, pathname]);
+
+  // ⚡ NUEVO: Auto-cargar todas las páginas para teams pequeños
+  useEffect(() => {
+    const teamIdFromQuery = searchParams.get('teamId');
+
+    // Si estamos en un team específico y hay más páginas disponibles, cargarlas automáticamente
+    if (teamIdFromQuery && hasNextPage && !isFetchingNextPage && !isLoadingTickets) {
+      // Solo auto-cargar si tenemos pocos tickets cargados (menos de 100)
+      // Para evitar cargar miles de tickets automáticamente
+      if (allTicketsData.length < 100) {
+        console.log('📥 Auto-loading next page for team tickets...');
+        fetchNextPage();
+      }
+    }
+  }, [searchParams, hasNextPage, isFetchingNextPage, isLoadingTickets, allTicketsData.length, fetchNextPage]);
 
   const agentIdToNameMap = React.useMemo(() => {
     return agentsData.reduce(
@@ -633,9 +578,16 @@ function TicketsClientContent() {
       }
     },
     onSettled: () => {
-      // Invalidar todas las queries relacionadas para mantener sincronización
-      invalidateRelatedQueries();
-      queryClient.invalidateQueries({ queryKey: ['agentTeams'] });
+      // Solo invalidar contadores y queries relacionadas SIN refetch inmediato
+      // Los optimistic updates en onMutate ya actualizaron la UI correctamente
+      queryClient.invalidateQueries({
+        queryKey: ['ticketsCount'],
+        refetchType: 'none' // Marca como stale pero NO refetch inmediato
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['agentTeams'],
+        refetchType: 'none'
+      });
     },
   });
   const handleDeleteConfirm = () => {
@@ -784,9 +736,12 @@ function TicketsClientContent() {
       }
     },
     onSettled: () => {
-      // Invalidar todas las queries relacionadas para mantener sincronización
-      invalidateRelatedQueries();
-      queryClient.invalidateQueries({ queryKey: ['agentTeams'] });
+      // Solo invalidar queries relacionadas SIN refetch inmediato
+      // Los optimistic updates en onMutate ya actualizaron la UI correctamente
+      queryClient.invalidateQueries({
+        queryKey: ['agentTeams'],
+        refetchType: 'none'
+      });
     },
   });
 
@@ -948,10 +903,16 @@ function TicketsClientContent() {
       }
     },
     onSettled: () => {
-      // Invalidar todas las queries relacionadas para mantener sincronización
-      invalidateRelatedQueries();
-      queryClient.invalidateQueries({ queryKey: ['ticketsCount', 'my'] });
-      queryClient.invalidateQueries({ queryKey: ['ticketsCount'] });
+      // Solo invalidar contadores SIN refetch inmediato
+      // Los optimistic updates en onMutate ya actualizaron la UI correctamente
+      queryClient.invalidateQueries({
+        queryKey: ['ticketsCount'],
+        refetchType: 'none' // Marca como stale pero NO refetch inmediato
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['agentTeams'],
+        refetchType: 'none'
+      });
     },
   });
 
@@ -1050,9 +1011,12 @@ function TicketsClientContent() {
       }
     },
     onSettled: () => {
-      // Invalidar todas las queries relacionadas para mantener sincronización
-      invalidateRelatedQueries();
-      queryClient.invalidateQueries({ queryKey: ['ticketsCount'] });
+      // Solo invalidar contadores SIN refetch inmediato
+      // Los optimistic updates en onMutate ya actualizaron la UI correctamente
+      queryClient.invalidateQueries({
+        queryKey: ['ticketsCount'],
+        refetchType: 'none'
+      });
     },
   });
 
@@ -1184,9 +1148,16 @@ function TicketsClientContent() {
       }
     },
     onSettled: () => {
-      // Invalidar todas las queries relacionadas para mantener sincronización
-      invalidateRelatedQueries();
-      queryClient.invalidateQueries({ queryKey: ['agentTeams'] });
+      // Solo invalidar queries relacionadas SIN refetch inmediato
+      // Los optimistic updates en onMutate ya actualizaron la UI correctamente
+      queryClient.invalidateQueries({
+        queryKey: ['agentTeams'],
+        refetchType: 'none'
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['ticketsCount'],
+        refetchType: 'none'
+      });
     },
   });
 
@@ -1527,7 +1498,7 @@ function TicketsClientContent() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {isLoadingTickets && allTicketsData.length === 0 ? (
+                  {isLoadingTickets && displayedTickets.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={8} className="h-24 text-center">
                         Loading tickets...
@@ -1539,7 +1510,7 @@ function TicketsClientContent() {
                         Error loading tickets: {ticketsError?.message || 'Unknown error'}
                       </TableCell>
                     </TableRow>
-                  ) : filteredTicketsDataSorted.length === 0 ? (
+                  ) : displayedTickets.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={8} className="h-24 text-center">
                         {debouncedSubjectFilter
@@ -1550,13 +1521,8 @@ function TicketsClientContent() {
                   ) : (
                     displayedTickets.map(ticket => {
                       return (
-                        <motion.tr
+                        <TableRow
                           key={ticket.id}
-                          layout
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          exit={{ opacity: 0 }}
-                          transition={{ duration: 0.2 }}
                           className={cn(
                             'border-0 h-14 cursor-pointer hover:bg-muted/50',
                             ticket.status === 'Unread' &&
@@ -1640,16 +1606,9 @@ function TicketsClientContent() {
                           <TableCell className="p-2 py-4">
                             {formatRelativeTime(ticket.created_at)}
                           </TableCell>
-                        </motion.tr>
+                        </TableRow>
                       );
                     })
-                  )}
-                  {isFetchingNextPage && (
-                    <TableRow>
-                      <TableCell colSpan={8} className="py-4 text-center text-muted-foreground">
-                        Loading more tickets...
-                      </TableCell>
-                    </TableRow>
                   )}
                 </TableBody>
               </Table>

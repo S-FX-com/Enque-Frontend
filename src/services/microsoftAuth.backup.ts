@@ -42,10 +42,8 @@ const AUTH_ENDPOINT = `${AppConfigs.api}/auth`;
 
 export const microsoftAuthService = {
   async getAuthUrl(
-    workspaceId: number | undefined,
-    redirectPath: string = '/dashboard'
+    workspaceId: number | undefined
   ): Promise<ServiceResponse<MicrosoftAuthUrlResponse>> {
-    console.log(redirectPath);
     try {
       const stateObject = {
         workspace_id: workspaceId!.toString(),
@@ -58,8 +56,6 @@ export const microsoftAuthService = {
       const params = new URLSearchParams({
         state: base64State,
       });
-
-      console.log('Ok');
 
       const response = await fetch(`${SERVICE_ENDPOINT}/authorize?${params}`, {
         method: 'GET',

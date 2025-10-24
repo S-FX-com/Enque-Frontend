@@ -202,7 +202,6 @@ export async function updateTicket(
       }
     }
 
-    console.log('Sending OPTIMIZED update payload:', payload);
     const response = await fetchAPI.PUT<ITicket>(url, payload);
 
     if (response && response.success && response.data) {
@@ -400,7 +399,6 @@ export async function mergeTickets(
       ticket_ids_to_merge: ticketIdsToMerge,
     };
 
-    console.log('Sending merge payload:', payload);
     const response = await fetchAPI.POST<unknown>(url, payload);
 
     if (response && response.success) {

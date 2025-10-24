@@ -1,13 +1,22 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useAuth } from '@/hooks/use-auth';
 import { toast } from 'sonner';
-import { RichTextEditor } from '@/components/tiptap/RichTextEditor';
 import { Skeleton } from '@/components/ui/skeleton';
+
+// ⚡ LAZY LOAD: RichTextEditor - Solo carga al editar firmas
+const RichTextEditor = dynamic(
+  () => import('@/components/tiptap/RichTextEditor').then(mod => ({ default: mod.RichTextEditor })),
+  {
+    loading: () => <Skeleton className="h-32 w-full rounded-md" />,
+    ssr: false,
+  }
+);
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';

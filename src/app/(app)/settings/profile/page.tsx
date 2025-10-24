@@ -1,5 +1,6 @@
 'use client';
 import React, { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -18,8 +19,16 @@ import { useAuth } from '@/hooks/use-auth';
 import { toast } from 'sonner';
 import { getAgentById, updateAgentProfile, updateAgentTeamsNotifications } from '@/services/agent';
 import { AgentUpdate, Agent } from '@/typescript/agent';
-import { RichTextEditor } from '@/components/tiptap/RichTextEditor';
 import { Skeleton } from '@/components/ui/skeleton';
+
+// ⚡ LAZY LOAD: RichTextEditor - Solo carga en pestaña de firma
+const RichTextEditor = dynamic(
+  () => import('@/components/tiptap/RichTextEditor').then(mod => ({ default: mod.RichTextEditor })),
+  {
+    loading: () => <Skeleton className="h-32 w-full rounded-md" />,
+    ssr: false,
+  }
+);
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Terminal, Info } from 'lucide-react';
 import { getGlobalSignature } from '@/services/global-signature';
@@ -223,7 +232,6 @@ export default function ProfileSettingsPage() {
       payload.email_signature = editedSignature || null;
 
     if (Object.keys(payload).length > 0) {
-      console.log('Attempting to save profile changes:', payload);
       updateProfileMutation.mutate(payload);
     } else {
       toast.info('No changes detected.');

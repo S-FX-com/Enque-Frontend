@@ -26,7 +26,6 @@ export function useAuth() {
         const decoded = jwtDecode<DecodedToken>(token);
         const currentTime = Date.now() / 1000;
         if (decoded.exp < currentTime) {
-          console.log('Auth token expired, removing.');
           removeAuthToken();
           setUser(null);
         } else {

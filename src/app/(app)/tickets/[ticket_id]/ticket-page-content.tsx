@@ -2,7 +2,7 @@
 import type React from 'react';
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useMutation, type InfiniteData } from '@tanstack/react-query';
 import { ArrowLeft, X, Plus, Search, User, Edit2, Check, XIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -232,7 +232,6 @@ export function TicketPageContent({ ticketId }: Props) {
       return [tickets] as unknown as ITicket[];
     },
     enabled: !!ticketId,
-    staleTime: 1000 * 15, // 15 segundos
     refetchOnWindowFocus: true, // Re-fetch cuando la ventana recupera el foco
     refetchOnReconnect: true, // Re-fetch en reconexión
     retry: (failureCount, error: unknown) => {
@@ -277,7 +276,6 @@ export function TicketPageContent({ ticketId }: Props) {
   //console.log(currentscheduledComments);
   useEffect(() => {
     if (currentTicket) {
-      console.log('🎫 Ticket loaded successfully:', currentTicket.id);
       setTicket(currentTicket as unknown as ITicket);
       if (currentTicket?.cc_recipients) {
         const emails = currentTicket.cc_recipients
@@ -328,7 +326,6 @@ export function TicketPageContent({ ticketId }: Props) {
         ]);
       }
     } else if (ticketError) {
-      console.error('❌ Error loading ticket:', ticketError);
     }
   }, [currentTicket, ticketError]);
 
@@ -338,7 +335,6 @@ export function TicketPageContent({ ticketId }: Props) {
 
     const handleTicketUpdated = (data: ITicket) => {
       if (data.id === ticket.id) {
-        console.log('🚀 Ticket updated via socket:', data);
         setTicket(prev => (prev ? { ...prev, ...data } : data));
       }
     };
@@ -405,14 +401,30 @@ export function TicketPageContent({ ticketId }: Props) {
 
   // Helper function to invalidate all counter queries
   const invalidateCounterQueries = useCallback(() => {
-    // Invalidate all tickets queries
-    queryClient.invalidateQueries({ queryKey: ['tickets'] });
+    // Invalidate queries but DON'T refetch immediately (refetchType: 'none')
+    // This prevents "Loading..." screens in the tickets table
+    queryClient.invalidateQueries({
+      queryKey: ['tickets'],
+      refetchType: 'none' // Marca como stale pero NO refetch inmediato
+    });
     // Invalidate counter queries
-    queryClient.invalidateQueries({ queryKey: ['ticketsCount', 'all'] });
-    queryClient.invalidateQueries({ queryKey: ['ticketsCount', 'my', user?.id] });
+    queryClient.invalidateQueries({
+      queryKey: ['ticketsCount', 'all'],
+      refetchType: 'none'
+    });
+    queryClient.invalidateQueries({
+      queryKey: ['ticketsCount', 'my', user?.id],
+      refetchType: 'none'
+    });
     // Invalidate team queries (they contain ticket counts)
-    queryClient.invalidateQueries({ queryKey: ['agentTeams', user?.id, user?.role] });
-    queryClient.invalidateQueries({ queryKey: ['teams'] });
+    queryClient.invalidateQueries({
+      queryKey: ['agentTeams', user?.id, user?.role],
+      refetchType: 'none'
+    });
+    queryClient.invalidateQueries({
+      queryKey: ['teams'],
+      refetchType: 'none'
+    });
   }, [queryClient, user?.id, user?.role]);
 
   // Update field mutation
@@ -487,8 +499,10 @@ export function TicketPageContent({ ticketId }: Props) {
       // Si se cambió el user_id (contacto principal), invalidar queries relacionadas
       if (variables.field === 'user_id') {
         queryClient.invalidateQueries({ queryKey: ['ticket', ticketId] });
-        queryClient.invalidateQueries({ queryKey: ['tickets'] });
-        console.log(`✅ Primary contact updated for ticket ${ticketId}`);
+        queryClient.invalidateQueries({
+          queryKey: ['tickets'],
+          refetchType: 'none' // No refetch inmediato para evitar "Loading..."
+        });
       }
     },
   });
@@ -839,15 +853,112 @@ export function TicketPageContent({ ticketId }: Props) {
   // Mark ticket as read when viewed
   useEffect(() => {
     if (ticket && ticket.status === 'Unread') {
+      // Optimistically update the ticket status
+      const optimisticTicket = { ...ticket, status: 'Open' as TicketStatus };
+      setTicket(optimisticTicket);
+      queryClient.setQueryData(['ticket', ticketId], [optimisticTicket]);
+
+      // ✅ AGREGADO: Actualizar optimísticamente el ticket en la lista de tickets
+      queryClient.setQueriesData(
+        { queryKey: ['tickets'], exact: false },
+        (oldData: InfiniteData<ITicket[]> | undefined) => {
+          if (!oldData?.pages) return oldData;
+
+          return {
+            ...oldData,
+            pages: oldData.pages.map((page: ITicket[]) =>
+              page.map(t => (t.id === ticket.id ? optimisticTicket : t))
+            ),
+          };
+        }
+      );
+
+      // ✅ AGREGADO: También actualizar en queries filtradas
+      queryClient.setQueriesData(
+        { queryKey: ['filtered-tickets'], exact: false },
+        (oldData: InfiniteData<ITicket[]> | undefined) => {
+          if (!oldData?.pages) return oldData;
+
+          return {
+            ...oldData,
+            pages: oldData.pages.map((page: ITicket[]) =>
+              page.map(t => (t.id === ticket.id ? optimisticTicket : t))
+            ),
+          };
+        }
+      );
+
       // Update ticket status to 'Open' when viewed
       updateTicket(ticket.id, { status: 'Open' })
         .then(updatedTicket => {
           setTicket(updatedTicket);
           queryClient.setQueryData(['ticket', ticketId], [updatedTicket]);
+
+          // ✅ AGREGADO: Actualizar con los datos reales del servidor
+          queryClient.setQueriesData(
+            { queryKey: ['tickets'], exact: false },
+            (oldData: InfiniteData<ITicket[]> | undefined) => {
+              if (!oldData?.pages) return oldData;
+
+              return {
+                ...oldData,
+                pages: oldData.pages.map((page: ITicket[]) =>
+                  page.map(t => (t.id === updatedTicket.id ? updatedTicket : t))
+                ),
+              };
+            }
+          );
+
+          queryClient.setQueriesData(
+            { queryKey: ['filtered-tickets'], exact: false },
+            (oldData: InfiniteData<ITicket[]> | undefined) => {
+              if (!oldData?.pages) return oldData;
+
+              return {
+                ...oldData,
+                pages: oldData.pages.map((page: ITicket[]) =>
+                  page.map(t => (t.id === updatedTicket.id ? updatedTicket : t))
+                ),
+              };
+            }
+          );
+
           invalidateCounterQueries();
         })
         .catch(error => {
           console.error('Error marking ticket as read:', error);
+          // Revert the optimistic update if the API call fails
+          setTicket(ticket);
+          queryClient.setQueryData(['ticket', ticketId], [ticket]);
+
+          // ✅ AGREGADO: Revertir también en la lista
+          queryClient.setQueriesData(
+            { queryKey: ['tickets'], exact: false },
+            (oldData: InfiniteData<ITicket[]> | undefined) => {
+              if (!oldData?.pages) return oldData;
+
+              return {
+                ...oldData,
+                pages: oldData.pages.map((page: ITicket[]) =>
+                  page.map(t => (t.id === ticket.id ? ticket : t))
+                ),
+              };
+            }
+          );
+
+          queryClient.setQueriesData(
+            { queryKey: ['filtered-tickets'], exact: false },
+            (oldData: InfiniteData<ITicket[]> | undefined) => {
+              if (!oldData?.pages) return oldData;
+
+              return {
+                ...oldData,
+                pages: oldData.pages.map((page: ITicket[]) =>
+                  page.map(t => (t.id === ticket.id ? ticket : t))
+                ),
+              };
+            }
+          );
         });
     }
   }, [ticket, ticketId, queryClient, invalidateCounterQueries]);

@@ -44,8 +44,8 @@ export const getAssignedTasks = async (agentId: number): Promise<Task[]> => {
     return [];
   }
   try {
-    // Using optimized assignee endpoint for better performance
-    const url = `${API_BASE_URL}/v1/tasks-optimized/assignee/${agentId}`;
+    // Using the standard assignee endpoint that is confirmed to work
+    const url = `${API_BASE_URL}/v1/tasks/assignee/${agentId}`;
     const response = await fetchAPI.GET<Task[]>(url);
 
     if (!response || !response.data) {

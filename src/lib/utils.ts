@@ -50,7 +50,6 @@ export function formatRelativeTime(
   showTime: boolean = false
 ): string {
   try {
-    //console.log(dateString);
     if (!dateString) return '-';
 
     let dateToParse: Date;
@@ -60,7 +59,6 @@ export function formatRelativeTime(
       const hasTimezone = /Z|([+-]\d{2}:\d{2})$/.test(dateString);
       const dateStrToParse = hasTimezone ? dateString : `${dateString}Z`;
       dateToParse = new Date(dateStrToParse);
-      //console.log(dateToParse);
     } else {
       dateToParse = dateString;
     }
@@ -76,7 +74,6 @@ export function formatRelativeTime(
     if (showTime) return format(easternDate, "MMMM dd, yyyy 'at' hh:mm a");
     else {
       const regexTest = /([0-9]+) day ago ||([0-9]+) days ago /;
-      console.log(formatDistanceToNow(easternDate, { addSuffix: true }));
       if (regexTest.test(formatDistanceToNow(easternDate, { addSuffix: true }))) {
         return format(easternDate, 'MMMM dd, yyyy');
       }

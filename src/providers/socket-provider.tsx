@@ -25,7 +25,6 @@ export function SocketProvider({ children }: { children: ReactNode }) {
       emit(event as never, data);
     },
   };
-  console.log(contextValue);
   return <SocketContext.Provider value={contextValue}>{children}</SocketContext.Provider>;
 }
 

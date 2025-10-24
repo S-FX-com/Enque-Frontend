@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 //import { Separator } from '@radix-ui/react-separator';
 import 'react-calendar/dist/Calendar.css';
+import dynamic from 'next/dynamic';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -27,8 +28,16 @@ import { getTicketHtmlContent, updateTicket, type TicketHtmlContent } from '@/se
 import { ConversationMessageItem } from '@/components/conversation-message-item';
 import { InitialTicketMessage } from '@/components/conversation-message-item';
 import { useAuth } from '@/hooks/use-auth';
-import { RichTextEditor } from '@/components/tiptap/RichTextEditor';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+
+// ⚡ LAZY LOAD: RichTextEditor (150-200KB) - Solo carga cuando se necesita
+const RichTextEditor = dynamic(
+  () => import('@/components/tiptap/RichTextEditor').then(mod => ({ default: mod.RichTextEditor })),
+  {
+    loading: () => <Skeleton className="h-48 w-full rounded-md" />,
+    ssr: false, // Tiptap no funciona con SSR
+  }
+);
 import { toast } from 'sonner';
 import { uploadAttachments } from '@/services/attachmentService';
 import { getEnabledGlobalSignature } from '@/services/global-signature';
@@ -1234,7 +1243,10 @@ export function TicketConversation({
 
         onTicketUpdate(updatedTask);
         queryClient.setQueryData(['ticket', ticket.id], updatedTask);
-        queryClient.invalidateQueries({ queryKey: ['tickets'] });
+        queryClient.invalidateQueries({
+          queryKey: ['tickets'],
+          refetchType: 'none' // No refetch inmediato para evitar "Loading..." en la tabla
+        });
         // Refetch el ticket específico para asegurar sincronización
         queryClient.invalidateQueries({ queryKey: ['ticket', ticket.id] });
         // Invalidar comentarios solo si es nota privada para mostrar inmediatamente
@@ -1254,7 +1266,10 @@ export function TicketConversation({
             onTicketUpdate(updatedTicket);
           }
           queryClient.setQueryData(['ticket', ticket.id], updatedTicket);
-          queryClient.invalidateQueries({ queryKey: ['tickets'] });
+          queryClient.invalidateQueries({
+            queryKey: ['tickets'],
+            refetchType: 'none' // No refetch inmediato para evitar "Loading..." en la tabla
+          });
           // Refetch el ticket específico para asegurar sincronización
           queryClient.invalidateQueries({ queryKey: ['ticket', ticket.id] });
           // Invalidar comentarios solo si es nota privada para mostrar inmediatamente

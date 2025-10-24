@@ -36,7 +36,6 @@ const MyTeamsList: React.FC<MyTeamsListProps> = ({ agentTeams, isLoadingUser, us
         const currentTeamIdParam = searchParams.get('teamId');
         const isActive = pathname === '/tickets' && currentTeamIdParam === team.id.toString();
         const FallbackIcon = Users2;
-        console.log(team.ticket_count);
         return (
           <Link
             key={team.id}

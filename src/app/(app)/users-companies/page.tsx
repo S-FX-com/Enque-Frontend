@@ -126,7 +126,6 @@ export default function UsersCompaniesPage() {
 
   // --- Event Handlers ---
   const handleUserSaveSuccess = () => {
-    console.log('User saved, refetching relevant lists...');
     queryClient.invalidateQueries({ queryKey: ['unassignedUsers'] });
     queryClient.invalidateQueries({ queryKey: ['users'] }); // Invalidar para el modal "Change Primary Contact"
     if (selectedCompanyId) {
@@ -135,7 +134,6 @@ export default function UsersCompaniesPage() {
   };
 
   const handleCompanySaveSuccess = () => {
-    console.log('Company saved, invalidating companies AND unassigned users query...');
     queryClient.invalidateQueries({ queryKey: ['companies'] });
     queryClient.invalidateQueries({ queryKey: ['unassignedUsers'] });
   };

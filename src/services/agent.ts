@@ -15,16 +15,13 @@ const API_BASE_URL =
 export async function getAgents(): Promise<Agent[]> {
   try {
     const url = `${API_BASE_URL}/v1/agents/`;
-    console.log('Fetching agents from:', url);
     
     const response = await fetchAPI.GET<Agent[]>(url);
-    console.log('Raw response:', response);
     
     // Check if response is wrapped in BaseResponse format
     if (response && typeof response === 'object' && 'success' in response && 'data' in response) {
       // Wrapped response format
       if (response.success && response.data && Array.isArray(response.data)) {
-        console.log('Agents data (wrapped):', response.data);
         return response.data.filter(agent => agent && typeof agent === 'object' && agent.id);
       } else {
         console.error('Error fetching agents (wrapped):', response?.message || 'Unknown API error');
@@ -32,7 +29,6 @@ export async function getAgents(): Promise<Agent[]> {
       }
     } else if (Array.isArray(response)) {
       // Direct array response
-      console.log('Agents data (direct array):', response);
       return response.filter(agent => agent && typeof agent === 'object' && agent.id);
     } else {
       console.error('Unexpected response format:', response);
@@ -87,7 +83,6 @@ export async function updateAgentProfile(
 
     // Check the success flag and data within the BaseResponse returned by fetchAPI.PUT
     if (response && response.success && response.data) {
-      console.log('Agent profile updated successfully:', response.data);
       // response.data should now correctly be of type Agent
       return response.data;
     } else {
@@ -147,7 +142,6 @@ export async function deleteAgent(agentId: number): Promise<void> {
       console.error(`Error deleting agent ${agentId}:`, response?.message || 'Unknown API error');
       throw new Error(response?.message || `Failed to delete agent ${agentId}`);
     }
-    console.log(`Agent ${agentId} deleted successfully.`);
     // No return value needed for void Promise
   } catch (error) {
     console.error(`Error deleting agent ${agentId} (catch block):`, error);
