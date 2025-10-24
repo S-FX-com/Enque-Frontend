@@ -414,20 +414,24 @@ function TicketsClientContent() {
     }
   }, [searchParams, pathname]);
 
-  // ⚡ NUEVO: Auto-cargar todas las páginas para teams pequeños
+  // ⚡ OPTIMIZADO: Auto-cargar TODAS las páginas para teams
   useEffect(() => {
     const teamIdFromQuery = searchParams.get('teamId');
 
-    // Si estamos en un team específico y hay más páginas disponibles, cargarlas automáticamente
+    // Si estamos en un team específico, cargar TODAS las páginas automáticamente
+    // Esto asegura que siempre veamos todos los tickets del team sin necesidad de scroll
     if (teamIdFromQuery && hasNextPage && !isFetchingNextPage && !isLoadingTickets) {
-      // Solo auto-cargar si tenemos pocos tickets cargados (menos de 100)
-      // Para evitar cargar miles de tickets automáticamente
-      if (allTicketsData.length < 100) {
-        console.log('📥 Auto-loading next page for team tickets...');
+      // Solo límite de seguridad para evitar cargar infinitamente si hay error
+      const maxTicketsToLoad = 500;
+
+      if (allTicketsData.length < maxTicketsToLoad) {
+        console.log(`📥 Auto-loading next page for team: ${filteredTicketsData.length} visible / ${allTicketsData.length} total`);
         fetchNextPage();
+      } else {
+        console.warn(`⚠️ Reached maximum limit of ${maxTicketsToLoad} tickets. Stopping auto-load.`);
       }
     }
-  }, [searchParams, hasNextPage, isFetchingNextPage, isLoadingTickets, allTicketsData.length, fetchNextPage]);
+  }, [searchParams, hasNextPage, isFetchingNextPage, isLoadingTickets, filteredTicketsData.length, allTicketsData.length, fetchNextPage]);
 
   const agentIdToNameMap = React.useMemo(() => {
     return agentsData.reduce(
