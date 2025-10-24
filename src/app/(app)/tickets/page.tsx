@@ -232,9 +232,9 @@ function TicketsClientContent() {
     let tickets = allTicketsData;
     const hasTeamIdInUrl = Boolean(searchParams.get('teamId'));
 
-    // ⚡ OPTIMIZADO: Solo filtrar tickets cerrados en "All Tickets"
-    // En tickets de team, mostrar todos para ser consistente con el contador del sidebar
-    if (selectedStatuses.length === 0 && !hasTeamIdInUrl) {
+    // ✅ SIEMPRE filtrar tickets cerrados EXCEPTO cuando el usuario los selecciona explícitamente
+    // Esto aplica tanto para "All Tickets" como para "Team Tickets"
+    if (selectedStatuses.length === 0) {
       tickets = tickets.filter(ticket => ticket.status !== 'Closed');
     }
 
