@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 //import { Separator } from '@radix-ui/react-separator';
 import 'react-calendar/dist/Calendar.css';
+import dynamic from 'next/dynamic';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -27,8 +28,16 @@ import { getTicketHtmlContent, updateTicket, type TicketHtmlContent } from '@/se
 import { ConversationMessageItem } from '@/components/conversation-message-item';
 import { InitialTicketMessage } from '@/components/conversation-message-item';
 import { useAuth } from '@/hooks/use-auth';
-import { RichTextEditor } from '@/components/tiptap/RichTextEditor';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+
+// ⚡ LAZY LOAD: RichTextEditor (150-200KB) - Solo carga cuando se necesita
+const RichTextEditor = dynamic(
+  () => import('@/components/tiptap/RichTextEditor').then(mod => ({ default: mod.RichTextEditor })),
+  {
+    loading: () => <Skeleton className="h-48 w-full rounded-md" />,
+    ssr: false, // Tiptap no funciona con SSR
+  }
+);
 import { toast } from 'sonner';
 import { uploadAttachments } from '@/services/attachmentService';
 import { getEnabledGlobalSignature } from '@/services/global-signature';
@@ -216,6 +225,8 @@ interface Props {
   onTicketUpdate?: (updatedTicket: ITicket) => void;
   replyOnly?: boolean;
   latestOnly?: boolean;
+  extraToRecipients?: string;
+  onExtraToRecipientsChange?: (recipients: string) => void;
   extraRecipients?: string;
   onExtraRecipientsChange?: (recipients: string) => void;
   extraBccRecipients?: string;
@@ -339,6 +350,11 @@ function OptimizedMessageItem({ content, isInitial = false, ticket }: OptimizedM
       htmlContent = htmlContent.replace(/<original-sender>.*?<\/original-sender>/g, '');
     }
 
+    // 🔒 SECURITY: Remove dangerous tags to prevent CSS/JS injection that affects the entire page
+    htmlContent = htmlContent.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '');
+    htmlContent = htmlContent.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
+    htmlContent = htmlContent.replace(/<link[^>]*>/gi, '');
+
     htmlContent = htmlContent.replace(/<meta[^>]*>/gi, '');
     htmlContent = htmlContent.replace(/^\s*<html[^>]*>/gi, '');
     htmlContent = htmlContent.replace(/<\/html>\s*$/gi, '');
@@ -399,10 +415,28 @@ function OptimizedMessageItem({ content, isInitial = false, ticket }: OptimizedM
     const isAgentMessage = senderInfo.type === 'agent';
     let toRecipients = '';
     if (isAgentMessage && ticket.user?.email) {
+      // Empezar con el primary contact
       const userName = ticket.user.name
         ? `${ticket.user.name} <${ticket.user.email}>`
         : ticket.user.email;
       toRecipients = userName;
+      
+      // Agregar destinatarios adicionales si existen en el ticket
+      if (ticket.to_recipients && ticket.to_recipients.trim()) {
+        const additionalRecipients = ticket.to_recipients
+          .split(',')
+          .map((email: string) => email.trim())
+          .filter((email: string) => email.length > 0)
+          .filter((email: string) => {
+            // No duplicar el primary contact
+            const emailOnly = email.includes('<') ? email.match(/<([^>]+)>/)?.[1] : email;
+            return emailOnly !== ticket?.user?.email;
+          });
+        
+        if (additionalRecipients.length > 0) {
+          toRecipients = toRecipients + ', ' + additionalRecipients.join(', ');
+        }
+      }
     } else {
       toRecipients = ticket.to_recipients || '';
     }
@@ -657,9 +691,12 @@ export function TicketConversation({
   onTicketUpdate,
   replyOnly = false,
   latestOnly = false,
+  extraToRecipients = '',
+  onExtraToRecipientsChange,
   extraRecipients = '',
   onExtraRecipientsChange,
   extraBccRecipients = '',
+  onExtraBccRecipientsChange,
 }: Props) {
   //type ValuePiece = Date | null;
   //type Value = ValuePiece | [ValuePiece, ValuePiece];
@@ -865,8 +902,14 @@ export function TicketConversation({
       setPopCalendar(false);
       setDate(null);
       setTime('');
+      if (onExtraToRecipientsChange) {
+        onExtraToRecipientsChange('');
+      }
       if (onExtraRecipientsChange) {
         onExtraRecipientsChange('');
+      }
+      if (onExtraBccRecipientsChange) {
+        onExtraBccRecipientsChange('');
       }
     }
 
@@ -876,7 +919,9 @@ export function TicketConversation({
     ticket.user?.name,
     currentAgentData,
     globalSignatureData,
+    onExtraToRecipientsChange,
     onExtraRecipientsChange,
+    onExtraBccRecipientsChange,
   ]);
 
   const handleAttachmentsChange = (files: File[]) => {
@@ -927,10 +972,42 @@ export function TicketConversation({
   // Function to validate email addresses
   const validateEmails = (emailString: string): boolean => {
     if (!emailString.trim()) return true; // Empty is valid
-    const emails = emailString.split(',').map(email => email.trim());
+    
+    // Check if it's actual HTML (has HTML tags like <div>, <span>, etc.)
+    const isActualHTML = emailString.includes('<div') || emailString.includes('<span') || emailString.includes('</');
+    
+    if (isActualHTML) {
+      // Decode HTML entities
+      const htmlDecoded = emailString.replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+      
+      // Extract emails from span tags with class="text-xs"
+      const spanPattern = /<span[^>]*class="text-xs"[^>]*>([^<]+)<\/span>/g;
+      const matches = [];
+      let match;
+      
+      while ((match = spanPattern.exec(htmlDecoded)) !== null) {
+        matches.push(match[1].trim());
+      }
+      
+      if (matches.length === 0) return false;
+      
+      // Filter and validate emails
+      const validEmails = matches.filter(email => {
+        const emailMatch = email.match(/<([^>]+)>/) || [null, email];
+        const extractedEmail = emailMatch[1]?.trim() || email.trim();
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return emailRegex.test(extractedEmail);
+      });
+      
+      return validEmails.length > 0; // Accept if at least one valid email found
+    }
+    
+    // Handle regular comma-separated emails (including "Name <email>" format)
+    const emails = emailString.split(',').map(email => email.trim()).filter(email => email); // Remove empty
 
-    return emails.every(email => {
-      // ✅ Handle both formats: "email@domain.com" and "Name <email@domain.com>"
+    // Filter out invalid entries and keep only valid emails
+    const validEmails = emails.filter(email => {
+      // Handle both formats: "email@domain.com" and "Name <email@domain.com>"
       const emailMatch = email.match(/<([^>]+)>/) || [null, email];
       const extractedEmail = emailMatch[1]?.trim() || email.trim();
 
@@ -938,6 +1015,9 @@ export function TicketConversation({
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       return emailRegex.test(extractedEmail);
     });
+    
+    // Accept if we have at least one valid email, or if the original string was empty
+    return validEmails.length > 0 || emails.length === 0;
   };
 
   const sendComment = async (
@@ -951,6 +1031,10 @@ export function TicketConversation({
     if (!currentUser) {
       toast.error('Authentication error. User not found.');
       throw new Error('Authentication error. User not found.');
+    }
+    if (extraToRecipients.trim() && !validateEmails(extraToRecipients)) {
+      toast.error('Please enter valid TO email addresses separated by commas.');
+      throw new Error('Invalid email addresses in TO recipients.');
     }
     if (extraRecipients.trim() && !validateEmails(extraRecipients)) {
       toast.error('Please enter valid email addresses separated by commas.');
@@ -1089,6 +1173,7 @@ export function TicketConversation({
       workspace_id: currentUser.workspace_id,
       is_private: isPrivate,
       attachment_ids: attachmentIds.length > 0 ? attachmentIds : undefined,
+      to_recipients: extraToRecipients.trim() || undefined,
       other_destinaries: extraRecipients.trim() || undefined,
       bcc_recipients: extraBccRecipients.trim() || undefined,
       scheduled_send_at: scheduledSendAt,
@@ -1125,9 +1210,8 @@ export function TicketConversation({
       setReplyContent('');
       setSelectedAttachments([]);
       setIsPrivateNote(false);
-      if (onExtraRecipientsChange) {
-        onExtraRecipientsChange('');
-      }
+      // ✅ CORREGIDO: NO limpiar los campos de recipients después de enviar
+      // Los usuarios deben poder mantener los destinatarios para replies futuros
       setEditorKey(prev => prev + 1);
 
       if (data.is_scheduled) {
@@ -1164,7 +1248,10 @@ export function TicketConversation({
 
         onTicketUpdate(updatedTask);
         queryClient.setQueryData(['ticket', ticket.id], updatedTask);
-        queryClient.invalidateQueries({ queryKey: ['tickets'] });
+        queryClient.invalidateQueries({
+          queryKey: ['tickets'],
+          refetchType: 'none' // No refetch inmediato para evitar "Loading..." en la tabla
+        });
         // Refetch el ticket específico para asegurar sincronización
         queryClient.invalidateQueries({ queryKey: ['ticket', ticket.id] });
         // Invalidar comentarios solo si es nota privada para mostrar inmediatamente
@@ -1184,7 +1271,10 @@ export function TicketConversation({
             onTicketUpdate(updatedTicket);
           }
           queryClient.setQueryData(['ticket', ticket.id], updatedTicket);
-          queryClient.invalidateQueries({ queryKey: ['tickets'] });
+          queryClient.invalidateQueries({
+            queryKey: ['tickets'],
+            refetchType: 'none' // No refetch inmediato para evitar "Loading..." en la tabla
+          });
           // Refetch el ticket específico para asegurar sincronización
           queryClient.invalidateQueries({ queryKey: ['ticket', ticket.id] });
           // Invalidar comentarios solo si es nota privada para mostrar inmediatamente
@@ -1218,6 +1308,11 @@ export function TicketConversation({
 
     if (isSending || createCommentMutation.isPending) {
       return; // El botón ya está deshabilitado, no necesitamos toast
+    }
+
+    if (extraToRecipients.trim() && !validateEmails(extraToRecipients)) {
+      toast.error('Please enter valid TO email addresses separated by commas.');
+      return;
     }
 
     if (extraRecipients.trim() && !validateEmails(extraRecipients)) {

@@ -9,12 +9,8 @@ import { getAuthToken } from '@/lib/auth';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const uploadAttachments = async (files: File[]): Promise<any[]> => {
   if (!files || files.length === 0) {
-    console.log('No files to upload');
     return [];
   }
-
-  console.log(`Uploading attachments to: ${AppConfigs.api}/attachments/upload-multiple`);
-  console.log('Files being uploaded:', files);
 
   try {
     // Optimización: crear un solo FormData para todos los archivos
@@ -60,10 +56,8 @@ export const uploadAttachments = async (files: File[]): Promise<any[]> => {
 
     // Parsear respuesta exitosa
     const data = await response.json();
-    console.log('Raw response from server:', data);
 
     const parsedData = data.data || data;
-    console.log('Parsed response data:', parsedData);
 
     return parsedData;
   } catch (error) {

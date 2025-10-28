@@ -62,17 +62,14 @@ export const createTeam = async (teamData: {
   workspace_id: number;
   icon_name?: string | null;
 }): Promise<Team> => {
-  console.log('[createTeam service] Received teamData:', JSON.stringify(teamData));
   try {
     const url = `${API_BASE_URL}/v1/teams/`;
     const response = await fetchAPI.POST<Team>(url, teamData);
-    console.log('[createTeam service] API Response raw:', JSON.stringify(response));
 
     if (!response || !response.data) {
       console.error('[createTeam service] Failed to create team or data is missing in response');
       throw new Error('Failed to create team or API response data is missing');
     }
-    console.log('[createTeam service] Parsed team data from API:', JSON.stringify(response.data));
     return response.data;
   } catch (error) {
     console.error('[createTeam service] Error during API call:', error);
@@ -126,7 +123,6 @@ export const deleteTeam = async (teamId: number): Promise<void> => {
     // Assuming fetchAPI.DELETE handles the request and potential errors
     // It might not return data, so we don't expect a specific type back besides handling success/error
     await fetchAPI.DELETE<void>(url); // Use void if no data is expected on success
-    console.log(`Team ${teamId} deleted successfully.`);
   } catch (error) {
     console.error(`Error deleting team ${teamId}:`, error);
     throw error; // Re-throw to be handled by the caller
@@ -184,7 +180,6 @@ export const removeTeamMember = async (teamId: number, agentId: number): Promise
     const url = `${API_BASE_URL}/v1/teams/${teamId}/members/${agentId}`;
     // Assuming fetchAPI.DELETE handles the request and potential errors
     await fetchAPI.DELETE<void>(url);
-    console.log(`Member ${agentId} removed from team ${teamId} successfully.`);
   } catch (error) {
     console.error(`Error removing member ${agentId} from team ${teamId}:`, error);
     throw error;

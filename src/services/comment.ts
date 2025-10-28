@@ -49,7 +49,6 @@ export const getScheduledCommentsByTaskId = async (
   try {
     const url = `${AppConfigs.api}/tasks/${taskId}/scheduled_comments`;
     const response = await fetchAPI.GET<IScheduledComment[]>(url);
-    console.log(response);
     if (!response.success || !response.data) {
       const errorMessage = response.message || 'Failed to fetch scheduled comments';
       console.error('Failed to fetch scheduled comments:', errorMessage);
@@ -75,6 +74,7 @@ export interface CreateCommentPayload {
   workspace_id: number;
   is_private: boolean;
   attachment_ids?: number[];
+  to_recipients?: string;
   other_destinaries?: string;
   bcc_recipients?: string;
   scheduled_send_at?: string;

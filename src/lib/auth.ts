@@ -88,7 +88,6 @@ export const handleLogout = async (): Promise<void> => {
   const token = getAuthToken();
   if (token) {
     await microsoftAuthService.logoutMicrosoft();
-    console.log('Logout sucessful');
   }
 
   // Eliminar tokens y datos de usuario
@@ -179,7 +178,6 @@ export const setupHistoryProtection = () => {
       isAuthenticated() &&
       (window.location.pathname === '/signin' || window.location.pathname === '/register')
     ) {
-      console.log('Redirecting from auth page to dashboard due to active session');
       window.location.replace(AppConfigs.routes.dashboard);
       return true;
     }

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import {
   Dialog,
   DialogActions,
@@ -11,10 +12,10 @@ import {
   DialogContentText,
   FormControlLabel,
   Switch,
+  Skeleton as MuiSkeleton,
 } from '@mui/material';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { RichTextEditor } from '@/components/tiptap/RichTextEditor';
 import {
   createCannedReply,
   updateCannedReply,
@@ -23,6 +24,15 @@ import {
   type CannedReplyUpdate,
 } from '@/services/canned-replies';
 import { useAuth } from '@/hooks/use-auth';
+
+// ⚡ LAZY LOAD: RichTextEditor - Solo carga cuando se abre el modal
+const RichTextEditor = dynamic(
+  () => import('@/components/tiptap/RichTextEditor').then(mod => ({ default: mod.RichTextEditor })),
+  {
+    loading: () => <MuiSkeleton variant="rectangular" height={192} sx={{ borderRadius: 1 }} />,
+    ssr: false,
+  }
+);
 
 interface CannedReplyModalMuiProps {
   open: boolean;

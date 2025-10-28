@@ -12,23 +12,22 @@ const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || 'https://enque-backend-production.up.railway.app';
 
 /**
- * Gets count of all active tickets (excluding closed ones)
- * @returns Promise with count of active tickets
+ * Gets count of all active tickets that the user can see based on their team membership
+ * - Admin/Manager: All tickets in workspace
+ * - Regular user: Only tickets from their teams
+ * @returns Promise with count of accessible tickets
  */
-
 export async function getAllTicketsCount(): Promise<number> {
   try {
-    //const url = `${API_BASE_URL}/v1/tasks-optimized/count/all`;
-    const url = `${API_BASE_URL}/v1/tasks-optimized/count`;
+    // Usar el nuevo endpoint que cuenta solo tickets de equipos del usuario
+    const url = `${API_BASE_URL}/v1/tasks/count/my-teams`;
     const response = await fetchAPI.GET<{ count: number }>(url);
-    // console.log(response && response.success && typeof response.data.count === 'number');
-    if (response && response.success && response.data!.count) {
-      //console.log(response.data!.count);
+    if (response && response.success && response.data!.count !== undefined) {
       return response.data!.count;
     }
     return 0;
   } catch (error) {
-    console.error('Error getting all tickets count:', error);
+    console.error('Error getting user teams tickets count:', error);
     return 0;
   }
 }
@@ -40,8 +39,8 @@ export async function getAllTicketsCount(): Promise<number> {
  */
 export async function getAssigneeTicketsCount(assigneeId: number): Promise<number> {
   try {
-    //const url = `${API_BASE_URL}/v1/tasks-optimized/count/assignee/${assigneeId}`;
-    const url = `${API_BASE_URL}/v1/tasks-optimized/count/?assignee_id=${assigneeId}`;
+    //const url = `${API_BASE_URL}/v1/tasks/count/assignee/${assigneeId}`;
+    const url = `${API_BASE_URL}/v1/tasks/count/?assignee_id=${assigneeId}`;
     const response = await fetchAPI.GET<{ count: number }>(url);
     if (response && response.success && response.data!.count) {
       return response.data!.count;
@@ -53,22 +52,80 @@ export async function getAssigneeTicketsCount(assigneeId: number): Promise<numbe
   }
 }
 
+/**
+ * Gets count of tickets assigned to the current user (excluding closed ones)
+ * This uses a dedicated endpoint that filters out closed tickets automatically
+ * @returns Promise with count of current user's assigned tickets
+ */
+export async function getMyTicketsCount(): Promise<number> {
+  try {
+    const url = `${API_BASE_URL}/v1/tasks/count/my-tickets`;
+    const response = await fetchAPI.GET<{ count: number }>(url);
+    if (response && response.success && response.data!.count !== undefined) {
+      return response.data!.count;
+    }
+    return 0;
+  } catch (error) {
+    console.error('Error getting my tickets count:', error);
+    return 0;
+  }
+}
+
 export async function getTickets(
   filters: IGetTicket = {},
-  endpointPath = '/v1/tasks-optimized/'
+  endpointPath = '/v1/tasks/'
 ): Promise<ITicket[]> {
-  const { skip = 0, limit = 25, status, priority, type, user_id, team_id } = filters; // ✅ REDUCIDO: de 100 a 25
+  const {
+    skip = 0,
+    limit = 50,
+    status,
+    priority,
+    type,
+    user_id,
+    team_id,
+    category_id,
+    company_id,
+    subject,
+    statuses,
+    priorities,
+    assignee_ids,
+    user_ids,
+    team_ids,
+    category_ids,
+    company_ids,
+    sort_by,
+    order
+  } = filters;
 
   try {
     const queryParams = new URLSearchParams({
       skip: skip.toString(),
       limit: limit.toString(),
     });
+
+    // Single value filters (backward compatibility)
     if (status !== undefined) queryParams.append('status', status);
     if (priority !== undefined) queryParams.append('priority', priority);
     if (type !== undefined) queryParams.append('type', type);
     if (user_id !== undefined) queryParams.append('user_id', String(user_id));
     if (team_id !== undefined) queryParams.append('team_id', String(team_id));
+    if (category_id !== undefined) queryParams.append('category_id', String(category_id));
+    if (company_id !== undefined) queryParams.append('company_id', String(company_id));
+    if (subject !== undefined) queryParams.append('subject', subject);
+
+    // Multi-value filters
+    if (statuses !== undefined) queryParams.append('statuses', statuses);
+    if (priorities !== undefined) queryParams.append('priorities', priorities);
+    if (assignee_ids !== undefined) queryParams.append('assignee_ids', assignee_ids);
+    if (user_ids !== undefined) queryParams.append('user_ids', user_ids);
+    if (team_ids !== undefined) queryParams.append('team_ids', team_ids);
+    if (category_ids !== undefined) queryParams.append('category_ids', category_ids);
+    if (company_ids !== undefined) queryParams.append('company_ids', company_ids);
+
+    // Sorting
+    if (sort_by !== undefined) queryParams.append('sort_by', sort_by);
+    if (order !== undefined) queryParams.append('order', order);
+
     const url = `${API_BASE_URL}${endpointPath}?${queryParams.toString()}`;
     const response = await fetchAPI.GET<ITicket[]>(url);
     if (response && response.success && response.data) {
@@ -142,7 +199,7 @@ export async function updateTicket(
       throw new Error(`Invalid ticket ID: ${ticketId}. Cannot update ticket.`);
     }
 
-    const url = `${API_BASE_URL}/v1/tasks-optimized/${ticketId}/refresh`;
+    const url = `${API_BASE_URL}/v1/tasks/${ticketId}/refresh`;
 
     const payload: TicketUpdatePayload = {};
     if (updates.status !== undefined) payload.status = updates.status;
@@ -184,7 +241,6 @@ export async function updateTicket(
       }
     }
 
-    console.log('Sending OPTIMIZED update payload:', payload);
     const response = await fetchAPI.PUT<ITicket>(url, payload);
 
     if (response && response.success && response.data) {
@@ -382,7 +438,6 @@ export async function mergeTickets(
       ticket_ids_to_merge: ticketIdsToMerge,
     };
 
-    console.log('Sending merge payload:', payload);
     const response = await fetchAPI.POST<unknown>(url, payload);
 
     if (response && response.success) {

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import dynamic from 'next/dynamic';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -20,7 +21,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { RichTextEditor } from '@/components/tiptap/RichTextEditor';
+
+// ⚡ LAZY LOAD: RichTextEditor - Solo carga cuando se editan alertas
+const RichTextEditor = dynamic(
+  () => import('@/components/tiptap/RichTextEditor').then(mod => ({ default: mod.RichTextEditor })),
+  {
+    loading: () => <Skeleton className="h-32 w-full rounded-md" />,
+    ssr: false,
+  }
+);
 import {
   Dialog,
   DialogContent,

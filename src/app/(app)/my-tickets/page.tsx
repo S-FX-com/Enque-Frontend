@@ -38,7 +38,6 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { useDebounce } from '@/hooks/use-debounce';
-import { motion } from 'framer-motion';
 import type { ITicket, TicketStatus } from '@/typescript/ticket';
 import type { IUser } from '@/typescript/user';
 import { getUsers } from '@/services/user';
@@ -78,7 +77,51 @@ function MyTicketsClientContent() {
   const [selectedTargetTicketId, setSelectedTargetTicketId] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // ✅ CORREGIDO: Usar query específica para My Tickets en lugar de filtrar cache global
+  // Build API filters from component state
+  const apiFilters = useMemo(() => {
+    const filters: {
+      subject?: string;
+      statuses?: string;
+      priorities?: string;
+      user_ids?: string;
+      team_ids?: string;
+    } = {};
+
+    // Search filter
+    if (debouncedSubjectFilter) {
+      filters.subject = debouncedSubjectFilter;
+    }
+
+    // Multi-select filters - send as comma-separated strings
+    if (selectedStatuses.length > 0) {
+      filters.statuses = selectedStatuses.join(',');
+    } else {
+      // Por defecto, excluir tickets cerrados
+      filters.statuses = 'Unread,Open,With User,In Progress';
+    }
+
+    if (selectedPriorities.length > 0) {
+      filters.priorities = selectedPriorities.join(',');
+    }
+
+    if (selectedUsers.length > 0) {
+      filters.user_ids = selectedUsers.join(',');
+    }
+
+    if (selectedTeams.length > 0) {
+      filters.team_ids = selectedTeams.join(',');
+    }
+
+    return filters;
+  }, [
+    debouncedSubjectFilter,
+    selectedStatuses,
+    selectedPriorities,
+    selectedUsers,
+    selectedTeams,
+  ]);
+
+  // ✅ OPTIMIZADO: Query con filtros de backend
   const {
     data: myTicketsQueryData,
     fetchNextPage,
@@ -91,33 +134,33 @@ function MyTicketsClientContent() {
     ITicket[],
     Error,
     InfiniteData<ITicket[], number>,
-    readonly [string, string, number],
+    readonly [string, string, number, typeof apiFilters],
     number
   >({
-    queryKey: ['tickets', 'my', currentUser?.id || 0],
+    queryKey: ['tickets', 'my', currentUser?.id || 0, apiFilters],
     queryFn: async ({ pageParam = 0 }) => {
       if (!currentUser?.id) return [];
-      // Using optimized assignee endpoint for better performance
+      // Using optimized assignee endpoint with filters
       const tickets = await getTickets(
-        { skip: pageParam, limit: 25 },
-        `/v1/tasks-optimized/assignee/${currentUser.id}`
+        { skip: pageParam, limit: 50, ...apiFilters },
+        `/v1/tasks/assignee/${currentUser.id}`
       );
       return tickets;
     },
     getNextPageParam: (lastPage, allPages) => {
-      if (!lastPage || lastPage.length < 25) {
+      if (!lastPage || lastPage.length < 50) {
         return undefined;
       }
       return allPages.flat().length;
     },
     initialPageParam: 0,
     enabled: !!currentUser?.id,
-    staleTime: 1000 * 60 * 10,
+    staleTime: 1000 * 60 * 2,
     refetchInterval: false,
     refetchOnWindowFocus: false,
     refetchOnMount: false,
     placeholderData: previousData => previousData,
-    gcTime: 1000 * 60 * 30,
+    gcTime: 1000 * 60 * 5,
   });
 
   const allTicketsData = useMemo(() => {
@@ -188,45 +231,8 @@ function MyTicketsClientContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, allTicketsData, router, pathname]);
 
-  const filteredTicketsData = useMemo(() => {
-    let tickets = allTicketsData;
-
-    if (selectedStatuses.length === 0) {
-      tickets = tickets.filter(ticket => ticket.status !== 'Closed');
-    }
-
-    if (debouncedSubjectFilter) {
-      const filter = debouncedSubjectFilter.toLowerCase();
-      tickets = tickets.filter(ticket => ticket.title.toLowerCase().includes(filter));
-    }
-
-    if (selectedTeams.length > 0) {
-      const teamIds = selectedTeams.map(id => Number.parseInt(id, 10));
-      tickets = tickets.filter(ticket => ticket.team_id && teamIds.includes(ticket.team_id));
-    }
-
-    if (selectedUsers.length > 0) {
-      const userIds = selectedUsers.map(id => Number.parseInt(id, 10));
-      tickets = tickets.filter(ticket => ticket.user_id && userIds.includes(ticket.user_id));
-    }
-
-    if (selectedStatuses.length > 0) {
-      tickets = tickets.filter(ticket => selectedStatuses.includes(ticket.status));
-    }
-
-    if (selectedPriorities.length > 0) {
-      tickets = tickets.filter(ticket => selectedPriorities.includes(ticket.priority));
-    }
-
-    return tickets;
-  }, [
-    allTicketsData,
-    debouncedSubjectFilter,
-    selectedUsers,
-    selectedStatuses,
-    selectedPriorities,
-    selectedTeams,
-  ]);
+  // ✅ OPTIMIZADO: No más filtrado client-side - el backend lo maneja
+  const filteredTicketsData = allTicketsData;
 
   const handleSelectAllChange = (checked: boolean | 'indeterminate') => {
     if (checked === true) {
@@ -301,16 +307,17 @@ function MyTicketsClientContent() {
     },
     onSuccess: () => {},
     onMutate: async ticketIdsToDelete => {
-      await queryClient.cancelQueries({ queryKey: ['tickets', 'my', currentUser?.id] });
+      await queryClient.cancelQueries({ queryKey: ['tickets', 'my', currentUser?.id, apiFilters] });
 
       const previousTicketsData = queryClient.getQueryData<InfiniteData<ITicket[], number>>([
         'tickets',
         'my',
         currentUser?.id,
+        apiFilters,
       ]);
 
       queryClient.setQueryData<InfiniteData<ITicket[], number>>(
-        ['tickets', 'my', currentUser?.id],
+        ['tickets', 'my', currentUser?.id, apiFilters],
         (oldData: InfiniteData<ITicket[], number> | undefined) => {
           if (!oldData) return oldData;
           const newPages = oldData.pages.map((page: ITicket[]) =>
@@ -364,7 +371,7 @@ function MyTicketsClientContent() {
       toast.error(`Error deleting tickets: ${err.message}`);
       console.error(`Error deleting tickets mutation: ${err.message}`);
       if (context?.previousTicketsData) {
-        queryClient.setQueryData(['tickets', 'my', currentUser?.id], context.previousTicketsData);
+        queryClient.setQueryData(['tickets', 'my', currentUser?.id, apiFilters], context.previousTicketsData);
       }
       // Revert counter updates on error
       if (context?.previousAllCount !== undefined) {
@@ -375,8 +382,16 @@ function MyTicketsClientContent() {
       }
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['tickets', 'my', currentUser?.id] });
-      queryClient.invalidateQueries({ queryKey: ['agentTeams'] });
+      // Solo invalidar contadores y queries relacionadas SIN refetch inmediato
+      // Los optimistic updates en onMutate ya actualizaron la UI correctamente
+      queryClient.invalidateQueries({
+        queryKey: ['ticketsCount'],
+        refetchType: 'none'
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['agentTeams'],
+        refetchType: 'none'
+      });
     },
   });
 
@@ -407,12 +422,13 @@ function MyTicketsClientContent() {
       toast.success(`${variables.length} ticket(s) closed successfully.`);
     },
     onMutate: async ticketIds => {
-      await queryClient.cancelQueries({ queryKey: ['tickets', 'my', currentUser?.id] });
+      await queryClient.cancelQueries({ queryKey: ['tickets', 'my', currentUser?.id, apiFilters] });
 
       const previousTicketsData = queryClient.getQueryData<InfiniteData<ITicket[], number>>([
         'tickets',
         'my',
         currentUser?.id,
+        apiFilters,
       ]);
 
       // Get current tickets to calculate counter changes
@@ -420,7 +436,7 @@ function MyTicketsClientContent() {
       const affectedTickets = allTickets.filter(ticket => ticketIds.includes(ticket.id));
 
       queryClient.setQueryData<InfiniteData<ITicket[], number>>(
-        ['tickets', 'my', currentUser?.id],
+        ['tickets', 'my', currentUser?.id, apiFilters],
         (oldData: InfiniteData<ITicket[], number> | undefined) => {
           if (!oldData) return oldData;
           const newPages = oldData.pages.map((page: ITicket[]) =>
@@ -468,12 +484,16 @@ function MyTicketsClientContent() {
     ) => {
       toast.error(`Error closing tickets: ${err.message}`);
       if (context?.previousTicketsData) {
-        queryClient.setQueryData(['tickets', 'my', currentUser?.id], context.previousTicketsData);
+        queryClient.setQueryData(['tickets', 'my', currentUser?.id, apiFilters], context.previousTicketsData);
       }
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['tickets', 'my', currentUser?.id] });
-      queryClient.invalidateQueries({ queryKey: ['ticketsCount'] });
+      // Solo invalidar contadores SIN refetch inmediato
+      // Los optimistic updates en onMutate ya actualizaron la UI correctamente
+      queryClient.invalidateQueries({
+        queryKey: ['ticketsCount'],
+        refetchType: 'none'
+      });
     },
   });
 
@@ -514,17 +534,18 @@ function MyTicketsClientContent() {
       );
     },
     onMutate: async ({ ticketIdsToMerge }) => {
-      await queryClient.cancelQueries({ queryKey: ['tickets', 'my', currentUser?.id] });
+      await queryClient.cancelQueries({ queryKey: ['tickets', 'my', currentUser?.id, apiFilters] });
 
       const previousTicketsData = queryClient.getQueryData<InfiniteData<ITicket[], number>>([
         'tickets',
         'my',
         currentUser?.id,
+        apiFilters,
       ]);
 
       // Remove merged tickets from the list
       queryClient.setQueryData<InfiniteData<ITicket[], number>>(
-        ['tickets', 'my', currentUser?.id],
+        ['tickets', 'my', currentUser?.id, apiFilters],
         (oldData: InfiniteData<ITicket[], number> | undefined) => {
           if (!oldData) return oldData;
           const newPages = oldData.pages.map((page: ITicket[]) =>
@@ -570,12 +591,20 @@ function MyTicketsClientContent() {
       toast.error(`Error merging tickets: ${err.message}`);
       console.error(`Error merging tickets: ${err.message}`);
       if (context?.previousTicketsData) {
-        queryClient.setQueryData(['tickets', 'my', currentUser?.id], context.previousTicketsData);
+        queryClient.setQueryData(['tickets', 'my', currentUser?.id, apiFilters], context.previousTicketsData);
       }
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['tickets', 'my', currentUser?.id] });
-      queryClient.invalidateQueries({ queryKey: ['agentTeams'] });
+      // Solo invalidar contadores y queries relacionadas SIN refetch inmediato
+      // Los optimistic updates en onMutate ya actualizaron la UI correctamente
+      queryClient.invalidateQueries({
+        queryKey: ['ticketsCount'],
+        refetchType: 'none'
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['agentTeams'],
+        refetchType: 'none'
+      });
     },
   });
 
@@ -627,6 +656,23 @@ function MyTicketsClientContent() {
       if (container) container.removeEventListener('scroll', handleScroll);
     };
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  // ⚡ OPTIMIZADO: Auto-cargar TODAS las páginas automáticamente
+  // Esto elimina la necesidad de hacer scroll para cargar tickets
+  useEffect(() => {
+    // Cargar TODAS las páginas automáticamente
+    if (hasNextPage && !isFetchingNextPage && !isLoadingTickets) {
+      // Límite de seguridad para evitar cargar infinitamente si hay error
+      const maxTicketsToLoad = 500;
+
+      if (allTicketsData.length < maxTicketsToLoad) {
+        console.log(`📥 Auto-loading next page (My Tickets): ${filteredTicketsData.length} visible / ${allTicketsData.length} total`);
+        fetchNextPage();
+      } else {
+        console.warn(`⚠️ Reached maximum limit of ${maxTicketsToLoad} tickets. Stopping auto-load.`);
+      }
+    }
+  }, [hasNextPage, isFetchingNextPage, isLoadingTickets, filteredTicketsData.length, allTicketsData.length, fetchNextPage]);
 
   // Calculate active filters count for the badge
   const activeFiltersCount = useMemo(() => {
@@ -837,13 +883,8 @@ function MyTicketsClientContent() {
                     </TableRow>
                   ) : (
                     filteredTicketsData.map(ticket => (
-                      <motion.tr
+                      <TableRow
                         key={ticket.id}
-                        layout
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.2 }}
                         className={cn(
                           'border-0 h-14 cursor-pointer hover:bg-muted/50',
                           ticket.status === 'Unread' &&
@@ -926,7 +967,7 @@ function MyTicketsClientContent() {
                         <TableCell className="p-2 py-4">
                           {formatRelativeTime(ticket.created_at)}
                         </TableCell>
-                      </motion.tr> // Close motion.tr
+                      </TableRow>
                     ))
                   )}
                   {isFetchingNextPage && (

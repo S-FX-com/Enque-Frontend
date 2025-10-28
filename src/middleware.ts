@@ -1,26 +1,23 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { LRUCache } from 'lru-cache';
 import { AppConfigs } from '@/configs';
 
-// Cache for workspace validation (5 minutos TTL)
-const workspaceCache = new Map<string, { valid: boolean; timestamp: number }>();
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutos
+// ⚡ OPTIMIZADO: LRU Cache con límite de tamaño y TTL automático
+// Previene memory leaks por crecimiento ilimitado de subdomains
+const workspaceCache = new LRUCache<string, boolean>({
+  max: 100, // Máximo 100 workspaces en cache (~10-20KB)
+  ttl: 5 * 60 * 1000, // 5 minutos - TTL automático
+  updateAgeOnGet: true, // Renovar TTL en cada acceso
+});
 
 function isWorkspaceCacheValid(subdomain: string): boolean | null {
   const cached = workspaceCache.get(subdomain);
-  if (!cached) return null;
-
-  const isExpired = Date.now() - cached.timestamp > CACHE_TTL;
-  if (isExpired) {
-    workspaceCache.delete(subdomain);
-    return null;
-  }
-
-  return cached.valid;
+  return cached !== undefined ? cached : null;
 }
 
 function setCacheWorkspace(subdomain: string, valid: boolean): void {
-  workspaceCache.set(subdomain, { valid, timestamp: Date.now() });
+  workspaceCache.set(subdomain, valid);
 }
 
 // Make the middleware async to use await for fetch

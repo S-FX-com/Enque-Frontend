@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
+import dynamic from 'next/dynamic';
 import { useForm, Controller, SubmitHandler } from 'react-hook-form'; // Import SubmitHandler
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -16,6 +17,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Select,
   SelectContent,
@@ -23,8 +25,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { RichTextEditor } from '@/components/tiptap/RichTextEditor'; // Assuming Tiptap editor path
 import { createTicket } from '@/services/ticket'; // Assuming createTicket service function exists
+
+// ⚡ LAZY LOAD: RichTextEditor - Solo carga cuando se abre el modal
+const RichTextEditor = dynamic(
+  () => import('@/components/tiptap/RichTextEditor').then(mod => ({ default: mod.RichTextEditor })),
+  {
+    loading: () => <Skeleton className="h-48 w-full rounded-md" />,
+    ssr: false,
+  }
+);
 import { getUsers } from '@/services/user';
 import { getTeams } from '@/services/team';
 import { getCategories } from '@/services/category';
