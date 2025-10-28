@@ -47,6 +47,7 @@ export default function Home() {
     try {
       console.log(`Checking workspace existence: ${workspaceCheckUrl}`);
       const response = await fetch(workspaceCheckUrl);
+      console.log(response)
       console.log(`Workspace check response status: ${response.status}`);
 
       if (response.ok) {

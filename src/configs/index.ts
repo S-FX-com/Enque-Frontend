@@ -4,7 +4,7 @@ export const AppConfigs = {
 
   // API URLs
   api:
-    (process.env.NEXT_PUBLIC_API_URL || 'https://enque-backend-production.up.railway.app') + '/v1',
+    (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000') + '/v1',
 
   // App configuration
   defaultTheme: 'system',
