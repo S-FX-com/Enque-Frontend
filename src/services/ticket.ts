@@ -388,6 +388,38 @@ export async function getTicketHtmlContent(ticketId: number): Promise<TicketHtml
   }
 }
 
+export interface TicketBodyResponse {
+  ticket_id: number;
+  has_body: boolean;
+  body: string | null;
+  body_size: number;
+  body_preview: string | null;
+}
+
+/**
+ * Get the body content of a ticket (lazy loaded).
+ * This endpoint loads the ticket body separately to optimize memory usage.
+ * Only call this when you need the full email HTML content.
+ * @param ticketId - The ticket ID
+ * @returns Promise with the ticket body response
+ */
+export async function getTicketBody(ticketId: number): Promise<TicketBodyResponse> {
+  try {
+    const url = `${API_BASE_URL}/v1/tasks/${ticketId}/body`;
+    const response = await fetchAPI.GET<TicketBodyResponse>(url);
+
+    if (response && response.success && response.data) {
+      return response.data;
+    } else {
+      const errorMsg = response?.message || 'Failed to get ticket body';
+      throw new Error(errorMsg);
+    }
+  } catch (error) {
+    console.error(`Exception in getTicketBody for ticket ${ticketId}:`, error);
+    throw error;
+  }
+}
+
 /**
  * Merges multiple tickets into a target ticket.
  * @param targetTicketId The ID of the ticket to merge others into.

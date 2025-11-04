@@ -286,6 +286,7 @@ export function RichTextEditor({
   disabled = false,
   onAttachmentsChange,
 }: Props) {
+  const contentMemo = React.useMemo(() => content, [content]);
   const handlePasteImage = useCallback(async (file: File, editor: Editor) => {
     try {
       const result = await uploadImage(file);
@@ -368,7 +369,7 @@ export function RichTextEditor({
         suggestion: suggestion(),
       }),
     ],
-    content: content,
+    content: contentMemo,
     editable: !disabled,
     onUpdate: ({ editor }) => {
       onChange(editor.getHTML());
@@ -404,10 +405,10 @@ export function RichTextEditor({
   });
 
   React.useEffect(() => {
-    if (editor && editor.getHTML() !== content) {
-      editor.commands.setContent(content, false);
+    if (editor && editor.getHTML() !== contentMemo) {
+      editor.commands.setContent(contentMemo, false);
     }
-  }, [content, editor]);
+  }, [contentMemo, editor]);
 
   React.useEffect(() => {
     if (editor) {

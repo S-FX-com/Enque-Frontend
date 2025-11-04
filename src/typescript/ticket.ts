@@ -77,7 +77,6 @@ export interface IGetTicket extends BaseFilters {
   category_id?: number | null;
   company_id?: number;
   subject?: string;
-  // Multi-value filters (comma-separated strings)
   statuses?: string;
   priorities?: string;
   assignee_ids?: string;
