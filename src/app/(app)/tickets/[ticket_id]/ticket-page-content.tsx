@@ -23,18 +23,18 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'; // Added Avatar imports
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import type { ITicket, TicketStatus, TicketPriority } from '@/typescript/ticket';
 import type { Agent } from '@/typescript/agent';
 import type { ICategory } from '@/typescript/category';
 import type { Team } from '@/typescript/team';
-import type { ICompany } from '@/typescript/company'; // Import ICompany
+import type { ICompany } from '@/typescript/company';
 import { getTickets, updateTicket } from '@/services/ticket';
-import { /*getScheduledCommentsByTaskId,*/ IScheduledComment } from '@/services/comment';
+import {IScheduledComment } from '@/services/comment';
 import { getAgents } from '@/services/agent';
 import { getTeams } from '@/services/team';
 import { getCategories } from '@/services/category';
-import { getCompanies } from '@/services/company'; // Import getCompanies instead of getCompanyById
+import { getCompanies } from '@/services/company'; 
 import { formatRelativeTime, cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useSocketContext } from '@/providers/socket-provider';
@@ -42,7 +42,7 @@ import { TicketConversation } from './ticket-conversation';
 import BoringAvatar from 'boring-avatars';
 import { useAuth } from '@/hooks/use-auth';
 import { getUsers } from '@/services/user';
-import type { IUser } from '@/typescript/user'; // Import getScheduledComments
+import type { IUser } from '@/typescript/user'; 
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -55,7 +55,6 @@ interface Props {
   ticketId: number;
 }
 
-// Dynamic CC Input Component
 function DynamicCCInput({
   id,
   existingEmails,
@@ -100,12 +99,9 @@ function DynamicCCInput({
 
   const handlePaste = (e: React.ClipboardEvent) => {
     const pastedText = e.clipboardData.getData('text');
-    // Verificar si el texto pegado contiene emails válidos separados por delimitadores
     const potentialEmails = pastedText.split(/[,;\s\n\t]+/).filter(email => email.trim());
     const hasMultipleEmails = potentialEmails.length > 1;
     const hasValidEmails = potentialEmails.some(email => validateEmail(email.trim()));
-
-    // Solo interceptar el pegado si hay múltiples emails o emails válidos separados
     if (hasMultipleEmails && hasValidEmails) {
       e.preventDefault();
       const validNewEmails = potentialEmails
@@ -116,8 +112,6 @@ function DynamicCCInput({
         setInputValue('');
       }
     }
-    // Si no hay múltiples emails, dejar que el navegador maneje el pegado normalmente
-    // El usuario podrá pegar texto simple en el input y editarlo
   };
 
   return (
@@ -173,29 +167,19 @@ function DynamicCCInput({
 }
 
 export function TicketPageContent({ ticketId }: Props) {
-  // Helper function to determine if an email is a mailbox (system) email
   const isMailboxEmail = (email: string): boolean => {
     if (!email || !email.includes('@')) return false;
-    
-    const domain = email.split('@')[1]?.toLowerCase();
-    if (!domain) return false;
-    
-    // Known system domains
-    const systemDomains = ['s-fx.com', 'enque.cc', 'enque.'];
-    
-    // Check if email matches system domains
-    if (systemDomains.some(sysDomain => domain.includes(sysDomain))) {
+
+    const emailLower = email.toLowerCase().trim();
+    const systemPatterns = [
+      'support',
+      'dev@',
+    ];
+
+    if (systemPatterns.some(pattern => emailLower.startsWith(pattern))) {
       return true;
     }
-    
-    // Additional check for simple mailbox patterns like "alex@company.com" 
-    // but exclude emails that have numbers or longer names (user emails)
-    const emailPart = email.split('@')[0]?.toLowerCase();
-    if (emailPart && emailPart.length <= 10 && /^[a-z]+$/.test(emailPart)) {
-      // This looks like a simple mailbox name, likely a system mailbox
-      return true;
-    }
-    
+
     return false;
   };
 
@@ -219,7 +203,6 @@ export function TicketPageContent({ ticketId }: Props) {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editedTitle, setEditedTitle] = useState('');
 
-  // Fetch ticket data
   const {
     data: ticketData,
     isLoading: isLoadingTicket,
@@ -232,48 +215,17 @@ export function TicketPageContent({ ticketId }: Props) {
       return [tickets] as unknown as ITicket[];
     },
     enabled: !!ticketId,
-    refetchOnWindowFocus: true, // Re-fetch cuando la ventana recupera el foco
-    refetchOnReconnect: true, // Re-fetch en reconexión
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
     retry: (failureCount, error: unknown) => {
-      // Si es un 404 (ticket no encontrado), no reintentar
       const httpError = error as { response?: { status?: number } };
       if (httpError?.response?.status === 404) return false;
-      // Para otros errores, reintentar hasta 3 veces
       return failureCount < 3;
     },
     retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
 
-  /*
-  const {
-    data: scheduledComments,
-    //isLoading: scheduledCommentsLoading,
-    error: scheduledCommentsError,
-  } = useQuery<IScheduledComment[]>({
-    queryKey: ['scheduledComments', ticketId],
-    queryFn: async () => {
-      if (!ticketId) return [];
-
-      if (process.env.NODE_ENV === 'development') {
-        const comments = await getScheduledCommentsByTaskId(ticketId);
-        return comments;
-      }
-      return [];
-    },
-    enabled: !!ticketId,
-    staleTime: 1000 * 60 * 1,
-    retry: (failureCount, error: unknown) => {
-      // Si es un 404 (ticket no encontrado), no reintentar
-      const httpError = error as { response?: { status?: number } };
-      if (httpError?.response?.status === 404) return false;
-      // Para otros errores, reintentar hasta 3 veces
-      return failureCount < 3;
-    },
-    retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000),
-  });*/
   const currentTicket = ticketData?.[0] || null;
-  //const currentscheduledComments = scheduledComments;
-  //console.log(currentscheduledComments);
   useEffect(() => {
     if (currentTicket) {
       setTicket(currentTicket as unknown as ITicket);
@@ -286,29 +238,21 @@ export function TicketPageContent({ ticketId }: Props) {
       } else {
         setExistingCcEmails([]);
       }
-      // For TO recipients, show ALL recipients including the primary contact and additional TO recipients
-      // This provides clarity about who will receive the reply
       let allToRecipients: string[] = [];
-      
-      // Add the primary contact (user email) if it exists
       if (currentTicket?.user?.email) {
         allToRecipients.push(currentTicket.user.email);
       }
-      
-      // Add additional TO recipients from the ticket, filtering out mailbox emails
       if (currentTicket?.to_recipients) {
         const additionalToEmails = currentTicket.to_recipients
           .split(',')
           .map(email => email.trim())
           .filter(email => email.length > 0)
-          .filter(email => !isMailboxEmail(email)) // Filter out system/mailbox emails
-          .filter(email => !allToRecipients.includes(email)); // Avoid duplicates
-        
+          .filter(email => !isMailboxEmail(email))
+          .filter(email => !allToRecipients.includes(email));
         allToRecipients = [...allToRecipients, ...additionalToEmails];
       }
       
       setExistingToEmails(allToRecipients);
-      // Initialize BCC emails if they exist in the ticket data
       if (currentTicket?.bcc_recipients) {
         const bccEmails = currentTicket.bcc_recipients
           .split(',')
@@ -329,7 +273,6 @@ export function TicketPageContent({ ticketId }: Props) {
     }
   }, [currentTicket, ticketError]);
 
-  // Socket listener for real-time updates
   useEffect(() => {
     if (!socket || !ticket) return;
 
@@ -346,7 +289,6 @@ export function TicketPageContent({ ticketId }: Props) {
     };
   }, [socket, ticket]);
 
-  // Fetch related data
   const { data: agents = [], isLoading: isLoadingAgents } = useQuery<Agent[]>({
     queryKey: ['agents'],
     queryFn: getAgents,
@@ -370,15 +312,12 @@ export function TicketPageContent({ ticketId }: Props) {
     queryFn: getUsers,
     staleTime: 1000 * 60 * 5,
   });
-
-  // Fetch all company data
   const { data: allCompanies = [] } = useQuery<ICompany[]>({
     queryKey: ['companies'],
     queryFn: () => getCompanies(),
     staleTime: 1000 * 60 * 5,
   });
 
-  // Helper function to get avatar source
   const getAvatarSource = (user: IUser | undefined | null, companies: ICompany[]) => {
     if (user?.avatar_url) {
       return user.avatar_url;
@@ -389,25 +328,20 @@ export function TicketPageContent({ ticketId }: Props) {
         return userCompany.logo_url;
       }
     }
-    return null; // Fallback to BoringAvatar if no specific URL
+    return null; 
   };
 
-  // Filter users based on search query
   const filteredUsers = users.filter(
     user =>
       user.name.toLowerCase().includes(contactSearchQuery.toLowerCase()) ||
       user.email.toLowerCase().includes(contactSearchQuery.toLowerCase())
   );
 
-  // Helper function to invalidate all counter queries
   const invalidateCounterQueries = useCallback(() => {
-    // Invalidate queries but DON'T refetch immediately (refetchType: 'none')
-    // This prevents "Loading..." screens in the tickets table
     queryClient.invalidateQueries({
       queryKey: ['tickets'],
-      refetchType: 'none' // Marca como stale pero NO refetch inmediato
+      refetchType: 'none'
     });
-    // Invalidate counter queries
     queryClient.invalidateQueries({
       queryKey: ['ticketsCount', 'all'],
       refetchType: 'none'
@@ -416,7 +350,6 @@ export function TicketPageContent({ ticketId }: Props) {
       queryKey: ['ticketsCount', 'my', user?.id],
       refetchType: 'none'
     });
-    // Invalidate team queries (they contain ticket counts)
     queryClient.invalidateQueries({
       queryKey: ['agentTeams', user?.id, user?.role],
       refetchType: 'none'
@@ -427,7 +360,6 @@ export function TicketPageContent({ ticketId }: Props) {
     });
   }, [queryClient, user?.id, user?.role]);
 
-  // Update field mutation
   const updateFieldMutation = useMutation<
     ITicket,
     Error,
@@ -496,12 +428,11 @@ export function TicketPageContent({ ticketId }: Props) {
     },
     onSuccess: (data, variables) => {
       invalidateCounterQueries();
-      // Si se cambió el user_id (contacto principal), invalidar queries relacionadas
       if (variables.field === 'user_id') {
         queryClient.invalidateQueries({ queryKey: ['ticket', ticketId] });
         queryClient.invalidateQueries({
           queryKey: ['tickets'],
-          refetchType: 'none' // No refetch inmediato para evitar "Loading..."
+          refetchType: 'none' 
         });
       }
     },
@@ -560,6 +491,40 @@ export function TicketPageContent({ ticketId }: Props) {
         };
         setTicket(optimisticTicket);
         queryClient.setQueryData(['ticket', ticket.id], [optimisticTicket]);
+        queryClient.setQueriesData<InfiniteData<ITicket[], number>>(
+          { queryKey: ['tickets'] },
+          (oldData) => {
+            if (!oldData || !oldData.pages) return oldData;
+
+            // Remove the ticket from all pages
+            const newPages = oldData.pages.map(page =>
+              page.filter(t => t.id !== ticket.id)
+            );
+
+            return {
+              ...oldData,
+              pages: newPages,
+            };
+          }
+        );
+
+        // Also update filtered-tickets queries
+        queryClient.setQueriesData<InfiniteData<ITicket[], number>>(
+          { queryKey: ['filtered-tickets'] },
+          (oldData) => {
+            if (!oldData || !oldData.pages) return oldData;
+
+            // Remove the ticket from all pages
+            const newPages = oldData.pages.map(page =>
+              page.filter(t => t.id !== ticket.id)
+            );
+
+            return {
+              ...oldData,
+              pages: newPages,
+            };
+          }
+        );
 
         // Optimistically update counter queries
         queryClient.setQueryData<number>(['ticketsCount', 'all'], old =>
@@ -633,6 +598,13 @@ export function TicketPageContent({ ticketId }: Props) {
     onSuccess: updatedTicketData => {
       toast.success(`Ticket #${updatedTicketData.id} reopened successfully.`);
       invalidateCounterQueries();
+      // Invalidate ticket lists so they refetch with the reopened ticket
+      queryClient.invalidateQueries({
+        queryKey: ['tickets']
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['filtered-tickets']
+      });
     },
     onError: (error, _variables, context) => {
       toast.error(

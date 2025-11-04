@@ -913,17 +913,27 @@ function TicketsClientContent() {
       queryClient.setQueryData<InfiniteData<ITicket[], number>>(ticketsQueryKey, oldData => {
         if (!oldData) return oldData;
 
-        const newPages = oldData.pages.map(page =>
-          page.map(ticket => {
-            if (ticketIds.includes(ticket.id)) {
-              return {
-                ...ticket,
-                status: 'Closed' as any,
-              };
-            }
-            return ticket;
-          })
-        );
+        // If "Closed" is NOT in the current filter, remove closed tickets from the list
+        // If "Closed" IS in the filter, just update the status
+        const shouldRemoveClosedTickets = !selectedStatuses.includes('Closed');
+
+        const newPages = oldData.pages.map(page => {
+          if (shouldRemoveClosedTickets) {
+            // Remove closed tickets from the list (like delete does)
+            return page.filter(ticket => !ticketIds.includes(ticket.id));
+          } else {
+            // Just update the status to 'Closed'
+            return page.map(ticket => {
+              if (ticketIds.includes(ticket.id)) {
+                return {
+                  ...ticket,
+                  status: 'Closed' as any,
+                };
+              }
+              return ticket;
+            });
+          }
+        });
 
         return {
           pages: newPages,

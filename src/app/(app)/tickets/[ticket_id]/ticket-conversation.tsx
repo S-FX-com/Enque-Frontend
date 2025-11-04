@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-//import { Separator } from '@radix-ui/react-separator';
 import 'react-calendar/dist/Calendar.css';
 import dynamic from 'next/dynamic';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -24,18 +23,17 @@ import {
   type CreateCommentPayload,
   type CommentResponseData,
 } from '@/services/comment';
-import { getTicketHtmlContent, updateTicket, type TicketHtmlContent } from '@/services/ticket';
+import { getTicketHtmlContent, getTicketBody, updateTicket, type TicketHtmlContent } from '@/services/ticket';
 import { ConversationMessageItem } from '@/components/conversation-message-item';
 import { InitialTicketMessage } from '@/components/conversation-message-item';
 import { useAuth } from '@/hooks/use-auth';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
-// ⚡ LAZY LOAD: RichTextEditor (150-200KB) - Solo carga cuando se necesita
 const RichTextEditor = dynamic(
   () => import('@/components/tiptap/RichTextEditor').then(mod => ({ default: mod.RichTextEditor })),
   {
     loading: () => <Skeleton className="h-48 w-full rounded-md" />,
-    ssr: false, // Tiptap no funciona con SSR
+    ssr: false,
   }
 );
 import { toast } from 'sonner';
@@ -47,18 +45,11 @@ import { ScheduleSendCalendar } from './scheduleSend/schedule-send-calendar';
 
 export type ValuePiece = Date | null;
 export type Value = ValuePiece | [ValuePiece, ValuePiece];
-// Helper function to check if HTML content is effectively empty
 function isHtmlContentEmpty(htmlContent: string): boolean {
   if (!htmlContent || htmlContent.trim() === '') return true;
-
-  // Create a temporary div to parse the HTML
   const tempDiv = document.createElement('div');
   tempDiv.innerHTML = htmlContent;
-
-  // Get the text content without HTML tags
   const textContent = tempDiv.textContent || tempDiv.innerText || '';
-
-  // Check if there's any meaningful text content
   return textContent.trim() === '';
 }
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -736,6 +727,28 @@ export function TicketConversation({
     placeholderData: previousData => previousData,
     notifyOnChangeProps: ['data', 'error', 'isError'],
   });
+
+  // 🚀 OPTIMIZED: Lazy load ticket body only when needed (when there's no description)
+  // This saves ~1-2 MB of RAM per ticket on the backend
+  const {
+    data: ticketBody,
+  } = useQuery({
+    queryKey: ['ticketBody', ticket.id],
+    queryFn: () => getTicketBody(ticket.id),
+    // Only fetch if:
+    // 1. ticket exists
+    // 2. ticket has no description (description takes precedence)
+    // 3. htmlContent failed or is not available (fallback to body)
+    enabled: !!ticket?.id && !ticket.description && (isHtmlContentError || !htmlContent),
+    staleTime: 10 * 60 * 1000, // 10 minutes cache
+    gcTime: 15 * 60 * 1000, // 15 minutes garbage collection
+    refetchInterval: false,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    refetchOnReconnect: false,
+  });
+
   const {
     data: comments = [],
     isLoading: isLoadingComments,
@@ -821,8 +834,10 @@ export function TicketConversation({
       initialMessageContent = ticket.description;
       initialMessageSender = ticket.user;
       hasInitialMessage = true;
-    } else if (ticket.body?.email_body) {
-      initialMessageContent = ticket.body.email_body;
+    } else if (ticketBody?.body) {
+      // 🚀 OPTIMIZED: Use lazy-loaded body from separate endpoint
+      // This prevents loading 1-2MB of email HTML unnecessarily
+      initialMessageContent = ticketBody.body;
       initialMessageSender = ticket.user;
       hasInitialMessage = true;
     }
@@ -856,7 +871,7 @@ export function TicketConversation({
       initialMessageSender,
       totalItems: items.length,
     };
-  }, [htmlContent, comments, ticket]);
+  }, [htmlContent, comments, ticket, ticketBody]);
 
   useEffect(() => {
     let signatureToUse = '';
