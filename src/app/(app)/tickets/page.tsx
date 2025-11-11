@@ -331,6 +331,91 @@ function TicketsClientContent() {
   // ✅ OPTIMIZADO: No más ordenación client-side - el backend lo maneja
   const displayedTickets = filteredTicketsData;
 
+const TicketRow = React.memo<{
+ticket: ITicket;
+isSelected: boolean;
+agentIdToNameMap: Record<number, string>;
+onRowSelect: (id: number, checked: boolean) => void;
+onRowClick: (id: number) => void;
+}>(({
+ticket,
+isSelected,
+agentIdToNameMap,
+onRowSelect,
+onRowClick,
+}) => {
+//verifies the user name, if its differents from previous instance, renders it again
+ const userName = useMemo(
+() => getUserName(ticket.user_id!, ticket),
+[ticket.user_id, ticket.user]
+);
+const relativeTime = useMemo(
+() => formatRelativeTime(ticket.last_update),
+[ticket.last_update]
+);
+return (
+<TableRow
+className={cn(
+'border-0 h-14 cursor-pointer hover:bg-muted/50',
+ticket.status === 'Unread' && 'font-semibold bg-slate-50'
+)}
+data-state={isSelected ? 'selected' : ''}
+onClick={() => onRowClick(ticket.id)}
+>
+<TableCell>
+<Checkbox
+checked={isSelected}
+onCheckedChange={checked => onRowSelect(ticket.id, checked as boolean)}
+onClick={e => e.stopPropagation()}
+/>
+</TableCell>
+<TableCell>{ticket.id}</TableCell>
+<TableCell>{ticket.title}</TableCell>
+<TableCell>{userName}</TableCell>
+<TableCell>{agentIdToNameMap[ticket.assignee_id!] || '-'}</TableCell>
+<TableCell>{relativeTime}</TableCell>
+{/* ... */}
+</TableRow>
+);
+},  (prevProps, nextProps) => {
+// ✅ Custom comparison: only re-render if the ticket or selection changes
+return (
+prevProps.ticket.id === nextProps.ticket.id &&
+prevProps.ticket.status === nextProps.ticket.status &&
+prevProps.ticket.priority === nextProps.ticket.priority &&
+prevProps.ticket.last_update === nextProps.ticket.last_update &&
+prevProps.isSelected === nextProps.isSelected
+);
+});
+  //const displayedTicketsRow = useMemo(() => {
+// ✅ BETTER: In the parent, use memoized callbacks
+function TicketsClientContent() {
+const handleRowSelect = useCallback((id: number, checked: boolean) => {
+setSelectedTicketIds(prev => {
+const next = new Set(prev);
+checked ? next.add(id) : next.delete(id);
+return next;
+});
+}, []);
+const handleRowClick = useCallback((id: number) => {
+router.push(`/tickets/${id}`);
+}, [router]);
+return (
+<TableBody>
+{displayedTickets.map(ticket => (
+<TicketRow
+key={ticket.id}
+ticket={ticket}
+isSelected={selectedTicketIds.has(ticket.id)}
+agentIdToNameMap={agentIdToNameMap}
+onRowSelect={handleRowSelect}
+onRowClick={handleRowClick}
+/>
+))}
+</TableBody>
+);
+}
+
   // ✅ SIMPLIFICADO: Solo cargar más tickets del servidor cuando hay más disponibles
   const handleLoadMore = useCallback(() => {
     if (hasNextPage && !isFetchingNextPage) {
@@ -1485,8 +1570,8 @@ function TicketsClientContent() {
                           : 'No tickets found.'}
                       </TableCell>
                     </TableRow>
-                  ) : (
-                    displayedTickets.map(ticket => {
+                  ) : (TicketsClientContent()
+                    /*displayedTickets.map(ticket => {
                       return (
                         <TableRow
                           key={ticket.id}
@@ -1576,7 +1661,7 @@ function TicketsClientContent() {
                         </TableRow>
                       );
                     })
-                  )}
+                  */)}
                 </TableBody>
               </Table>
               {displayedTickets.length > 0 && allTicketsDisplayed && (
