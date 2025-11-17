@@ -1,8 +1,6 @@
 import { Suspense } from 'react';
 import { WorkflowsClientContent } from './workflows-client';
 import { WorkflowsSkeleton } from './workflows-skeleton';
-
-// ✅ Server Component (sin 'use client')
 export default function WorkflowsPage() {
   return (
     <Suspense fallback={<WorkflowsSkeleton />}>

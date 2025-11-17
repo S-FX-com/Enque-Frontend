@@ -71,6 +71,154 @@ import { ChevronUp, ChevronDown } from 'lucide-react';
 type SortColumn = 'status' | 'priority' | 'lastUpdate' | 'created';
 type SortDirection = 'asc' | 'desc';
 
+// ✅ Memoized TicketRow component to prevent unnecessary re-renders
+const TicketRow = React.memo<{
+  ticket: ITicket;
+  isSelected: boolean;
+  agentIdToNameMap: Record<number, string>;
+  usersData: IUser[];
+  companiesData: ICompany[];
+  onRowSelect: (id: number, checked: boolean | 'indeterminate') => void;
+  onRowClick: (id: number, metaKey: boolean, ctrlKey: boolean) => void;
+}>(({
+  ticket,
+  isSelected,
+  agentIdToNameMap,
+  usersData,
+  companiesData,
+  onRowSelect,
+  onRowClick,
+}) => {
+  // ✅ Memoize costly calculations
+  const userName = useMemo(() => {
+    // First try to get user info from the ticket itself (if available)
+    if (ticket?.user && ticket.user.id === ticket.user_id) {
+      const user = ticket.user;
+      if (user.company_id) {
+        const company = companiesData.find(company => company.id === user.company_id);
+        if (company) {
+          return `${user.name} (${company.name})`;
+        }
+      }
+      return user.name || '-';
+    }
+
+    // Fallback to usersData
+    const users = usersData.filter(user => user.id === ticket.user_id);
+    const user = users[0];
+    if (!user) return '-';
+
+    const companies = companiesData.filter(company => company.id === user.company_id);
+    const company = companies[0];
+    if (!company) return user.name;
+
+    return `${user.name} (${company.name})`;
+  }, [ticket.user_id, ticket.user, usersData, companiesData]);
+
+  const lastUpdateTime = useMemo(
+    () => formatRelativeTime(ticket.last_update),
+    [ticket.last_update]
+  );
+
+  const createdAtTime = useMemo(
+    () => formatRelativeTime(ticket.created_at),
+    [ticket.created_at]
+  );
+
+  return (
+    <TableRow
+      className={cn(
+        'border-0 h-14 cursor-pointer hover:bg-muted/50',
+        ticket.status === 'Unread' && 'font-semibold bg-slate-50 dark:bg-slate-800/50'
+      )}
+      data-state={isSelected ? 'selected' : ''}
+      onClick={(e) => onRowClick(ticket.id, e.metaKey, e.ctrlKey)}
+    >
+      <TableCell className="px-4">
+        <Checkbox
+          checked={isSelected}
+          onCheckedChange={checked => onRowSelect(ticket.id, checked)}
+          aria-label={`Select ticket ${ticket.id}`}
+          onClick={e => e.stopPropagation()}
+        />
+      </TableCell>
+      <TableCell className="font-medium p-2 py-4">{ticket.id}</TableCell>
+      <TableCell className="max-w-xs md:max-w-sm truncate p-2 py-4">
+        {ticket.title}
+      </TableCell>
+      <TableCell className="p-2 py-4">
+        <div className="flex items-center gap-2">
+          <div className="relative flex h-2 w-2">
+            <span
+              className={cn(
+                'absolute inline-flex h-full w-full rounded-full',
+                ticket.status === 'Open' && 'bg-green-500',
+                ticket.status === 'Closed' && 'bg-slate-500',
+                ticket.status === 'Unread' && 'bg-blue-500',
+                ticket.status === 'With User' && 'bg-purple-500',
+                ticket.status === 'In Progress' && 'bg-orange-500'
+              )}
+            ></span>
+            {ticket.status === 'Unread' && (
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+            )}
+          </div>
+          <span
+            className={cn(
+              'text-foreground capitalize',
+              ticket.status === 'Unread' && 'font-semibold'
+            )}
+          >
+            {ticket.status}
+          </span>
+        </div>
+      </TableCell>
+      <TableCell className="p-2 py-4">
+        <Badge
+          variant="outline"
+          className={cn(
+            'whitespace-nowrap capitalize',
+            ticket.priority === 'Low' &&
+              'bg-slate-100 text-slate-600 border-slate-300 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700',
+            ticket.priority === 'Medium' &&
+              'bg-green-100 text-green-800 border-green-300 dark:bg-green-900/50 dark:text-green-300 dark:border-green-700',
+            ticket.priority === 'High' &&
+              'bg-yellow-100 text-yellow-800 border-yellow-300 dark:bg-yellow-900/50 dark:text-yellow-300 dark:border-yellow-700',
+            ticket.priority === 'Critical' &&
+              'bg-red-100 text-red-800 border-red-300 dark:bg-red-900/50 dark:text-red-300 dark:border-red-700'
+          )}
+        >
+          {ticket.priority}
+        </Badge>
+      </TableCell>
+      <TableCell className="p-2 py-4">{userName}</TableCell>
+      <TableCell className="p-2 py-4">
+        {agentIdToNameMap[ticket.assignee_id as number] || '-'}
+      </TableCell>
+      <TableCell className="p-2 py-4">{lastUpdateTime}</TableCell>
+      <TableCell className="p-2 py-4">{createdAtTime}</TableCell>
+    </TableRow>
+  );
+}, (prevProps, nextProps) => {
+  // ✅ Custom comparison: only re-render if relevant props change
+  return (
+    prevProps.ticket.id === nextProps.ticket.id &&
+    prevProps.ticket.status === nextProps.ticket.status &&
+    prevProps.ticket.priority === nextProps.ticket.priority &&
+    prevProps.ticket.title === nextProps.ticket.title &&
+    prevProps.ticket.last_update === nextProps.ticket.last_update &&
+    prevProps.ticket.created_at === nextProps.ticket.created_at &&
+    prevProps.ticket.user_id === nextProps.ticket.user_id &&
+    prevProps.ticket.assignee_id === nextProps.ticket.assignee_id &&
+    prevProps.isSelected === nextProps.isSelected &&
+    prevProps.agentIdToNameMap === nextProps.agentIdToNameMap &&
+    prevProps.usersData === nextProps.usersData &&
+    prevProps.companiesData === nextProps.companiesData
+  );
+});
+
+TicketRow.displayName = 'TicketRow';
+
 function TicketsClientContent() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -402,18 +550,6 @@ function TicketsClientContent() {
     } else {
       setSelectedTicketIds(new Set());
     }
-  };
-
-  const handleRowSelectChange = (ticketId: number, checked: boolean | 'indeterminate') => {
-    setSelectedTicketIds(prev => {
-      const next = new Set(prev);
-      if (checked === true) {
-        next.add(ticketId);
-      } else {
-        next.delete(ticketId);
-      }
-      return next;
-    });
   };
 
   const isAllSelected =
@@ -1023,31 +1159,6 @@ function TicketsClientContent() {
     }
   };
 
-  const getUserName = (user_id: number, ticket?: ITicket) => {
-    // First try to get user info from the ticket itself (if available)
-    if (ticket?.user && ticket.user.id === user_id) {
-      const user = ticket.user;
-      if (user.company_id) {
-        const company = companiesData.find(company => company.id === user.company_id);
-        if (company) {
-          return `${user.name} (${company.name})`;
-        }
-      }
-      return user.name || '-';
-    }
-
-    // Fallback to usersData
-    const users = usersData.filter(user => user.id === user_id);
-    const user = users[0];
-    if (!user) return '-';
-
-    const companies = companiesData.filter(company => company.id === user.company_id);
-    const company = companies[0];
-    if (!company) return user.name;
-
-    return `${user.name} (${company.name})`;
-  };
-
   const mergeTicketsMutation = useMutation({
     mutationFn: async (payload: { targetTicketId: number; ticketIdsToMerge: number[] }) => {
       const { targetTicketId, ticketIdsToMerge } = payload;
@@ -1209,6 +1320,27 @@ function TicketsClientContent() {
       </div>
     </TableHead>
   );
+
+  // ✅ Memoized callbacks to prevent unnecessary re-renders
+  const handleRowSelect = useCallback((id: number, checked: boolean | 'indeterminate') => {
+    setSelectedTicketIds(prev => {
+      const next = new Set(prev);
+      if (checked === true) {
+        next.add(id);
+      } else {
+        next.delete(id);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleRowClick = useCallback((id: number, metaKey: boolean, ctrlKey: boolean) => {
+    if (metaKey || ctrlKey) {
+      window.open(`/tickets/${id}`, '_blank');
+    } else {
+      router.push(`/tickets/${id}`);
+    }
+  }, [router]);
 
   return (
     <div className="flex h-full gap-6">
@@ -1486,96 +1618,18 @@ function TicketsClientContent() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    displayedTickets.map(ticket => {
-                      return (
-                        <TableRow
-                          key={ticket.id}
-                          className={cn(
-                            'border-0 h-14 cursor-pointer hover:bg-muted/50',
-                            ticket.status === 'Unread' &&
-                              'font-semibold bg-slate-50 dark:bg-slate-800/50'
-                          )}
-                          data-state={selectedTicketIds.has(ticket.id) ? 'selected' : ''}
-                          onClick={e => {
-                            if (e.metaKey || e.ctrlKey) {
-                              window.open(`/tickets/${ticket.id}`, '_blank');
-                            } else {
-                              router.push(`/tickets/${ticket.id}`);
-                            }
-                          }}
-                        >
-                          <TableCell className="px-4">
-                            <Checkbox
-                              checked={selectedTicketIds.has(ticket.id)}
-                              onCheckedChange={checked => handleRowSelectChange(ticket.id, checked)}
-                              aria-label={`Select ticket ${ticket.id}`}
-                              onClick={e => e.stopPropagation()}
-                            />
-                          </TableCell>
-                          <TableCell className="font-medium p-2 py-4">{ticket.id}</TableCell>
-                          <TableCell className="max-w-xs md:max-w-sm truncate p-2 py-4">
-                            {ticket.title}
-                          </TableCell>
-                          <TableCell className="p-2 py-4">
-                            <div className="flex items-center gap-2">
-                              <div className="relative flex h-2 w-2">
-                                <span
-                                  className={cn(
-                                    'absolute inline-flex h-full w-full rounded-full',
-                                    ticket.status === 'Open' && 'bg-green-500',
-                                    ticket.status === 'Closed' && 'bg-slate-500',
-                                    ticket.status === 'Unread' && 'bg-blue-500',
-                                    ticket.status === 'With User' && 'bg-purple-500',
-                                    ticket.status === 'In Progress' && 'bg-orange-500'
-                                  )}
-                                ></span>
-                                {ticket.status === 'Unread' && (
-                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                                )}
-                              </div>
-                              <span
-                                className={cn(
-                                  'text-foreground capitalize',
-                                  ticket.status === 'Unread' && 'font-semibold'
-                                )}
-                              >
-                                {ticket.status}
-                              </span>
-                            </div>
-                          </TableCell>
-                          <TableCell className="p-2 py-4">
-                            <Badge
-                              variant="outline"
-                              className={cn(
-                                'whitespace-nowrap capitalize',
-                                ticket.priority === 'Low' &&
-                                  'bg-slate-100 text-slate-600 border-slate-300 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700',
-                                ticket.priority === 'Medium' &&
-                                  'bg-green-100 text-green-800 border-green-300 dark:bg-green-900/50 dark:text-green-300 dark:border-green-700',
-                                ticket.priority === 'High' &&
-                                  'bg-yellow-100 text-yellow-800 border-yellow-300 dark:bg-yellow-900/50 dark:text-yellow-300 dark:border-yellow-700',
-                                ticket.priority === 'Critical' &&
-                                  'bg-red-100 text-red-800 border-red-300 dark:bg-red-900/50 dark:text-red-300 dark:border-red-700'
-                              )}
-                            >
-                              {ticket.priority}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="p-2 py-4">
-                            {getUserName(ticket.user_id as number, ticket)}
-                          </TableCell>
-                          <TableCell className="p-2 py-4">
-                            {agentIdToNameMap[ticket.assignee_id as number] || '-'}
-                          </TableCell>
-                          <TableCell className="p-2 py-4">
-                            {formatRelativeTime(ticket.last_update)}
-                          </TableCell>
-                          <TableCell className="p-2 py-4">
-                            {formatRelativeTime(ticket.created_at)}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })
+                    displayedTickets.map(ticket => (
+                      <TicketRow
+                        key={ticket.id}
+                        ticket={ticket}
+                        isSelected={selectedTicketIds.has(ticket.id)}
+                        agentIdToNameMap={agentIdToNameMap}
+                        usersData={usersData}
+                        companiesData={companiesData}
+                        onRowSelect={handleRowSelect}
+                        onRowClick={handleRowClick}
+                      />
+                    ))
                   )}
                 </TableBody>
               </Table>
