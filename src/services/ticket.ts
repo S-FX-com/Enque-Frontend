@@ -444,8 +444,8 @@ export async function searchTickets(
       skip: skip.toString(),
       limit: limit.toString(),
     });
-    // Using optimized search endpoint for better performance
-    const url = `${API_BASE_URL}/v1/tasks/search?${queryParams.toString()}`;
+    // Using NEW search endpoint
+    const url = `${API_BASE_URL}/v1/tasks/search-tickets?${queryParams.toString()}`;
     const response = await fetchAPI.GET<ITicket[]>(url);
     if (response && response.success && response.data) {
       return response.data;
