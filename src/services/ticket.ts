@@ -189,7 +189,7 @@ export async function updateTicket(
   updates: Partial<
     Pick<
       ITicket,
-      'status' | 'priority' | 'user_id' | 'assignee_id' | 'team_id' | 'category_id' | 'title'
+      'status' | 'priority' | 'user_id' | 'assignee_id' | 'team_id' | 'category_id' | 'title' | 'to_recipients' | 'cc_recipients' | 'bcc_recipients'
     >
   >
 ): Promise<ITicket> {
