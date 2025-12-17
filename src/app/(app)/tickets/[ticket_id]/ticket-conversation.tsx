@@ -235,6 +235,10 @@ interface OptimizedMessageItemProps {
       name?: string;
       email?: string;
     } | null;
+    is_from_email?: boolean;
+    email_info?: {
+      email_sender?: string | null;
+    } | null;
   };
 }
 
@@ -322,7 +326,27 @@ function OptimizedMessageItem({ content, isInitial = false, ticket }: OptimizedM
         avatar_url: content.sender.avatar_url,
       };
     }
-
+    if (isInitial && ticket?.is_from_email && ticket.email_info?.email_sender) {
+      const emailSender = ticket.email_info.email_sender;
+      const senderMatch = emailSender.match(/^(.+?)\s*<([^>]+)>$/);
+      if (senderMatch) {
+        return {
+          name: senderMatch[1].trim(),
+          email: senderMatch[2].trim(),
+          isUserReply: false,
+          type: 'user',
+          avatar_url: content.sender.avatar_url,
+        };
+      } else {
+        return {
+          name: ticket.user?.name || emailSender.trim(),
+          email: emailSender.trim(),
+          isUserReply: false,
+          type: 'user',
+          avatar_url: content.sender.avatar_url,
+        };
+      }
+    }
     const isAgentMessage = content.sender.type === 'agent';
     return {
       name: content.sender.name || (isAgentMessage ? 'Agent' : 'User'),
@@ -331,7 +355,7 @@ function OptimizedMessageItem({ content, isInitial = false, ticket }: OptimizedM
       type: isAgentMessage ? 'agent' : 'user',
       avatar_url: content.sender.avatar_url,
     };
-  }, [content.content, content.sender, isInitial]);
+  }, [content.content, content.sender, isInitial, ticket?.is_from_email, ticket?.email_info?.email_sender, ticket?.user?.name]);
 
   const processedContent = React.useMemo(() => {
     let htmlContent = content.content || '';
@@ -1328,15 +1352,9 @@ export function TicketConversation({
           queryKey: ['tickets'],
           refetchType: 'none' // No refetch inmediato para evitar "Loading..." en la tabla
         });
-        // ✅ FIXED: Don't invalidate ticket immediately after updating
-        // The backend already returned the updated ticket in updatedTask
-        // Invalidating immediately can cause a race condition where stale data overwrites the update
-
-        // Invalidar comentarios solo si es nota privada para mostrar inmediatamente
         if (isPrivateNote) {
           queryClient.invalidateQueries({ queryKey: ['comments', ticket.id] });
         }
-        // Siempre invalidar ticketHtml cuando hay cambios
         queryClient.invalidateQueries({ queryKey: ['ticketHtml', ticket.id] });
 
         if (data.assignee_changed && currentUser) {
