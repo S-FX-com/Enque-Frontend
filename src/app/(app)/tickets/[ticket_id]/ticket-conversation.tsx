@@ -235,6 +235,10 @@ interface OptimizedMessageItemProps {
       name?: string;
       email?: string;
     } | null;
+    is_from_email?: boolean;
+    email_info?: {
+      email_sender?: string | null;
+    } | null;
   };
 }
 
@@ -323,6 +327,31 @@ function OptimizedMessageItem({ content, isInitial = false, ticket }: OptimizedM
       };
     }
 
+    // ✅ FIX: For initial email messages, use the actual email sender from ticket data
+    // instead of the backend's sender field which may default to workspace admin
+    if (isInitial && ticket?.is_from_email && ticket.email_info?.email_sender) {
+      const emailSender = ticket.email_info.email_sender;
+      // Parse "Name <email>" format or just "email"
+      const senderMatch = emailSender.match(/^(.+?)\s*<([^>]+)>$/);
+      if (senderMatch) {
+        return {
+          name: senderMatch[1].trim(),
+          email: senderMatch[2].trim(),
+          isUserReply: false,
+          type: 'user',
+          avatar_url: content.sender.avatar_url,
+        };
+      } else {
+        return {
+          name: ticket.user?.name || emailSender.trim(),
+          email: emailSender.trim(),
+          isUserReply: false,
+          type: 'user',
+          avatar_url: content.sender.avatar_url,
+        };
+      }
+    }
+
     const isAgentMessage = content.sender.type === 'agent';
     return {
       name: content.sender.name || (isAgentMessage ? 'Agent' : 'User'),
@@ -331,7 +360,7 @@ function OptimizedMessageItem({ content, isInitial = false, ticket }: OptimizedM
       type: isAgentMessage ? 'agent' : 'user',
       avatar_url: content.sender.avatar_url,
     };
-  }, [content.content, content.sender, isInitial]);
+  }, [content.content, content.sender, isInitial, ticket]);
 
   const processedContent = React.useMemo(() => {
     let htmlContent = content.content || '';
@@ -1117,12 +1146,44 @@ export function TicketConversation({
         };
         if (conversationItems.isOptimized) {
           const optimizedMessage = latestNonPrivateMessage as TicketHtmlContent;
-          latestMessage = {
-            name: optimizedMessage.sender.name,
-            email: optimizedMessage.sender.email,
-            date: optimizedMessage.created_at,
-            content: optimizedMessage.content || '',
-          };
+
+          // ✅ FIX: For initial email messages, use the actual email sender from ticket data
+          // instead of the backend's sender field which may default to workspace admin
+          if (optimizedMessage.id === 'initial' && ticket.is_from_email) {
+            // Try to get the original email sender from multiple sources
+            let senderName = 'Unknown';
+            let senderEmail = 'Unknown';
+
+            if (ticket.email_info?.email_sender) {
+              // Parse "Name <email>" format or just "email"
+              const senderMatch = ticket.email_info.email_sender.match(/^(.+?)\s*<([^>]+)>$/);
+              if (senderMatch) {
+                senderName = senderMatch[1].trim();
+                senderEmail = senderMatch[2].trim();
+              } else {
+                senderEmail = ticket.email_info.email_sender.trim();
+                senderName = ticket.user?.name || senderEmail;
+              }
+            } else if (ticket.user) {
+              senderName = ticket.user.name;
+              senderEmail = ticket.user.email;
+            }
+
+            latestMessage = {
+              name: senderName,
+              email: senderEmail,
+              date: optimizedMessage.created_at,
+              content: optimizedMessage.content || '',
+            };
+          } else {
+            // For regular messages, use the sender from the message
+            latestMessage = {
+              name: optimizedMessage.sender.name,
+              email: optimizedMessage.sender.email,
+              date: optimizedMessage.created_at,
+              content: optimizedMessage.content || '',
+            };
+          }
         } else {
           const commentMessage = latestNonPrivateMessage as IComment;
           if (commentMessage.agent)
@@ -1642,6 +1703,8 @@ export function TicketConversation({
                         cc_recipients: ticket.cc_recipients,
                         bcc_recipients: ticket.bcc_recipients,
                         user: ticket.user,
+                        is_from_email: ticket.is_from_email,
+                        email_info: ticket.email_info,
                       }}
                     />
                   )
@@ -1713,6 +1776,8 @@ export function TicketConversation({
                           cc_recipients: ticket.cc_recipients,
                           bcc_recipients: ticket.bcc_recipients,
                           user: ticket.user,
+                          is_from_email: ticket.is_from_email,
+                          email_info: ticket.email_info,
                         }}
                       />
                     ))
@@ -1779,6 +1844,8 @@ export function TicketConversation({
                           cc_recipients: ticket.cc_recipients,
                           bcc_recipients: ticket.bcc_recipients,
                           user: ticket.user,
+                          is_from_email: ticket.is_from_email,
+                          email_info: ticket.email_info,
                         }}
                       />
                     )
