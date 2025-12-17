@@ -539,16 +539,7 @@ export function ConversationMessageItem({ comment, ticket }: Props) {
 
   const renderEmailRecipients = () => {
     if (comment.is_private) return null;
-    
-    if (comment.agent && comment.to_recipients) {
-      console.log('🔍 Agent comment with TO recipients:', {
-        commentId: comment.id,
-        to_recipients: comment.to_recipients,
-        other_destinaries: comment.other_destinaries,
-        bcc_recipients: comment.bcc_recipients
-      });
-    }
-    
+
     // Determinar si es un mensaje de agente
     const isAgentMessage = !!comment.agent;
     
@@ -870,8 +861,6 @@ export function ConversationMessageItem({ comment, ticket }: Props) {
       // Es URL relativa de API, construir URL completa
       downloadUrl = `${apiBaseUrl}${attachment.download_url.startsWith('/') ? attachment.download_url : '/' + attachment.download_url}`;
     }
-
-    console.log('Downloading attachment:', attachment.file_name, 'from URL:', downloadUrl);
 
     const link = document.createElement('a');
     link.href = downloadUrl;

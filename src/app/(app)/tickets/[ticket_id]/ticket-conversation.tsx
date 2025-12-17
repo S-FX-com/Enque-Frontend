@@ -247,7 +247,6 @@ export interface DateScheduleSend {
 }
 
 function findQuoteStartIndex(html: string): number {
-  console.log(html);
   const patterns = [
     /<p[^>]*><strong>From:<\/strong>/i,
     /<div[^>]*>From:\s+[^<]+@[^>]+>/i,
@@ -435,7 +434,6 @@ function OptimizedMessageItem({ content, isInitial = false, ticket }: OptimizedM
     const recipients = [];
 
     if (toRecipients) {
-      console.log(toRecipients);
       recipients.push(
         <div key="to" className="flex items-center gap-1 flex-wrap">
           <span className="text-xs font-medium text-slate-600 dark:text-slate-400">To:</span>
@@ -987,25 +985,25 @@ export function TicketConversation({
   // Function to validate email addresses
   const validateEmails = (emailString: string): boolean => {
     if (!emailString.trim()) return true; // Empty is valid
-    
+
     // Check if it's actual HTML (has HTML tags like <div>, <span>, etc.)
     const isActualHTML = emailString.includes('<div') || emailString.includes('<span') || emailString.includes('</');
-    
+
     if (isActualHTML) {
       // Decode HTML entities
       const htmlDecoded = emailString.replace(/&lt;/g, '<').replace(/&gt;/g, '>');
-      
+
       // Extract emails from span tags with class="text-xs"
       const spanPattern = /<span[^>]*class="text-xs"[^>]*>([^<]+)<\/span>/g;
       const matches = [];
       let match;
-      
+
       while ((match = spanPattern.exec(htmlDecoded)) !== null) {
         matches.push(match[1].trim());
       }
-      
+
       if (matches.length === 0) return false;
-      
+
       // Filter and validate emails
       const validEmails = matches.filter(email => {
         const emailMatch = email.match(/<([^>]+)>/) || [null, email];
@@ -1013,10 +1011,10 @@ export function TicketConversation({
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         return emailRegex.test(extractedEmail);
       });
-      
+
       return validEmails.length > 0; // Accept if at least one valid email found
     }
-    
+
     // Handle regular comma-separated emails (including "Name <email>" format)
     const emails = emailString.split(',').map(email => email.trim()).filter(email => email); // Remove empty
 
@@ -1030,9 +1028,27 @@ export function TicketConversation({
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       return emailRegex.test(extractedEmail);
     });
-    
+
     // Accept if we have at least one valid email, or if the original string was empty
     return validEmails.length > 0 || emails.length === 0;
+  };
+
+  // ✅ FIX: Function to check for circular CC (mailbox emailing itself)
+  // TODO: Move mailbox email patterns to environment config or workspace settings
+  const checkForMailboxEmails = (emailString: string): boolean => {
+    if (!emailString.trim()) return false; // Empty is safe
+
+    const systemPatterns = ['support', 'dev@'];
+
+    const emails = emailString.split(',').map(email => {
+      // Extract email from "Name <email>" format
+      const emailMatch = email.match(/<([^>]+)>/) || [null, email];
+      return (emailMatch[1] || email).trim().toLowerCase();
+    });
+
+    return emails.some(email =>
+      systemPatterns.some(pattern => email.startsWith(pattern))
+    );
   };
 
   const sendComment = async (
@@ -1041,8 +1057,6 @@ export function TicketConversation({
 
     //sendNow: boolean
   ): Promise<CommentResponseData> => {
-    if (sendNow) console.log('Send now');
-    console.log(time);
     if (!currentUser) {
       toast.error('Authentication error. User not found.');
       throw new Error('Authentication error. User not found.');
@@ -1058,6 +1072,20 @@ export function TicketConversation({
     if (extraBccRecipients.trim() && !validateEmails(extraBccRecipients)) {
       toast.error('Please enter valid BCC email addresses separated by commas.');
       throw new Error('Invalid email addresses in BCC recipients.');
+    }
+
+    // ✅ FIX: Prevent circular CC (mailbox emailing itself)
+    if (checkForMailboxEmails(extraToRecipients)) {
+      toast.error('Cannot add support mailbox addresses to TO recipients. This would create an email loop.');
+      throw new Error('Invalid TO recipients: mailbox email detected.');
+    }
+    if (checkForMailboxEmails(extraRecipients)) {
+      toast.error('Cannot add support mailbox addresses to CC recipients. This would create an email loop.');
+      throw new Error('Invalid CC recipients: mailbox email detected.');
+    }
+    if (checkForMailboxEmails(extraBccRecipients)) {
+      toast.error('Cannot add support mailbox addresses to BCC recipients. This would create an email loop.');
+      throw new Error('Invalid BCC recipients: mailbox email detected.');
     }
 
     let finalContent = content;
@@ -1126,10 +1154,8 @@ export function TicketConversation({
     let attachmentIds: number[] = [];
     if (selectedAttachments && selectedAttachments.length > 0) {
       try {
-        console.log(`Uploading ${selectedAttachments.length} attachments...`);
         const uploaded = await uploadAttachments(selectedAttachments);
         attachmentIds = uploaded.map(file => file.id);
-        console.log(`Successfully uploaded attachments: ${attachmentIds}`);
       } catch (error) {
         console.error('Error uploading attachments:', error);
         toast.error('Failed to upload attachments');
@@ -1156,8 +1182,6 @@ export function TicketConversation({
           hours += 12;
         }
 
-        console.log('🕐 Converted time:', { hours, minutes, period });
-
         const scheduledDateTime = new Date(selectedDate);
         scheduledDateTime.setHours(hours, minutes, 0, 0);
         const now = new Date();
@@ -1172,9 +1196,6 @@ export function TicketConversation({
         const minutesStr = String(minutes).padStart(2, '0');
 
         scheduledSendAt = `${year}-${month}-${day}T${hoursStr}:${minutesStr}:00.000Z`;
-
-        console.log('📅 Local scheduled time:', scheduledDateTime.toString());
-        console.log('📅 Sending to backend (as ET):', scheduledSendAt);
       } catch (error) {
         console.error('Error parsing scheduled time:', error);
         toast.error('Invalid scheduled time');
@@ -1231,7 +1252,6 @@ export function TicketConversation({
 
       if (data.is_scheduled) {
         toast.success('Comment scheduled successfully! It will be sent at the specified time.');
-        console.log('📅 Comment scheduled:', data.scheduled_comment);
       } else {
         if (isPrivateNote) {
           toast.success('Private note saved successfully.');
@@ -1275,6 +1295,7 @@ export function TicketConversation({
             newBccRecipients !== (updatedTask.bcc_recipients || '');
 
           if (recipientsChanged) {
+            // Optimistically update local state immediately
             updatedTask = {
               ...updatedTask,
               to_recipients: newToRecipients || updatedTask.to_recipients,
@@ -1282,15 +1303,22 @@ export function TicketConversation({
               bcc_recipients: newBccRecipients || updatedTask.bcc_recipients,
             };
 
-            // Persist the updated recipients to the backend
+            // ✅ FIX: Properly handle backend update with query invalidation
             updateTicket(ticket.id, {
               to_recipients: newToRecipients || null,
               cc_recipients: newCcRecipients || null,
               bcc_recipients: newBccRecipients || null,
-            }).catch((error) => {
-              console.error('Failed to update ticket recipients:', error);
-              // Don't show error toast as the comment was sent successfully
-            });
+            })
+              .then(() => {
+                // Invalidate to ensure fresh data on next load
+                queryClient.invalidateQueries({ queryKey: ['ticket', ticket.id] });
+                queryClient.invalidateQueries({ queryKey: ['latestComment', ticket.id] });
+              })
+              .catch((error) => {
+                console.error('Failed to update ticket recipients:', error);
+                // Revert optimistic update on failure
+                queryClient.invalidateQueries({ queryKey: ['ticket', ticket.id] });
+              });
           }
         }
 

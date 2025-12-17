@@ -1,6 +1,6 @@
 'use client';
 import type React from 'react';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient, useMutation, type InfiniteData } from '@tanstack/react-query';
 import { ArrowLeft, X, Plus, Search, User, Edit2, Check, XIcon } from 'lucide-react';
@@ -167,6 +167,8 @@ function DynamicCCInput({
 }
 
 export function TicketPageContent({ ticketId }: Props) {
+  // TODO: Move mailbox email patterns to environment config or workspace settings
+  // This would allow per-workspace customization without code changes
   const isMailboxEmail = (email: string): boolean => {
     if (!email || !email.includes('@')) return false;
 
@@ -227,7 +229,14 @@ export function TicketPageContent({ ticketId }: Props) {
 
   const currentTicket = ticketData?.[0] || null;
 
-  // ✅ FIX: Query to get the latest comment to extract recipients if ticket doesn't have them
+  // ✅ OPTIMIZED: Only query for latest comment when ticket is missing recipients
+  // This prevents fetching all comments unnecessarily on every ticket load
+  const needsLatestComment =
+    currentTicket &&
+    (!currentTicket.cc_recipients?.trim() ||
+     !currentTicket.to_recipients?.trim() ||
+     !currentTicket.bcc_recipients?.trim());
+
   const { data: latestCommentData } = useQuery({
     queryKey: ['latestComment', ticketId],
     queryFn: async () => {
@@ -236,8 +245,9 @@ export function TicketPageContent({ ticketId }: Props) {
       // Find the most recent non-private comment
       return comments.find((c: any) => !c.is_private) || null;
     },
-    enabled: !!ticketId && !!currentTicket,
-    staleTime: 1000 * 60, // Cache for 1 minute
+    // Only fetch if ticket exists and is missing at least one recipient field
+    enabled: !!ticketId && !!needsLatestComment,
+    staleTime: 1000 * 60 * 5, // Cache for 5 minutes (increased from 1)
   });
 
   useEffect(() => {
@@ -312,12 +322,63 @@ export function TicketPageContent({ ticketId }: Props) {
     }
   }, [currentTicket, ticketError, latestCommentData]);
 
+  // ✅ FIX: Shared function to update recipient states from ticket data
+  const updateRecipientStates = useCallback((updatedTicket: ITicket, clearExtra = false) => {
+    // Update CC recipients
+    if (updatedTicket.cc_recipients) {
+      const emails = updatedTicket.cc_recipients
+        .split(',')
+        .map(email => email.trim())
+        .filter(email => email.length > 0);
+      setExistingCcEmails(emails);
+    } else {
+      setExistingCcEmails([]);
+    }
+
+    // Update TO recipients
+    let allToRecipients: string[] = [];
+    if (updatedTicket.user?.email) {
+      allToRecipients.push(updatedTicket.user.email);
+    }
+    if (updatedTicket.to_recipients) {
+      const additionalToEmails = updatedTicket.to_recipients
+        .split(',')
+        .map(email => email.trim())
+        .filter(email => email.length > 0)
+        .filter(email => !isMailboxEmail(email))
+        .filter(email => !allToRecipients.includes(email));
+      allToRecipients = [...allToRecipients, ...additionalToEmails];
+    }
+    setExistingToEmails(allToRecipients);
+
+    // ✅ FIX: Update BCC recipients (was missing before)
+    if (updatedTicket.bcc_recipients) {
+      const bccEmails = updatedTicket.bcc_recipients
+        .split(',')
+        .map(email => email.trim())
+        .filter(email => email.length > 0);
+      setExistingBccEmails(bccEmails);
+    } else {
+      setExistingBccEmails([]);
+    }
+
+    // Clear extra recipients if requested (e.g., after sending)
+    if (clearExtra) {
+      setExtraToEmails([]);
+      setExtraCcEmails([]);
+      setExtraBccEmails([]);
+    }
+  }, [isMailboxEmail]);
+
+  // ✅ FIX: Socket handler now updates recipients too
   useEffect(() => {
     if (!socket || !ticket) return;
 
     const handleTicketUpdated = (data: ITicket) => {
       if (data.id === ticket.id) {
         setTicket(prev => (prev ? { ...prev, ...data } : data));
+        // Update recipient states when ticket is updated via WebSocket
+        updateRecipientStates(data, false);
       }
     };
 
@@ -326,7 +387,7 @@ export function TicketPageContent({ ticketId }: Props) {
     return () => {
       socket.off('ticket_updated', handleTicketUpdated);
     };
-  }, [socket, ticket]);
+  }, [socket, ticket, updateRecipientStates]);
 
   const { data: agents = [], isLoading: isLoadingAgents } = useQuery<Agent[]>({
     queryKey: ['agents'],
@@ -704,90 +765,54 @@ export function TicketPageContent({ ticketId }: Props) {
     },
   });
 
-  const handleTicketUpdate = (updatedTicket: ITicket) => {
+  // ✅ FIX: Use shared function to update recipients (fixes duplicate logic & missing BCC)
+  const handleTicketUpdate = useCallback((updatedTicket: ITicket) => {
     setTicket(updatedTicket);
     queryClient.setQueryData(['ticket', ticketId], [updatedTicket]);
-  
-    // Update existing recipients from the latest ticket data
-    if (updatedTicket.cc_recipients) {
-      const emails = updatedTicket.cc_recipients
-        .split(',')
-        .map(email => email.trim())
-        .filter(email => email.length > 0);
-      setExistingCcEmails(emails);
-    } else {
-      setExistingCcEmails([]);
-    }
-  
-    let allToRecipients: string[] = [];
-    if (updatedTicket.user?.email) {
-      allToRecipients.push(updatedTicket.user.email);
-    }
-    if (updatedTicket.to_recipients) {
-      const additionalToEmails = updatedTicket.to_recipients
-        .split(',')
-        .map(email => email.trim())
-        .filter(email => email.length > 0)
-        .filter(email => !isMailboxEmail(email))
-        .filter(email => !allToRecipients.includes(email));
-      allToRecipients = [...allToRecipients, ...additionalToEmails];
-    }
-    setExistingToEmails(allToRecipients);
-  
-    // Clear only the "extra" fields, to allow for new, temporary recipients in the next reply
-    setExtraToEmails([]);
-    setExtraCcEmails([]);
-    setExtraBccEmails([]);
-  };
 
-  // Function to get combined CC recipients in comma-separated format
-  const getCombinedCcRecipients = (): string => {
+    // Update recipient states and clear extra recipients
+    updateRecipientStates(updatedTicket, true);
+  }, [ticketId, queryClient, updateRecipientStates]);
+
+  // ✅ OPTIMIZED: Memoized combined recipient functions to avoid unnecessary re-computations
+  const getCombinedCcRecipients = useMemo((): string => {
     const allEmails = [...existingCcEmails, ...extraCcEmails];
     const uniqueEmails = [...new Set(allEmails)];
     return uniqueEmails.join(', ');
-  };
+  }, [existingCcEmails, extraCcEmails]);
 
-  // Function to get combined BCC recipients in comma-separated format
-  const getCombinedBccRecipients = (): string => {
+  const getCombinedBccRecipients = useMemo((): string => {
     const allEmails = [...existingBccEmails, ...extraBccEmails];
     const uniqueEmails = [...new Set(allEmails)];
     return uniqueEmails.join(', ');
-  };
+  }, [existingBccEmails, extraBccEmails]);
 
-  // Function to get combined TO recipients in comma-separated format
-  const getCombinedToRecipients = (): string => {
+  const getCombinedToRecipients = useMemo((): string => {
     const allEmails = [...existingToEmails, ...extraToEmails];
     const uniqueEmails = [...new Set(allEmails)];
     return uniqueEmails.join(', ');
-  };
+  }, [existingToEmails, extraToEmails]);
 
-  // ✅ FIXED: Modified callback functions to NOT reset extra emails
-  // This prevents the RichTextEditor from being reset when CC/BCC changes
+  // ✅ Callback functions for clearing extra recipients when ticket changes
+  // NOTE: These are ONLY called by TicketConversation when switching tickets to clear state.
+  // The actual recipient updates happen directly via DynamicCCInput components below.
+  // This design prevents the RichTextEditor from being reset when recipients change.
   const handleExtraCcRecipientsChange = useCallback((recipients: string) => {
-    // Only update if there's an actual change and it's not just clearing
     if (recipients === '') {
-      // Only clear extra CC emails, don't reset the editor
       setExtraCcEmails([]);
     }
-    // Don't do anything else - let the CC input component handle the state
   }, []);
 
   const handleExtraBccRecipientsChange = useCallback((recipients: string) => {
-    // Only update if there's an actual change and it's not just clearing
     if (recipients === '') {
-      // Only clear extra BCC emails, don't reset the editor
       setExtraBccEmails([]);
     }
-    // Don't do anything else - let the BCC input component handle the state
   }, []);
 
   const handleExtraToRecipientsChange = useCallback((recipients: string) => {
-    // Only update if there's an actual change and it's not just clearing
     if (recipients === '') {
-      // Only clear extra TO emails, don't reset the editor
       setExtraToEmails([]);
     }
-    // Don't do anything else - let the TO input component handle the state
   }, []);
 
   // Function to handle primary contact change
@@ -1169,11 +1194,11 @@ export function TicketPageContent({ ticketId }: Props) {
                 ticket={ticket as ITicket}
                 onTicketUpdate={handleTicketUpdate}
                 latestOnly={true}
-                extraToRecipients={getCombinedToRecipients()}
+                extraToRecipients={getCombinedToRecipients}
                 onExtraToRecipientsChange={handleExtraToRecipientsChange}
-                extraRecipients={getCombinedCcRecipients()}
+                extraRecipients={getCombinedCcRecipients}
                 onExtraRecipientsChange={handleExtraCcRecipientsChange}
-                extraBccRecipients={getCombinedBccRecipients()}
+                extraBccRecipients={getCombinedBccRecipients}
                 onExtraBccRecipientsChange={handleExtraBccRecipientsChange}
               />
             </CardContent>
@@ -1187,11 +1212,11 @@ export function TicketPageContent({ ticketId }: Props) {
                 ticket={ticket as ITicket}
                 onTicketUpdate={handleTicketUpdate}
                 replyOnly={true}
-                extraToRecipients={getCombinedToRecipients()}
+                extraToRecipients={getCombinedToRecipients}
                 onExtraToRecipientsChange={handleExtraToRecipientsChange}
-                extraRecipients={getCombinedCcRecipients()}
+                extraRecipients={getCombinedCcRecipients}
                 onExtraRecipientsChange={handleExtraCcRecipientsChange}
-                extraBccRecipients={getCombinedBccRecipients()}
+                extraBccRecipients={getCombinedBccRecipients}
                 onExtraBccRecipientsChange={handleExtraBccRecipientsChange}
               />
             </CardContent>
