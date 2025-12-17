@@ -1261,6 +1261,39 @@ export function TicketConversation({
           }
         }
 
+        // ✅ FIX: Update ticket recipients with the latest comment's recipients
+        // This ensures CCs/TOs/BCCs persist across replies
+        if (!isPrivateNote && data.comment) {
+          const newToRecipients = extraToRecipients.trim();
+          const newCcRecipients = extraRecipients.trim();
+          const newBccRecipients = extraBccRecipients.trim();
+
+          // Check if recipients have changed from the ticket's current values
+          const recipientsChanged =
+            newToRecipients !== (updatedTask.to_recipients || '') ||
+            newCcRecipients !== (updatedTask.cc_recipients || '') ||
+            newBccRecipients !== (updatedTask.bcc_recipients || '');
+
+          if (recipientsChanged) {
+            updatedTask = {
+              ...updatedTask,
+              to_recipients: newToRecipients || updatedTask.to_recipients,
+              cc_recipients: newCcRecipients || updatedTask.cc_recipients,
+              bcc_recipients: newBccRecipients || updatedTask.bcc_recipients,
+            };
+
+            // Persist the updated recipients to the backend
+            updateTicket(ticket.id, {
+              to_recipients: newToRecipients || null,
+              cc_recipients: newCcRecipients || null,
+              bcc_recipients: newBccRecipients || null,
+            }).catch((error) => {
+              console.error('Failed to update ticket recipients:', error);
+              // Don't show error toast as the comment was sent successfully
+            });
+          }
+        }
+
         onTicketUpdate(updatedTask);
         queryClient.setQueryData(['ticket', ticket.id], updatedTask);
         queryClient.invalidateQueries({

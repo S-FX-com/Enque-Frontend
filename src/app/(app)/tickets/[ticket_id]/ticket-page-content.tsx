@@ -226,11 +226,37 @@ export function TicketPageContent({ ticketId }: Props) {
   });
 
   const currentTicket = ticketData?.[0] || null;
+
+  // ✅ FIX: Query to get the latest comment to extract recipients if ticket doesn't have them
+  const { data: latestCommentData } = useQuery({
+    queryKey: ['latestComment', ticketId],
+    queryFn: async () => {
+      const { getCommentsByTaskId } = await import('@/services/comment');
+      const comments = await getCommentsByTaskId(ticketId);
+      // Find the most recent non-private comment
+      return comments.find((c: any) => !c.is_private) || null;
+    },
+    enabled: !!ticketId && !!currentTicket,
+    staleTime: 1000 * 60, // Cache for 1 minute
+  });
+
   useEffect(() => {
     if (currentTicket) {
       setTicket(currentTicket as unknown as ITicket);
-      if (currentTicket?.cc_recipients) {
-        const emails = currentTicket.cc_recipients
+
+      // ✅ FIX: Initialize CC recipients from latest comment if ticket doesn't have them
+      const ticketCcRecipients = currentTicket?.cc_recipients?.trim();
+      const latestCommentCcRecipients = latestCommentData?.other_destinaries?.trim();
+
+      if (latestCommentCcRecipients && !ticketCcRecipients) {
+        // Use latest comment's CCs if ticket doesn't have any
+        const emails = latestCommentCcRecipients
+          .split(',')
+          .map(email => email.trim())
+          .filter(email => email.length > 0);
+        setExistingCcEmails(emails);
+      } else if (ticketCcRecipients) {
+        const emails = ticketCcRecipients
           .split(',')
           .map(email => email.trim())
           .filter(email => email.length > 0);
@@ -238,12 +264,19 @@ export function TicketPageContent({ ticketId }: Props) {
       } else {
         setExistingCcEmails([]);
       }
+
+      // ✅ FIX: Initialize TO recipients from latest comment if needed
       let allToRecipients: string[] = [];
       if (currentTicket?.user?.email) {
         allToRecipients.push(currentTicket.user.email);
       }
-      if (currentTicket?.to_recipients) {
-        const additionalToEmails = currentTicket.to_recipients
+
+      const ticketToRecipients = currentTicket?.to_recipients?.trim();
+      const latestCommentToRecipients = latestCommentData?.to_recipients?.trim();
+
+      const toRecipientsSource = ticketToRecipients || latestCommentToRecipients;
+      if (toRecipientsSource) {
+        const additionalToEmails = toRecipientsSource
           .split(',')
           .map(email => email.trim())
           .filter(email => email.length > 0)
@@ -251,10 +284,16 @@ export function TicketPageContent({ ticketId }: Props) {
           .filter(email => !allToRecipients.includes(email));
         allToRecipients = [...allToRecipients, ...additionalToEmails];
       }
-      
+
       setExistingToEmails(allToRecipients);
-      if (currentTicket?.bcc_recipients) {
-        const bccEmails = currentTicket.bcc_recipients
+
+      // ✅ FIX: Initialize BCC recipients from latest comment if needed
+      const ticketBccRecipients = currentTicket?.bcc_recipients?.trim();
+      const latestCommentBccRecipients = latestCommentData?.bcc_recipients?.trim();
+
+      const bccRecipientsSource = ticketBccRecipients || latestCommentBccRecipients;
+      if (bccRecipientsSource) {
+        const bccEmails = bccRecipientsSource
           .split(',')
           .map(email => email.trim())
           .filter(email => email.length > 0);
@@ -271,7 +310,7 @@ export function TicketPageContent({ ticketId }: Props) {
       }
     } else if (ticketError) {
     }
-  }, [currentTicket, ticketError]);
+  }, [currentTicket, ticketError, latestCommentData]);
 
   useEffect(() => {
     if (!socket || !ticket) return;
