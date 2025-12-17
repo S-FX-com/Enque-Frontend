@@ -1328,8 +1328,10 @@ export function TicketConversation({
           queryKey: ['tickets'],
           refetchType: 'none' // No refetch inmediato para evitar "Loading..." en la tabla
         });
-        // Refetch el ticket específico para asegurar sincronización
-        queryClient.invalidateQueries({ queryKey: ['ticket', ticket.id] });
+        // ✅ FIXED: Don't invalidate ticket immediately after updating
+        // The backend already returned the updated ticket in updatedTask
+        // Invalidating immediately can cause a race condition where stale data overwrites the update
+
         // Invalidar comentarios solo si es nota privada para mostrar inmediatamente
         if (isPrivateNote) {
           queryClient.invalidateQueries({ queryKey: ['comments', ticket.id] });
@@ -1351,8 +1353,7 @@ export function TicketConversation({
             queryKey: ['tickets'],
             refetchType: 'none' // No refetch inmediato para evitar "Loading..." en la tabla
           });
-          // Refetch el ticket específico para asegurar sincronización
-          queryClient.invalidateQueries({ queryKey: ['ticket', ticket.id] });
+          // ✅ FIXED: Don't invalidate ticket immediately - avoid race condition
           // Invalidar comentarios solo si es nota privada para mostrar inmediatamente
           if (isPrivateNote) {
             queryClient.invalidateQueries({ queryKey: ['comments', ticket.id] });
