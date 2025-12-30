@@ -1,3 +1,27 @@
+/* Fix para texto en reversa - Forzar dirección LTR */
+.ProseMirror {
+  direction: ltr !important;
+  unicode-bidi: normal !important;
+  text-align: left !important;
+}
+
+.ProseMirror * {
+  direction: ltr !important;
+  unicode-bidi: normal !important;
+}
+
+/* Fix para texto en reversa - Forzar dirección LTR */
+.ProseMirror {
+  direction: ltr !important;
+  unicode-bidi: normal !important;
+  text-align: left !important;
+}
+
+.ProseMirror * {
+  direction: ltr !important;
+  unicode-bidi: normal !important;
+}
+
 .ProseMirror:focus {
   outline: none;
 }

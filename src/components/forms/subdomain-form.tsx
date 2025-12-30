@@ -79,7 +79,7 @@ export function SubdomainForm() {
                   disabled={isSubmitting}
                 />
                 <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-sm text-slate-500 bg-slate-50 border-l border-slate-200 rounded-r-md">
-                  .enque.cc
+                  {AppConfigs.domain}
                 </div>
               </div>
               {subdomainError && (
