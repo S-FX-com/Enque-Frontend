@@ -7,12 +7,10 @@ import { getDomainSuffix } from '@/lib/utils';
 
 export default function TeamsRedirectPage() {
   const searchParams = useSearchParams();
-  const [domainSuffix, setDomainSuffix] = useState('.enque.cc');
   const [finalUrl, setFinalUrl] = useState('');
 
   useEffect(() => {
     const suffix = getDomainSuffix();
-    setDomainSuffix(suffix);
 
     let subEntityId = searchParams.get('subEntityId');
     const token = getAuthToken();
