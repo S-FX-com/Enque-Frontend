@@ -18,7 +18,7 @@ export const AppConfigs = {
     dashboard: '/dashboard',
   },
 
-  // Subdomains - Use environment variables with fallback to .enque.cc
-  domain: process.env.NEXT_PUBLIC_APP_DOMAIN || '.enque.cc',
-  baseUrl: process.env.NEXT_PUBLIC_APP_BASE_URL || 'app.enque.cc',
+  // Subdomains
+  domain: '.enque.cc',
+  baseUrl: 'app.enque.cc',
 };

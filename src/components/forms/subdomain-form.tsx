@@ -1,16 +1,23 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { AppConfigs } from '@/configs';
 import { Loader2, AlertCircle } from 'lucide-react';
+import { getDomainSuffix } from '@/lib/utils';
 
 export function SubdomainForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [subdomain, setSubdomain] = useState('');
   const [subdomainError, setSubdomainError] = useState<string | null>(null);
+  const [domainSuffix, setDomainSuffix] = useState('.enque.cc');
+
+  useEffect(() => {
+    // Detectar el dominio actual cuando el componente se monta
+    setDomainSuffix(getDomainSuffix());
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -28,7 +35,7 @@ export function SubdomainForm() {
       console.log(`Workspace check response status: ${response.status}`);
 
       if (response.ok) {
-        const targetHostname = `${trimmedSubdomain}.${AppConfigs.domain.substring(1)}`;
+        const targetHostname = `${trimmedSubdomain}${domainSuffix}`;
         const targetUrl = `https://${targetHostname}/signin`;
         console.log(`Workspace valid. Redirecting to: ${targetUrl}`);
         window.location.href = targetUrl;
@@ -79,7 +86,7 @@ export function SubdomainForm() {
                   disabled={isSubmitting}
                 />
                 <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-sm text-slate-500 bg-slate-50 border-l border-slate-200 rounded-r-md">
-                  {AppConfigs.domain}
+                  {domainSuffix}
                 </div>
               </div>
               {subdomainError && (

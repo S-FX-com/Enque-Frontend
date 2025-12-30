@@ -3,12 +3,17 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { getAuthToken } from '@/lib/auth';
+import { getDomainSuffix } from '@/lib/utils';
 
 export default function TeamsRedirectPage() {
   const searchParams = useSearchParams();
-  const [finalUrl, setFinalUrl] = useState('https://sfx.enque.cc/tickets');
+  const [domainSuffix, setDomainSuffix] = useState('.enque.cc');
+  const [finalUrl, setFinalUrl] = useState('');
 
   useEffect(() => {
+    const suffix = getDomainSuffix();
+    setDomainSuffix(suffix);
+
     let subEntityId = searchParams.get('subEntityId');
     const token = getAuthToken();
 
@@ -18,20 +23,20 @@ export default function TeamsRedirectPage() {
       subEntityId = hashParams.get('subEntityId');
     }
 
-    let constructedUrl = 'https://sfx.enque.cc/tickets';
+    let constructedUrl = `https://sfx${suffix}/tickets`;
 
     if (subEntityId) {
       try {
         const parts = subEntityId.split('|');
         if (parts.length === 2) {
           const [ticketId, subdomain] = parts;
-          constructedUrl = `https://${subdomain}.enque.cc/tickets/${ticketId}`;
+          constructedUrl = `https://${subdomain}${suffix}/tickets/${ticketId}`;
         }
       } catch (error) {
         console.error('Failed to parse subEntityId:', error);
       }
     }
-    
+
     // Append the auth token if it exists
     if (token) {
       const url = new URL(constructedUrl);
@@ -46,7 +51,7 @@ export default function TeamsRedirectPage() {
   // If blocked by sandbox, user can click manually.
   useEffect(() => {
     // Only attempt to click if the finalUrl has been processed
-    if (finalUrl !== 'https://sfx.enque.cc/tickets' || searchParams.get('subEntityId')) {
+    if (finalUrl && searchParams.get('subEntityId')) {
       const link = document.getElementById('redirect-link');
       if (link) {
         link.click();

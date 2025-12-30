@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -13,6 +13,7 @@ import { Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 import { workspaceService } from '@/services/workspace';
 import { IWorkspaceSetup } from '@/typescript/workspace';
 import { toast } from 'sonner';
+import { getDomainSuffix } from '@/lib/utils';
 
 const setupSchema = z
   .object({
@@ -46,6 +47,11 @@ type SetupFormData = z.infer<typeof setupSchema>;
 export default function SetupPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [setupComplete, setSetupComplete] = useState(false);
+  const [domainSuffix, setDomainSuffix] = useState('.enque.cc');
+
+  useEffect(() => {
+    setDomainSuffix(getDomainSuffix());
+  }, []);
 
   const {
     register,
@@ -80,7 +86,7 @@ export default function SetupPage() {
 
         // Redirect to dashboard after 2 seconds
         setTimeout(() => {
-          window.location.href = `https://${data.subdomain}.enque.cc/dashboard`;
+          window.location.href = `https://${data.subdomain}${domainSuffix}/dashboard`;
         }, 2000);
       } else {
         toast.error(response.message || 'Error creating workspace');
@@ -133,7 +139,7 @@ export default function SetupPage() {
             <AlertDescription className="text-blue-800 dark:text-blue-200">
               This is the initial setup for your workspace. Once created, you can access it at{' '}
               <span className="font-mono font-medium">
-                {subdomain ? `${subdomain}.enque.cc` : 'your-subdomain.enque.cc'}
+                {subdomain ? `${subdomain}${domainSuffix}` : `your-subdomain${domainSuffix}`}
               </span>
             </AlertDescription>
           </Alert>
@@ -150,7 +156,7 @@ export default function SetupPage() {
                   {...register('subdomain')}
                 />
                 <div className="flex items-center bg-gray-50 dark:bg-gray-800 border border-l-0 rounded-r-md px-3 text-sm text-gray-500">
-                  .enque.cc
+                  {domainSuffix}
                 </div>
               </div>
               {errors.subdomain && (
