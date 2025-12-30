@@ -20,23 +20,47 @@ function setCacheWorkspace(subdomain: string, valid: boolean): void {
   workspaceCache.set(subdomain, valid);
 }
 
+// Dominios base válidos (no son workspaces)
+const BASE_DOMAINS = [
+  'app.enque.cc',
+  'old.enque.cc',
+  'enque-production.up.railway.app',
+];
+
 // Make the middleware async to use await for fetch
 export async function middleware(request: NextRequest) {
   const hostname = request.headers.get('host') || '';
   const pathname = request.nextUrl.pathname;
 
+  // Si es un dominio base, no es un subdomain de workspace
+  if (BASE_DOMAINS.includes(hostname)) {
+    return NextResponse.next();
+  }
+
   // Check if it's a subdomain request
-  const isSubdomain = hostname !== AppConfigs.baseUrl && hostname.endsWith(AppConfigs.domain);
+  const isSubdomain = hostname.endsWith('.enque.cc') || hostname.endsWith('.old.enque.cc') || hostname.endsWith('.up.railway.app');
 
   if (isSubdomain) {
-    const subdomain = hostname.replace(AppConfigs.domain, '');
+    // Determinar qué dominio base usar para redirecciones
+    let baseDomain = 'app.enque.cc';
+    let domainSuffix = '.enque.cc';
+
+    if (hostname.endsWith('.old.enque.cc')) {
+      baseDomain = 'old.enque.cc';
+      domainSuffix = '.old.enque.cc';
+    } else if (hostname.endsWith('.up.railway.app')) {
+      baseDomain = 'enque-production.up.railway.app';
+      domainSuffix = '.up.railway.app';
+    }
+
+    const subdomain = hostname.replace(domainSuffix, '');
 
     // Check cache first
     const cachedResult = isWorkspaceCacheValid(subdomain);
 
     if (cachedResult === false) {
       // Cached as invalid - redirect immediately
-      const redirectUrl = new URL('/', `https://${AppConfigs.baseUrl}`);
+      const redirectUrl = new URL('/', `https://${baseDomain}`);
       redirectUrl.searchParams.set('error', 'workspace_not_found');
       redirectUrl.searchParams.set('subdomain', subdomain);
       return NextResponse.redirect(redirectUrl);
@@ -52,7 +76,7 @@ export async function middleware(request: NextRequest) {
         if (!response.ok && response.status === 404) {
           // Cache as invalid and redirect
           setCacheWorkspace(subdomain, false);
-          const redirectUrl = new URL('/', `https://${AppConfigs.baseUrl}`);
+          const redirectUrl = new URL('/', `https://${baseDomain}`);
           redirectUrl.searchParams.set('error', 'workspace_not_found');
           redirectUrl.searchParams.set('subdomain', subdomain);
           return NextResponse.redirect(redirectUrl);
@@ -61,7 +85,7 @@ export async function middleware(request: NextRequest) {
         // Cache as valid
         setCacheWorkspace(subdomain, true);
       } catch {
-        const errorRedirectUrl = new URL('/', `https://${AppConfigs.baseUrl}`);
+        const errorRedirectUrl = new URL('/', `https://${baseDomain}`);
         errorRedirectUrl.searchParams.set('error', 'workspace_check_failed');
         return NextResponse.redirect(errorRedirectUrl);
       }
