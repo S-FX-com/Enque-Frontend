@@ -37,17 +37,14 @@ export async function middleware(request: NextRequest) {
   }
 
   // Check if it's a subdomain request
-  const isSubdomain = hostname.endsWith('.enque.cc') || hostname.endsWith('.old.enque.cc') || hostname.endsWith('.up.railway.app');
+  const isSubdomain = hostname.endsWith('.enque.cc') || hostname.endsWith('.up.railway.app');
 
   if (isSubdomain) {
     // Determinar qué dominio base usar para redirecciones
     let baseDomain = 'old.enque.cc';
     let domainSuffix = '.enque.cc';
 
-    if (hostname.endsWith('.old.enque.cc')) {
-      baseDomain = 'old.enque.cc';
-      domainSuffix = '.old.enque.cc';
-    } else if (hostname.endsWith('.up.railway.app')) {
+    if (hostname.endsWith('.up.railway.app')) {
       baseDomain = 'enque-production.up.railway.app';
       domainSuffix = '.up.railway.app';
     }

@@ -138,7 +138,6 @@ export const createReplyHeader = (date: Date, name: string, email: string) => {
  * Detecta el dominio base del hostname actual
  * Ejemplos:
  * - old.enque.cc → old.enque.cc
- * - sfx.old.enque.cc → old.enque.cc (subdomain workspace)
  * - sfx.enque.cc → old.enque.cc (subdomain workspace)
  */
 export function getBaseDomain(): string {
@@ -153,11 +152,6 @@ export function getBaseDomain(): string {
     return 'old.enque.cc';
   }
 
-  // Si es un subdomain de old (*.old.enque.cc)
-  if (hostname.endsWith('.old.enque.cc')) {
-    return 'old.enque.cc';
-  }
-
   // Si es Railway (*.up.railway.app)
   if (hostname.endsWith('.up.railway.app')) {
     return hostname; // Devuelve el hostname completo de Railway
@@ -168,7 +162,7 @@ export function getBaseDomain(): string {
 }
 
 /**
- * Obtiene el sufijo de dominio para subdominios (ej: .enque.cc, .old.enque.cc o .up.railway.app)
+ * Obtiene el sufijo de dominio para subdominios (ej: .enque.cc o .up.railway.app)
  */
 export function getDomainSuffix(): string {
   if (typeof window === 'undefined') {
@@ -176,16 +170,6 @@ export function getDomainSuffix(): string {
   }
 
   const hostname = window.location.hostname;
-
-  // Si es exactamente old.enque.cc (dominio base de old)
-  if (hostname === 'old.enque.cc') {
-    return '.old.enque.cc';
-  }
-
-  // Si es un subdomain de old (*.old.enque.cc)
-  if (hostname.endsWith('.old.enque.cc')) {
-    return '.old.enque.cc';
-  }
 
   // Si es Railway
   if (hostname.endsWith('.up.railway.app')) {
