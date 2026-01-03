@@ -21,15 +21,15 @@ export const microsoftAuthService = {
     if (typeof window === 'undefined') return 1;
 
     const hostname = window.location.hostname;
-    
+
     // Check if this is a subdomain of enque.cc
-    if (hostname !== 'app.enque.cc' && hostname.endsWith('.enque.cc')) {
+    if (hostname !== 'old.enque.cc' && hostname.endsWith('.enque.cc')) {
       // For now, return a default workspace ID since we'd need to look up
       // the actual workspace ID from the subdomain
       // This would typically require an API call to get workspace by subdomain
       return 1;
     }
-    
+
     // Default workspace for main domain
     return 1;
   },

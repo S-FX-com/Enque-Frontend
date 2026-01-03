@@ -287,7 +287,7 @@ export const microsoftAuthService = {
     }
 
     const hostname = window.location.hostname;
-    const isSubdomain = hostname !== 'app.enque.cc' && hostname.endsWith('.enque.cc');
+    const isSubdomain = hostname !== 'old.enque.cc' && hostname.endsWith('.enque.cc');
 
     if (isSubdomain) {
       const subdomain = hostname.replace('.enque.cc', '');

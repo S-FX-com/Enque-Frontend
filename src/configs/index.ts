@@ -20,5 +20,5 @@ export const AppConfigs = {
 
   // Subdomains
   domain: '.enque.cc',
-  baseUrl: 'app.enque.cc',
+  baseUrl: 'old.enque.cc',
 };
