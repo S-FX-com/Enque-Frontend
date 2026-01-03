@@ -23,6 +23,7 @@ function setCacheWorkspace(subdomain: string, valid: boolean): void {
 // Dominios base válidos (no son workspaces)
 const BASE_DOMAINS = [
   'old.enque.cc',
+  'sfx.enque.cc',
   'enque-production.up.railway.app',
 ];
 
